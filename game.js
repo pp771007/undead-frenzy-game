@@ -1,5 +1,3 @@
-// --- START OF FILE game.js ---
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 600;
@@ -12,28 +10,18 @@ const uiElements = {
     playerLevel: document.getElementById('player-level'),
     playerStatsLabel: document.getElementById('player-stats-label'),
     upgradePlayerBtn: document.getElementById('upgrade-player-btn'),
-    playerUpgradeCost: document.getElementById('player-upgrade-cost'),
     skelLevel: document.getElementById('skel-level'),
     skelCount: document.getElementById('skel-count'),
-    skelMax: document.getElementById('skel-max'),
     summonSkeletonBtn: document.getElementById('summon-skeleton-btn'),
     upgradeSkeletonBtn: document.getElementById('upgrade-skeleton-btn'),
-    skelSummonCost: document.getElementById('skel-summon-cost'),
-    skelUpgradeCost: document.getElementById('skel-upgrade-cost'),
-    mageLevel: document.getElementById('mage-level'),
-    mageCount: document.getElementById('mage-count'),
-    mageMax: document.getElementById('mage-max'),
-    summonMageBtn: document.getElementById('summon-mage-btn'),
-    upgradeMageBtn: document.getElementById('upgrade-mage-btn'),
-    mageSummonCost: document.getElementById('mage-summon-cost'),
-    mageUpgradeCost: document.getElementById('mage-upgrade-cost'),
+    eyeMonsterLevel: document.getElementById('eye-monster-level'),
+    eyeMonsterCount: document.getElementById('eye-monster-count'),
+    summonEyeMonsterBtn: document.getElementById('summon-eye-monster-btn'),
+    upgradeEyeMonsterBtn: document.getElementById('upgrade-eye-monster-btn'),
     wraithLevel: document.getElementById('wraith-level'),
     wraithCount: document.getElementById('wraith-count'),
-    wraithMax: document.getElementById('wraith-max'),
     summonWraithBtn: document.getElementById('summon-wraith-btn'),
     upgradeWraithBtn: document.getElementById('upgrade-wraith-btn'),
-    wraithSummonCost: document.getElementById('wraith-summon-cost'),
-    wraithUpgradeCost: document.getElementById('wraith-upgrade-cost'),
     pauseResumeBtn: document.getElementById('pause-resume-btn'),
     messageArea: document.getElementById('message-area'),
     gameOverScreen: document.getElementById('game-over-screen'),
@@ -48,10 +36,6 @@ const CONFIG = {
         initialSouls: 15,
         avoidanceRadius: 15,
         upgradeMaxHealthIncrease: 10,
-        // Specific cap increases per player level
-        upgradeSkelCapIncrease: 2,
-        upgradeMageCapIncrease: 1,
-        upgradeWraithCapIncrease: 0.5, // Implemented as +1 every 2 levels
         upgradeCostBase: 25,
         upgradeCostIncrement: 15,
     },
@@ -63,27 +47,25 @@ const CONFIG = {
         summonCost: 3,
         upgradeCostBase: 10,
         upgradeCostInc: 5,
-        maxCount: 8, // Base max count
         targetSearchRadius: 150, returnDistance: 50,
-        avoidanceRadius: 18, avoidanceForce: 40,
-        playerAvoidanceForce: 30,
+        avoidanceRadius: 18, avoidanceForce: 80,
+        playerAvoidanceForce: 60,
         wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.5, wanderIntervalMax: 3.0,
     },
-    skeletonMage: {
-        type: 'SkeletonMage', baseHealth: 8, baseAttack: 7, radius: 7,
+    eyeMonster: {
+        type: 'EyeMonster', baseHealth: 8, baseAttack: 7, radius: 9,
         attackRange: 120,
         attackRangeUpgrade: 3,
-        attackSpeed: 0.8, moveSpeed: 60, color: '#00E5FF',
-        iconColor: '#212121',
+        attackSpeed: 0.8, moveSpeed: 60, color: '#A1887F',
+        iconColor: '#000000',
         upgradeBonus: 0.10, summonCost: 8,
         upgradeCostBase: 15,
         upgradeCostInc: 8,
-        maxCount: 4, // Base max count
         targetSearchRadius: 180, returnDistance: 30,
-        avoidanceRadius: 16, avoidanceForce: 35,
-        playerAvoidanceForce: 25,
+        avoidanceRadius: 16, avoidanceForce: 70,
+        playerAvoidanceForce: 50,
         wanderRadius: 15, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.8, wanderIntervalMax: 3.5,
-        projectileColor: '#80DEEA',
+        projectileColor: '#F06292',
         projectileSpeed: 300,
         projectileRadius: 3,
     },
@@ -93,19 +75,18 @@ const CONFIG = {
         slowRadiusBase: 80,
         slowRadiusUpgrade: 5,
         slowAmountBase: 0.4,
-        slowAmountUpgrade: 0.05,
+        slowAmountUpgrade: 0.025,
         slowDuration: 1.5, attackSpeed: 1.0, moveSpeed: 55, color: '#4DB6AC',
         iconColor: '#E0F2F1',
         upgradeBonus: 0.15,
         summonCost: 10,
         upgradeCostBase: 20,
         upgradeCostInc: 10,
-        maxCount: 3, // Base max count
         targetSearchRadius: 200, returnDistance: 40,
         avoidanceRadius: 25,
-        avoidanceForce: 50,
+        avoidanceForce: 100,
         wraithAvoidanceMultiplier: 1.5,
-        playerAvoidanceForce: 35,
+        playerAvoidanceForce: 70,
         retreatSpeedFactor: 0.4,
         wanderRadius: 35, wanderSpeedFactor: 0.25, wanderIntervalMin: 2.0, wanderIntervalMax: 4.0,
     },
@@ -129,7 +110,6 @@ const CONFIG = {
     },
     wave: {
         baseTime: 30, betweenTime: 5, monsterScaleInterval: 5, monsterScaleFactor: 0.10,
-        spawnInterval: 0.4,
         spawnChanceBasic: 0.60,
         spawnChanceFast: 0.25,
         spawnChanceArmored: 0.15,
@@ -148,14 +128,14 @@ const CONFIG = {
 CONFIG.upgradeCosts = {
     player: CONFIG.player.upgradeCostBase,
     skeletonWarrior: CONFIG.skeletonWarrior.upgradeCostBase,
-    skeletonMage: CONFIG.skeletonMage.upgradeCostBase,
+    eyeMonster: CONFIG.eyeMonster.upgradeCostBase,
     wraith: CONFIG.wraith.upgradeCostBase,
 };
 
 CONFIG.upgradeCostIncrements = {
     player: CONFIG.player.upgradeCostIncrement,
     skeletonWarrior: CONFIG.skeletonWarrior.upgradeCostInc,
-    skeletonMage: CONFIG.skeletonMage.upgradeCostInc,
+    eyeMonster: CONFIG.eyeMonster.upgradeCostInc,
     wraith: CONFIG.wraith.upgradeCostInc,
 };
 
@@ -165,13 +145,13 @@ let gameState = {
     visualEffects: [],
     souls: CONFIG.player.initialSouls,
     currentWave: 0,
-    monstersToSpawnThisWave: 0, monstersSpawnedThisWave: 0, timeUntilNextSpawn: 0,
+    monstersToSpawnThisWave: 0, monstersSpawnedThisWave: 0,
     timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
     gameOver: false, lastTime: 0, messageTimeout: null,
     isPaused: false,
     playerLevel: 0,
-    skeletonWarriorLevel: 0, skeletonMageLevel: 0, wraithLevel: 0,
-    skeletonWarriorCount: 0, skeletonMageCount: 0, wraithCount: 0,
+    skeletonWarriorLevel: 0, eyeMonsterLevel: 0, wraithLevel: 0,
+    skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
     currentCosts: { ...CONFIG.upgradeCosts },
 };
 
@@ -212,7 +192,7 @@ class GameObject {
         this.color = color;
         this.isAlive = true;
     }
-    draw(ctx) {}
+    draw(ctx) { }
     update(deltaTime) { }
 }
 
@@ -246,13 +226,14 @@ class Player extends GameObject {
         this.currentHealth = this.maxHealth;
         this.maxHealth = Math.round(this.maxHealth);
         this.currentHealth = Math.round(this.currentHealth);
-        console.log(`玩家升級！等級 ${gameState.playerLevel}, 血量上限 ${this.maxHealth}, 骷髏+${CONFIG.player.upgradeSkelCapIncrease}, 法師+${CONFIG.player.upgradeMageCapIncrease}, 怨靈+${CONFIG.player.upgradeWraithCapIncrease}`);
+        console.log(`死靈法師升級！等級 ${gameState.playerLevel}, 血量上限 ${this.maxHealth}`);
         updateUI();
     }
     die() {
         this.isAlive = false;
-        console.log("玩家死亡！");
+        console.log("Player died, setting gameOver=true");
         gameState.gameOver = true;
+        showGameOver();
     }
     getSummonPosition() {
         const direction = normalizeVector(inputState.movementVector);
@@ -268,6 +249,7 @@ class Player extends GameObject {
         return { x: spawnX, y: spawnY };
     }
     draw(ctx) {
+        if (!this.isAlive) return;
         const iconColor = this.color;
         ctx.strokeStyle = iconColor;
         ctx.lineWidth = 2;
@@ -302,7 +284,7 @@ class Player extends GameObject {
         ctx.stroke();
 
 
-        if (this.isAlive && this.currentHealth < this.maxHealth) {
+        if (this.currentHealth < this.maxHealth) {
             const barWidth = this.radius * 2;
             const barHeight = 5;
             const barX = this.pos.x - barWidth / 2;
@@ -347,7 +329,7 @@ class SummonUnit extends GameObject {
         } else {
             this.attack = this.config.baseAttack;
         }
-        if (this.config.type === 'SkeletonMage') {
+        if (this.config.type === 'EyeMonster') {
             this.attackRange = this.config.attackRange + (this.level * this.config.attackRangeUpgrade);
         } else {
             this.attackRange = this.config.attackRange;
@@ -378,7 +360,7 @@ class SummonUnit extends GameObject {
         if (!this.isAlive) return;
         if (this.attackCooldown > 0) { this.attackCooldown -= deltaTime; }
 
-        this.updateAI(deltaTime, monsters, otherSummons); // Pass otherSummons here for Wraith AI
+        this.updateAI(deltaTime, monsters, otherSummons);
 
         let moveDirection = { x: 0, y: 0 };
         let finalMoveSpeed = this.moveSpeed;
@@ -408,14 +390,21 @@ class SummonUnit extends GameObject {
             if (distToPlayerSq > returnThresholdSq * 1.5) {
                 moveDirection = normalizeVector({ x: playerPos.x - this.pos.x, y: playerPos.y - this.pos.y });
             } else {
-                 this.isReturning = false;
-                 moveDirection = { x: 0, y: 0 };
+                this.isReturning = false;
+                moveDirection = { x: 0, y: 0 };
             }
         }
 
         const avoidanceVector = this.avoidOverlap(otherSummons, this.playerTransform);
-        this.pos.x += avoidanceVector.x * deltaTime;
-        this.pos.y += avoidanceVector.y * deltaTime;
+        if (moveDirection.x !== 0 || moveDirection.y !== 0) {
+            moveDirection.x += avoidanceVector.x * deltaTime;
+            moveDirection.y += avoidanceVector.y * deltaTime;
+            moveDirection = normalizeVector(moveDirection);
+        } else {
+            this.pos.x += avoidanceVector.x * deltaTime;
+            this.pos.y += avoidanceVector.y * deltaTime;
+        }
+
 
         if (isIdle) {
             this.wanderTimer -= deltaTime;
@@ -433,9 +422,12 @@ class SummonUnit extends GameObject {
                 const distToWanderTargetSq = distanceSq(this.pos, this.wanderTargetPos);
                 if (distToWanderTargetSq > 5 * 5) {
                     const wanderDir = normalizeVector({ x: this.wanderTargetPos.x - this.pos.x, y: this.wanderTargetPos.y - this.pos.y });
-                    if (moveDirection.x === 0 && moveDirection.y === 0) {
+                    if (moveDirection.x === 0 && moveDirection.y === 0 && avoidanceVector.x === 0 && avoidanceVector.y === 0) {
                         moveDirection = wanderDir;
                         finalMoveSpeed = this.moveSpeed * this.config.wanderSpeedFactor;
+                    } else if (moveDirection.x === 0 && moveDirection.y === 0) {
+                        this.pos.x += wanderDir.x * this.moveSpeed * this.config.wanderSpeedFactor * deltaTime * 0.5;
+                        this.pos.y += wanderDir.y * this.moveSpeed * this.config.wanderSpeedFactor * deltaTime * 0.5;
                     }
                 } else {
                     this.isWandering = false;
@@ -450,33 +442,33 @@ class SummonUnit extends GameObject {
             this.pos.y += moveDirection.y * finalMoveSpeed * deltaTime;
         }
 
-         this.pos.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.pos.x));
-         this.pos.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.pos.y));
+        this.pos.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.pos.x));
+        this.pos.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.pos.y));
 
         if (this.attackCooldown <= 0) {
             if (this.config.type === 'Wraith') {
-                 let monsterInRangeForAura = false;
-                 for (const monster of monsters) {
-                     if (monster.isAlive && distanceSq(this.pos, monster.pos) <= this.slowRadiusSq) {
-                         monsterInRangeForAura = true;
-                         break;
-                     }
-                 }
-                 if (monsterInRangeForAura) {
+                let monsterInRangeForAura = false;
+                for (const monster of monsters) {
+                    if (monster.isAlive && distanceSq(this.pos, monster.pos) <= this.slowRadiusSq) {
+                        monsterInRangeForAura = true;
+                        break;
+                    }
+                }
+                if (monsterInRangeForAura) {
                     this.applySlowAura(monsters);
                     this.attackCooldown = 1.0 / this.attackSpeed;
-                 }
+                }
             }
             else if (this.target) {
-                 const targetDistSq = distanceSq(this.pos, this.target.pos);
-                 if (targetDistSq <= this.attackRangeSq) {
+                const targetDistSq = distanceSq(this.pos, this.target.pos);
+                if (targetDistSq <= this.attackRangeSq) {
                     this.attackTarget();
-                 }
+                }
             }
         }
     }
 
-    updateAI(deltaTime, monsters, otherSummons) { // Added otherSummons
+    updateAI(deltaTime, monsters, otherSummons) {
         if (this.config.type === 'Wraith') {
             let monsterInRange = false;
             for (const monster of monsters) {
@@ -487,7 +479,7 @@ class SummonUnit extends GameObject {
             }
             this.isRetreatingToPlayer = monsterInRange;
             if (this.isRetreatingToPlayer) {
-                this.target = null; // Wraiths don't target when retreating
+                this.target = null;
                 this.isReturning = false;
                 return;
             }
@@ -497,18 +489,9 @@ class SummonUnit extends GameObject {
             this.target = null;
         }
 
-        // Find a new target if needed, EXCLUDING targets already targeted by other Wraiths
         if (!this.target) {
             let alreadyTargetedIds = [];
-            if (this.config.type === 'Wraith') {
-                otherSummons.forEach(s => {
-                    if (s !== this && s.isAlive && s.config.type === 'Wraith' && s.target) {
-                         // Need a unique way to identify monsters if they don't have IDs
-                         // For now, using position as a pseudo-ID (less reliable if monsters overlap perfectly)
-                        alreadyTargetedIds.push(`${s.target.pos.x},${s.target.pos.y}`);
-                    }
-                });
-            }
+
             this.target = this.findNearestMonster(monsters, alreadyTargetedIds);
 
             if (this.target) {
@@ -542,18 +525,20 @@ class SummonUnit extends GameObject {
                 let currentAvoidanceForce = avoidanceForce;
                 const isOtherWraith = other.config.type === 'Wraith';
 
+                currentAvoidanceRadius = Math.max(currentAvoidanceRadius, other.config.avoidanceRadius);
+
                 if (isThisWraith && isOtherWraith) {
                     currentAvoidanceRadius *= (this.config.wraithAvoidanceMultiplier || 1);
                     currentAvoidanceForce *= (this.config.wraithAvoidanceMultiplier || 1);
                 }
-                 const currentAvoidanceRadiusSq = currentAvoidanceRadius * currentAvoidanceRadius;
+                const currentAvoidanceRadiusSq = currentAvoidanceRadius * currentAvoidanceRadius;
 
                 const dSq = distanceSq(this.pos, other.pos);
                 if (dSq < currentAvoidanceRadiusSq && dSq > 0.01) {
                     const distance = Math.sqrt(dSq);
                     const pushDirectionX = (this.pos.x - other.pos.x) / distance;
                     const pushDirectionY = (this.pos.y - other.pos.y) / distance;
-                    const pushStrength = 1.0 - (distance / currentAvoidanceRadius);
+                    const pushStrength = (1.0 - (distance / currentAvoidanceRadius)) * (1.0 - (distance / currentAvoidanceRadius));
                     totalPushX += pushDirectionX * pushStrength * currentAvoidanceForce;
                     totalPushY += pushDirectionY * pushStrength * currentAvoidanceForce;
                 }
@@ -561,33 +546,36 @@ class SummonUnit extends GameObject {
         });
 
         if (player && player.isAlive) {
-             const playerAvoidanceForce = this.config.playerAvoidanceForce || avoidanceForce;
-             const playerCombinedRadius = this.radius + player.radius + 5;
-             const playerAvoidanceRadiusSq = playerCombinedRadius * playerCombinedRadius;
+            const playerAvoidanceForce = this.config.playerAvoidanceForce || avoidanceForce;
+            const combinedAvoidanceRadius = this.config.avoidanceRadius + CONFIG.player.avoidanceRadius;
+            const playerAvoidanceRadiusSq = combinedAvoidanceRadius * combinedAvoidanceRadius;
+
             const dSqPlayer = distanceSq(this.pos, player.pos);
             if (dSqPlayer < playerAvoidanceRadiusSq && dSqPlayer > 0.01) {
                 const distancePlayer = Math.sqrt(dSqPlayer);
                 const pushDirectionXPlayer = (this.pos.x - player.pos.x) / distancePlayer;
                 const pushDirectionYPlayer = (this.pos.y - player.pos.y) / distancePlayer;
-                const pushStrengthPlayer = 1.0 - (distancePlayer / playerCombinedRadius);
+                const pushStrengthPlayer = (1.0 - (distancePlayer / combinedAvoidanceRadius)) * (1.0 - (distancePlayer / combinedAvoidanceRadius));
                 totalPushX += pushDirectionXPlayer * pushStrengthPlayer * playerAvoidanceForce;
                 totalPushY += pushDirectionYPlayer * pushStrengthPlayer * playerAvoidanceForce;
             }
         }
+        const maxAvoidanceSpeed = 150;
+        const avoidanceMagSq = totalPushX * totalPushX + totalPushY * totalPushY;
+        if (avoidanceMagSq > maxAvoidanceSpeed * maxAvoidanceSpeed) {
+            const scale = maxAvoidanceSpeed / Math.sqrt(avoidanceMagSq);
+            totalPushX *= scale;
+            totalPushY *= scale;
+        }
+
         return { x: totalPushX, y: totalPushY };
     }
 
-    findNearestMonster(monsters, excludedTargetIds = []) { // Added exclusion list
+    findNearestMonster(monsters, excludedTargetIds = []) {
         let nearestTarget = null;
         let minDistanceSq = this.config.targetSearchRadius * this.config.targetSearchRadius;
         monsters.forEach(monster => {
             if (monster.isAlive) {
-                // Check if this monster is already targeted by another Wraith
-                const monsterId = `${monster.pos.x},${monster.pos.y}`;
-                if (excludedTargetIds.includes(monsterId)) {
-                    return; // Skip this monster
-                }
-
                 const dSq = distanceSq(this.pos, monster.pos);
                 if (dSq < minDistanceSq) {
                     minDistanceSq = dSq;
@@ -601,18 +589,19 @@ class SummonUnit extends GameObject {
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
 
-        if (this.config.type === 'SkeletonMage') {
+        if (this.config.type === 'EyeMonster') {
             const projectile = new Projectile(
                 this.pos.x, this.pos.y,
                 this.target,
-                this.config
+                this.config,
+                gameState.eyeMonsterLevel
             );
             gameState.projectiles.push(projectile);
         } else if (this.config.type !== 'Wraith') {
             this.target.takeDamage(this.attack);
             if (this.attackRange <= CONFIG.skeletonWarrior.attackRange * 1.1) {
-                 const effect = new SlashEffect(this.pos, this.target.pos);
-                 gameState.visualEffects.push(effect);
+                const effect = new SlashEffect(this.pos, this.target.pos);
+                gameState.visualEffects.push(effect);
             }
         }
         this.attackCooldown = 1.0 / this.attackSpeed;
@@ -625,7 +614,7 @@ class SummonUnit extends GameObject {
                 monster.applySlow(this.slowAmount, this.config.slowDuration);
             }
         });
-     }
+    }
 
     takeDamage(amount) {
         if (!this.isAlive) return;
@@ -648,23 +637,23 @@ class SummonUnit extends GameObject {
         console.log(`${this.config.type} 死亡.`);
         switch (this.config.type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount--; break;
-            case 'SkeletonMage': gameState.skeletonMageCount--; break;
+            case 'EyeMonster': gameState.eyeMonsterCount--; break;
             case 'Wraith': gameState.wraithCount--; break;
         }
         updateUI();
     }
 
     drawHealthBar(ctx) {
-         if (this.isAlive && this.currentHealth < this.maxHealth) {
+        if (this.isAlive && this.currentHealth < this.maxHealth) {
             const barWidth = this.radius * 1.6; const barHeight = 3;
-            const barYOffset = (this.config.type === 'Wraith') ? this.radius * 1.0 : this.radius * 1.5; // Adjust offset based on shape
+            const barYOffset = (this.config.type === 'Wraith' || this.config.type === 'EyeMonster') ? this.radius * 1.2 : this.radius * 1.5;
             const barX = this.pos.x - barWidth / 2;
             const barY = this.pos.y - barYOffset - barHeight - 3;
             const healthPercent = this.currentHealth / this.maxHealth;
             ctx.fillStyle = '#555'; ctx.fillRect(barX, barY, barWidth, barHeight);
             ctx.fillStyle = healthPercent > 0.5 ? '#4CAF50' : (healthPercent > 0.2 ? '#FFC107' : '#F44336');
             ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
-         }
+        }
     }
 }
 
@@ -673,6 +662,7 @@ class SkeletonWarrior extends SummonUnit {
         super(x, y, CONFIG.skeletonWarrior, level, playerTransform);
     }
     draw(ctx) {
+        if (!this.isAlive) return;
         ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.ellipse(this.pos.x, this.pos.y, this.radius * 0.6, this.radius * 0.7, 0, 0, Math.PI * 2);
@@ -701,34 +691,29 @@ class SkeletonWarrior extends SummonUnit {
     }
 }
 
-class SkeletonMage extends SummonUnit {
+class EyeMonster extends SummonUnit {
     constructor(x, y, level, playerTransform) {
-        super(x, y, CONFIG.skeletonMage, level, playerTransform);
+        super(x, y, CONFIG.eyeMonster, level, playerTransform);
     }
     draw(ctx) {
-        const iconColor = this.color;
-        const crystalHeight = this.radius * 1.2;
-        const crystalWidth = this.radius * 0.8;
-        const topY = this.pos.y - crystalHeight / 2;
-        const bottomY = this.pos.y + crystalHeight / 2;
-        const midX = this.pos.x;
+        if (!this.isAlive) return;
+        const outerRadius = this.radius;
+        const scleraRadius = this.radius * 0.85;
+        const pupilRadius = this.radius * 0.4;
 
-        ctx.fillStyle = iconColor;
+        ctx.fillStyle = this.color;
         ctx.beginPath();
-        ctx.moveTo(midX, topY);
-        ctx.lineTo(midX + crystalWidth / 2, this.pos.y);
-        ctx.lineTo(midX, bottomY);
-        ctx.lineTo(midX - crystalWidth / 2, this.pos.y);
-        ctx.closePath();
+        ctx.arc(this.pos.x, this.pos.y, outerRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, scleraRadius, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.fillStyle = this.config.iconColor;
         ctx.beginPath();
-        ctx.moveTo(midX, topY + crystalHeight * 0.2);
-        ctx.lineTo(midX + crystalWidth * 0.2, this.pos.y);
-        ctx.lineTo(midX, bottomY - crystalHeight * 0.2);
-        ctx.lineTo(midX - crystalWidth * 0.2, this.pos.y);
-        ctx.closePath();
+        ctx.arc(this.pos.x, this.pos.y, pupilRadius, 0, Math.PI * 2);
         ctx.fill();
 
         this.drawHealthBar(ctx);
@@ -785,9 +770,8 @@ class Wraith extends SummonUnit {
 }
 
 class Projectile extends GameObject {
-    constructor(startX, startY, target, shooterConfig) {
-        const mageLevel = gameState.skeletonMageLevel;
-        const levelMultiplier = 1 + (mageLevel * shooterConfig.upgradeBonus);
+    constructor(startX, startY, target, shooterConfig, shooterLevel) {
+        const levelMultiplier = 1 + (shooterLevel * shooterConfig.upgradeBonus);
         const damage = Math.round(shooterConfig.baseAttack * levelMultiplier);
 
         super(startX, startY, shooterConfig.projectileRadius, shooterConfig.projectileColor);
@@ -806,14 +790,20 @@ class Projectile extends GameObject {
 
         if (this.target.isAlive) {
             const distToTargetSq = distanceSq(this.pos, this.target.pos);
-            const hitRadiusSq = (this.radius + this.target.radius) * (this.radius + this.target.radius);
+            const hitRadiusSq = (this.radius + this.target.radius + 2) * (this.radius + this.target.radius + 2);
 
             if (distToTargetSq <= hitRadiusSq) {
                 this.target.takeDamage(this.damage);
                 this.isAlive = false;
                 return;
             }
+        } else {
+            const distToOriginalTargetSq = distanceSq(this.pos, this.targetPos);
+            if (distToOriginalTargetSq < this.radius * this.radius * 4) {
+                this.isAlive = false;
+            }
         }
+
 
         const margin = 50;
         if (this.pos.x < -margin || this.pos.x > canvas.width + margin ||
@@ -821,7 +811,8 @@ class Projectile extends GameObject {
             this.isAlive = false;
         }
     }
-     draw(ctx) {
+    draw(ctx) {
+        if (!this.isAlive) return;
         ctx.fillStyle = this.color;
         ctx.beginPath();
         ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
@@ -839,8 +830,8 @@ class SlashEffect {
         const dx = this.targetPos.x - this.startPos.x;
         const dy = this.targetPos.y - this.startPos.y;
         this.angle = Math.atan2(dy, dx);
-        this.arcCenterX = this.targetPos.x - Math.cos(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.5);
-        this.arcCenterY = this.targetPos.y - Math.sin(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.5);
+        this.arcCenterX = this.targetPos.x - Math.cos(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.3);
+        this.arcCenterY = this.targetPos.y - Math.sin(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.3);
     }
 
     update(deltaTime) {
@@ -856,8 +847,18 @@ class SlashEffect {
         const arcAngle = CONFIG.visuals.slashEffectArcAngle;
         const startAngle = this.angle - arcAngle / 2;
         const endAngle = this.angle + arcAngle / 2;
-        const colorParts = CONFIG.visuals.slashEffectColor.match(/\d+(\.\d+)?/g);
-        const rgbaColor = `rgba(${colorParts[0]}, ${colorParts[1]}, ${colorParts[2]}, ${alpha})`;
+        let rgbaColor = CONFIG.visuals.slashEffectColor;
+        try {
+            const colorParts = rgbaColor.match(/\d+(\.\d+)?/g);
+            if (colorParts && colorParts.length >= 3) {
+                rgbaColor = `rgba(${colorParts[0]}, ${colorParts[1]}, ${colorParts[2]}, ${alpha})`;
+            } else {
+                rgbaColor = `rgba(255, 255, 255, ${alpha})`;
+            }
+        } catch (e) {
+            rgbaColor = `rgba(255, 255, 255, ${alpha})`;
+        }
+
         ctx.strokeStyle = rgbaColor;
         ctx.lineWidth = CONFIG.visuals.slashEffectWidth;
         ctx.beginPath();
@@ -865,6 +866,7 @@ class SlashEffect {
         ctx.stroke();
     }
 }
+
 
 class Monster extends GameObject {
     constructor(x, y, config, waveNumber) {
@@ -900,9 +902,13 @@ class Monster extends GameObject {
             this.slowTimer -= deltaTime;
             if (this.slowTimer <= 0) {
                 this.speedMultiplier = 1.0;
+                this.slowTimer = 0;
             }
+        } else {
+            this.speedMultiplier = 1.0;
         }
         this.moveSpeed = this.baseMoveSpeed * this.speedMultiplier;
+
 
         if (this.attackCooldown > 0) { this.attackCooldown -= deltaTime; }
 
@@ -911,14 +917,14 @@ class Monster extends GameObject {
         let moveDirection = { x: 0, y: 0 };
         if (this.target) {
             const distSqToTarget = distanceSq(this.pos, this.target.pos);
-            if (distSqToTarget > this.attackRangeSq * 0.95) {
+            if (distSqToTarget > this.attackRangeSq * 0.9) {
                 moveDirection = normalizeVector({ x: this.target.pos.x - this.pos.x, y: this.target.pos.y - this.pos.y });
             }
-             else {
-                 moveDirection = { x: 0, y: 0 };
+            else {
+                moveDirection = { x: 0, y: 0 };
             }
         } else {
-             moveDirection = { x: 0, y: 0 };
+            moveDirection = { x: 0, y: 0 };
         }
 
         if (moveDirection.x !== 0 || moveDirection.y !== 0) {
@@ -958,9 +964,9 @@ class Monster extends GameObject {
         if (!this.target || !this.target.isAlive) return;
         this.target.takeDamage(this.attack);
 
-        if (this.attackRangeSq <= this.config.attackRange * this.config.attackRange * 1.1) {
-             const effect = new SlashEffect(this.pos, this.target.pos);
-             gameState.visualEffects.push(effect);
+        if (this.attackRangeSq <= CONFIG.basicMeleeMonster.attackRange * CONFIG.basicMeleeMonster.attackRange * 1.2) {
+            const effect = new SlashEffect(this.pos, this.target.pos);
+            gameState.visualEffects.push(effect);
         }
 
         this.attackCooldown = 1.0 / this.attackSpeed;
@@ -971,14 +977,15 @@ class Monster extends GameObject {
         this.currentHealth -= amount;
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
 
-        const flashColor = 'white';
+        const flashColor = 'rgba(255, 255, 255, 0.7)';
         const originalColor = this.color;
         this.color = flashColor;
         setTimeout(() => {
             if (this.isAlive) {
-                 this.color = originalColor;
+                this.color = originalColor;
             }
-        }, 50);
+        }, 60);
+
 
         if (this.currentHealth <= 0) { this.die(); }
     }
@@ -990,17 +997,19 @@ class Monster extends GameObject {
     }
 
     draw(ctx) {
-        if (this.config.borderColor) {
-             ctx.fillStyle = this.config.borderColor;
-             const borderOffset = 1.5;
-             ctx.save();
-             ctx.translate(this.pos.x, this.pos.y);
-             ctx.scale(1 + borderOffset/this.radius, 1 + borderOffset/this.radius);
-             ctx.translate(-this.pos.x, -this.pos.y);
-             this.drawShape(ctx);
-             ctx.restore();
+        if (this.config.borderColor && this.isAlive) {
+            ctx.fillStyle = this.config.borderColor;
+            const borderOffset = 1.5;
+            ctx.save();
+            ctx.translate(this.pos.x, this.pos.y);
+            ctx.scale(1 + borderOffset / this.radius, 1 + borderOffset / this.radius);
+            ctx.translate(-this.pos.x, -this.pos.y);
+            this.drawShape(ctx);
+            ctx.restore();
         }
-        this.drawShape(ctx);
+        if (this.isAlive) {
+            this.drawShape(ctx);
+        }
 
         if (this.currentHealth < this.maxHealth && this.isAlive) {
             const barWidth = this.radius * 1.6;
@@ -1012,13 +1021,19 @@ class Monster extends GameObject {
             ctx.fillRect(barX, barY, barWidth, barHeight);
             ctx.fillStyle = healthPercent > 0.5 ? '#4CAF50' : (healthPercent > 0.2 ? '#FFC107' : '#F44336');
             ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
-         }
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
     }
 
-    drawShape(ctx) {}
+    drawShape(ctx) { }
 
     applySlow(amount, duration) {
-        this.speedMultiplier = 1.0 - amount;
+        const newSpeedMultiplier = 1.0 - amount;
+        if (newSpeedMultiplier < this.speedMultiplier) {
+            this.speedMultiplier = newSpeedMultiplier;
+        }
         this.slowTimer = Math.max(this.slowTimer, duration);
     }
 }
@@ -1087,39 +1102,8 @@ class ArmoredMeleeMonster extends Monster {
     }
 }
 
-function trySpawnMonster(deltaTime) {
-    if (gameState.betweenWaves || gameState.monstersSpawnedThisWave >= gameState.monstersToSpawnThisWave) { return; }
-    gameState.timeUntilNextSpawn -= deltaTime;
-    if (gameState.timeUntilNextSpawn <= 0) {
-        const spawnPos = getRandomPositionOutsideCanvas();
-        let monster;
-        const waveNum = gameState.currentWave;
-        const rand = Math.random();
-
-        let cumulativeChance = 0;
-
-        cumulativeChance += CONFIG.wave.spawnChanceArmored;
-        if (waveNum >= CONFIG.wave.armoredMonsterMinWave && rand < cumulativeChance) {
-             monster = new ArmoredMeleeMonster(spawnPos.x, spawnPos.y, waveNum);
-        }
-        else {
-            cumulativeChance += CONFIG.wave.spawnChanceFast;
-            if (waveNum >= CONFIG.wave.fastMonsterMinWave && rand < cumulativeChance) {
-                 monster = new FastMeleeMonster(spawnPos.x, spawnPos.y, waveNum);
-            }
-            else {
-                 monster = new BasicMeleeMonster(spawnPos.x, spawnPos.y, waveNum);
-            }
-        }
-
-        gameState.monsters.push(monster);
-        gameState.monstersSpawnedThisWave++;
-        gameState.timeUntilNextSpawn = CONFIG.wave.spawnInterval;
-    }
-}
-
 function getMonsterCountForWave(wave) {
-    return 5 + wave * 2;
+    return 5 + wave * 3;
 }
 
 function prepareNextWave() {
@@ -1127,16 +1111,46 @@ function prepareNextWave() {
     gameState.betweenWaves = false;
     gameState.monstersToSpawnThisWave = getMonsterCountForWave(gameState.currentWave);
     gameState.monstersSpawnedThisWave = 0;
-    gameState.timeUntilNextSpawn = 0;
-    console.log(`準備開始第 ${gameState.currentWave} 波，共 ${gameState.monstersToSpawnThisWave} 隻怪物`);
+    gameState.monsters = [];
+    gameState.projectiles = [];
+    gameState.visualEffects = [];
+
+    console.log(`準備開始第 ${gameState.currentWave} 波，生成 ${gameState.monstersToSpawnThisWave} 隻怪物`);
+
+    for (let i = 0; i < gameState.monstersToSpawnThisWave; i++) {
+        const spawnPos = getRandomPositionOutsideCanvas();
+        let monster;
+        const waveNum = gameState.currentWave;
+        const rand = Math.random();
+
+        let cumulativeChance = 0;
+        let spawned = false;
+
+        cumulativeChance += CONFIG.wave.spawnChanceArmored;
+        if (!spawned && waveNum >= CONFIG.wave.armoredMonsterMinWave && rand < cumulativeChance) {
+            monster = new ArmoredMeleeMonster(spawnPos.x, spawnPos.y, waveNum);
+            spawned = true;
+        }
+
+        cumulativeChance += CONFIG.wave.spawnChanceFast;
+        if (!spawned && waveNum >= CONFIG.wave.fastMonsterMinWave && rand < cumulativeChance) {
+            monster = new FastMeleeMonster(spawnPos.x, spawnPos.y, waveNum);
+            spawned = true;
+        }
+
+        if (!spawned) {
+            monster = new BasicMeleeMonster(spawnPos.x, spawnPos.y, waveNum);
+        }
+
+        gameState.monsters.push(monster);
+        gameState.monstersSpawnedThisWave++;
+    }
+
     updateUI();
 }
 
 function checkWaveEndCondition() {
-    if (!gameState.betweenWaves &&
-        gameState.monstersSpawnedThisWave >= gameState.monstersToSpawnThisWave &&
-        gameState.monsters.every(m => !m.isAlive))
-    {
+    if (!gameState.betweenWaves && gameState.monsters.every(m => !m.isAlive)) {
         console.log(`第 ${gameState.currentWave} 波 已清空!`);
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
@@ -1164,40 +1178,32 @@ function showMessage(msg, duration = 2000) {
     uiElements.messageArea.style.display = 'block';
     gameState.messageTimeout = setTimeout(() => {
         uiElements.messageArea.style.display = 'none';
+        gameState.messageTimeout = null;
     }, duration);
 }
 
 function trySummon(type) {
-    let config, cost, currentCount, maxCount, level, SummonClass, unitName, capIncrease;
-    const playerLevel = gameState.playerLevel;
+    let config, cost, currentCount, level, SummonClass, unitName;
 
-    switch(type) {
+    switch (type) {
         case 'SkeletonWarrior':
             config = CONFIG.skeletonWarrior; cost = config.summonCost; unitName = "骷髏戰士";
             currentCount = gameState.skeletonWarriorCount; level = gameState.skeletonWarriorLevel;
-            capIncrease = playerLevel * CONFIG.player.upgradeSkelCapIncrease;
             SummonClass = SkeletonWarrior;
             break;
-         case 'SkeletonMage':
-            config = CONFIG.skeletonMage; cost = config.summonCost; unitName = "骷髏法師";
-            currentCount = gameState.skeletonMageCount; level = gameState.skeletonMageLevel;
-            capIncrease = playerLevel * CONFIG.player.upgradeMageCapIncrease;
-            SummonClass = SkeletonMage;
+        case 'EyeMonster':
+            config = CONFIG.eyeMonster; cost = config.summonCost; unitName = "眼魔";
+            currentCount = gameState.eyeMonsterCount; level = gameState.eyeMonsterLevel;
+            SummonClass = EyeMonster;
             break;
-         case 'Wraith':
+        case 'Wraith':
             config = CONFIG.wraith; cost = config.summonCost; unitName = "怨靈";
             currentCount = gameState.wraithCount; level = gameState.wraithLevel;
-            capIncrease = Math.floor(playerLevel * CONFIG.player.upgradeWraithCapIncrease); // Use floor for 0.5 increase
             SummonClass = Wraith;
             break;
         default: console.error("未知的召喚物類型:", type); return;
     }
 
-    maxCount = config.maxCount + capIncrease;
-
-    if (currentCount >= maxCount) {
-        showMessage(`${unitName} 數量已達上限 (${maxCount})`); return;
-    }
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
         const spawnPos = gameState.player.getSummonPosition();
@@ -1205,7 +1211,7 @@ function trySummon(type) {
         gameState.summons.push(newSummon);
         switch (type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount++; break;
-            case 'SkeletonMage': gameState.skeletonMageCount++; break;
+            case 'EyeMonster': gameState.eyeMonsterCount++; break;
             case 'Wraith': gameState.wraithCount++; break;
         }
         console.log(`召喚了 ${unitName}`);
@@ -1217,9 +1223,9 @@ function trySummon(type) {
 
 function tryUpgrade(type) {
     let cost, costIncrement, costKey, levelKey, unitName;
-    switch(type) {
+    switch (type) {
         case 'Player':
-            costKey = 'player'; levelKey = 'playerLevel'; unitName = "玩家";
+            costKey = 'player'; levelKey = 'playerLevel'; unitName = "死靈法師";
             cost = gameState.currentCosts[costKey];
             costIncrement = CONFIG.upgradeCostIncrements[costKey];
             if (gameState.souls >= cost) {
@@ -1227,7 +1233,7 @@ function tryUpgrade(type) {
                 gameState[levelKey]++;
                 gameState.currentCosts[costKey] += costIncrement;
                 gameState.player.applyUpgrade();
-                updateUI(); showMessage("玩家已升級！生命回滿，上限增加！");
+                updateUI(); showMessage("死靈法師已升級！生命回滿，上限增加！");
             } else { showMessage(`需要 ${cost} 靈魂`); }
             break;
         case 'SkeletonWarrior':
@@ -1242,8 +1248,8 @@ function tryUpgrade(type) {
                 updateUI(); showMessage("骷髏戰士已升級！");
             } else { showMessage(`需要 ${cost} 靈魂`); }
             break;
-         case 'SkeletonMage':
-            costKey = 'skeletonMage'; levelKey = 'skeletonMageLevel'; unitName = "骷髏法師";
+        case 'EyeMonster':
+            costKey = 'eyeMonster'; levelKey = 'eyeMonsterLevel'; unitName = "眼魔";
             cost = gameState.currentCosts[costKey];
             costIncrement = CONFIG.upgradeCostIncrements[costKey];
             if (gameState.souls >= cost) {
@@ -1251,18 +1257,18 @@ function tryUpgrade(type) {
                 gameState[levelKey]++;
                 gameState.currentCosts[costKey] += costIncrement;
                 gameState.summons.forEach(s => { if (s.isAlive && s.config.type === type) { s.levelUp(); } });
-                updateUI(); showMessage("骷髏法師已升級！");
+                updateUI(); showMessage("眼魔已升級！");
             } else { showMessage(`需要 ${cost} 靈魂`); }
             break;
-         case 'Wraith':
+        case 'Wraith':
             costKey = 'wraith'; levelKey = 'wraithLevel'; unitName = "怨靈";
-             cost = gameState.currentCosts[costKey];
+            cost = gameState.currentCosts[costKey];
             costIncrement = CONFIG.upgradeCostIncrements[costKey];
             if (gameState.souls >= cost) {
                 gameState.souls -= cost;
                 gameState[levelKey]++;
                 gameState.currentCosts[costKey] += costIncrement;
-                 gameState.summons.forEach(s => { if (s.isAlive && s.config.type === type) { s.levelUp(); } });
+                gameState.summons.forEach(s => { if (s.isAlive && s.config.type === type) { s.levelUp(); } });
                 updateUI(); showMessage("怨靈已升級！");
             } else { showMessage(`需要 ${cost} 靈魂`); }
             break;
@@ -1282,7 +1288,6 @@ function handlePointerDown(event) {
 }
 function handlePointerMove(event) {
     if (gameState.isPaused || !inputState.isPointerDown) return;
-    event.preventDefault();
     const pos = getPointerPosition(event);
     inputState.pointerCurrentPos = pos;
     const deltaX = inputState.pointerCurrentPos.x - inputState.pointerStartPos.x;
@@ -1294,6 +1299,7 @@ function handlePointerMove(event) {
     }
 }
 function handlePointerUp(event) {
+    if (!inputState.isPointerDown) return;
     inputState.isPointerDown = false;
     inputState.movementVector = { x: 0, y: 0 };
 }
@@ -1311,8 +1317,8 @@ function getPointerPosition(event) {
         clientY = event.clientY;
     }
     return {
-        x: clientX - rect.left,
-        y: clientY - rect.top
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
     };
 }
 
@@ -1324,104 +1330,100 @@ function updateUI() {
         uiElements.playerLevel.textContent = `Lv ${playerLevel}`;
         uiElements.playerStatsLabel.innerHTML = `HP: ${gameState.player.currentHealth}/${gameState.player.maxHealth}`;
         const playerUpgradeCost = gameState.currentCosts.player;
-        uiElements.playerUpgradeCost.textContent = playerUpgradeCost;
+        uiElements.upgradePlayerBtn.innerHTML = `升級 (${playerUpgradeCost}魂)`;
         setButtonState(uiElements.upgradePlayerBtn, souls >= playerUpgradeCost);
     } else {
         uiElements.playerLevel.textContent = `Lv 0`;
         uiElements.playerStatsLabel.innerHTML = `HP: -/-`;
-        uiElements.playerUpgradeCost.textContent = CONFIG.upgradeCosts.player;
+        uiElements.upgradePlayerBtn.innerHTML = `升級 (-魂)`;
         setButtonState(uiElements.upgradePlayerBtn, false);
     }
 
     uiElements.soulsInfo.textContent = `靈魂: ${souls}`;
     uiElements.waveInfo.textContent = `第${gameState.currentWave}波`;
+
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
-        uiElements.timerInfo.textContent = `下一波: 倒數${Math.ceil(gameState.timeToNextWave)}秒`;
+        uiElements.timerInfo.textContent = `下一波: 倒數 ${Math.ceil(gameState.timeToNextWave)} 秒`;
     } else if (!gameState.betweenWaves) {
-        const remainingToSpawn = gameState.monstersToSpawnThisWave - gameState.monstersSpawnedThisWave;
         const aliveOnMap = gameState.monsters.filter(m => m.isAlive).length;
-        const remainingMonsters = remainingToSpawn + aliveOnMap;
-        uiElements.timerInfo.textContent = `怪物剩餘: ${remainingMonsters}`;
+        uiElements.timerInfo.textContent = `怪物剩餘: ${aliveOnMap}`;
     } else {
-         uiElements.timerInfo.textContent = `準備開始`;
+        uiElements.timerInfo.textContent = `準備開始`;
     }
 
-
     function updateUnitUI(unitType) {
-        let config, count, level, summonCost, upgradeCost, uiMap, capIncrease;
-        switch(unitType) {
+        let config, count, level, summonCost, upgradeCost, uiMap;
+        switch (unitType) {
             case 'SkeletonWarrior':
                 config = CONFIG.skeletonWarrior; count = gameState.skeletonWarriorCount; level = gameState.skeletonWarriorLevel;
                 summonCost = config.summonCost; upgradeCost = gameState.currentCosts.skeletonWarrior;
-                capIncrease = playerLevel * CONFIG.player.upgradeSkelCapIncrease;
-                uiMap = { level: uiElements.skelLevel, count: uiElements.skelCount, max: uiElements.skelMax,
-                          summonBtn: uiElements.summonSkeletonBtn, upgradeBtn: uiElements.upgradeSkeletonBtn,
-                          summonCost: uiElements.skelSummonCost, upgradeCost: uiElements.skelUpgradeCost };
+                uiMap = {
+                    level: uiElements.skelLevel, count: uiElements.skelCount,
+                    summonBtn: uiElements.summonSkeletonBtn, upgradeBtn: uiElements.upgradeSkeletonBtn
+                };
                 break;
-            case 'SkeletonMage':
-                config = CONFIG.skeletonMage; count = gameState.skeletonMageCount; level = gameState.skeletonMageLevel;
-                summonCost = config.summonCost; upgradeCost = gameState.currentCosts.skeletonMage;
-                capIncrease = playerLevel * CONFIG.player.upgradeMageCapIncrease;
-                uiMap = { level: uiElements.mageLevel, count: uiElements.mageCount, max: uiElements.mageMax,
-                          summonBtn: uiElements.summonMageBtn, upgradeBtn: uiElements.upgradeMageBtn,
-                          summonCost: uiElements.mageSummonCost, upgradeCost: uiElements.mageUpgradeCost };
+            case 'EyeMonster':
+                config = CONFIG.eyeMonster; count = gameState.eyeMonsterCount; level = gameState.eyeMonsterLevel;
+                summonCost = config.summonCost; upgradeCost = gameState.currentCosts.eyeMonster;
+                uiMap = {
+                    level: uiElements.eyeMonsterLevel, count: uiElements.eyeMonsterCount,
+                    summonBtn: uiElements.summonEyeMonsterBtn, upgradeBtn: uiElements.upgradeEyeMonsterBtn
+                };
                 break;
             case 'Wraith':
-                 config = CONFIG.wraith; count = gameState.wraithCount; level = gameState.wraithLevel;
-                 summonCost = config.summonCost; upgradeCost = gameState.currentCosts.wraith;
-                 capIncrease = Math.floor(playerLevel * CONFIG.player.upgradeWraithCapIncrease);
-                 uiMap = { level: uiElements.wraithLevel, count: uiElements.wraithCount, max: uiElements.wraithMax,
-                           summonBtn: uiElements.summonWraithBtn, upgradeBtn: uiElements.upgradeWraithBtn,
-                           summonCost: uiElements.wraithSummonCost, upgradeCost: uiElements.wraithUpgradeCost };
+                config = CONFIG.wraith; count = gameState.wraithCount; level = gameState.wraithLevel;
+                summonCost = config.summonCost; upgradeCost = gameState.currentCosts.wraith;
+                uiMap = {
+                    level: uiElements.wraithLevel, count: uiElements.wraithCount,
+                    summonBtn: uiElements.summonWraithBtn, upgradeBtn: uiElements.upgradeWraithBtn
+                };
                 break;
             default: return;
         }
-        const max = config.maxCount + capIncrease;
+
         uiMap.level.textContent = `Lv ${level}`;
         uiMap.count.textContent = count;
-        uiMap.max.textContent = max;
-        uiMap.summonCost.textContent = summonCost;
-        uiMap.upgradeCost.textContent = upgradeCost;
-        setButtonState(uiMap.summonBtn, souls >= summonCost, count >= max);
+
+        uiMap.summonBtn.innerHTML = `召喚 (${summonCost}魂)`;
+        uiMap.upgradeBtn.innerHTML = `升級 (${upgradeCost}魂)`;
+        setButtonState(uiMap.summonBtn, souls >= summonCost);
         setButtonState(uiMap.upgradeBtn, souls >= upgradeCost);
     }
 
     updateUnitUI('SkeletonWarrior');
-    updateUnitUI('SkeletonMage');
+    updateUnitUI('EyeMonster');
     updateUnitUI('Wraith');
 
     uiElements.pauseResumeBtn.textContent = gameState.isPaused ? '繼續' : '暫停';
 }
 
-function setButtonState(button, canAfford, isMaxCount = false) {
-    const isDisabled = !canAfford || isMaxCount;
+function setButtonState(button, canAfford) {
+    const isDisabled = !canAfford;
     button.disabled = isDisabled;
-    if (canAfford && !isMaxCount) {
+    if (canAfford) {
         button.classList.add('can-afford');
     } else {
         button.classList.remove('can-afford');
     }
-    if (isMaxCount) {
-        button.classList.add('max-count-reached');
-    } else {
-        button.classList.remove('max-count-reached');
-    }
 }
 
+
 function showGameOver() {
+    console.log("showGameOver called");
     uiElements.finalWaveText.textContent = `您存活了 ${gameState.currentWave} 波.`;
     uiElements.gameOverScreen.style.display = 'block';
     localStorage.removeItem(SAVE_KEY);
     console.log("遊戲結束，已清除存檔。");
 }
 
-const SAVE_KEY = 'necromancerGameState_v9'; // Keep version if structure is compatible
+const SAVE_KEY = 'necromancerGameState_v10';
+const SAVE_VERSION = 10;
 
 function saveGameState() {
     if (!gameState.player || gameState.gameOver || gameState.isPaused) return;
 
     const stateToSave = {
-        saveVersion: 9, // Update version to reflect code changes
+        saveVersion: SAVE_VERSION,
         souls: gameState.souls,
         currentWave: gameState.currentWave,
         timeToNextWave: gameState.timeToNextWave,
@@ -1430,10 +1432,10 @@ function saveGameState() {
         playerCurrentHealth: gameState.player.currentHealth,
         playerMaxHealth: gameState.player.maxHealth,
         skeletonWarriorLevel: gameState.skeletonWarriorLevel,
-        skeletonMageLevel: gameState.skeletonMageLevel,
+        eyeMonsterLevel: gameState.eyeMonsterLevel,
         wraithLevel: gameState.wraithLevel,
         skeletonWarriorCount: gameState.skeletonWarriorCount,
-        skeletonMageCount: gameState.skeletonMageCount,
+        eyeMonsterCount: gameState.eyeMonsterCount,
         wraithCount: gameState.wraithCount,
         currentCosts: gameState.currentCosts,
     };
@@ -1441,7 +1443,7 @@ function saveGameState() {
     try {
         const savedString = JSON.stringify(stateToSave);
         localStorage.setItem(SAVE_KEY, savedString);
-        showMessage("進度已儲存", 1500);
+        console.log("進度已儲存 (Wave End)");
     } catch (error) {
         console.error("儲存遊戲狀態失敗:", error);
         showMessage("儲存失敗!", 1500);
@@ -1455,18 +1457,17 @@ function loadGameState() {
         try {
             loadedState = JSON.parse(savedString);
         } catch (error) {
-             console.error("讀取遊戲狀態失敗 (解析錯誤):", error);
-             localStorage.removeItem(SAVE_KEY); // Clear corrupted save
-             return false;
+            console.error("讀取遊戲狀態失敗 (解析錯誤):", error);
+            localStorage.removeItem(SAVE_KEY);
+            return false;
         }
 
-        if (loadedState.saveVersion !== 9) {
-             console.warn(`存檔版本不符 (需要 9, 找到 ${loadedState.saveVersion}). 清除舊存檔並重置遊戲.`);
-             localStorage.removeItem(SAVE_KEY); // Clear outdated save
-             return false; // Indicate load failed due to version mismatch
+        if (loadedState.saveVersion !== SAVE_VERSION) {
+            console.warn(`存檔版本不符 (需要 ${SAVE_VERSION}, 找到 ${loadedState.saveVersion}). 清除舊存檔並重置遊戲.`);
+            localStorage.removeItem(SAVE_KEY);
+            return false;
         }
 
-        // Version matches, proceed with loading
         resetGameInternalState();
 
         gameState.souls = loadedState.souls ?? CONFIG.player.initialSouls;
@@ -1474,12 +1475,13 @@ function loadGameState() {
         gameState.timeToNextWave = loadedState.timeToNextWave ?? CONFIG.wave.betweenTime;
         gameState.betweenWaves = loadedState.betweenWaves ?? true;
         gameState.playerLevel = loadedState.playerLevel ?? 0;
-        gameState.skeletonWarriorLevel = loadedState.skeletonWarriorLevel ?? 0;
-        gameState.skeletonMageLevel = loadedState.skeletonMageLevel ?? 0;
-        gameState.wraithLevel = loadedState.wraithLevel ?? 0;
         gameState.currentCosts = loadedState.currentCosts ?? { ...CONFIG.upgradeCosts };
+
+        gameState.skeletonWarriorLevel = loadedState.skeletonWarriorLevel ?? 0;
+        gameState.eyeMonsterLevel = loadedState.eyeMonsterLevel ?? 0;
+        gameState.wraithLevel = loadedState.wraithLevel ?? 0;
         gameState.skeletonWarriorCount = loadedState.skeletonWarriorCount ?? 0;
-        gameState.skeletonMageCount = loadedState.skeletonMageCount ?? 0;
+        gameState.eyeMonsterCount = loadedState.eyeMonsterCount ?? 0;
         gameState.wraithCount = loadedState.wraithCount ?? 0;
 
         gameState.player = new Player(canvas.width / 2, canvas.height / 2);
@@ -1489,12 +1491,13 @@ function loadGameState() {
         gameState.player.maxHealth = Math.round(Math.max(CONFIG.player.baseHealth, gameState.player.maxHealth));
         gameState.player.currentHealth = Math.round(Math.min(gameState.player.maxHealth, Math.max(0, gameState.player.currentHealth)));
 
-        console.log("遊戲狀態已從 localStorage 載入");
+
+        console.log("遊戲狀態已從 localStorage 載入 (版本相符)");
         showMessage("讀取存檔成功", 1500);
         return true;
 
     }
-    return false; // No save file found
+    return false;
 }
 
 
@@ -1502,16 +1505,16 @@ function restoreSummonsFromLoad() {
     if (!gameState.player) return;
     gameState.summons = [];
 
-    console.log(`讀取時恢復召喚物: 戰士=${gameState.skeletonWarriorCount}, 法師=${gameState.skeletonMageCount}, 怨靈=${gameState.wraithCount}`);
+    console.log(`讀取時恢復召喚物: 戰士=${gameState.skeletonWarriorCount}, 眼魔=${gameState.eyeMonsterCount}, 怨靈=${gameState.wraithCount}`);
 
     for (let i = 0; i < gameState.skeletonWarriorCount; i++) {
         const spawnPos = getRandomSpawnPosNearCenter(40);
         const summon = new SkeletonWarrior(spawnPos.x, spawnPos.y, gameState.skeletonWarriorLevel, gameState.player);
         gameState.summons.push(summon);
     }
-    for (let i = 0; i < gameState.skeletonMageCount; i++) {
+    for (let i = 0; i < gameState.eyeMonsterCount; i++) {
         const spawnPos = getRandomSpawnPosNearCenter(40);
-        const summon = new SkeletonMage(spawnPos.x, spawnPos.y, gameState.skeletonMageLevel, gameState.player);
+        const summon = new EyeMonster(spawnPos.x, spawnPos.y, gameState.eyeMonsterLevel, gameState.player);
         gameState.summons.push(summon);
     }
     for (let i = 0; i < gameState.wraithCount; i++) {
@@ -1522,39 +1525,40 @@ function restoreSummonsFromLoad() {
 }
 
 function resetGameInternalState() {
-     console.log("重置內部遊戲狀態...");
-     if (gameState.messageTimeout) clearTimeout(gameState.messageTimeout);
-     if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
+    console.log("重置內部遊戲狀態...");
+    if (gameState.messageTimeout) clearTimeout(gameState.messageTimeout);
+    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
 
     gameState = {
         player: null,
         summons: [], monsters: [], projectiles: [], visualEffects: [],
         souls: CONFIG.player.initialSouls,
         currentWave: 0,
-        monstersToSpawnThisWave: 0, monstersSpawnedThisWave: 0, timeUntilNextSpawn: 0,
+        monstersToSpawnThisWave: 0, monstersSpawnedThisWave: 0,
         timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
         gameOver: false, isPaused: false,
         lastTime: performance.now(),
         messageTimeout: null,
         playerLevel: 0,
-        skeletonWarriorLevel: 0, skeletonMageLevel: 0, wraithLevel: 0,
-        skeletonWarriorCount: 0, skeletonMageCount: 0, wraithCount: 0,
+        skeletonWarriorLevel: 0, eyeMonsterLevel: 0, wraithLevel: 0,
+        skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
         currentCosts: { ...CONFIG.upgradeCosts },
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 } };
 }
 
 function resetGame() {
-     console.log("執行完整遊戲重置 (清除存檔)...");
-     localStorage.removeItem(SAVE_KEY);
-     resetGameInternalState();
-     gameState.player = new Player(canvas.width / 2, canvas.height / 2);
-     uiElements.gameOverScreen.style.display = 'none';
-     updateUI();
-     if (animationFrameId === null) {
+    console.log("執行完整遊戲重置 (清除存檔)...");
+    localStorage.removeItem(SAVE_KEY);
+    resetGameInternalState();
+    gameState.player = new Player(canvas.width / 2, canvas.height / 2);
+    uiElements.gameOverScreen.style.display = 'none';
+    gameState.isPaused = false;
+    updateUI();
+    if (animationFrameId === null) {
         gameState.lastTime = performance.now();
         animationFrameId = requestAnimationFrame(gameLoop);
-     }
+    }
 }
 
 function togglePause() {
@@ -1578,7 +1582,7 @@ function togglePause() {
             animationFrameId = requestAnimationFrame(gameLoop);
         }
     }
-     updateUI();
+    updateUI();
 }
 
 let animationFrameId = null;
@@ -1589,13 +1593,17 @@ function gameLoop(currentTime) {
         return;
     }
 
+    if (gameState.isPaused) {
+        animationFrameId = null;
+        return;
+    }
+
     let deltaTime = (currentTime - gameState.lastTime) / 1000;
     deltaTime = Math.min(deltaTime, 0.1);
     gameState.lastTime = currentTime;
 
     updateTimers(deltaTime);
-    trySpawnMonster(deltaTime);
-    if(gameState.player) gameState.player.update(deltaTime, inputState.movementVector);
+    if (gameState.player) gameState.player.update(deltaTime, inputState.movementVector);
     gameState.summons.forEach(s => s.update(deltaTime, gameState.monsters, gameState.summons));
     gameState.monsters.forEach(m => m.update(deltaTime, gameState.player, gameState.summons));
     gameState.projectiles.forEach(p => p.update(deltaTime));
@@ -1615,11 +1623,11 @@ function gameLoop(currentTime) {
     gameState.summons.forEach(s => s.draw(ctx));
     gameState.projectiles.forEach(p => p.draw(ctx));
     gameState.visualEffects.forEach(e => e.draw(ctx));
-    if(gameState.player) gameState.player.draw(ctx);
+    if (gameState.player) gameState.player.draw(ctx);
 
     updateUI();
 
-    if (!gameState.isPaused) {
+    if (!gameState.isPaused && !gameState.gameOver) {
         animationFrameId = requestAnimationFrame(gameLoop);
     } else {
         animationFrameId = null;
@@ -1636,11 +1644,12 @@ function init() {
     canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
     canvas.addEventListener('touchend', handlePointerUp);
     canvas.addEventListener('touchcancel', handlePointerUp);
+
     uiElements.upgradePlayerBtn.addEventListener('click', () => tryUpgrade('Player'));
     uiElements.summonSkeletonBtn.addEventListener('click', () => trySummon('SkeletonWarrior'));
     uiElements.upgradeSkeletonBtn.addEventListener('click', () => tryUpgrade('SkeletonWarrior'));
-    uiElements.summonMageBtn.addEventListener('click', () => trySummon('SkeletonMage'));
-    uiElements.upgradeMageBtn.addEventListener('click', () => tryUpgrade('SkeletonMage'));
+    uiElements.summonEyeMonsterBtn.addEventListener('click', () => trySummon('EyeMonster'));
+    uiElements.upgradeEyeMonsterBtn.addEventListener('click', () => tryUpgrade('EyeMonster'));
     uiElements.summonWraithBtn.addEventListener('click', () => trySummon('Wraith'));
     uiElements.upgradeWraithBtn.addEventListener('click', () => tryUpgrade('Wraith'));
     uiElements.restartButton.addEventListener('click', resetGame);
@@ -1649,25 +1658,25 @@ function init() {
     if (loadGameState()) {
         restoreSummonsFromLoad();
         updateUI();
-        if (!gameState.isPaused) {
-             gameState.lastTime = performance.now();
-             animationFrameId = requestAnimationFrame(gameLoop);
+        if (gameState.isPaused) {
+            uiElements.pauseResumeBtn.textContent = '繼續';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            gameState.summons.forEach(s => { if (s.config.type === 'Wraith' && s.isAlive) s.drawAura(ctx); });
+            gameState.monsters.forEach(m => m.draw(ctx));
+            gameState.summons.forEach(s => s.draw(ctx));
+            gameState.projectiles.forEach(p => p.draw(ctx));
+            gameState.visualEffects.forEach(e => e.draw(ctx));
+            if (gameState.player) gameState.player.draw(ctx);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "white"; ctx.font = "30px sans-serif"; ctx.textAlign = "center";
+            ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
+            animationFrameId = null;
         } else {
-             uiElements.pauseResumeBtn.textContent = '繼續';
-             ctx.clearRect(0, 0, canvas.width, canvas.height);
-             gameState.summons.forEach(s => { if (s.config.type === 'Wraith' && s.isAlive) s.drawAura(ctx); });
-             gameState.monsters.forEach(m => m.draw(ctx));
-             gameState.summons.forEach(s => s.draw(ctx));
-             gameState.projectiles.forEach(p => p.draw(ctx));
-             gameState.visualEffects.forEach(e => e.draw(ctx));
-             if (gameState.player) gameState.player.draw(ctx);
-             ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-             ctx.fillRect(0, 0, canvas.width, canvas.height);
-             ctx.fillStyle = "white";
-             ctx.font = "30px sans-serif";
-             ctx.textAlign = "center";
-             ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
-             animationFrameId = null;
+            gameState.lastTime = performance.now();
+            if (animationFrameId === null) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
         }
     } else {
         resetGame();
@@ -1675,5 +1684,3 @@ function init() {
 }
 
 init();
-
-// --- END OF FILE game.js ---
