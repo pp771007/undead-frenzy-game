@@ -51,7 +51,7 @@ const CONFIG = {
         wraithBuffMoveSpeedMultiplier: 2.0,
     },
     eyeMonster: {
-        type: 'EyeMonster', baseHealth: 8, baseAttack: 7, radius: 11,
+        type: 'EyeMonster', baseHealth: 8, baseAttack: 15, radius: 11,
         imageName: 'eye_monster', imgScaleMultiplier: 2.6,
         attackRange: 120,
         attackRangeUpgrade: 3,
@@ -77,7 +77,7 @@ const CONFIG = {
         attackRange: 0,
         slowRadiusBase: 80,
         slowRadiusUpgrade: 5,
-        slowAmountBase: 0.4,
+        slowAmountBase: 0.5,
         slowAmountUpgrade: 0.025,
         slowDuration: 1.5, attackSpeed: 1.0, moveSpeed: 55, color: '#4DB6AC',
         upgradeBonus: 0.15,
@@ -252,9 +252,9 @@ class GameObject {
         this.imgScaleMultiplier = imgScaleMultiplier;
         this.imageWidth = this.image ? this.radius * this.imgScaleMultiplier : this.radius * 2;
         this.imageHeight = this.image ? this.radius * this.imgScaleMultiplier : this.radius * 2;
-         if (this.image && this.image.naturalWidth > 0) {
-             this.imageHeight = this.imageWidth * (this.image.naturalHeight / this.image.naturalWidth);
-         }
+        if (this.image && this.image.naturalWidth > 0) {
+            this.imageHeight = this.imageWidth * (this.image.naturalHeight / this.image.naturalWidth);
+        }
     }
 
     draw(ctx) {
@@ -272,27 +272,27 @@ class GameObject {
             ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
             ctx.fill();
         }
-         this.drawHealthBar(ctx);
+        this.drawHealthBar(ctx);
     }
 
-     drawHealthBar(ctx) {
-         if (this.isAlive && this.currentHealth < this.maxHealth && this.currentHealth !== undefined) {
-             const barWidth = this.radius * 1.6;
-             const barHeight = 4;
-             const barYOffset = this.imageHeight ? this.imageHeight * 0.5 + 5 : this.radius + 5;
-             const barX = this.pos.x - barWidth / 2;
-             const barY = this.pos.y - barYOffset;
-             const healthPercent = this.currentHealth / this.maxHealth;
+    drawHealthBar(ctx) {
+        if (this.isAlive && this.currentHealth < this.maxHealth && this.currentHealth !== undefined) {
+            const barWidth = this.radius * 1.6;
+            const barHeight = 4;
+            const barYOffset = this.imageHeight ? this.imageHeight * 0.5 + 5 : this.radius + 5;
+            const barX = this.pos.x - barWidth / 2;
+            const barY = this.pos.y - barYOffset;
+            const healthPercent = this.currentHealth / this.maxHealth;
 
-             ctx.fillStyle = '#555';
-             ctx.fillRect(barX, barY, barWidth, barHeight);
-             ctx.fillStyle = healthPercent > 0.5 ? '#4CAF50' : (healthPercent > 0.2 ? '#FFC107' : '#F44336');
-             ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
-             ctx.strokeStyle = '#222';
-             ctx.lineWidth = 1;
-             ctx.strokeRect(barX, barY, barWidth, barHeight);
-         }
-     }
+            ctx.fillStyle = '#555';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            ctx.fillStyle = healthPercent > 0.5 ? '#4CAF50' : (healthPercent > 0.2 ? '#FFC107' : '#F44336');
+            ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+            ctx.strokeStyle = '#222';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
+    }
 
     update(deltaTime) { }
 
@@ -577,9 +577,9 @@ class SummonUnit extends GameObject {
             else if (this.target) {
                 const targetDistSq = distanceSq(this.pos, this.target.pos);
                 if (targetDistSq <= this.attackRangeSq) {
-                     if (this.target.pos.x > this.pos.x + 1) this.facingDirection = 1;
-                     else if (this.target.pos.x < this.pos.x - 1) this.facingDirection = -1;
-                     this.attackTarget();
+                    if (this.target.pos.x > this.pos.x + 1) this.facingDirection = 1;
+                    else if (this.target.pos.x < this.pos.x - 1) this.facingDirection = -1;
+                    this.attackTarget();
                 }
             }
         }
@@ -717,8 +717,8 @@ class SummonUnit extends GameObject {
             gameState.projectiles.push(projectile);
         } else if (this.config.type === 'SkeletonWarrior') {
             this.target.takeDamage(currentAttackDamage);
-             const effect = new SlashEffect(this.pos, this.target.pos);
-             gameState.visualEffects.push(effect);
+            const effect = new SlashEffect(this.pos, this.target.pos);
+            gameState.visualEffects.push(effect);
         }
         let cooldownDuration = 1.0 / this.attackSpeed;
         if (this.config.type === 'EyeMonster') {
@@ -883,7 +883,7 @@ class SlashEffect extends TimedEffect {
     constructor(attackerPos, targetPos) {
         const midX = (attackerPos.x + targetPos.x) / 2;
         const midY = (attackerPos.y + targetPos.y) / 2;
-        super({x: midX, y: midY} , CONFIG.visuals.slashEffectDuration);
+        super({ x: midX, y: midY }, CONFIG.visuals.slashEffectDuration);
 
         this.startPos = { ...attackerPos };
         this.targetPos = { ...targetPos };
@@ -971,26 +971,26 @@ class Monster extends GameObject {
             if (distSqToTarget > this.attackRangeSq * 0.9) {
                 moveDirection = normalizeVector({ x: this.target.pos.x - this.pos.x, y: this.target.pos.y - this.pos.y });
             }
-             else {
-                 moveDirection = { x: 0, y: 0 };
-             }
+            else {
+                moveDirection = { x: 0, y: 0 };
+            }
         } else {
-             moveDirection = { x: 0, y: 0 };
+            moveDirection = { x: 0, y: 0 };
         }
 
         moveX = moveDirection.x * this.moveSpeed * deltaTime;
         moveY = moveDirection.y * this.moveSpeed * deltaTime;
 
         if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
-             this.pos.x += moveX;
-             this.pos.y += moveY;
-             this.updateFacingDirection(moveX);
+            this.pos.x += moveX;
+            this.pos.y += moveY;
+            this.updateFacingDirection(moveX);
         }
 
         if (this.target && this.target.isAlive && this.attackCooldown <= 0 && distanceSq(this.pos, this.target.pos) <= this.attackRangeSq) {
-             if(this.target.pos.x > this.pos.x + 1) this.facingDirection = 1;
-             else if (this.target.pos.x < this.pos.x -1) this.facingDirection = -1;
-             this.attackTarget();
+            if (this.target.pos.x > this.pos.x + 1) this.facingDirection = 1;
+            else if (this.target.pos.x < this.pos.x - 1) this.facingDirection = -1;
+            this.attackTarget();
         }
     }
 
@@ -1256,23 +1256,15 @@ function startHoldSummon(type) {
     holdSummonState.timeoutId = setTimeout(() => {
         if (!holdSummonState.isHolding || holdSummonState.type !== type) return;
 
-        const success = trySummon(type);
+        trySummon(type);
 
-        if (success) {
-             holdSummonState.intervalId = setInterval(() => {
-                if (!holdSummonState.isHolding || holdSummonState.type !== type) {
-                    stopHoldSummonInternal();
-                    return;
-                }
-                const continuedSuccess = trySummon(type);
-                if (!continuedSuccess) {
-                     stopHoldSummonInternal();
-                }
-            }, CONFIG.summoning.repeatInterval);
-        } else {
-             holdSummonState.isHolding = false;
-             holdSummonState.type = null;
-        }
+        holdSummonState.intervalId = setInterval(() => {
+            if (!holdSummonState.isHolding || holdSummonState.type !== type) {
+                stopHoldSummonInternal();
+                return;
+            }
+            const continuedSuccess = trySummon(type);
+        }, CONFIG.summoning.repeatInterval);
 
     }, CONFIG.summoning.holdDelay);
 }
@@ -1283,7 +1275,7 @@ function stopHoldSummon(eventTriggeredType = null) {
         const holdDuration = performance.now() - holdSummonState.pointerDownTime;
 
         if (holdSummonState.timeoutId && holdDuration < CONFIG.summoning.holdDelay) {
-             trySummon(holdSummonState.type);
+            trySummon(holdSummonState.type);
         }
 
         stopHoldSummonInternal();
@@ -1291,10 +1283,10 @@ function stopHoldSummon(eventTriggeredType = null) {
         holdSummonState.type = null;
         holdSummonState.pointerDownTime = 0;
     } else if (!eventTriggeredType && holdSummonState.isHolding) {
-         stopHoldSummonInternal();
-         holdSummonState.isHolding = false;
-         holdSummonState.type = null;
-         holdSummonState.pointerDownTime = 0;
+        stopHoldSummonInternal();
+        holdSummonState.isHolding = false;
+        holdSummonState.type = null;
+        holdSummonState.pointerDownTime = 0;
     }
 }
 
@@ -1384,10 +1376,10 @@ function setButtonState(button, canUse) {
         const costMatch = button.innerHTML.match(/\((\d+)魂\)/);
         const cost = costMatch ? parseInt(costMatch[1], 10) : 0;
         if (gameState.souls >= cost) {
-             button.classList.add('can-afford');
+            button.classList.add('can-afford');
         } else {
-             button.classList.remove('can-afford');
-             button.disabled = true;
+            button.classList.remove('can-afford');
+            button.disabled = true;
         }
     } else {
         button.classList.remove('can-afford');
@@ -1503,7 +1495,7 @@ function restoreSummonsFromLoad() {
         const summon = new Wraith(spawnPos.x, spawnPos.y, gameState.wraithLevel, gameState.player);
         gameState.summons.push(summon);
     }
-     console.log(`Restored ${gameState.summons.length} summons from loaded counts.`);
+    console.log(`Restored ${gameState.summons.length} summons from loaded counts.`);
 }
 
 function resetGameInternalState() {
@@ -1528,7 +1520,7 @@ function resetGameInternalState() {
             eyeMonster: CONFIG.eyeMonster.upgradeCostBase,
             wraith: CONFIG.wraith.upgradeCostBase,
         },
-         imagesLoaded: gameState.imagesLoaded,
+        imagesLoaded: gameState.imagesLoaded,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -1597,8 +1589,8 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
-     ctx.fillStyle = '#333';
-     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     gameState.summons.forEach(s => { if (s.isAlive && s.config.type === 'Wraith' && s.drawAura) s.drawAura(ctx); });
 
@@ -1614,12 +1606,12 @@ function drawGame() {
 let animationFrameId = null;
 function gameLoop(currentTime) {
     if (!gameState.imagesLoaded) {
-         ctx.fillStyle = '#222';
-         ctx.fillRect(0,0, canvas.width, canvas.height);
-         ctx.fillStyle = 'white';
-         ctx.textAlign = 'center';
-         ctx.fillText("Loading Images...", canvas.width / 2, canvas.height / 2);
-         animationFrameId = requestAnimationFrame(gameLoop);
+        ctx.fillStyle = '#222';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText("Loading Images...", canvas.width / 2, canvas.height / 2);
+        animationFrameId = requestAnimationFrame(gameLoop);
         return;
     }
 
@@ -1685,16 +1677,16 @@ function init() {
         });
         btn.addEventListener('pointerleave', (e) => {
             if (holdSummonState.isHolding && holdSummonState.type === type) {
-                 stopHoldSummon(type);
-                 try { btn.releasePointerCapture(e.pointerId); } catch(err) {}
+                stopHoldSummon(type);
+                try { btn.releasePointerCapture(e.pointerId); } catch (err) { }
             }
         });
-         btn.addEventListener('pointercancel', (e) => {
-             if (holdSummonState.isHolding && holdSummonState.type === type) {
-                 stopHoldSummon(type);
-                 try { btn.releasePointerCapture(e.pointerId); } catch(err) {}
-             }
-         });
+        btn.addEventListener('pointercancel', (e) => {
+            if (holdSummonState.isHolding && holdSummonState.type === type) {
+                stopHoldSummon(type);
+                try { btn.releasePointerCapture(e.pointerId); } catch (err) { }
+            }
+        });
 
     });
 
@@ -1721,12 +1713,12 @@ function init() {
         }
     }).catch(err => {
         console.error("Image loading failed catastrophically. Game cannot start properly.", err);
-         ctx.fillStyle = '#AF0000';
-         ctx.fillRect(0,0, canvas.width, canvas.height);
-         ctx.fillStyle = 'white';
-         ctx.textAlign = 'center';
-         ctx.font = '16px sans-serif';
-         ctx.fillText("錯誤：圖片載入失敗，請檢查檔案並重新整理。", canvas.width / 2, canvas.height / 2);
+        ctx.fillStyle = '#AF0000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.font = '16px sans-serif';
+        ctx.fillText("錯誤：圖片載入失敗，請檢查檔案並重新整理。", canvas.width / 2, canvas.height / 2);
     });
 
     requestAnimationFrame(gameLoop);
