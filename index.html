@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>亡靈狂潮 (Undead Frenzy)</title>
     <style>
         body {
@@ -17,70 +18,104 @@
             height: 100vh;
             justify-content: center;
         }
+
         #ui-container {
             width: 100%;
             max-width: 600px;
+            /* Limit max width */
             padding: 5px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             flex-grow: 1;
             max-height: 100%;
+            /* Ensure it fits vertically */
         }
+
         #gameCanvas {
             border: 1px solid #555;
             background-color: #333;
             touch-action: none;
+            /* Prevent default touch actions like scrolling */
             width: 100%;
             height: auto;
             aspect-ratio: 600 / 400;
-            max-height: 60vh;
-             display: block;
+            /* Maintain aspect ratio */
+            max-height: 55vh;
+            /* Adjust max height relative to viewport */
+            display: block;
+            /* Remove extra space below canvas */
         }
 
         #top-ui {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 5px;
-            font-size: 16px;
+            padding: 8px 0px;
+            font-size: clamp(12px, 2.5vw, 16px);
+            /* Responsive font size */
             flex-shrink: 0;
+            /* Prevent shrinking */
+            gap: 5px;
         }
-        #top-ui > div {
+
+        #top-ui>div {
+            /* Wave/Timer info */
             text-align: center;
             flex-grow: 1;
-            margin: 0 10px;
+            margin: 0 5px;
+            line-height: 1.2;
         }
-        #pause-resume-btn {
-            padding: 8px 12px;
-            font-size: 14px;
-            min-width: 60px;
+
+        #player-health-info {
+            font-weight: bold;
+            text-align: left;
             flex-shrink: 0;
+            min-width: 80px;
         }
+
         #souls-info {
-             flex-shrink: 0;
-             min-width: 70px;
-             text-align: right;
+            font-weight: bold;
+            flex-shrink: 0;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        #pause-resume-btn {
+            padding: 6px 10px;
+            font-size: clamp(12px, 2vw, 14px);
+            min-width: 55px;
+            flex-shrink: 0;
         }
 
 
         #bottom-ui {
             display: flex;
             justify-content: space-around;
-            background-color: #444;
-            padding: 10px 5px;
-            flex-wrap: wrap;
-            gap: 10px;
+            background-color: #303030;
+            /* Slightly lighter */
+            padding: 8px 5px;
+            flex-wrap: nowrap;
+            /* Prevent wrapping for the main 3 columns */
+            gap: 5px;
+            /* Reduce gap */
             flex-grow: 1;
+            /* Take remaining space */
             overflow-y: auto;
-            align-items: flex-start;
+            /* Allow vertical scroll if needed, but aim to avoid */
+            align-items: stretch;
+            /* Make columns equal height */
         }
+
         .bottom-column {
-             display: flex;
-             flex-direction: column;
-             gap: 15px;
-             flex-basis: calc(50% - 10px);
-             min-width: 140px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            /* Reduce gap */
+            flex: 1;
+            /* Distribute space equally */
+            min-width: 0;
+            /* Allow shrinking below basis */
         }
 
 
@@ -89,43 +124,60 @@
             flex-direction: column;
             align-items: stretch;
             background-color: #3a3a3a;
-            padding: 8px;
-            border-radius: 6px;
-            width: 100%;
+            padding: 6px;
+            border-radius: 5px;
             box-sizing: border-box;
-            gap: 5px;
+            gap: 10px;
+            flex: 1;
+            justify-content: center;
         }
 
 
         button {
-            padding: 8px 6px;
-            font-size: 13px;
+            padding: 7px 5px;
+            /* Adjust padding */
+            font-size: clamp(11px, 2vw, 13px);
+            /* Smaller, responsive font */
             font-weight: bold;
             cursor: pointer;
-            min-width: 75px;
-            min-height: 44px;
-            border: 1px solid #999;
+            min-width: 0;
+            /* Allow button shrinking */
+            /* Full width within parent */
+            min-height: 40px;
+            /* Slightly reduce min-height */
+            border: 1px solid #888;
+            /* Lighter border */
             background-color: #555;
             color: white;
-            border-radius: 5px;
-            transition: background-color 0.2s, border-color 0.2s;
+            border-radius: 4px;
+            transition: background-color 0.1s, border-color 0.1s;
             display: flex;
             align-items: center;
             justify-content: center;
             text-align: center;
-            line-height: 1.2;
+            line-height: 1.1;
+            /* Tighter line height */
             flex-shrink: 0;
+            /* Prevent button text wrapping */
+            -webkit-tap-highlight-color: transparent;
+            /* Remove tap highlight on mobile */
         }
-        button:active { background-color: #777; }
+
+        button:active {
+            background-color: #777;
+        }
 
         button.can-afford {
             background-color: #689F38;
-            border: 2px solid #CDDC39;
+            border: 1px solid #9CCC65;
+            /* Adjusted border */
             color: #FFFFFF;
         }
+
         button.can-afford:active {
-             background-color: #8BC34A;
+            background-color: #8BC34A;
         }
+
         button:disabled {
             background-color: #424242;
             border: 1px solid #616161;
@@ -134,31 +186,96 @@
         }
 
         .unit-label {
-            font-size: 15px;
-            margin-bottom: 3px;
+            font-size: clamp(13px, 2.2vw, 15px);
+            /* Responsive */
+            margin-bottom: 2px;
+            /* Reduce margin */
             font-weight: bold;
             text-align: center;
+            line-height: 1.1;
         }
+
         .stats-label {
-            font-size: 13px;
-            margin-bottom: 5px;
+            font-size: clamp(11px, 1.8vw, 13px);
+            /* Responsive */
+            margin-bottom: 3px;
+            /* Reduce margin */
             text-align: center;
-            line-height: 1.3;
+            line-height: 1.1;
         }
 
 
-        #message-area { position: absolute; top: 60px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 5px; font-size: 14px; display: none; z-index: 5; text-align: center; }
-        #game-over-screen { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(0,0,0,0.85); padding: 30px; border-radius: 10px; text-align: center; display: none; z-index: 10;}
-        #game-over-screen h2 { margin-top: 0; color: #FF5252; }
-        #restart-button { padding: 12px 24px; font-size: 18px; margin-top: 15px; cursor: pointer; background-color: #4CAF50; border: none; border-radius: 5px; color: white;}
-        #restart-button:hover { background-color: #66BB6A; }
+        #message-area {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 14px;
+            display: none;
+            z-index: 5;
+            text-align: center;
+            pointer-events: none;
+        }
 
+        #game-over-screen {
+            position: fixed;
+            /* Use fixed to ensure centering */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            display: none;
+            z-index: 10;
+        }
+
+        #game-over-content {
+            background-color: #333;
+            padding: 30px;
+            border-radius: 10px;
+        }
+
+        #game-over-content h2 {
+            margin-top: 0;
+            color: #FF5252;
+        }
+
+        #restart-button {
+            padding: 12px 24px;
+            font-size: 18px;
+            margin-top: 15px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+        }
+
+        #restart-button:hover {
+            background-color: #66BB6A;
+        }
+
+        /* Ensure consistent height for button groups if possible */
+        #bottom-ui .button-group {
+            min-height: 110px;
+            /* Adjust as needed */
+        }
     </style>
 </head>
+
 <body>
     <div id="ui-container">
         <div id="top-ui">
             <button id="pause-resume-btn">暫停</button>
+            <span id="player-health-info">HP: 50/50</span>
             <div>
                 <span id="wave-info">波次: 0</span><br>
                 <span id="timer-info">下一波: 5s</span>
@@ -170,12 +287,6 @@
 
         <div id="bottom-ui">
             <div class="bottom-column">
-                <div class="button-group">
-                    <span class="unit-label">死靈法師 (<span id="player-level">Lv 0</span>)</span>
-                    <span id="player-stats-label" class="stats-label">HP: 50/50</span>
-                    <button id="upgrade-player-btn">升級</button>
-                </div>
-
                 <div class="button-group">
                     <span class="unit-label">骷髏戰士 (<span id="skel-level">Lv 0</span>)</span>
                     <span class="stats-label">數量: <span id="skel-count">0</span></span>
@@ -191,7 +302,9 @@
                     <button id="summon-eye-monster-btn">召喚</button>
                     <button id="upgrade-eye-monster-btn">升級</button>
                 </div>
+            </div>
 
+            <div class="bottom-column">
                 <div class="button-group">
                     <span class="unit-label">怨靈 (<span id="wraith-level">Lv 0</span>)</span>
                     <span class="stats-label">數量: <span id="wraith-count">0</span></span>
@@ -204,11 +317,14 @@
 
     <div id="message-area"></div>
     <div id="game-over-screen">
-        <h2>遊戲結束</h2>
-        <p id="final-wave-text">您存活了 0 波。</p>
-        <button id="restart-button">重新開始</button>
+        <div id="game-over-content">
+            <h2>遊戲結束</h2>
+            <p id="final-wave-text">您存活了 0 波。</p>
+            <button id="restart-button">重新開始</button>
+        </div>
     </div>
 
     <script src="game.js"></script>
 </body>
+
 </html>
