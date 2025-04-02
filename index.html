@@ -22,45 +22,36 @@
         #ui-container {
             width: 100%;
             max-width: 600px;
-            /* Limit max width */
             padding: 5px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
             flex-grow: 1;
             max-height: 100%;
-            /* Ensure it fits vertically */
         }
 
         #gameCanvas {
             border: 1px solid #555;
             background-color: #333;
             touch-action: none;
-            /* Prevent default touch actions like scrolling */
             width: 100%;
             height: auto;
             aspect-ratio: 600 / 400;
-            /* Maintain aspect ratio */
             max-height: 55vh;
-            /* Adjust max height relative to viewport */
             display: block;
-            /* Remove extra space below canvas */
         }
 
         #top-ui {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0px;
+            padding: 8px 0px 5px 0px;
             font-size: clamp(12px, 2.5vw, 16px);
-            /* Responsive font size */
             flex-shrink: 0;
-            /* Prevent shrinking */
             gap: 5px;
         }
 
         #top-ui>div {
-            /* Wave/Timer info */
             text-align: center;
             flex-grow: 1;
             margin: 0 5px;
@@ -72,6 +63,7 @@
             text-align: left;
             flex-shrink: 0;
             min-width: 80px;
+            margin-left: 5px;
         }
 
         #souls-info {
@@ -79,13 +71,17 @@
             flex-shrink: 0;
             min-width: 70px;
             text-align: right;
+            margin-right: 5px;
+        }
+
+        #pause-container {
+            flex-shrink: 0;
         }
 
         #pause-resume-btn {
-            padding: 6px 10px;
-            font-size: clamp(12px, 2vw, 14px);
-            min-width: 55px;
-            flex-shrink: 0;
+            padding: 6px 15px;
+            font-size: clamp(13px, 2.2vw, 15px);
+            width: 100%;
         }
 
 
@@ -93,29 +89,20 @@
             display: flex;
             justify-content: space-around;
             background-color: #303030;
-            /* Slightly lighter */
             padding: 8px 5px;
             flex-wrap: nowrap;
-            /* Prevent wrapping for the main 3 columns */
             gap: 5px;
-            /* Reduce gap */
             flex-grow: 1;
-            /* Take remaining space */
             overflow-y: auto;
-            /* Allow vertical scroll if needed, but aim to avoid */
             align-items: stretch;
-            /* Make columns equal height */
         }
 
         .bottom-column {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            /* Reduce gap */
             flex: 1;
-            /* Distribute space equally */
             min-width: 0;
-            /* Allow shrinking below basis */
         }
 
 
@@ -135,18 +122,12 @@
 
         button {
             padding: 7px 5px;
-            /* Adjust padding */
             font-size: clamp(11px, 2vw, 13px);
-            /* Smaller, responsive font */
             font-weight: bold;
             cursor: pointer;
             min-width: 0;
-            /* Allow button shrinking */
-            /* Full width within parent */
             min-height: 40px;
-            /* Slightly reduce min-height */
             border: 1px solid #888;
-            /* Lighter border */
             background-color: #555;
             color: white;
             border-radius: 4px;
@@ -156,11 +137,13 @@
             justify-content: center;
             text-align: center;
             line-height: 1.1;
-            /* Tighter line height */
             flex-shrink: 0;
-            /* Prevent button text wrapping */
             -webkit-tap-highlight-color: transparent;
-            /* Remove tap highlight on mobile */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         button:active {
@@ -170,7 +153,6 @@
         button.can-afford {
             background-color: #689F38;
             border: 1px solid #9CCC65;
-            /* Adjusted border */
             color: #FFFFFF;
         }
 
@@ -187,9 +169,7 @@
 
         .unit-label {
             font-size: clamp(13px, 2.2vw, 15px);
-            /* Responsive */
             margin-bottom: 2px;
-            /* Reduce margin */
             font-weight: bold;
             text-align: center;
             line-height: 1.1;
@@ -197,9 +177,7 @@
 
         .stats-label {
             font-size: clamp(11px, 1.8vw, 13px);
-            /* Responsive */
             margin-bottom: 3px;
-            /* Reduce margin */
             text-align: center;
             line-height: 1.1;
         }
@@ -222,7 +200,6 @@
 
         #game-over-screen {
             position: fixed;
-            /* Use fixed to ensure centering */
             top: 0;
             left: 0;
             width: 100%;
@@ -263,10 +240,8 @@
             background-color: #66BB6A;
         }
 
-        /* Ensure consistent height for button groups if possible */
         #bottom-ui .button-group {
             min-height: 110px;
-            /* Adjust as needed */
         }
     </style>
 </head>
@@ -274,16 +249,18 @@
 <body>
     <div id="ui-container">
         <div id="top-ui">
-            <button id="pause-resume-btn">暫停</button>
+            <span id="player-health-info">HP: 50/50</span>
             <div>
                 <span id="wave-info">波次: 0</span><br>
                 <span id="timer-info">下一波: 5s</span>
             </div>
-            <span id="player-health-info">HP: 50/50</span>
             <span id="souls-info">靈魂: 15</span>
         </div>
-
         <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+        <div id="pause-container" style="text-align: center; padding: 8px 0;">
+            <button id="pause-resume-btn">暫停</button>
+        </div>
 
         <div id="bottom-ui">
             <div class="bottom-column">
@@ -325,6 +302,3 @@
     </div>
 
     <script src="game.js"></script>
-</body>
-
-</html>
