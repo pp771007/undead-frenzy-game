@@ -1,3 +1,5 @@
+// --- START OF FILE game.js ---
+
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 600;
@@ -29,15 +31,15 @@ const uiElements = {
 
 const CONFIG = {
     player: {
-        baseHealth: 50, baseMoveSpeed: 90, radius: 10, color: '#03A9F4',
-        iconColor: '#FFFFFF',
+        baseHealth: 50, baseMoveSpeed: 90, radius: 12, color: '#03A9F4',
+        imageName: 'player', imgScaleMultiplier: 2.8,
         initialSouls: 15,
         avoidanceRadius: 15,
     },
     skeletonWarrior: {
-        type: 'SkeletonWarrior', baseHealth: 25, baseAttack: 5, radius: 8,
+        type: 'SkeletonWarrior', baseHealth: 25, baseAttack: 5, radius: 10,
+        imageName: 'skeleton_warrior', imgScaleMultiplier: 2.8,
         attackRange: 25, attackSpeed: 1.0, moveSpeed: 80, color: '#FFFFFF',
-        iconColor: '#424242',
         upgradeBonus: 0.10,
         summonCost: 3,
         upgradeCostBase: 10,
@@ -49,11 +51,11 @@ const CONFIG = {
         wraithBuffMoveSpeedMultiplier: 2.0,
     },
     eyeMonster: {
-        type: 'EyeMonster', baseHealth: 8, baseAttack: 7, radius: 9,
+        type: 'EyeMonster', baseHealth: 8, baseAttack: 7, radius: 11,
+        imageName: 'eye_monster', imgScaleMultiplier: 2.6,
         attackRange: 120,
         attackRangeUpgrade: 3,
         attackSpeed: 0.8, moveSpeed: 60, color: '#A1887F',
-        iconColor: '#000000',
         upgradeBonus: 0.10,
         summonCost: 8,
         upgradeCostBase: 15,
@@ -70,14 +72,14 @@ const CONFIG = {
         wraithBuffAttackSpeedMultiplier: 2.0,
     },
     wraith: {
-        type: 'Wraith', baseHealth: 15, baseAttack: 0, radius: 9,
+        type: 'Wraith', baseHealth: 15, baseAttack: 0, radius: 11,
+        imageName: 'wraith', imgScaleMultiplier: 2.7,
         attackRange: 0,
         slowRadiusBase: 80,
         slowRadiusUpgrade: 5,
         slowAmountBase: 0.4,
         slowAmountUpgrade: 0.025,
         slowDuration: 1.5, attackSpeed: 1.0, moveSpeed: 55, color: '#4DB6AC',
-        iconColor: '#E0F2F1',
         upgradeBonus: 0.15,
         summonCost: 10,
         upgradeCostBase: 20,
@@ -90,24 +92,25 @@ const CONFIG = {
         retreatSpeedFactor: 0.4,
         wanderRadius: 35, wanderSpeedFactor: 0.25, wanderIntervalMin: 2.0, wanderIntervalMax: 4.0,
         buffRadiusProperty: 'slowRadius',
+        auraColor: '#4DB6AC',
     },
     basicMeleeMonster: {
-        type: 'BasicMelee', baseHealth: 12, baseAttack: 3, radius: 10,
+        type: 'BasicMelee', baseHealth: 12, baseAttack: 3, radius: 12,
+        imageName: 'basic_melee', imgScaleMultiplier: 2.6,
         attackRange: 20, attackSpeed: 1.0, moveSpeed: 50, color: '#EF5350',
-        borderColor: '#C62828', soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
-        iconColor: '#FFFFFF'
+        soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
     },
     fastMeleeMonster: {
-        type: 'FastMelee', baseHealth: 8, baseAttack: 2, radius: 8,
+        type: 'FastMelee', baseHealth: 8, baseAttack: 2, radius: 10,
+        imageName: 'fast_melee', imgScaleMultiplier: 2.6,
         attackRange: 18, attackSpeed: 1.2, moveSpeed: 95, color: '#FF7043',
-        borderColor: '#D84315', soulDrop: 1, waveSpeedIncreaseFactor: 0.012,
-        iconColor: '#FFFFFF'
+        soulDrop: 1, waveSpeedIncreaseFactor: 0.012,
     },
     armoredMeleeMonster: {
-        type: 'ArmoredMelee', baseHealth: 35, baseAttack: 4, radius: 12,
+        type: 'ArmoredMelee', baseHealth: 35, baseAttack: 4, radius: 14,
+        imageName: 'armored_melee', imgScaleMultiplier: 2.7,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 30, color: '#B71C1C',
-        borderColor: '#880E4F', soulDrop: 2, waveSpeedIncreaseFactor: 0.008,
-        iconColor: '#FFFFFF'
+        soulDrop: 2, waveSpeedIncreaseFactor: 0.008,
     },
     wave: {
         baseTime: 30, betweenTime: 5, monsterScaleInterval: 5, monsterScaleFactor: 0.10,
@@ -125,7 +128,7 @@ const CONFIG = {
         slashEffectArcAngle: Math.PI / 3,
     },
     summoning: {
-        holdDelay: 350, // Slightly longer delay might feel better on touch
+        holdDelay: 350,
         repeatInterval: 150,
     }
 };
@@ -155,6 +158,7 @@ let gameState = {
     skeletonWarriorLevel: 0, eyeMonsterLevel: 0, wraithLevel: 0,
     skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
     currentCosts: { ...CONFIG.upgradeCosts },
+    imagesLoaded: false,
 };
 
 let holdSummonState = {
@@ -162,14 +166,54 @@ let holdSummonState = {
     timeoutId: null,
     intervalId: null,
     isHolding: false,
-    pointerDownTime: 0, // Track when pointer went down
+    pointerDownTime: 0,
 };
 
 let inputState = {
     isPointerDown: false, pointerStartPos: { x: 0, y: 0 },
     pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 },
-    pointerId: null, // Track the specific pointer/touch for movement
+    pointerId: null,
 };
+
+const images = {};
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = (err) => {
+            console.error("Failed to load image:", src, err);
+            reject(err);
+        };
+        img.src = src;
+    });
+}
+
+async function loadAllImages() {
+    const imageSources = {
+        player: 'player.png',
+        skeleton_warrior: 'skeleton_warrior.png',
+        eye_monster: 'eye_monster.png',
+        wraith: 'wraith.png',
+        basic_melee: 'basic_melee.png',
+        fast_melee: 'fast_melee.png',
+        armored_melee: 'armored_melee.png',
+    };
+
+    const promises = Object.entries(imageSources).map(([name, src]) =>
+        loadImage(src).then(img => { images[name] = img; })
+    );
+
+    try {
+        await Promise.all(promises);
+        console.log("All images loaded successfully.");
+        gameState.imagesLoaded = true;
+    } catch (error) {
+        console.error("Error loading one or more images:", error);
+        showMessage("部分圖片載入失敗，遊戲可能無法正常顯示！", 5000);
+        gameState.imagesLoaded = true;
+    }
+}
+
 
 function distanceSq(pos1, pos2) { const dx = pos1.x - pos2.x; const dy = pos1.y - pos2.y; return dx * dx + dy * dy; }
 function normalizeVector(vec) { const mag = Math.sqrt(vec.x * vec.x + vec.y * vec.y); if (mag === 0) return { x: 0, y: 0 }; return { x: vec.x / mag, y: vec.y / mag }; }
@@ -197,23 +241,77 @@ function getRandomSpawnPosNearCenter(radius = 30) {
 }
 
 class GameObject {
-    constructor(x, y, radius, color) {
+    constructor(x, y, radius, color, imageName = null, imgScaleMultiplier = 2.5) {
         this.pos = { x, y };
         this.radius = radius;
         this.color = color;
         this.isAlive = true;
         this.id = `go_${Date.now()}_${Math.random()}`;
+        this.facingDirection = 1;
+        this.image = imageName && images[imageName] ? images[imageName] : null;
+        this.imgScaleMultiplier = imgScaleMultiplier;
+        this.imageWidth = this.image ? this.radius * this.imgScaleMultiplier : this.radius * 2;
+        this.imageHeight = this.image ? this.radius * this.imgScaleMultiplier : this.radius * 2;
+         if (this.image && this.image.naturalWidth > 0) {
+             this.imageHeight = this.imageWidth * (this.image.naturalHeight / this.image.naturalWidth);
+         }
     }
-    draw(ctx) { }
+
+    draw(ctx) {
+        if (!this.isAlive) return;
+
+        if (this.image) {
+            ctx.save();
+            ctx.translate(this.pos.x, this.pos.y);
+            ctx.scale(this.facingDirection, 1);
+            ctx.drawImage(this.image, -this.imageWidth / 2, -this.imageHeight / 2, this.imageWidth, this.imageHeight);
+            ctx.restore();
+        } else {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+         this.drawHealthBar(ctx);
+    }
+
+     drawHealthBar(ctx) {
+         if (this.isAlive && this.currentHealth < this.maxHealth && this.currentHealth !== undefined) {
+             const barWidth = this.radius * 1.6;
+             const barHeight = 4;
+             const barYOffset = this.imageHeight ? this.imageHeight * 0.5 + 5 : this.radius + 5;
+             const barX = this.pos.x - barWidth / 2;
+             const barY = this.pos.y - barYOffset;
+             const healthPercent = this.currentHealth / this.maxHealth;
+
+             ctx.fillStyle = '#555';
+             ctx.fillRect(barX, barY, barWidth, barHeight);
+             ctx.fillStyle = healthPercent > 0.5 ? '#4CAF50' : (healthPercent > 0.2 ? '#FFC107' : '#F44336');
+             ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
+             ctx.strokeStyle = '#222';
+             ctx.lineWidth = 1;
+             ctx.strokeRect(barX, barY, barWidth, barHeight);
+         }
+     }
+
     update(deltaTime) { }
+
+    updateFacingDirection(moveX) {
+        if (moveX > 0.1) {
+            this.facingDirection = 1;
+        } else if (moveX < -0.1) {
+            this.facingDirection = -1;
+        }
+    }
 }
 
 class Player extends GameObject {
     constructor(x, y) {
-        super(x, y, CONFIG.player.radius, CONFIG.player.color);
-        this.maxHealth = CONFIG.player.baseHealth;
+        const config = CONFIG.player;
+        super(x, y, config.radius, config.color, config.imageName, config.imgScaleMultiplier);
+        this.maxHealth = config.baseHealth;
         this.currentHealth = this.maxHealth;
-        this.moveSpeed = CONFIG.player.baseMoveSpeed;
+        this.moveSpeed = config.baseMoveSpeed;
     }
     update(deltaTime, moveVec) {
         if (!this.isAlive) return;
@@ -223,6 +321,8 @@ class Player extends GameObject {
         this.pos.y += moveY;
         this.pos.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.pos.x));
         this.pos.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.pos.y));
+
+        this.updateFacingDirection(moveVec.x);
     }
     takeDamage(amount) {
         if (!this.isAlive) return;
@@ -240,57 +340,26 @@ class Player extends GameObject {
     }
     getSummonPosition() {
         const direction = normalizeVector(inputState.movementVector);
-        const spawnDist = this.radius + 15;
+        const spawnDist = (this.imageWidth ? this.imageWidth / 2 : this.radius) + 15;
         let spawnX = this.pos.x + spawnDist;
         let spawnY = this.pos.y;
         if (direction.x !== 0 || direction.y !== 0) {
             spawnX = this.pos.x - direction.x * spawnDist;
             spawnY = this.pos.y - direction.y * spawnDist;
+        } else {
+            spawnX = this.pos.x - this.facingDirection * spawnDist;
+            spawnY = this.pos.y;
         }
+
         spawnX = Math.max(this.radius + 5, Math.min(canvas.width - this.radius - 5, spawnX));
         spawnY = Math.max(this.radius + 5, Math.min(canvas.height - this.radius - 5, spawnY));
         return { x: spawnX, y: spawnY };
-    }
-    draw(ctx) {
-        if (!this.isAlive) return;
-        const iconColor = this.color;
-        ctx.strokeStyle = iconColor;
-        ctx.lineWidth = 2;
-        ctx.fillStyle = iconColor;
-
-        const headRadius = this.radius * 0.4;
-        const bodyHeight = this.radius * 0.8;
-        const armY = this.pos.y - this.radius * 0.1;
-        const legY = this.pos.y + this.radius * 0.3;
-        const armWidth = this.radius * 0.5;
-        const legWidth = this.radius * 0.3;
-
-        ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y - this.radius * 0.3, headRadius, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(this.pos.x, this.pos.y - this.radius * 0.3 + headRadius);
-        ctx.lineTo(this.pos.x, legY);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(this.pos.x - armWidth, armY + bodyHeight * 0.4);
-        ctx.lineTo(this.pos.x, armY);
-        ctx.lineTo(this.pos.x + armWidth, armY + bodyHeight * 0.4);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(this.pos.x - legWidth, this.pos.y + this.radius * 0.8);
-        ctx.lineTo(this.pos.x, legY);
-        ctx.lineTo(this.pos.x + legWidth, this.pos.y + this.radius * 0.8);
-        ctx.stroke();
     }
 }
 
 class SummonUnit extends GameObject {
     constructor(x, y, config, level, playerTransform) {
-        super(x, y, config.radius, config.color);
+        super(x, y, config.radius, config.color, config.imageName, config.imgScaleMultiplier);
         this.config = config;
         this.playerTransform = playerTransform;
         this.level = level;
@@ -409,6 +478,9 @@ class SummonUnit extends GameObject {
         let moveDirection = { x: 0, y: 0 };
         let currentMoveSpeed = this.moveSpeed * this.buffedMoveSpeedMultiplier;
         let isIdle = true;
+        let moveX = 0;
+        let moveY = 0;
+
 
         if (this.isRetreatingFromMonster && this.config.type === 'EyeMonster') {
             isIdle = false;
@@ -451,11 +523,16 @@ class SummonUnit extends GameObject {
         finalMove.x += avoidanceVector.x;
         finalMove.y += avoidanceVector.y;
 
-        if (finalMove.x !== 0 || finalMove.y !== 0) {
-            this.pos.x += finalMove.x * deltaTime;
-            this.pos.y += finalMove.y * deltaTime;
+        moveX = finalMove.x * deltaTime;
+        moveY = finalMove.y * deltaTime;
+
+        if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
+            this.pos.x += moveX;
+            this.pos.y += moveY;
             isIdle = false;
+            this.updateFacingDirection(moveX);
         }
+
 
         if (isIdle) {
             this.wanderTimer -= deltaTime;
@@ -474,8 +551,11 @@ class SummonUnit extends GameObject {
                 if (distToWanderTargetSq > 5 * 5) {
                     const wanderDir = normalizeVector({ x: this.wanderTargetPos.x - this.pos.x, y: this.wanderTargetPos.y - this.pos.y });
                     const wanderSpeed = this.moveSpeed * this.config.wanderSpeedFactor * this.buffedMoveSpeedMultiplier;
-                    this.pos.x += wanderDir.x * wanderSpeed * deltaTime;
-                    this.pos.y += wanderDir.y * wanderSpeed * deltaTime;
+                    const wanderMoveX = wanderDir.x * wanderSpeed * deltaTime;
+                    const wanderMoveY = wanderDir.y * wanderSpeed * deltaTime;
+                    this.pos.x += wanderMoveX;
+                    this.pos.y += wanderMoveY;
+                    this.updateFacingDirection(wanderMoveX);
                 } else {
                     this.isWandering = false;
                 }
@@ -497,7 +577,9 @@ class SummonUnit extends GameObject {
             else if (this.target) {
                 const targetDistSq = distanceSq(this.pos, this.target.pos);
                 if (targetDistSq <= this.attackRangeSq) {
-                    this.attackTarget();
+                     if (this.target.pos.x > this.pos.x + 1) this.facingDirection = 1;
+                     else if (this.target.pos.x < this.pos.x - 1) this.facingDirection = -1;
+                     this.attackTarget();
                 }
             }
         }
@@ -635,8 +717,8 @@ class SummonUnit extends GameObject {
             gameState.projectiles.push(projectile);
         } else if (this.config.type === 'SkeletonWarrior') {
             this.target.takeDamage(currentAttackDamage);
-            const effect = new SlashEffect(this.pos, this.target.pos);
-            gameState.visualEffects.push(effect);
+             const effect = new SlashEffect(this.pos, this.target.pos);
+             gameState.visualEffects.push(effect);
         }
         let cooldownDuration = 1.0 / this.attackSpeed;
         if (this.config.type === 'EyeMonster') {
@@ -678,68 +760,17 @@ class SummonUnit extends GameObject {
         }
         updateUI();
     }
-
-    drawHealthBar(ctx) {
-        if (this.isAlive && this.currentHealth < this.maxHealth) {
-            const barWidth = this.radius * 1.6; const barHeight = 3;
-            const barYOffset = (this.config.type === 'Wraith' || this.config.type === 'EyeMonster') ? this.radius * 1.2 : this.radius * 1.5;
-            const barX = this.pos.x - barWidth / 2;
-            const barY = this.pos.y - barYOffset - barHeight - 3;
-            const healthPercent = this.currentHealth / this.maxHealth;
-            ctx.fillStyle = '#555'; ctx.fillRect(barX, barY, barWidth, barHeight);
-            ctx.fillStyle = healthPercent > 0.5 ? '#4CAF50' : (healthPercent > 0.2 ? '#FFC107' : '#F44336');
-            ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
-        }
-    }
 }
 
 class SkeletonWarrior extends SummonUnit {
     constructor(x, y, level, playerTransform) {
         super(x, y, CONFIG.skeletonWarrior, level, playerTransform);
     }
-    draw(ctx) {
-        if (!this.isAlive) return;
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.ellipse(this.pos.x, this.pos.y, this.radius * 0.6, this.radius * 0.7, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = this.config.iconColor;
-        const eyeSize = this.radius * 0.2;
-        const eyeY = this.pos.y - this.radius * 0.15;
-        const eyeLX = this.pos.x - this.radius * 0.25;
-        const eyeRX = this.pos.x + this.radius * 0.25;
-        ctx.beginPath(); ctx.arc(eyeLX, eyeY, eyeSize, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(eyeRX, eyeY, eyeSize, 0, Math.PI * 2); ctx.fill();
-
-        ctx.strokeStyle = this.config.iconColor; ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(this.pos.x - this.radius * 0.3, this.pos.y + this.radius * 0.3);
-        ctx.lineTo(this.pos.x + this.radius * 0.3, this.pos.y + this.radius * 0.3);
-        ctx.stroke();
-
-        this.drawHealthBar(ctx);
-    }
 }
 
 class EyeMonster extends SummonUnit {
     constructor(x, y, level, playerTransform) {
         super(x, y, CONFIG.eyeMonster, level, playerTransform);
-    }
-    draw(ctx) {
-        if (!this.isAlive) return;
-        const outerRadius = this.radius;
-        const scleraRadius = this.radius * 0.85;
-        const pupilRadius = this.radius * 0.4;
-
-        ctx.fillStyle = this.color; ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, outerRadius, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#FFFFFF'; ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, scleraRadius, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = this.config.iconColor; ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, pupilRadius, 0, Math.PI * 2); ctx.fill();
-
-        this.drawHealthBar(ctx);
     }
 }
 
@@ -762,11 +793,11 @@ class Wraith extends SummonUnit {
     }
 
     drawAura(ctx) {
-        if (!this.isAlive) return;
+        if (!this.isAlive || !this.config.auraColor) return;
         const gradient = ctx.createRadialGradient(this.pos.x, this.pos.y, this.radius * 0.5, this.pos.x, this.pos.y, this.slowRadius);
-        gradient.addColorStop(0, this.color + '00');
-        gradient.addColorStop(0.8, this.color + '2A');
-        gradient.addColorStop(1, this.color + '0A');
+        gradient.addColorStop(0, this.config.auraColor + '00');
+        gradient.addColorStop(0.8, this.config.auraColor + '2A');
+        gradient.addColorStop(1, this.config.auraColor + '0A');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -775,28 +806,20 @@ class Wraith extends SummonUnit {
     }
 
     draw(ctx) {
-        if (!this.isAlive) return;
-        ctx.fillStyle = this.color; ctx.beginPath();
-        const headRadius = this.radius * 0.8; const bodyHeight = this.radius * 1.5; const tailWidth = this.radius * 1.2;
-        ctx.arc(this.pos.x, this.pos.y - headRadius * 0.2, headRadius, Math.PI, 0);
-        ctx.quadraticCurveTo(this.pos.x + headRadius * 1.2, this.pos.y + bodyHeight * 0.5, this.pos.x + tailWidth * 0.3, this.pos.y + bodyHeight);
-        ctx.quadraticCurveTo(this.pos.x, this.pos.y + bodyHeight * 0.8, this.pos.x - tailWidth * 0.3, this.pos.y + bodyHeight);
-        ctx.quadraticCurveTo(this.pos.x - headRadius * 1.2, this.pos.y + bodyHeight * 0.5, this.pos.x - headRadius, this.pos.y - headRadius * 0.2 + headRadius);
-        ctx.closePath(); ctx.fill();
-
-        ctx.fillStyle = this.config.iconColor;
-        const eyeSize = this.radius * 0.25; const eyeY = this.pos.y - headRadius * 0.1;
-        ctx.beginPath(); ctx.arc(this.pos.x - this.radius * 0.3, eyeY, eyeSize, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(this.pos.x + this.radius * 0.3, eyeY, eyeSize, 0, Math.PI * 2); ctx.fill();
-
-        this.drawHealthBar(ctx);
+        this.drawAura(ctx);
+        super.draw(ctx);
     }
+
     attackTarget() { }
 }
 
-class Projectile extends GameObject {
+class Projectile {
     constructor(startX, startY, target, shooterConfig, damage) {
-        super(startX, startY, shooterConfig.projectileRadius, shooterConfig.projectileColor);
+        this.pos = { x: startX, y: startY };
+        this.radius = shooterConfig.projectileRadius;
+        this.color = shooterConfig.projectileColor;
+        this.isAlive = true;
+        this.id = `proj_${Date.now()}_${Math.random()}`;
         this.target = target;
         this.speed = shooterConfig.projectileSpeed;
         this.damage = damage;
@@ -812,7 +835,7 @@ class Projectile extends GameObject {
 
         if (this.target.isAlive) {
             const distToTargetSq = distanceSq(this.pos, this.target.pos);
-            const hitRadiusSq = (this.radius + this.target.radius + 3) * (this.radius + this.target.radius + 3);
+            const hitRadiusSq = (this.radius + this.target.radius) * (this.radius + this.target.radius);
 
             if (distToTargetSq <= hitRadiusSq) {
                 this.target.takeDamage(this.damage);
@@ -821,7 +844,7 @@ class Projectile extends GameObject {
             }
         } else {
             const distToOriginalTargetSq = distanceSq(this.pos, this.targetPos);
-            if (distToOriginalTargetSq < this.radius * this.radius * 9) {
+            if (distToOriginalTargetSq < (this.radius * 3) * (this.radius * 3)) {
                 this.isAlive = false;
             }
         }
@@ -832,6 +855,7 @@ class Projectile extends GameObject {
             this.isAlive = false;
         }
     }
+
     draw(ctx) {
         if (!this.isAlive) return;
         ctx.fillStyle = this.color;
@@ -841,23 +865,37 @@ class Projectile extends GameObject {
     }
 }
 
-class SlashEffect {
-    constructor(attackerPos, targetPos) {
-        this.startPos = { ...attackerPos };
-        this.targetPos = { ...targetPos };
-        this.duration = CONFIG.visuals.slashEffectDuration;
-        this.life = this.duration;
+class TimedEffect {
+    constructor(pos, duration) {
+        this.pos = { ...pos };
+        this.duration = duration;
+        this.life = duration;
         this.isAlive = true;
-        const dx = this.targetPos.x - this.startPos.x;
-        const dy = this.targetPos.y - this.startPos.y;
-        this.angle = Math.atan2(dy, dx);
-        this.arcCenterX = this.targetPos.x - Math.cos(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.4);
-        this.arcCenterY = this.targetPos.y - Math.sin(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.4);
     }
     update(deltaTime) {
         this.life -= deltaTime;
         if (this.life <= 0) { this.isAlive = false; }
     }
+    draw(ctx) { }
+}
+
+class SlashEffect extends TimedEffect {
+    constructor(attackerPos, targetPos) {
+        const midX = (attackerPos.x + targetPos.x) / 2;
+        const midY = (attackerPos.y + targetPos.y) / 2;
+        super({x: midX, y: midY} , CONFIG.visuals.slashEffectDuration);
+
+        this.startPos = { ...attackerPos };
+        this.targetPos = { ...targetPos };
+
+        const dx = this.targetPos.x - this.startPos.x;
+        const dy = this.targetPos.y - this.startPos.y;
+        this.angle = Math.atan2(dy, dx);
+
+        this.arcCenterX = this.targetPos.x - Math.cos(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.4);
+        this.arcCenterY = this.targetPos.y - Math.sin(this.angle) * (CONFIG.visuals.slashEffectArcRadius * 0.4);
+    }
+
     draw(ctx) {
         if (!this.isAlive) return;
         const alpha = Math.max(0, this.life / this.duration);
@@ -880,9 +918,10 @@ class SlashEffect {
     }
 }
 
+
 class Monster extends GameObject {
     constructor(x, y, config, waveNumber) {
-        super(x, y, config.radius, config.color);
+        super(x, y, config.radius, config.color, config.imageName, config.imgScaleMultiplier);
         this.config = config;
         this.id = `m_${Date.now()}_${Math.random()}`;
         this.attackCooldown = 0;
@@ -924,25 +963,34 @@ class Monster extends GameObject {
         this.findTarget(player, summons);
 
         let moveDirection = { x: 0, y: 0 };
+        let moveX = 0;
+        let moveY = 0;
+
         if (this.target) {
             const distSqToTarget = distanceSq(this.pos, this.target.pos);
             if (distSqToTarget > this.attackRangeSq * 0.9) {
                 moveDirection = normalizeVector({ x: this.target.pos.x - this.pos.x, y: this.target.pos.y - this.pos.y });
             }
-            else {
-                moveDirection = { x: 0, y: 0 };
-            }
+             else {
+                 moveDirection = { x: 0, y: 0 };
+             }
         } else {
-            moveDirection = { x: 0, y: 0 };
+             moveDirection = { x: 0, y: 0 };
         }
 
-        if (moveDirection.x !== 0 || moveDirection.y !== 0) {
-            this.pos.x += moveDirection.x * this.moveSpeed * deltaTime;
-            this.pos.y += moveDirection.y * this.moveSpeed * deltaTime;
+        moveX = moveDirection.x * this.moveSpeed * deltaTime;
+        moveY = moveDirection.y * this.moveSpeed * deltaTime;
+
+        if (Math.abs(moveX) > 0.01 || Math.abs(moveY) > 0.01) {
+             this.pos.x += moveX;
+             this.pos.y += moveY;
+             this.updateFacingDirection(moveX);
         }
 
         if (this.target && this.target.isAlive && this.attackCooldown <= 0 && distanceSq(this.pos, this.target.pos) <= this.attackRangeSq) {
-            this.attackTarget();
+             if(this.target.pos.x > this.pos.x + 1) this.facingDirection = 1;
+             else if (this.target.pos.x < this.pos.x -1) this.facingDirection = -1;
+             this.attackTarget();
         }
     }
 
@@ -967,7 +1015,7 @@ class Monster extends GameObject {
         if (!this.target || !this.target.isAlive) return;
         this.target.takeDamage(this.attack);
 
-        if (this.attackRangeSq <= CONFIG.basicMeleeMonster.attackRange * CONFIG.basicMeleeMonster.attackRange * 1.2) {
+        if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
             const effect = new SlashEffect(this.pos, this.target.pos);
             gameState.visualEffects.push(effect);
         }
@@ -980,13 +1028,6 @@ class Monster extends GameObject {
         this.currentHealth -= amount;
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
 
-        const flashColor = 'rgba(255, 255, 255, 0.7)';
-        const originalColor = this.color;
-        this.color = flashColor;
-        setTimeout(() => {
-            if (this.isAlive) { this.color = originalColor; }
-        }, 60);
-
         if (this.currentHealth <= 0) { this.die(); }
     }
 
@@ -995,43 +1036,6 @@ class Monster extends GameObject {
         gameState.souls += this.config.soulDrop;
         updateUI();
     }
-
-    draw(ctx) {
-        if (this.config.borderColor && this.isAlive) {
-            ctx.fillStyle = this.config.borderColor;
-            const borderOffset = 1.5;
-            ctx.save();
-            ctx.translate(this.pos.x, this.pos.y);
-            ctx.scale(1 + borderOffset / this.radius, 1 + borderOffset / this.radius);
-            ctx.translate(-this.pos.x, -this.pos.y);
-            this.drawShape(ctx);
-            ctx.restore();
-        }
-        if (this.isAlive) {
-            ctx.fillStyle = this.color;
-            this.drawShape(ctx);
-        }
-        this.drawHealthBar(ctx);
-    }
-
-    drawHealthBar(ctx) {
-        if (this.currentHealth < this.maxHealth && this.isAlive) {
-            const barWidth = this.radius * 1.6;
-            const barHeight = 4;
-            const barX = this.pos.x - barWidth / 2;
-            const barY = this.pos.y - this.radius * 1.5 - barHeight - 2;
-            const healthPercent = this.currentHealth / this.maxHealth;
-            ctx.fillStyle = '#555';
-            ctx.fillRect(barX, barY, barWidth, barHeight);
-            ctx.fillStyle = healthPercent > 0.5 ? '#4CAF50' : (healthPercent > 0.2 ? '#FFC107' : '#F44336');
-            ctx.fillRect(barX, barY, barWidth * healthPercent, barHeight);
-            ctx.strokeStyle = '#222';
-            ctx.lineWidth = 0.5;
-            ctx.strokeRect(barX, barY, barWidth, barHeight);
-        }
-    }
-
-    drawShape(ctx) { }
 
     applySlow(amount, duration) {
         const newSpeedMultiplier = 1.0 - amount;
@@ -1044,43 +1048,12 @@ class Monster extends GameObject {
 
 class BasicMeleeMonster extends Monster {
     constructor(x, y, waveNumber) { super(x, y, CONFIG.basicMeleeMonster, waveNumber); }
-    drawShape(ctx) {
-        ctx.beginPath();
-        const spikes = 6; const outerRadius = this.radius; const innerRadius = this.radius * 0.7;
-        for (let i = 0; i < spikes * 2; i++) {
-            const radius = (i % 2 === 0) ? outerRadius : innerRadius;
-            const angle = (i / (spikes * 2)) * Math.PI * 2 - Math.PI / 2;
-            const xPos = this.pos.x + Math.cos(angle) * radius;
-            const yPos = this.pos.y + Math.sin(angle) * radius;
-            if (i === 0) { ctx.moveTo(xPos, yPos); } else { ctx.lineTo(xPos, yPos); }
-        }
-        ctx.closePath(); ctx.fill();
-    }
 }
 class FastMeleeMonster extends Monster {
     constructor(x, y, waveNumber) { super(x, y, CONFIG.fastMeleeMonster, waveNumber); }
-    drawShape(ctx) {
-        ctx.beginPath();
-        const arrowSize = this.radius * 1.2;
-        ctx.moveTo(this.pos.x + arrowSize * 0.5, this.pos.y);
-        ctx.lineTo(this.pos.x - arrowSize * 0.5, this.pos.y - arrowSize * 0.4);
-        ctx.lineTo(this.pos.x - arrowSize * 0.2, this.pos.y);
-        ctx.lineTo(this.pos.x - arrowSize * 0.5, this.pos.y + arrowSize * 0.4);
-        ctx.closePath(); ctx.fill();
-    }
 }
 class ArmoredMeleeMonster extends Monster {
     constructor(x, y, waveNumber) { super(x, y, CONFIG.armoredMeleeMonster, waveNumber); }
-    drawShape(ctx) {
-        ctx.beginPath();
-        const shieldWidth = this.radius * 1.4; const shieldHeight = this.radius * 1.4;
-        const topY = this.pos.y - shieldHeight / 2; const bottomY = this.pos.y + shieldHeight / 2;
-        const midX = this.pos.x; const sideX = shieldWidth / 2;
-        ctx.moveTo(midX - sideX, topY); ctx.lineTo(midX + sideX, topY);
-        ctx.lineTo(midX + sideX, bottomY * 0.9); ctx.lineTo(midX, bottomY);
-        ctx.lineTo(midX - sideX, bottomY * 0.9);
-        ctx.closePath(); ctx.fill();
-    }
 }
 
 function getMonsterCountForWave(wave) { return 5 + wave * 3; }
@@ -1220,14 +1193,13 @@ function tryUpgrade(type) {
 
 
 function handleCanvasPointerDown(event) {
-    if (gameState.isPaused || inputState.isPointerDown) return; // Prevent multiple pointers controlling movement
-    // Only handle if the event target is the canvas itself
+    if (gameState.isPaused || inputState.isPointerDown) return;
     if (event.target !== canvas) return;
 
-    event.preventDefault(); // Prevent default actions like scrolling ONLY for canvas interaction
+    event.preventDefault();
     inputState.isPointerDown = true;
-    inputState.pointerId = event.pointerId; // Track the specific pointer
-    canvas.setPointerCapture(event.pointerId); // Capture the pointer
+    inputState.pointerId = event.pointerId;
+    canvas.setPointerCapture(event.pointerId);
 
     const pos = getPointerPosition(event);
     inputState.pointerStartPos = pos;
@@ -1237,9 +1209,8 @@ function handleCanvasPointerDown(event) {
 
 function handleCanvasPointerMove(event) {
     if (gameState.isPaused || !inputState.isPointerDown || event.pointerId !== inputState.pointerId) return;
-    if (event.target !== canvas) return; // Ensure move is still over canvas if needed, though capture helps
+    if (event.target !== canvas) return;
 
-    // event.preventDefault(); // Usually not needed for move if down prevented scroll
 
     const pos = getPointerPosition(event);
     inputState.pointerCurrentPos = pos;
@@ -1255,11 +1226,10 @@ function handleCanvasPointerMove(event) {
 function handleCanvasPointerUp(event) {
     if (!inputState.isPointerDown || event.pointerId !== inputState.pointerId) return;
 
-    // event.preventDefault(); // Usually not needed for up
 
     inputState.isPointerDown = false;
     inputState.movementVector = { x: 0, y: 0 };
-    canvas.releasePointerCapture(event.pointerId); // Release the captured pointer
+    canvas.releasePointerCapture(event.pointerId);
     inputState.pointerId = null;
 }
 
@@ -1281,14 +1251,14 @@ function startHoldSummon(type) {
     holdSummonState.type = type;
     holdSummonState.pointerDownTime = performance.now();
 
-    stopHoldSummonInternal(); // Clear any previous timers
+    stopHoldSummonInternal();
 
     holdSummonState.timeoutId = setTimeout(() => {
         if (!holdSummonState.isHolding || holdSummonState.type !== type) return;
 
-        const success = trySummon(type); // Try first summon after delay
+        const success = trySummon(type);
 
-        if (success) { // Only start repeating if the first one worked
+        if (success) {
              holdSummonState.intervalId = setInterval(() => {
                 if (!holdSummonState.isHolding || holdSummonState.type !== type) {
                     stopHoldSummonInternal();
@@ -1296,12 +1266,11 @@ function startHoldSummon(type) {
                 }
                 const continuedSuccess = trySummon(type);
                 if (!continuedSuccess) {
-                     stopHoldSummonInternal(); // Stop repeating if souls run out
+                     stopHoldSummonInternal();
                 }
             }, CONFIG.summoning.repeatInterval);
         } else {
-            // If first attempt failed (e.g. no souls), don't start interval
-             holdSummonState.isHolding = false; // Reset holding state
+             holdSummonState.isHolding = false;
              holdSummonState.type = null;
         }
 
@@ -1309,24 +1278,19 @@ function startHoldSummon(type) {
 }
 
 function stopHoldSummon(eventTriggeredType = null) {
-    // Check if we are actually holding and if the event type matches the button type
     if (holdSummonState.isHolding && holdSummonState.type === eventTriggeredType) {
 
         const holdDuration = performance.now() - holdSummonState.pointerDownTime;
 
-        // If released *before* the hold delay timeout triggered, treat as a single tap/click
         if (holdSummonState.timeoutId && holdDuration < CONFIG.summoning.holdDelay) {
-             trySummon(holdSummonState.type); // Attempt single summon
+             trySummon(holdSummonState.type);
         }
 
-        // Always clear timers and reset state when pointer interaction ends
         stopHoldSummonInternal();
         holdSummonState.isHolding = false;
         holdSummonState.type = null;
         holdSummonState.pointerDownTime = 0;
     } else if (!eventTriggeredType && holdSummonState.isHolding) {
-         // If called without type (e.g., general pointer up/leave outside button),
-         // just clear timers and reset state
          stopHoldSummonInternal();
          holdSummonState.isHolding = false;
          holdSummonState.type = null;
@@ -1411,20 +1375,19 @@ function updateUI() {
     updateUnitUI('Wraith');
 
     uiElements.pauseResumeBtn.textContent = gameState.isPaused ? '繼續' : '暫停';
-    uiElements.pauseResumeBtn.disabled = gameState.gameOver; // Disable pause when game over
+    uiElements.pauseResumeBtn.disabled = gameState.gameOver;
 }
 
 function setButtonState(button, canUse) {
     button.disabled = !canUse;
-    if (canUse && button.innerHTML.includes('魂')) { // Only add 'can-afford' to soul cost buttons
-        // Re-check soul cost specifically for styling
+    if (canUse && button.innerHTML.includes('魂')) {
         const costMatch = button.innerHTML.match(/\((\d+)魂\)/);
         const cost = costMatch ? parseInt(costMatch[1], 10) : 0;
         if (gameState.souls >= cost) {
              button.classList.add('can-afford');
         } else {
              button.classList.remove('can-afford');
-             button.disabled = true; // Ensure disabled if cannot afford, even if game isn't paused/over
+             button.disabled = true;
         }
     } else {
         button.classList.remove('can-afford');
@@ -1436,7 +1399,7 @@ function showGameOver() {
         uiElements.finalWaveText.textContent = `您存活了 ${gameState.currentWave} 波.`;
         uiElements.gameOverScreen.style.display = 'flex';
         localStorage.removeItem(SAVE_KEY);
-        updateUI(); // Update button states to disabled
+        updateUI();
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = null;
@@ -1444,8 +1407,8 @@ function showGameOver() {
     }
 }
 
-const SAVE_KEY = 'necromancerGameState_v11';
-const SAVE_VERSION = 11;
+const SAVE_KEY = 'necromancerGameState_v13_img_no_extra';
+const SAVE_VERSION = 13;
 
 function saveGameState() {
     if (!gameState.player || gameState.gameOver || gameState.isPaused) return;
@@ -1500,7 +1463,6 @@ function loadGameState() {
         gameState.currentCosts = loadedState.currentCosts ?? { ...CONFIG.upgradeCosts };
 
         gameState.skeletonWarriorLevel = loadedState.skeletonWarriorLevel ?? 0;
-        // Fix typo from original code analysis
         gameState.eyeMonsterLevel = loadedState.eyeMonsterLevel ?? 0;
         gameState.wraithLevel = loadedState.wraithLevel ?? 0;
         gameState.skeletonWarriorCount = loadedState.skeletonWarriorCount ?? 0;
@@ -1512,6 +1474,7 @@ function loadGameState() {
         gameState.player.currentHealth = loadedState.playerCurrentHealth ?? gameState.player.maxHealth;
         gameState.player.maxHealth = Math.max(CONFIG.player.baseHealth, Math.round(gameState.player.maxHealth));
         gameState.player.currentHealth = Math.min(gameState.player.maxHealth, Math.max(0, Math.round(gameState.player.currentHealth)));
+
 
         console.log("遊戲狀態已從 localStorage 載入 (版本相符)");
         showMessage("讀取存檔成功", 1500);
@@ -1540,6 +1503,7 @@ function restoreSummonsFromLoad() {
         const summon = new Wraith(spawnPos.x, spawnPos.y, gameState.wraithLevel, gameState.player);
         gameState.summons.push(summon);
     }
+     console.log(`Restored ${gameState.summons.length} summons from loaded counts.`);
 }
 
 function resetGameInternalState() {
@@ -1564,25 +1528,28 @@ function resetGameInternalState() {
             eyeMonster: CONFIG.eyeMonster.upgradeCostBase,
             wraith: CONFIG.wraith.upgradeCostBase,
         },
+         imagesLoaded: gameState.imagesLoaded,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
 
 function resetGame() {
+    console.log("Resetting game...");
     localStorage.removeItem(SAVE_KEY);
     resetGameInternalState();
     gameState.player = new Player(canvas.width / 2, canvas.height / 2);
     uiElements.gameOverScreen.style.display = 'none';
     gameState.isPaused = false;
+    gameState.betweenWaves = true;
+    gameState.currentWave = 0;
+    gameState.timeToNextWave = CONFIG.wave.betweenTime;
     updateUI();
-    if (animationFrameId === null) {
-        gameState.lastTime = performance.now();
-        animationFrameId = requestAnimationFrame(gameLoop);
-    }
+    startGameLoop();
 }
 
+
 function togglePause() {
-    if (gameState.gameOver) return; // Don't allow pause/resume if game is over
+    if (gameState.gameOver) return;
 
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
@@ -1591,41 +1558,24 @@ function togglePause() {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = null;
         }
-        stopHoldSummon(); // Stop hold if paused mid-hold
+        stopHoldSummon();
 
+        drawGame();
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "white";
         ctx.font = "30px sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("已暫停", canvas.width / 2, canvas.height / 2);
+
     } else {
         uiElements.pauseResumeBtn.textContent = '暫停';
-        if (animationFrameId === null) {
-            gameState.lastTime = performance.now();
-            animationFrameId = requestAnimationFrame(gameLoop);
-        }
+        startGameLoop();
     }
-    updateUI(); // Update button states based on pause
+    updateUI();
 }
 
-let animationFrameId = null;
-function gameLoop(currentTime) {
-    if (gameState.gameOver) {
-        showGameOver();
-        animationFrameId = null;
-        return;
-    }
-
-    if (gameState.isPaused) {
-        animationFrameId = null;
-        return;
-    }
-
-    let deltaTime = (currentTime - gameState.lastTime) / 1000;
-    deltaTime = Math.min(deltaTime, 0.1);
-    gameState.lastTime = currentTime;
-
+function updateGame(deltaTime) {
     updateTimers(deltaTime);
 
     const wraiths = gameState.summons.filter(s => s.isAlive && s.config.type === 'Wraith');
@@ -1644,41 +1594,79 @@ function gameLoop(currentTime) {
     gameState.visualEffects = gameState.visualEffects.filter(e => e.isAlive);
 
     checkWaveEndCondition();
+}
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawGame() {
+     ctx.fillStyle = '#333';
+     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    gameState.summons.forEach(s => { if (s.config.type === 'Wraith' && s.isAlive) s.drawAura(ctx); });
+    gameState.summons.forEach(s => { if (s.isAlive && s.config.type === 'Wraith' && s.drawAura) s.drawAura(ctx); });
+
     gameState.monsters.forEach(m => m.draw(ctx));
     gameState.summons.forEach(s => s.draw(ctx));
     gameState.projectiles.forEach(p => p.draw(ctx));
     if (gameState.player) gameState.player.draw(ctx);
-    gameState.visualEffects.forEach(e => e.draw(ctx));
 
+    gameState.visualEffects.forEach(e => e.draw(ctx));
+}
+
+
+let animationFrameId = null;
+function gameLoop(currentTime) {
+    if (!gameState.imagesLoaded) {
+         ctx.fillStyle = '#222';
+         ctx.fillRect(0,0, canvas.width, canvas.height);
+         ctx.fillStyle = 'white';
+         ctx.textAlign = 'center';
+         ctx.fillText("Loading Images...", canvas.width / 2, canvas.height / 2);
+         animationFrameId = requestAnimationFrame(gameLoop);
+        return;
+    }
+
+    if (gameState.gameOver) {
+        showGameOver();
+        animationFrameId = null;
+        return;
+    }
+
+    if (gameState.isPaused) {
+        animationFrameId = null;
+        return;
+    }
+
+    let deltaTime = (currentTime - gameState.lastTime) / 1000;
+    deltaTime = Math.min(deltaTime, 0.1);
+    gameState.lastTime = currentTime;
+
+    updateGame(deltaTime);
+    drawGame();
     updateUI();
 
-    if (!gameState.isPaused && !gameState.gameOver) {
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function startGameLoop() {
+    if (animationFrameId === null && !gameState.isPaused && !gameState.gameOver) {
+        console.log("Starting game loop...");
+        gameState.lastTime = performance.now();
         animationFrameId = requestAnimationFrame(gameLoop);
-    } else {
-        animationFrameId = null;
     }
 }
 
-function init() {
-    console.log("Initializing Game with Pointer Events...");
 
-    // Canvas Pointer Listeners for Movement
+function init() {
+    console.log("Initializing Game with Images (Reduced)...");
+
     canvas.addEventListener('pointerdown', handleCanvasPointerDown);
     canvas.addEventListener('pointermove', handleCanvasPointerMove);
     canvas.addEventListener('pointerup', handleCanvasPointerUp);
-    canvas.addEventListener('pointercancel', handleCanvasPointerUp); // Treat cancel like up
-    canvas.addEventListener('pointerleave', handleCanvasPointerUp); // Stop if pointer leaves canvas bounds
+    canvas.addEventListener('pointercancel', handleCanvasPointerUp);
+    canvas.addEventListener('pointerleave', handleCanvasPointerUp);
 
-    // Upgrade Button Click Listeners (simple click is fine)
     uiElements.upgradeSkeletonBtn.addEventListener('click', () => tryUpgrade('SkeletonWarrior'));
     uiElements.upgradeEyeMonsterBtn.addEventListener('click', () => tryUpgrade('EyeMonster'));
     uiElements.upgradeWraithBtn.addEventListener('click', () => tryUpgrade('Wraith'));
 
-    // Summon Button Pointer Listeners for Tap/Hold
     const summonButtons = [
         { btn: uiElements.summonSkeletonBtn, type: 'SkeletonWarrior' },
         { btn: uiElements.summonEyeMonsterBtn, type: 'EyeMonster' },
@@ -1686,66 +1674,64 @@ function init() {
     ];
 
     summonButtons.forEach(({ btn, type }) => {
-        // Use pointer events for consistent tap/hold across devices
         btn.addEventListener('pointerdown', (e) => {
-            e.preventDefault(); // Prevent text selection, etc. on button
-            btn.setPointerCapture(e.pointerId); // Capture pointer for this button
+            e.preventDefault();
+            btn.setPointerCapture(e.pointerId);
             startHoldSummon(type);
         });
         btn.addEventListener('pointerup', (e) => {
-            // Pass type to ensure correct hold state is stopped
             stopHoldSummon(type);
-            btn.releasePointerCapture(e.pointerId); // Release capture
+            btn.releasePointerCapture(e.pointerId);
         });
-        // Stop hold if pointer leaves the button area while down
         btn.addEventListener('pointerleave', (e) => {
-            // Only stop if currently holding THIS button type
             if (holdSummonState.isHolding && holdSummonState.type === type) {
                  stopHoldSummon(type);
-                 btn.releasePointerCapture(e.pointerId);
+                 try { btn.releasePointerCapture(e.pointerId); } catch(err) {}
             }
         });
-         // Treat cancel like up/leave
          btn.addEventListener('pointercancel', (e) => {
              if (holdSummonState.isHolding && holdSummonState.type === type) {
                  stopHoldSummon(type);
-                 btn.releasePointerCapture(e.pointerId);
+                 try { btn.releasePointerCapture(e.pointerId); } catch(err) {}
              }
          });
 
     });
 
-    // Other UI Listeners
     uiElements.restartButton.addEventListener('click', resetGame);
     uiElements.pauseResumeBtn.addEventListener('click', togglePause);
 
-    // Load or Start New Game
-    if (loadGameState()) {
-        restoreSummonsFromLoad();
-        updateUI();
-        if (gameState.isPaused) {
-            uiElements.pauseResumeBtn.textContent = '繼續';
-            // Draw initial paused state
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            gameState.summons.forEach(s => { if (s.config.type === 'Wraith' && s.isAlive) s.drawAura(ctx); });
-            gameState.monsters.forEach(m => m.draw(ctx));
-            gameState.summons.forEach(s => s.draw(ctx));
-            gameState.projectiles.forEach(p => p.draw(ctx));
-            gameState.visualEffects.forEach(e => e.draw(ctx));
-            if (gameState.player) gameState.player.draw(ctx);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "white"; ctx.font = "30px sans-serif"; ctx.textAlign = "center";
-            ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
-            animationFrameId = null;
-        } else {
-            gameState.lastTime = performance.now();
-            if (animationFrameId === null) {
-                animationFrameId = requestAnimationFrame(gameLoop);
+    loadAllImages().then(() => {
+        console.log("Image loading promise resolved. Proceeding with game setup.");
+        if (loadGameState()) {
+            restoreSummonsFromLoad();
+            updateUI();
+            if (gameState.isPaused) {
+                togglePause();
+                togglePause();
+                drawGame();
+                ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white"; ctx.font = "30px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
+            } else {
+                startGameLoop();
             }
+        } else {
+            resetGame();
         }
-    } else {
-        resetGame();
-    }
+    }).catch(err => {
+        console.error("Image loading failed catastrophically. Game cannot start properly.", err);
+         ctx.fillStyle = '#AF0000';
+         ctx.fillRect(0,0, canvas.width, canvas.height);
+         ctx.fillStyle = 'white';
+         ctx.textAlign = 'center';
+         ctx.font = '16px sans-serif';
+         ctx.fillText("錯誤：圖片載入失敗，請檢查檔案並重新整理。", canvas.width / 2, canvas.height / 2);
+    });
+
+    requestAnimationFrame(gameLoop);
+
 }
 
 init();
+// --- END OF FILE game.js ---
