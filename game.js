@@ -1,4 +1,3 @@
-// --- START OF FILE game.js ---
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -33,11 +32,11 @@ const CONFIG = {
     player: {
         baseHealth: 50, baseMoveSpeed: 90, radius: 12, color: '#03A9F4',
         imageName: 'player', imgScaleMultiplier: 2.8,
-        initialSouls: 5,
+        initialSouls: 15,
         avoidanceRadius: 15,
     },
     skeletonWarrior: {
-        type: 'SkeletonWarrior', baseHealth: 25, baseAttack: 5, radius: 10,
+        type: 'SkeletonWarrior', baseHealth: 30, baseAttack: 5, radius: 10,
         imageName: 'skeleton_warrior', imgScaleMultiplier: 2.8,
         attackRange: 25, attackSpeed: 1.0, moveSpeed: 80, color: '#FFFFFF',
         upgradeBonus: 0.10,
@@ -1730,4 +1729,3 @@ function init() {
 }
 
 init();
-// --- END OF FILE game.js ---

@@ -8,28 +8,32 @@
     <link rel="icon" type="image/png" href="favicon.png">
     <meta name="description" content="體驗黑暗奇幻生存！《亡靈狂潮》讓你扮演死靈法師，召喚不死生物對抗怪物潮。收集靈魂、強化僕從，挑戰你的生存極限！">
     <style>
+        html,
         body {
+            height: 100%;
             margin: 0;
+            padding: 0;
             overflow: hidden;
-            background-color: #212121;
+        }
+
+        body {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            background-color: #212121;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: white;
-            height: 100vh;
-            justify-content: center;
+            height: 100%;
         }
 
         #ui-container {
             width: 100%;
             max-width: 600px;
+            margin: 0 auto;
             padding: 5px;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            flex-grow: 1;
-            max-height: 100%;
+            height: 100%;
         }
 
         #gameCanvas {
@@ -39,8 +43,9 @@
             width: 100%;
             height: auto;
             aspect-ratio: 600 / 400;
-            max-height: 55vh;
             display: block;
+            flex-shrink: 1;
+            min-height: 0;
         }
 
         #top-ui {
@@ -77,6 +82,8 @@
         }
 
         #pause-container {
+            text-align: center;
+            padding: 8px 0;
             flex-shrink: 0;
         }
 
@@ -97,6 +104,7 @@
             flex-grow: 1;
             overflow-y: auto;
             align-items: stretch;
+            min-height: 0;
         }
 
         .bottom-column {
@@ -260,7 +268,7 @@
         </div>
         <canvas id="gameCanvas" width="600" height="400"></canvas>
 
-        <div id="pause-container" style="text-align: center; padding: 8px 0;">
+        <div id="pause-container">
             <button id="pause-resume-btn">暫停</button>
         </div>
 
