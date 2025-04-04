@@ -33,7 +33,7 @@ const CONFIG = {
     player: {
         baseHealth: 50, baseMoveSpeed: 90, radius: 12, color: '#03A9F4',
         imageName: 'player', imgScaleMultiplier: 2.8,
-        initialSouls: 15,
+        initialSouls: 5,
         avoidanceRadius: 15,
     },
     skeletonWarrior: {
@@ -95,30 +95,28 @@ const CONFIG = {
         auraColor: '#4DB6AC',
     },
     basicMeleeMonster: {
-        type: 'BasicMelee', baseHealth: 12, baseAttack: 3, radius: 12,
+        type: 'BasicMelee', baseHealth: 12, baseAttack: 5, radius: 12,
         imageName: 'basic_melee', imgScaleMultiplier: 2.6,
         attackRange: 20, attackSpeed: 1.0, moveSpeed: 50, color: '#EF5350',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
     },
     fastMeleeMonster: {
-        type: 'FastMelee', baseHealth: 8, baseAttack: 2, radius: 10,
+        type: 'FastMelee', baseHealth: 36, baseAttack: 9, radius: 11,
         imageName: 'fast_melee', imgScaleMultiplier: 2.6,
         attackRange: 18, attackSpeed: 1.2, moveSpeed: 95, color: '#FF7043',
-        soulDrop: 1, waveSpeedIncreaseFactor: 0.012,
+        soulDrop: 3, waveSpeedIncreaseFactor: 0.012,
+        minWave: 10, waveInterval: 3,
     },
     armoredMeleeMonster: {
-        type: 'ArmoredMelee', baseHealth: 35, baseAttack: 4, radius: 14,
+        type: 'ArmoredMelee', baseHealth: 120, baseAttack: 30, radius: 15,
         imageName: 'armored_melee', imgScaleMultiplier: 2.7,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 30, color: '#B71C1C',
-        soulDrop: 2, waveSpeedIncreaseFactor: 0.008,
+        soulDrop: 4, waveSpeedIncreaseFactor: 0.008,
+        minWave: 20, waveInterval: 5,
     },
     wave: {
         baseTime: 30, betweenTime: 5, monsterScaleInterval: 5, monsterScaleFactor: 0.10,
-        spawnChanceBasic: 0.60,
-        spawnChanceFast: 0.25,
-        spawnChanceArmored: 0.15,
-        fastMonsterMinWave: 3,
-        armoredMonsterMinWave: 5,
+        basicMonsterBaseCount: 1, basicMonsterIncrement: 1,
     },
     visuals: {
         slashEffectDuration: 0.15,
@@ -151,7 +149,6 @@ let gameState = {
     visualEffects: [],
     souls: CONFIG.player.initialSouls,
     currentWave: 0,
-    monstersToSpawnThisWave: 0, monstersSpawnedThisWave: 0,
     timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
     gameOver: false, lastTime: 0, messageTimeout: null,
     isPaused: false,
@@ -796,8 +793,8 @@ class Wraith extends SummonUnit {
         if (!this.isAlive || !this.config.auraColor) return;
         const gradient = ctx.createRadialGradient(this.pos.x, this.pos.y, this.radius * 0.5, this.pos.x, this.pos.y, this.slowRadius);
         gradient.addColorStop(0, this.config.auraColor + '00');
-        gradient.addColorStop(0.8, this.config.auraColor + '2A');
-        gradient.addColorStop(1, this.config.auraColor + '0A');
+        gradient.addColorStop(0.8, this.config.auraColor + '1A');
+        gradient.addColorStop(1, this.config.auraColor + '05');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -940,8 +937,12 @@ class Monster extends GameObject {
         this.attackRange = this.config.attackRange;
         this.attackRangeSq = this.attackRange * this.attackRange;
         this.attackSpeed = this.config.attackSpeed;
+
         const speedIncreaseFactor = this.config.waveSpeedIncreaseFactor || 0;
-        this.baseMoveSpeed = this.config.moveSpeed * (1 + (wave * speedIncreaseFactor));
+        const speedMultiplierCap = 2.0;
+        const waveSpeedMultiplier = Math.min(speedMultiplierCap, 1 + (wave * speedIncreaseFactor));
+        this.baseMoveSpeed = this.config.moveSpeed * waveSpeedMultiplier;
+
         this.moveSpeed = this.baseMoveSpeed * this.speedMultiplier;
         this.maxHealth = Math.round(this.maxHealth);
     }
@@ -1056,36 +1057,40 @@ class ArmoredMeleeMonster extends Monster {
     constructor(x, y, waveNumber) { super(x, y, CONFIG.armoredMeleeMonster, waveNumber); }
 }
 
-function getMonsterCountForWave(wave) { return 5 + wave * 3; }
-
 function prepareNextWave() {
     gameState.currentWave++;
     gameState.betweenWaves = false;
-    gameState.monstersToSpawnThisWave = getMonsterCountForWave(gameState.currentWave);
-    gameState.monstersSpawnedThisWave = 0;
     gameState.monsters = [];
     gameState.projectiles = [];
     gameState.visualEffects = [];
 
-    for (let i = 0; i < gameState.monstersToSpawnThisWave; i++) {
-        const spawnPos = getRandomPositionOutsideCanvas();
-        let monster; const waveNum = gameState.currentWave; const rand = Math.random();
-        let cumulativeChance = 0; let spawned = false;
+    const waveNum = gameState.currentWave;
 
-        cumulativeChance += CONFIG.wave.spawnChanceArmored;
-        if (!spawned && waveNum >= CONFIG.wave.armoredMonsterMinWave && rand < cumulativeChance) {
-            monster = new ArmoredMeleeMonster(spawnPos.x, spawnPos.y, waveNum); spawned = true;
-        }
-        cumulativeChance += CONFIG.wave.spawnChanceFast;
-        if (!spawned && waveNum >= CONFIG.wave.fastMonsterMinWave && rand < cumulativeChance) {
-            monster = new FastMeleeMonster(spawnPos.x, spawnPos.y, waveNum); spawned = true;
-        }
-        if (!spawned) {
-            monster = new BasicMeleeMonster(spawnPos.x, spawnPos.y, waveNum);
-        }
-        gameState.monsters.push(monster);
-        gameState.monstersSpawnedThisWave++;
+    const basicCount = CONFIG.wave.basicMonsterBaseCount + (waveNum - 1) * CONFIG.wave.basicMonsterIncrement;
+    for (let i = 0; i < basicCount; i++) {
+        const spawnPos = getRandomPositionOutsideCanvas();
+        gameState.monsters.push(new BasicMeleeMonster(spawnPos.x, spawnPos.y, waveNum));
     }
+
+    const fastConfig = CONFIG.fastMeleeMonster;
+    if (waveNum >= fastConfig.minWave) {
+        const fastCount = 1 + Math.floor((waveNum - fastConfig.minWave) / fastConfig.waveInterval);
+        for (let i = 0; i < fastCount; i++) {
+            const spawnPos = getRandomPositionOutsideCanvas();
+            gameState.monsters.push(new FastMeleeMonster(spawnPos.x, spawnPos.y, waveNum));
+        }
+    }
+
+    const armoredConfig = CONFIG.armoredMeleeMonster;
+    if (waveNum >= armoredConfig.minWave) {
+        const armoredCount = 1 + Math.floor((waveNum - armoredConfig.minWave) / armoredConfig.waveInterval);
+        for (let i = 0; i < armoredCount; i++) {
+            const spawnPos = getRandomPositionOutsideCanvas();
+            gameState.monsters.push(new ArmoredMeleeMonster(spawnPos.x, spawnPos.y, waveNum));
+        }
+    }
+
+    console.log(`Wave ${waveNum}: Spawning ${basicCount} Basic, ${waveNum >= fastConfig.minWave ? (1 + Math.floor((waveNum - fastConfig.minWave) / fastConfig.waveInterval)) : 0} Fast, ${waveNum >= armoredConfig.minWave ? (1 + Math.floor((waveNum - armoredConfig.minWave) / armoredConfig.waveInterval)) : 0} Armored`);
     updateUI();
 }
 
@@ -1399,8 +1404,8 @@ function showGameOver() {
     }
 }
 
-const SAVE_KEY = 'necromancerGameState_v13_img_no_extra';
-const SAVE_VERSION = 13;
+const SAVE_KEY = 'necromancerGameState_v14_monster_rework';
+const SAVE_VERSION = 14;
 
 function saveGameState() {
     if (!gameState.player || gameState.gameOver || gameState.isPaused) return;
@@ -1508,7 +1513,6 @@ function resetGameInternalState() {
         summons: [], monsters: [], projectiles: [], visualEffects: [],
         souls: CONFIG.player.initialSouls,
         currentWave: 0,
-        monstersToSpawnThisWave: 0, monstersSpawnedThisWave: 0,
         timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
         gameOver: false, isPaused: false,
         lastTime: performance.now(),
