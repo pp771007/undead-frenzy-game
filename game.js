@@ -1,4 +1,3 @@
-
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 600;
@@ -92,6 +91,7 @@ const CONFIG = {
         wanderRadius: 35, wanderSpeedFactor: 0.25, wanderIntervalMin: 2.0, wanderIntervalMax: 4.0,
         buffRadiusProperty: 'slowRadius',
         auraColor: '#4DB6AC',
+        explosionBaseDamage: 45,
     },
     basicMeleeMonster: {
         type: 'BasicMelee', baseHealth: 12, baseAttack: 5, radius: 12,
@@ -123,6 +123,8 @@ const CONFIG = {
         slashEffectWidth: 2,
         slashEffectArcRadius: 15,
         slashEffectArcAngle: Math.PI / 3,
+        explosionEffectDuration: 0.35,
+        explosionEffectColor: 'rgba(255, 165, 0, 0.8)',
     },
     summoning: {
         holdDelay: 350,
@@ -748,6 +750,7 @@ class SummonUnit extends GameObject {
     }
 
     die() {
+        if (!this.isAlive) return;
         this.isAlive = false;
         switch (this.config.type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount--; break;
@@ -807,6 +810,27 @@ class Wraith extends SummonUnit {
     }
 
     attackTarget() { }
+
+    die() {
+        if (!this.isAlive) return;
+
+        const explosionDamageMultiplier = 1 + (this.level * this.config.upgradeBonus);
+        const explosionDamage = Math.round(CONFIG.wraith.explosionBaseDamage * explosionDamageMultiplier);
+        const explosionRadiusSq = this.slowRadiusSq;
+
+        gameState.monsters.forEach(monster => {
+            if (monster.isAlive && distanceSq(this.pos, monster.pos) <= explosionRadiusSq) {
+                monster.takeDamage(explosionDamage);
+            }
+        });
+
+        const effect = new ExplosionEffect(this.pos, this.slowRadius);
+        gameState.visualEffects.push(effect);
+
+        this.isAlive = false;
+        gameState.wraithCount--;
+        updateUI();
+    }
 }
 
 class Projectile {
@@ -910,6 +934,34 @@ class SlashEffect extends TimedEffect {
         ctx.lineWidth = CONFIG.visuals.slashEffectWidth;
         ctx.beginPath();
         ctx.arc(this.arcCenterX, this.arcCenterY, CONFIG.visuals.slashEffectArcRadius, startAngle, endAngle);
+        ctx.stroke();
+    }
+}
+
+class ExplosionEffect extends TimedEffect {
+    constructor(pos, radius) {
+        super(pos, CONFIG.visuals.explosionEffectDuration);
+        this.maxRadius = radius;
+    }
+
+    draw(ctx) {
+        if (!this.isAlive) return;
+        const progress = 1 - (this.life / this.duration);
+        const currentRadius = this.maxRadius * progress;
+        const alpha = 1 - progress;
+
+        let rgbaColor = CONFIG.visuals.explosionEffectColor;
+        try {
+            const colorParts = rgbaColor.match(/\d+(\.\d+)?/g);
+            if (colorParts && colorParts.length >= 3) {
+                rgbaColor = `rgba(${colorParts[0]}, ${colorParts[1]}, ${colorParts[2]}, ${alpha.toFixed(2)})`;
+            } else { rgbaColor = `rgba(255, 165, 0, ${alpha.toFixed(2)})`; }
+        } catch (e) { rgbaColor = `rgba(255, 165, 0, ${alpha.toFixed(2)})`; }
+
+        ctx.strokeStyle = rgbaColor;
+        ctx.lineWidth = 3 + 4 * (1 - progress); // Thicker at start
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, currentRadius, 0, Math.PI * 2);
         ctx.stroke();
     }
 }
