@@ -43,7 +43,7 @@ const CONFIG = {
         upgradeCostBase: 10,
         upgradeCostInc: 5,
         targetSearchRadius: 150, returnDistance: 50,
-        avoidanceRadius: 18, avoidanceForce: 80,
+        avoidanceRadius: 18, avoidanceForce: 120,
         playerAvoidanceForce: 60,
         wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.5, wanderIntervalMax: 3.0,
         wraithBuffMoveSpeedMultiplier: 2.0,
@@ -59,7 +59,7 @@ const CONFIG = {
         upgradeCostBase: 15,
         upgradeCostInc: 8,
         targetSearchRadius: 180, returnDistance: 30,
-        avoidanceRadius: 16, avoidanceForce: 70,
+        avoidanceRadius: 16, avoidanceForce: 110,
         playerAvoidanceForce: 50,
         wanderRadius: 15, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.8, wanderIntervalMax: 3.5,
         projectileColor: '#F06292',
@@ -84,7 +84,7 @@ const CONFIG = {
         upgradeCostInc: 10,
         targetSearchRadius: 200, returnDistance: 40,
         avoidanceRadius: 25,
-        avoidanceForce: 100,
+        avoidanceForce: 150,
         wraithAvoidanceMultiplier: 1.5,
         playerAvoidanceForce: 70,
         retreatSpeedFactor: 0.4,
@@ -584,37 +584,40 @@ class SummonUnit extends GameObject {
     }
 
     avoidOverlap(otherSummons, player) {
-        let totalPushX = 0; let totalPushY = 0;
-        let avoidanceRadius = this.config.avoidanceRadius;
-        let avoidanceForce = this.config.avoidanceForce;
-        const isThisWraith = this.config.type === 'Wraith';
+        let totalPushX = 0;
+        let totalPushY = 0;
+        const myAvoidanceRadius = this.config.avoidanceRadius;
+        const myAvoidanceForce = this.config.avoidanceForce;
 
         otherSummons.forEach(other => {
             if (other !== this && other.isAlive) {
-                let currentAvoidanceRadius = Math.max(avoidanceRadius, other.config.avoidanceRadius);
-                let currentAvoidanceForce = avoidanceForce;
-                const isOtherWraith = other.config.type === 'Wraith';
+                let currentAvoidanceRadius = Math.max(myAvoidanceRadius, other.config.avoidanceRadius);
+                let currentAvoidanceForce = Math.max(myAvoidanceForce, other.config.avoidanceForce);
 
+                const isThisWraith = this.config.type === 'Wraith';
+                const isOtherWraith = other.config.type === 'Wraith';
                 if (isThisWraith && isOtherWraith && this.config.wraithAvoidanceMultiplier) {
                     currentAvoidanceRadius *= this.config.wraithAvoidanceMultiplier;
                     currentAvoidanceForce *= this.config.wraithAvoidanceMultiplier;
                 }
-                const currentAvoidanceRadiusSq = currentAvoidanceRadius * currentAvoidanceRadius;
+
+                const combinedAvoidanceRadius = currentAvoidanceRadius;
+                const combinedAvoidanceRadiusSq = combinedAvoidanceRadius * combinedAvoidanceRadius;
 
                 const dSq = distanceSq(this.pos, other.pos);
-                if (dSq < currentAvoidanceRadiusSq && dSq > 0.01) {
+                if (dSq < combinedAvoidanceRadiusSq && dSq > 0.01) {
                     const distance = Math.sqrt(dSq);
                     const pushDirectionX = (this.pos.x - other.pos.x) / distance;
                     const pushDirectionY = (this.pos.y - other.pos.y) / distance;
-                    const pushStrength = (1.0 - (distance / currentAvoidanceRadius)) * (1.0 - (distance / currentAvoidanceRadius));
-                    totalPushX += pushDirectionX * pushStrength * currentAvoidanceForce;
-                    totalPushY += pushDirectionY * pushStrength * currentAvoidanceForce;
+                    const pushStrength = (1.0 - (distance / combinedAvoidanceRadius)) * (1.0 - (distance / combinedAvoidanceRadius));
+                    totalPushX += pushDirectionX * pushStrength * myAvoidanceForce;
+                    totalPushY += pushDirectionY * pushStrength * myAvoidanceForce;
                 }
             }
         });
 
         if (player && player.isAlive && this.config.playerAvoidanceForce) {
-            const combinedAvoidanceRadius = avoidanceRadius + CONFIG.player.avoidanceRadius;
+            const combinedAvoidanceRadius = myAvoidanceRadius + CONFIG.player.avoidanceRadius;
             const playerAvoidanceRadiusSq = combinedAvoidanceRadius * combinedAvoidanceRadius;
             const dSqPlayer = distanceSq(this.pos, player.pos);
 
@@ -638,6 +641,7 @@ class SummonUnit extends GameObject {
 
         return { x: totalPushX, y: totalPushY };
     }
+
 
     findNearestMonster(monsters) {
         let nearestTarget = null;
@@ -794,9 +798,9 @@ class Wraith extends SummonUnit {
     drawAura(ctx) {
         if (!this.isAlive || !this.config.auraColor) return;
         const gradient = ctx.createRadialGradient(this.pos.x, this.pos.y, this.radius * 0.5, this.pos.x, this.pos.y, this.slowRadius);
-        gradient.addColorStop(0, this.config.auraColor + '00');
-        gradient.addColorStop(0.8, this.config.auraColor + '1A');
-        gradient.addColorStop(1, this.config.auraColor + '05');
+        gradient.addColorStop(0, this.config.auraColor + '00'); // Transparent center
+        gradient.addColorStop(0.7, this.config.auraColor + '15'); // ~8% opacity towards edge
+        gradient.addColorStop(1, this.config.auraColor + '02'); // ~1% opacity at the very edge
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -805,8 +809,8 @@ class Wraith extends SummonUnit {
     }
 
     draw(ctx) {
-        this.drawAura(ctx);
-        super.draw(ctx);
+        // Aura is drawn in the main draw loop now, before other units
+        super.draw(ctx); // Draw the wraith itself
     }
 
     attackTarget() { }
@@ -959,7 +963,7 @@ class ExplosionEffect extends TimedEffect {
         } catch (e) { rgbaColor = `rgba(255, 165, 0, ${alpha.toFixed(2)})`; }
 
         ctx.strokeStyle = rgbaColor;
-        ctx.lineWidth = 3 + 4 * (1 - progress); // Thicker at start
+        ctx.lineWidth = 3 + 4 * (1-progress);
         ctx.beginPath();
         ctx.arc(this.pos.x, this.pos.y, currentRadius, 0, Math.PI * 2);
         ctx.stroke();
