@@ -43,7 +43,7 @@ const CONFIG = {
         upgradeCostBase: 10,
         upgradeCostInc: 5,
         targetSearchRadius: 150, returnDistance: 50,
-        avoidanceRadius: 18, avoidanceForce: 130, // Increased
+        avoidanceRadius: 18, avoidanceForce: 130,
         playerAvoidanceForce: 60,
         wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.5, wanderIntervalMax: 3.0,
         wraithBuffMoveSpeedMultiplier: 2.0,
@@ -59,7 +59,7 @@ const CONFIG = {
         upgradeCostBase: 15,
         upgradeCostInc: 8,
         targetSearchRadius: 180, returnDistance: 30,
-        avoidanceRadius: 16, avoidanceForce: 120, // Increased
+        avoidanceRadius: 16, avoidanceForce: 120,
         playerAvoidanceForce: 50,
         wanderRadius: 15, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.8, wanderIntervalMax: 3.5,
         projectileColor: '#F06292',
@@ -84,7 +84,7 @@ const CONFIG = {
         upgradeCostInc: 10,
         targetSearchRadius: 200, returnDistance: 40,
         avoidanceRadius: 25,
-        avoidanceForce: 160, // Increased
+        avoidanceForce: 160,
         wraithAvoidanceMultiplier: 1.5,
         playerAvoidanceForce: 70,
         retreatSpeedFactor: 0.4,
@@ -126,9 +126,9 @@ const CONFIG = {
         explosionEffectDuration: 0.35,
         explosionEffectColor: 'rgba(255, 165, 0, 0.8)',
     },
-    summoning: {
+    holdingButton: { // Changed from summoning
         holdDelay: 350,
-        repeatInterval: 150,
+        repeatInterval: 150, // Can adjust this for upgrades if needed
     }
 };
 
@@ -144,24 +144,22 @@ CONFIG.upgradeCostIncrements = {
     wraith: CONFIG.wraith.upgradeCostInc,
 };
 
-// --- Object Pools ---
 const projectilePool = [];
 const visualEffectPool = [];
-const MAX_POOL_SIZE = 100; // Limit pool size to prevent unbounded growth
+const MAX_POOL_SIZE = 100;
 
 function getProjectileFromPool() {
     if (projectilePool.length > 0) {
         return projectilePool.pop();
     }
-    return new Projectile(0, 0, null, {}, 0); // Create new if pool empty
+    return new Projectile(0, 0, null, {}, 0);
 }
 
 function returnProjectileToPool(projectile) {
     if (projectilePool.length < MAX_POOL_SIZE) {
-        projectile.target = null; // Clear references
+        projectile.target = null;
         projectilePool.push(projectile);
     }
-    // If pool is full, let it be garbage collected
 }
 
 function getVisualEffectFromPool(EffectClass) {
@@ -170,21 +168,17 @@ function getVisualEffectFromPool(EffectClass) {
             return visualEffectPool.splice(i, 1)[0];
         }
     }
-    // Create new if no matching type or pool empty
     if (EffectClass === SlashEffect) return new SlashEffect({x:0,y:0}, {x:0,y:0});
     if (EffectClass === ExplosionEffect) return new ExplosionEffect({x:0,y:0}, 0);
-    return null; // Should not happen if classes are handled
+    return null;
 }
 
 function returnVisualEffectToPool(effect) {
     if (visualEffectPool.length < MAX_POOL_SIZE) {
-        effect.target = null; // Clear references if any
+        effect.target = null;
         visualEffectPool.push(effect);
     }
-     // If pool is full, let it be garbage collected
 }
-// --- End Object Pools ---
-
 
 let gameState = {
     player: null, summons: [], monsters: [],
@@ -201,13 +195,16 @@ let gameState = {
     imagesLoaded: false,
 };
 
-let holdSummonState = {
-    type: null,
+// Renamed for clarity
+let holdActionState = {
+    actionType: null, // 'summon' or 'upgrade'
+    unitType: null, // 'SkeletonWarrior', 'EyeMonster', 'Wraith'
     timeoutId: null,
     intervalId: null,
     isHolding: false,
     pointerDownTime: 0,
 };
+
 
 let inputState = {
     isPointerDown: false, pointerStartPos: { x: 0, y: 0 },
@@ -562,7 +559,6 @@ class SummonUnit extends GameObject {
 
         let finalMove = { x: moveDirection.x * currentMoveSpeed, y: moveDirection.y * currentMoveSpeed };
 
-        // Apply avoidance force, but less impact on intended direction if returning/wandering
         const isActivelyMoving = this.target || this.isRetreatingFromMonster || this.isRetreatingToPlayer;
         if (!isActivelyMoving && (this.isReturning || this.isWandering)) {
              finalMove.x = finalMove.x * 0.5 + avoidanceVector.x;
@@ -584,7 +580,7 @@ class SummonUnit extends GameObject {
         }
 
 
-        if (isIdle && !this.isReturning) { // Don't wander if returning
+        if (isIdle && !this.isReturning) {
             this.wanderTimer -= deltaTime;
             if (this.wanderTimer <= 0) {
                 this.isWandering = true;
@@ -601,8 +597,8 @@ class SummonUnit extends GameObject {
                 if (distToWanderTargetSq > 5 * 5) {
                     const wanderDir = normalizeVector({ x: this.wanderTargetPos.x - this.pos.x, y: this.wanderTargetPos.y - this.pos.y });
                     const wanderSpeed = this.moveSpeed * this.config.wanderSpeedFactor * this.buffedMoveSpeedMultiplier;
-                    const wanderAvoidance = this.avoidOverlap(otherSummons, player); // Apply avoidance while wandering too
-                    const wanderMoveX = (wanderDir.x * wanderSpeed + wanderAvoidance.x * 0.5) * deltaTime; // Less avoidance impact
+                    const wanderAvoidance = this.avoidOverlap(otherSummons, player);
+                    const wanderMoveX = (wanderDir.x * wanderSpeed + wanderAvoidance.x * 0.5) * deltaTime;
                     const wanderMoveY = (wanderDir.y * wanderSpeed + wanderAvoidance.y * 0.5) * deltaTime;
                     this.pos.x += wanderMoveX;
                     this.pos.y += wanderMoveY;
@@ -646,13 +642,11 @@ class SummonUnit extends GameObject {
         otherSummons.forEach(other => {
             if (other !== this && other.isAlive) {
                 let currentAvoidanceRadius = Math.max(myAvoidanceRadius, other.config.avoidanceRadius);
-                // let currentAvoidanceForce = Math.max(myAvoidanceForce, other.config.avoidanceForce); // Use my force
 
                 const isThisWraith = this.config.type === 'Wraith';
                 const isOtherWraith = other.config.type === 'Wraith';
                 if (isThisWraith && isOtherWraith && this.config.wraithAvoidanceMultiplier) {
                     currentAvoidanceRadius *= this.config.wraithAvoidanceMultiplier;
-                    // currentAvoidanceForce *= this.config.wraithAvoidanceMultiplier; // Use my force * multiplier if needed
                 }
 
                 const combinedAvoidanceRadius = currentAvoidanceRadius;
@@ -685,7 +679,7 @@ class SummonUnit extends GameObject {
             }
         }
 
-        const maxAvoidanceSpeed = 180; // Slightly increased cap
+        const maxAvoidanceSpeed = 180;
         const avoidanceMagSq = totalPushX * totalPushX + totalPushY * totalPushY;
         if (avoidanceMagSq > maxAvoidanceSpeed * maxAvoidanceSpeed) {
             const scale = maxAvoidanceSpeed / Math.sqrt(avoidanceMagSq);
@@ -830,7 +824,7 @@ class SummonUnit extends GameObject {
             case 'EyeMonster': gameState.eyeMonsterCount--; break;
             case 'Wraith': /* Handled in Wraith.die() */ break;
         }
-         if (this.config.type !== 'Wraith') { // Wraith handles its own count update in its die method
+         if (this.config.type !== 'Wraith') {
              updateUI();
          }
     }
@@ -907,15 +901,15 @@ class Wraith extends SummonUnit {
             gameState.visualEffects.push(effect);
         }
 
-        this.isAlive = false; // Set dead before count update
+        this.isAlive = false;
         gameState.wraithCount--;
-        updateUI(); // Update UI after count change
+        updateUI();
     }
 }
 
 class Projectile {
     constructor(startX, startY, target, shooterConfig, damage) {
-         this.init(startX, startY, target, shooterConfig, damage); // Use init in constructor too
+         this.init(startX, startY, target, shooterConfig, damage);
     }
 
     init(startX, startY, target, shooterConfig, damage) {
@@ -923,13 +917,12 @@ class Projectile {
         this.radius = shooterConfig.projectileRadius;
         this.color = shooterConfig.projectileColor;
         this.isAlive = true;
-        this.id = `proj_${Date.now()}_${Math.random()}`; // ID might not be needed with pooling
         this.target = target;
         this.speed = shooterConfig.projectileSpeed;
         this.damage = damage;
-        this.targetPos = target ? { ...target.pos } : {x: 0, y: 0}; // Handle null target on init
+        this.targetPos = target ? { ...target.pos } : {x: 0, y: 0};
         this.direction = target ? normalizeVector({ x: this.targetPos.x - startX, y: this.targetPos.y - startY }) : {x: 0, y: 0};
-        return this; // Return this for chaining if needed
+        return this;
     }
 
     update(deltaTime) {
@@ -948,14 +941,12 @@ class Projectile {
                 return;
             }
         } else {
-            // Check distance to original target pos if target died
             const distToOriginalTargetSq = distanceSq(this.pos, this.targetPos);
             if (distToOriginalTargetSq < (this.radius * 3) * (this.radius * 3)) {
-                 this.isAlive = false; // Fade out if near original spot
+                 this.isAlive = false;
             }
         }
 
-        // Out of bounds check
         const margin = 50;
         if (this.pos.x < -margin || this.pos.x > canvas.width + margin ||
             this.pos.y < -margin || this.pos.y > canvas.height + margin) {
@@ -974,7 +965,6 @@ class Projectile {
 
 class TimedEffect {
      constructor(pos, duration) {
-        // Need an init method for pooling
         this.initBase(pos, duration);
     }
 
@@ -995,8 +985,8 @@ class TimedEffect {
 
 class SlashEffect extends TimedEffect {
     constructor(attackerPos, targetPos) {
-        super(null, 0); // Call base constructor with dummy values
-        this.init(attackerPos, targetPos); // Initialize properly
+        super(null, 0);
+        this.init(attackerPos, targetPos);
     }
 
     init(attackerPos, targetPos) {
@@ -1041,8 +1031,8 @@ class SlashEffect extends TimedEffect {
 
 class ExplosionEffect extends TimedEffect {
      constructor(pos, radius) {
-        super(null, 0); // Call base constructor
-        this.init(pos, radius); // Initialize properly
+        super(null, 0);
+        this.init(pos, radius);
     }
 
     init(pos, radius) {
@@ -1135,8 +1125,6 @@ class Monster extends GameObject {
                 moveDirection = { x: 0, y: 0 };
             }
         } else {
-             // If no target, maybe move towards player slightly? Or stand still.
-             // Standing still is simpler.
              moveDirection = { x: 0, y: 0 };
         }
 
@@ -1180,7 +1168,7 @@ class Monster extends GameObject {
         if (!this.target || !this.target.isAlive) return;
         this.target.takeDamage(this.attack);
 
-        if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) { // Melee check
+        if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
             const effect = getVisualEffectFromPool(SlashEffect);
             if(effect) {
                 effect.init(this.pos, this.target.pos);
@@ -1228,8 +1216,7 @@ class ArmoredMeleeMonster extends Monster {
 function prepareNextWave() {
     gameState.currentWave++;
     gameState.betweenWaves = false;
-    gameState.monsters = []; // Reset monsters array
-    // Return projectiles and effects to pools
+    gameState.monsters = [];
     gameState.projectiles.forEach(returnProjectileToPool);
     gameState.projectiles = [];
     gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -1278,7 +1265,6 @@ function checkWaveEndCondition() {
     if (!gameState.betweenWaves && !monstersAlive) {
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
-        // Clear remaining projectiles/effects at wave end too
         gameState.projectiles.forEach(returnProjectileToPool);
         gameState.projectiles = [];
         gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -1343,9 +1329,10 @@ function trySummon(type) {
         updateUI();
         return true;
     } else {
-        if (!holdSummonState.isHolding) {
-            showMessage(`靈魂不足 (需要 ${cost})`);
-        }
+        // Don't show message if holding
+        // if (!holdActionState.isHolding) {
+        //     showMessage(`靈魂不足 (需要 ${cost})`);
+        // }
         return false;
     }
 }
@@ -1362,7 +1349,7 @@ function tryUpgrade(type) {
         case 'Wraith':
             costKey = 'wraith'; levelKey = 'wraithLevel'; unitName = "怨靈";
             break;
-        default: return;
+        default: return false; // Return false if type is invalid
     }
 
     cost = gameState.currentCosts[costKey];
@@ -1373,9 +1360,18 @@ function tryUpgrade(type) {
         gameState[levelKey]++;
         gameState.currentCosts[costKey] += costIncrement;
         gameState.summons.forEach(s => { if (s.isAlive && s.config.type === type) { s.levelUp(); } });
-        updateUI(); showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
+        updateUI();
+        // Only show message if NOT holding, or if it's the first action of a hold
+        if (!holdActionState.isHolding || holdActionState.actionType !== 'upgrade') {
+             showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
+        }
+        return true; // Indicate success
     } else {
-        showMessage(`靈魂不足 (需要 ${cost})`);
+        // Don't show message if holding
+        // if (!holdActionState.isHolding) {
+        //     showMessage(`靈魂不足 (需要 ${cost})`);
+        // }
+        return false; // Indicate failure
     }
 }
 
@@ -1431,74 +1427,79 @@ function getPointerPosition(event) {
     };
 }
 
+// --- Hold Action Logic ---
 
-function startHoldSummon(type) {
-    if (gameState.isPaused || holdSummonState.isHolding) return;
+function stopHoldActionInternal() {
+    if (holdActionState.timeoutId) {
+        clearTimeout(holdActionState.timeoutId);
+        holdActionState.timeoutId = null;
+    }
+    if (holdActionState.intervalId) {
+        clearInterval(holdActionState.intervalId);
+        holdActionState.intervalId = null;
+    }
+}
 
-    holdSummonState.isHolding = true;
-    holdSummonState.type = type;
-    holdSummonState.pointerDownTime = performance.now();
+function startHoldAction(actionType, unitType) {
+    if (gameState.isPaused || holdActionState.isHolding) return;
 
-    stopHoldSummonInternal();
+    stopHoldActionInternal(); // Stop any previous hold action
 
-    holdSummonState.timeoutId = setTimeout(() => {
-        if (!holdSummonState.isHolding || holdSummonState.type !== type) return;
+    holdActionState.isHolding = true;
+    holdActionState.actionType = actionType;
+    holdActionState.unitType = unitType;
+    holdActionState.pointerDownTime = performance.now();
 
-        trySummon(type);
+    const actionFn = actionType === 'summon' ? trySummon : tryUpgrade;
 
-        holdSummonState.intervalId = setInterval(() => {
-            if (!holdSummonState.isHolding || holdSummonState.type !== type) {
-                stopHoldSummonInternal();
+    holdActionState.timeoutId = setTimeout(() => {
+        if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) return;
+
+        actionFn(unitType); // Attempt first action after delay
+
+        holdActionState.intervalId = setInterval(() => {
+            if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) {
+                stopHoldActionInternal();
                 return;
             }
-            const continuedSuccess = trySummon(type);
-            if (!continuedSuccess) { // Stop repeating if summon failed (e.g. out of souls)
-                 stopHoldSummonInternal();
-                 holdSummonState.isHolding = false; // Also reset hold state
-                 holdSummonState.type = null;
-                 holdSummonState.pointerDownTime = 0;
-            }
-        }, CONFIG.summoning.repeatInterval);
+            actionFn(unitType);
+        }, CONFIG.holdingButton.repeatInterval);
 
-    }, CONFIG.summoning.holdDelay);
+    }, CONFIG.holdingButton.holdDelay);
 }
 
-function stopHoldSummon(eventTriggeredType = null) {
-    if (holdSummonState.isHolding && holdSummonState.type === eventTriggeredType) {
+function stopHoldAction(actionType, unitType) {
+    // Only stop if the *currently held* action matches the one being released
+    if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
 
-        const holdDuration = performance.now() - holdSummonState.pointerDownTime;
+        const holdDuration = performance.now() - holdActionState.pointerDownTime;
+        const actionFn = actionType === 'summon' ? trySummon : tryUpgrade;
 
-        // If timeout is still set AND hold duration was shorter than delay, it means interval didn't start.
-        // This handles the case of a short click.
-        if (holdSummonState.timeoutId && holdDuration < CONFIG.summoning.holdDelay) {
-            trySummon(holdSummonState.type);
+        // Handle short click: if timeout hasn't fired yet
+        if (holdActionState.timeoutId && holdDuration < CONFIG.holdingButton.holdDelay) {
+            clearTimeout(holdActionState.timeoutId);
+            holdActionState.timeoutId = null; // Clear state immediately
+            actionFn(unitType); // Perform the single action
         }
 
-        stopHoldSummonInternal();
-        holdSummonState.isHolding = false;
-        holdSummonState.type = null;
-        holdSummonState.pointerDownTime = 0;
-    } else if (!eventTriggeredType && holdSummonState.isHolding) {
-         // Stop if pointer leaves button or similar general cases
-        stopHoldSummonInternal();
-        holdSummonState.isHolding = false;
-        holdSummonState.type = null;
-        holdSummonState.pointerDownTime = 0;
+        stopHoldActionInternal(); // Clear interval if it was running
+        holdActionState.isHolding = false;
+        holdActionState.actionType = null;
+        holdActionState.unitType = null;
+        holdActionState.pointerDownTime = 0;
+    } else if (!actionType && !unitType && holdActionState.isHolding) {
+         // General stop (e.g., pointerleave, pause)
+         stopHoldActionInternal();
+         holdActionState.isHolding = false;
+         holdActionState.actionType = null;
+         holdActionState.unitType = null;
+         holdActionState.pointerDownTime = 0;
     }
 }
 
 
+// --- End Hold Action Logic ---
 
-function stopHoldSummonInternal() {
-    if (holdSummonState.timeoutId) {
-        clearTimeout(holdSummonState.timeoutId);
-        holdSummonState.timeoutId = null;
-    }
-    if (holdSummonState.intervalId) {
-        clearInterval(holdSummonState.intervalId);
-        holdSummonState.intervalId = null;
-    }
-}
 
 function updateUI() {
     const souls = gameState.souls;
@@ -1557,12 +1558,11 @@ function updateUI() {
         uiMap.level.textContent = `Lv ${level}`;
         uiMap.count.textContent = count;
 
-        // Use textContent for performance, rebuild the string
         uiMap.summonBtn.textContent = `召喚 (${summonCost}魂)`;
         uiMap.upgradeBtn.textContent = `升級 (${upgradeCost}魂)`;
 
-        setButtonState(uiMap.summonBtn, souls >= summonCost && !gameState.isPaused && !gameState.gameOver, summonCost);
-        setButtonState(uiMap.upgradeBtn, souls >= upgradeCost && !gameState.isPaused && !gameState.gameOver, upgradeCost);
+        setButtonState(uiMap.summonBtn, !gameState.isPaused && !gameState.gameOver, summonCost);
+        setButtonState(uiMap.upgradeBtn, !gameState.isPaused && !gameState.gameOver, upgradeCost);
     }
 
     updateUnitUI('SkeletonWarrior');
@@ -1573,14 +1573,14 @@ function updateUI() {
     uiElements.pauseResumeBtn.disabled = gameState.gameOver;
 }
 
-function setButtonState(button, canUse, cost) {
-    button.disabled = !canUse;
-    if (canUse) {
+function setButtonState(button, isActionPossible, cost) {
+    button.disabled = !isActionPossible;
+    if (isActionPossible) {
          if (gameState.souls >= cost) {
              button.classList.add('can-afford');
          } else {
              button.classList.remove('can-afford');
-             button.disabled = true; // Disable if cannot afford, even if otherwise usable
+             button.disabled = true;
          }
     } else {
         button.classList.remove('can-afford');
@@ -1601,7 +1601,7 @@ function showGameOver() {
     }
 }
 
-const SAVE_KEY = 'necromancerGameState_v15_pools'; // Incremented version
+const SAVE_KEY = 'necromancerGameState_v15_pools';
 const SAVE_VERSION = 15;
 
 
@@ -1704,9 +1704,9 @@ function restoreSummonsFromLoad() {
 function resetGameInternalState() {
     if (gameState.messageTimeout) clearTimeout(gameState.messageTimeout);
     if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
-    stopHoldSummonInternal();
+    stopHoldActionInternal(); // Stop any holds
+    holdActionState = { actionType: null, unitType: null, timeoutId: null, intervalId: null, isHolding: false, pointerDownTime: 0 }; // Reset state
 
-    // Clear pools on full reset
     projectilePool.length = 0;
     visualEffectPool.length = 0;
 
@@ -1726,7 +1726,7 @@ function resetGameInternalState() {
             eyeMonster: CONFIG.eyeMonster.upgradeCostBase,
             wraith: CONFIG.wraith.upgradeCostBase,
         },
-        imagesLoaded: gameState.imagesLoaded, // Preserve loaded status
+        imagesLoaded: gameState.imagesLoaded,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -1756,9 +1756,8 @@ function togglePause() {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = null;
         }
-        stopHoldSummon();
+        stopHoldAction(); // Stop any ongoing hold action
 
-        // Draw one last time before showing pause overlay
         drawGame();
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1769,7 +1768,6 @@ function togglePause() {
 
     } else {
         uiElements.pauseResumeBtn.textContent = '暫停';
-        // Restart loop immediately
         startGameLoop();
     }
     updateUI();
@@ -1778,7 +1776,7 @@ function togglePause() {
 function updateGame(deltaTime) {
     updateTimers(deltaTime);
 
-    const wraiths = []; // Filter lists locally for this frame
+    const wraiths = [];
     const nonWraiths = [];
     for (let i = 0; i < gameState.summons.length; i++) {
         const s = gameState.summons[i];
@@ -1791,7 +1789,6 @@ function updateGame(deltaTime) {
 
     if (gameState.player) gameState.player.update(deltaTime, inputState.movementVector);
 
-    // Update objects
     for (let i = 0; i < gameState.summons.length; i++) {
         if (gameState.summons[i].isAlive) gameState.summons[i].update(deltaTime, gameState.monsters, gameState.summons, gameState.player);
     }
@@ -1806,18 +1803,15 @@ function updateGame(deltaTime) {
     }
 
 
-    // Efficiently filter dead objects and return to pools
     const liveSummons = [];
     for (let i = 0; i < gameState.summons.length; i++) {
         if (gameState.summons[i].isAlive) liveSummons.push(gameState.summons[i]);
-        // No pool for summons as they are persistent until death
     }
     gameState.summons = liveSummons;
 
     const liveMonsters = [];
     for (let i = 0; i < gameState.monsters.length; i++) {
         if (gameState.monsters[i].isAlive) liveMonsters.push(gameState.monsters[i]);
-        // No pool for monsters
     }
     gameState.monsters = liveMonsters;
 
@@ -1843,7 +1837,6 @@ function drawGame() {
     ctx.fillStyle = '#333';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw Wraith auras first (underneath everything else)
     for (let i = 0; i < gameState.summons.length; i++) {
         const s = gameState.summons[i];
          if (s.isAlive && s.config.type === 'Wraith' && s.drawAura) {
@@ -1851,7 +1844,6 @@ function drawGame() {
          }
     }
 
-    // Draw game objects
     for (let i = 0; i < gameState.monsters.length; i++) {
         if (gameState.monsters[i].isAlive) gameState.monsters[i].draw(ctx);
     }
@@ -1863,7 +1855,6 @@ function drawGame() {
     }
     if (gameState.player && gameState.player.isAlive) gameState.player.draw(ctx);
 
-    // Draw visual effects on top
     for (let i = 0; i < gameState.visualEffects.length; i++) {
         if (gameState.visualEffects[i].isAlive) gameState.visualEffects[i].draw(ctx);
     }
@@ -1884,34 +1875,30 @@ function gameLoop(currentTime) {
 
     if (gameState.gameOver) {
         showGameOver();
-        // No need to request another frame if game is over
         animationFrameId = null;
         return;
     }
 
     if (gameState.isPaused) {
-        // Don't request another frame if paused
         animationFrameId = null;
         return;
     }
 
     let deltaTime = (currentTime - gameState.lastTime) / 1000;
-    // Clamp delta time to prevent physics issues after long pauses/lag
     deltaTime = Math.min(deltaTime, 0.1);
     gameState.lastTime = currentTime;
 
     updateGame(deltaTime);
     drawGame();
-    updateUI(); // Still update UI every frame for smoothness
+    updateUI();
 
     animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function startGameLoop() {
-    // Only start if not already running, not paused, and not game over
     if (animationFrameId === null && !gameState.isPaused && !gameState.gameOver) {
         console.log("Starting game loop...");
-        gameState.lastTime = performance.now(); // Reset time reference
+        gameState.lastTime = performance.now();
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 }
@@ -1926,49 +1913,47 @@ function init() {
     canvas.addEventListener('pointercancel', handleCanvasPointerUp);
     canvas.addEventListener('pointerleave', handleCanvasPointerUp);
 
-    uiElements.upgradeSkeletonBtn.addEventListener('click', () => tryUpgrade('SkeletonWarrior'));
-    uiElements.upgradeEyeMonsterBtn.addEventListener('click', () => tryUpgrade('EyeMonster'));
-    uiElements.upgradeWraithBtn.addEventListener('click', () => tryUpgrade('Wraith'));
-
-    const summonButtons = [
-        { btn: uiElements.summonSkeletonBtn, type: 'SkeletonWarrior' },
-        { btn: uiElements.summonEyeMonsterBtn, type: 'EyeMonster' },
-        { btn: uiElements.summonWraithBtn, type: 'Wraith' },
-    ];
-
-    summonButtons.forEach(({ btn, type }) => {
-        btn.addEventListener('pointerdown', (e) => {
-            e.preventDefault(); // Prevent default actions like text selection
-            btn.setPointerCapture(e.pointerId); // Capture pointer for this button
-            startHoldSummon(type);
+    // --- Button Setup ---
+    const setupHoldableButton = (button, actionType, unitType) => {
+        button.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            button.setPointerCapture(e.pointerId);
+            startHoldAction(actionType, unitType);
         });
-        // Use pointerup for reliability on touch/mouse
-        btn.addEventListener('pointerup', (e) => {
-            stopHoldSummon(type);
-             if(btn.hasPointerCapture(e.pointerId)){
-                 btn.releasePointerCapture(e.pointerId);
-             }
-        });
-        // Handle cases where the pointer leaves the button while held down
-        btn.addEventListener('pointerleave', (e) => {
-            if (holdSummonState.isHolding && holdSummonState.type === type) {
-                stopHoldSummon(type);
-                 if(btn.hasPointerCapture(e.pointerId)){ // Release capture only if it has it
-                    try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
-                 }
+        button.addEventListener('pointerup', (e) => {
+            stopHoldAction(actionType, unitType);
+            if (button.hasPointerCapture(e.pointerId)) {
+                button.releasePointerCapture(e.pointerId);
             }
         });
-         // Handle unexpected cancels (e.g., system interruption)
-        btn.addEventListener('pointercancel', (e) => {
-            if (holdSummonState.isHolding && holdSummonState.type === type) {
-                stopHoldSummon(type);
-                 if(btn.hasPointerCapture(e.pointerId)){
-                    try { btn.releasePointerCapture(e.pointerId); } catch (err) {}
-                 }
+        button.addEventListener('pointerleave', (e) => {
+            // Only stop if the *current* hold matches this button's action
+            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
+                stopHoldAction(actionType, unitType);
+                if (button.hasPointerCapture(e.pointerId)) {
+                    try { button.releasePointerCapture(e.pointerId); } catch (err) {}
+                }
             }
         });
+        button.addEventListener('pointercancel', (e) => {
+             if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
+                stopHoldAction(actionType, unitType);
+                if (button.hasPointerCapture(e.pointerId)) {
+                    try { button.releasePointerCapture(e.pointerId); } catch (err) {}
+                }
+            }
+        });
+    };
 
-    });
+    setupHoldableButton(uiElements.summonSkeletonBtn, 'summon', 'SkeletonWarrior');
+    setupHoldableButton(uiElements.summonEyeMonsterBtn, 'summon', 'EyeMonster');
+    setupHoldableButton(uiElements.summonWraithBtn, 'summon', 'Wraith');
+
+    setupHoldableButton(uiElements.upgradeSkeletonBtn, 'upgrade', 'SkeletonWarrior');
+    setupHoldableButton(uiElements.upgradeEyeMonsterBtn, 'upgrade', 'EyeMonster');
+    setupHoldableButton(uiElements.upgradeWraithBtn, 'upgrade', 'Wraith');
+    // --- End Button Setup ---
+
 
     uiElements.restartButton.addEventListener('click', resetGame);
     uiElements.pauseResumeBtn.addEventListener('click', togglePause);
@@ -1979,18 +1964,17 @@ function init() {
             restoreSummonsFromLoad();
             updateUI();
             if (gameState.isPaused) {
-                // If loaded paused, show the paused state correctly
-                togglePause(); // Turn pause off logically
-                togglePause(); // Turn pause back on to draw overlay etc.
-                 drawGame(); // Ensure game draws once before pause overlay
+                togglePause();
+                togglePause();
+                 drawGame();
                  ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
                  ctx.fillStyle = "white"; ctx.font = "30px sans-serif"; ctx.textAlign = "center";
                  ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
             } else {
-                startGameLoop(); // Start if not loaded paused
+                startGameLoop();
             }
         } else {
-            resetGame(); // Start fresh if no valid save
+            resetGame();
         }
     }).catch(err => {
         console.error("Image loading failed catastrophically. Game cannot start properly.", err);
@@ -2002,7 +1986,6 @@ function init() {
         ctx.fillText("錯誤：圖片載入失敗，請檢查檔案並重新整理。", canvas.width / 2, canvas.height / 2);
     });
 
-    // Initial call to start the loop waiting for images
     requestAnimationFrame(gameLoop);
 
 }
