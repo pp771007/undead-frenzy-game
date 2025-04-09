@@ -14,7 +14,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden;
-            /* Prevent scrolling */
+            -webkit-text-size-adjust: 100%;
         }
 
         body {
@@ -24,7 +24,10 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: white;
             height: 100%;
-            /* Ensure body takes full height */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
 
         #ui-container {
@@ -36,28 +39,20 @@
             display: flex;
             flex-direction: column;
             height: 100%;
-            /* Flex container takes full height */
         }
 
         #gameCanvas {
             border: 1px solid #555;
             background-color: #333;
             touch-action: none;
-            /* Prevent default touch actions like pinch zoom */
             width: 100%;
-            /* Take full width of container */
             height: auto;
-            /* Maintain aspect ratio */
             aspect-ratio: 600 / 400;
             display: block;
             flex-shrink: 1;
-            /* Allow canvas to shrink if needed */
             min-height: 0;
-            /* Important for flex shrinking */
             image-rendering: pixelated;
-            /* Better for pixel art */
             image-rendering: crisp-edges;
-            /* Wider browser support */
         }
 
         #top-ui {
@@ -65,9 +60,9 @@
             justify-content: space-between;
             align-items: center;
             padding: 8px 0px 5px 0px;
-            font-size: clamp(12px, 2.5vw, 16px);
+            font-size: clamp(16px, 3vw, 20px);
+            /* Adjusted */
             flex-shrink: 0;
-            /* Prevent top UI from shrinking */
             gap: 5px;
         }
 
@@ -98,14 +93,13 @@
             text-align: center;
             padding: 8px 0;
             flex-shrink: 0;
-            /* Prevent pause container from shrinking */
         }
 
         #pause-resume-btn {
             padding: 6px 15px;
-            font-size: clamp(13px, 2.2vw, 15px);
+            font-size: clamp(16px, 2.5vw, 18px);
+            /* Adjusted */
             width: 100%;
-            /* Full width button */
         }
 
 
@@ -115,16 +109,11 @@
             background-color: #303030;
             padding: 8px 5px;
             flex-wrap: nowrap;
-            /* Ensure columns stay side-by-side */
             gap: 5px;
             flex-grow: 1;
-            /* Allow bottom UI to take remaining space */
             overflow-y: auto;
-            /* Allow scrolling if content overflows vertically */
             align-items: stretch;
-            /* Make columns same height */
             min-height: 0;
-            /* Important for flex growing */
         }
 
         .bottom-column {
@@ -132,9 +121,7 @@
             flex-direction: column;
             gap: 8px;
             flex: 1;
-            /* Each column takes equal width */
             min-width: 0;
-            /* Prevent columns from overflowing */
         }
 
 
@@ -142,73 +129,51 @@
             display: flex;
             flex-direction: column;
             align-items: stretch;
-            /* Make buttons full width */
             background-color: #3a3a3a;
             padding: 6px;
             border-radius: 5px;
             box-sizing: border-box;
             gap: 10px;
-            /* Space between elements in the group */
             flex: 1;
-            /* Allow group to grow vertically */
             justify-content: center;
-            /* Center items vertically if space */
         }
 
 
         button {
             padding: 7px 5px;
-            font-size: clamp(11px, 2vw, 13px);
+            font-size: clamp(16px, 2.5vw, 18px);
             font-weight: bold;
             cursor: pointer;
             min-width: 0;
-            /* Prevent default min-width issues */
             min-height: 40px;
-            /* Ensure buttons have a minimum tap area */
             border: 1px solid #888;
             background-color: #555;
             color: white;
             border-radius: 4px;
             transition: background-color 0.1s, border-color 0.1s;
             display: flex;
-            /* Use flex for centering text */
             align-items: center;
-            /* Center text vertically */
             justify-content: center;
-            /* Center text horizontally */
             text-align: center;
             line-height: 1.1;
-            /* Adjust line height for wrapped text */
             flex-shrink: 0;
-            /* Prevent buttons from shrinking */
             -webkit-tap-highlight-color: transparent;
-            /* Prevents flash on tap */
-            -webkit-user-select: none;
-            /* Prevent text selection */
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
             -webkit-touch-callout: none;
-            /* Disable callout, like save image */
             touch-action: manipulation;
-            /* Helps prevent zoom/pan on interactions */
         }
 
         button:active {
             background-color: #777;
-            /* Feedback on press */
         }
 
         button.can-afford {
             background-color: #689F38;
-            /* Greenish color */
             border: 1px solid #9CCC65;
             color: #FFFFFF;
         }
 
         button.can-afford:active {
             background-color: #8BC34A;
-            /* Lighter green on press */
         }
 
         button:disabled {
@@ -219,7 +184,7 @@
         }
 
         .unit-label {
-            font-size: clamp(13px, 2.2vw, 15px);
+            font-size: clamp(16px, 2.5vw, 18px);
             margin-bottom: 2px;
             font-weight: bold;
             text-align: center;
@@ -227,7 +192,7 @@
         }
 
         .stats-label {
-            font-size: clamp(11px, 1.8vw, 13px);
+            font-size: clamp(16px, 2.2vw, 18px);
             margin-bottom: 3px;
             text-align: center;
             line-height: 1.1;
@@ -236,42 +201,33 @@
 
         #message-area {
             position: absolute;
-            /* Position relative to viewport or nearest positioned ancestor */
             top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            /* Center horizontally */
             background-color: rgba(0, 0, 0, 0.7);
             padding: 8px 12px;
             border-radius: 5px;
-            font-size: 14px;
+            font-size: 16px;
             display: none;
-            /* Initially hidden */
             z-index: 5;
-            /* Above canvas, below game over */
             text-align: center;
             pointer-events: none;
-            /* Don't intercept clicks */
         }
 
         #game-over-screen {
             position: fixed;
-            /* Position relative to viewport */
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.85);
             display: flex;
-            /* Use flex to center content */
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
             display: none;
-            /* Initially hidden */
             z-index: 10;
-            /* Highest layer */
         }
 
         #game-over-content {
@@ -283,7 +239,11 @@
         #game-over-content h2 {
             margin-top: 0;
             color: #FF5252;
-            /* Red color for game over */
+            font-size: 24px;
+        }
+
+        #game-over-content p {
+            font-size: 16px;
         }
 
         #restart-button {
@@ -292,7 +252,6 @@
             margin-top: 15px;
             cursor: pointer;
             background-color: #4CAF50;
-            /* Green restart button */
             border: none;
             border-radius: 5px;
             color: white;
@@ -300,10 +259,8 @@
 
         #restart-button:hover {
             background-color: #66BB6A;
-            /* Lighter green on hover */
         }
 
-        /* Ensure button group has minimum height to prevent collapse */
         #bottom-ui .button-group {
             min-height: 110px;
         }
@@ -313,12 +270,12 @@
 <body>
     <div id="ui-container">
         <div id="top-ui">
-            <span id="player-health-info">HP: 50/50</span>
+            <span id="player-health-info">HP值</span>
             <div>
-                <span id="wave-info">波次: 0</span><br>
-                <span id="timer-info">下一波: 5s</span>
+                <span id="wave-info">波次</span><br>
+                <span id="timer-info">下一波倒數</span>
             </div>
-            <span id="souls-info">靈魂: 15</span>
+            <span id="souls-info">靈魂數量</span>
         </div>
         <canvas id="gameCanvas" width="600" height="400"></canvas>
 
