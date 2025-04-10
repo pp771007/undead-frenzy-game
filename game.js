@@ -116,6 +116,8 @@ const CONFIG = {
     wave: {
         baseTime: 30, betweenTime: 5, monsterScaleInterval: 5, monsterScaleFactor: 0.10,
         basicMonsterBaseCount: 1, basicMonsterIncrement: 1,
+        LATE_GAME_WAVE_THRESHOLD: 50,
+        EXTRA_SCALING_PER_WAVE_AFTER_50: 0.007,
     },
     visuals: {
         slashEffectDuration: 0.15,
@@ -126,9 +128,9 @@ const CONFIG = {
         explosionEffectDuration: 0.35,
         explosionEffectColor: 'rgba(255, 165, 0, 0.8)',
     },
-    holdingButton: { // Changed from summoning
+    holdingButton: {
         holdDelay: 350,
-        repeatInterval: 150, // Can adjust this for upgrades if needed
+        repeatInterval: 150,
     }
 };
 
@@ -163,13 +165,13 @@ function returnProjectileToPool(projectile) {
 }
 
 function getVisualEffectFromPool(EffectClass) {
-     for (let i = visualEffectPool.length - 1; i >= 0; i--) {
+    for (let i = visualEffectPool.length - 1; i >= 0; i--) {
         if (visualEffectPool[i] instanceof EffectClass) {
             return visualEffectPool.splice(i, 1)[0];
         }
     }
-    if (EffectClass === SlashEffect) return new SlashEffect({x:0,y:0}, {x:0,y:0});
-    if (EffectClass === ExplosionEffect) return new ExplosionEffect({x:0,y:0}, 0);
+    if (EffectClass === SlashEffect) return new SlashEffect({ x: 0, y: 0 }, { x: 0, y: 0 });
+    if (EffectClass === ExplosionEffect) return new ExplosionEffect({ x: 0, y: 0 }, 0);
     return null;
 }
 
@@ -195,10 +197,9 @@ let gameState = {
     imagesLoaded: false,
 };
 
-// Renamed for clarity
 let holdActionState = {
-    actionType: null, // 'summon' or 'upgrade'
-    unitType: null, // 'SkeletonWarrior', 'EyeMonster', 'Wraith'
+    actionType: null,
+    unitType: null,
     timeoutId: null,
     intervalId: null,
     isHolding: false,
@@ -276,6 +277,20 @@ function getRandomSpawnPosNearCenter(radius = 30) {
     y = Math.max(10, Math.min(canvas.height - 10, y));
     return { x, y };
 }
+function formatNumberK(num) {
+    if (num < 1000) {
+        return num.toString();
+    }
+    const kNum = num / 1000;
+    let formatted = kNum.toFixed(2);
+    if (formatted.endsWith('.00')) {
+        formatted = formatted.substring(0, formatted.length - 3);
+    } else if (formatted.endsWith('0')) {
+        formatted = formatted.substring(0, formatted.length - 1);
+    }
+    return formatted + 'K';
+}
+
 
 class GameObject {
     constructor(x, y, radius, color, imageName = null, imgScaleMultiplier = 2.5) {
@@ -561,8 +576,8 @@ class SummonUnit extends GameObject {
 
         const isActivelyMoving = this.target || this.isRetreatingFromMonster || this.isRetreatingToPlayer;
         if (!isActivelyMoving && (this.isReturning || this.isWandering)) {
-             finalMove.x = finalMove.x * 0.5 + avoidanceVector.x;
-             finalMove.y = finalMove.y * 0.5 + avoidanceVector.y;
+            finalMove.x = finalMove.x * 0.5 + avoidanceVector.x;
+            finalMove.y = finalMove.y * 0.5 + avoidanceVector.y;
         } else {
             finalMove.x += avoidanceVector.x;
             finalMove.y += avoidanceVector.y;
@@ -695,8 +710,8 @@ class SummonUnit extends GameObject {
         let nearestTarget = null;
         let minDistanceSq = this.config.targetSearchRadius * this.config.targetSearchRadius;
         for (let i = 0; i < monsters.length; i++) {
-             const monster = monsters[i];
-             if (monster.isAlive) {
+            const monster = monsters[i];
+            if (monster.isAlive) {
                 const dSq = distanceSq(this.pos, monster.pos);
                 if (dSq < minDistanceSq) {
                     minDistanceSq = dSq;
@@ -709,13 +724,13 @@ class SummonUnit extends GameObject {
 
 
     findBestTarget(monsters, otherSummons) {
-         let potentialTargets = [];
-         for(let i = 0; i < monsters.length; i++) {
+        let potentialTargets = [];
+        for (let i = 0; i < monsters.length; i++) {
             const m = monsters[i];
             if (m.isAlive && distanceSq(this.pos, m.pos) <= this.attackRangeSq) {
                 potentialTargets.push(m);
             }
-         }
+        }
 
 
         if (potentialTargets.length === 0) {
@@ -778,7 +793,7 @@ class SummonUnit extends GameObject {
         } else if (this.config.type === 'SkeletonWarrior') {
             this.target.takeDamage(currentAttackDamage);
             const effect = getVisualEffectFromPool(SlashEffect);
-            if(effect) {
+            if (effect) {
                 effect.init(this.pos, this.target.pos);
                 gameState.visualEffects.push(effect);
             }
@@ -822,11 +837,11 @@ class SummonUnit extends GameObject {
         switch (this.config.type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount--; break;
             case 'EyeMonster': gameState.eyeMonsterCount--; break;
-            case 'Wraith': /* Handled in Wraith.die() */ break;
+            case 'Wraith': break;
         }
-         if (this.config.type !== 'Wraith') {
-             updateUI();
-         }
+        if (this.config.type !== 'Wraith') {
+            updateUI();
+        }
     }
 }
 
@@ -888,7 +903,7 @@ class Wraith extends SummonUnit {
         const explosionRadiusSq = this.slowRadiusSq;
 
         for (let i = 0; i < gameState.monsters.length; i++) {
-             const monster = gameState.monsters[i];
+            const monster = gameState.monsters[i];
             if (monster.isAlive && distanceSq(this.pos, monster.pos) <= explosionRadiusSq) {
                 monster.takeDamage(explosionDamage);
             }
@@ -896,7 +911,7 @@ class Wraith extends SummonUnit {
 
 
         const effect = getVisualEffectFromPool(ExplosionEffect);
-        if(effect) {
+        if (effect) {
             effect.init(this.pos, this.slowRadius);
             gameState.visualEffects.push(effect);
         }
@@ -909,7 +924,7 @@ class Wraith extends SummonUnit {
 
 class Projectile {
     constructor(startX, startY, target, shooterConfig, damage) {
-         this.init(startX, startY, target, shooterConfig, damage);
+        this.init(startX, startY, target, shooterConfig, damage);
     }
 
     init(startX, startY, target, shooterConfig, damage) {
@@ -920,8 +935,8 @@ class Projectile {
         this.target = target;
         this.speed = shooterConfig.projectileSpeed;
         this.damage = damage;
-        this.targetPos = target ? { ...target.pos } : {x: 0, y: 0};
-        this.direction = target ? normalizeVector({ x: this.targetPos.x - startX, y: this.targetPos.y - startY }) : {x: 0, y: 0};
+        this.targetPos = target ? { ...target.pos } : { x: 0, y: 0 };
+        this.direction = target ? normalizeVector({ x: this.targetPos.x - startX, y: this.targetPos.y - startY }) : { x: 0, y: 0 };
         return this;
     }
 
@@ -943,7 +958,7 @@ class Projectile {
         } else {
             const distToOriginalTargetSq = distanceSq(this.pos, this.targetPos);
             if (distToOriginalTargetSq < (this.radius * 3) * (this.radius * 3)) {
-                 this.isAlive = false;
+                this.isAlive = false;
             }
         }
 
@@ -964,12 +979,12 @@ class Projectile {
 }
 
 class TimedEffect {
-     constructor(pos, duration) {
+    constructor(pos, duration) {
         this.initBase(pos, duration);
     }
 
     initBase(pos, duration) {
-        this.pos = pos ? { ...pos } : {x:0, y:0};
+        this.pos = pos ? { ...pos } : { x: 0, y: 0 };
         this.duration = duration || 0.1;
         this.life = this.duration;
         this.isAlive = true;
@@ -1030,7 +1045,7 @@ class SlashEffect extends TimedEffect {
 }
 
 class ExplosionEffect extends TimedEffect {
-     constructor(pos, radius) {
+    constructor(pos, radius) {
         super(null, 0);
         this.init(pos, radius);
     }
@@ -1057,7 +1072,7 @@ class ExplosionEffect extends TimedEffect {
         } catch (e) { rgbaColor = `rgba(255, 165, 0, ${alpha.toFixed(2)})`; }
 
         ctx.strokeStyle = rgbaColor;
-        ctx.lineWidth = 3 + 4 * (1-progress);
+        ctx.lineWidth = 3 + 4 * (1 - progress);
         ctx.beginPath();
         ctx.arc(this.pos.x, this.pos.y, currentRadius, 0, Math.PI * 2);
         ctx.stroke();
@@ -1080,9 +1095,19 @@ class Monster extends GameObject {
 
     applyWaveScaling(wave) {
         const scaleLevel = Math.floor((wave - 1) / CONFIG.wave.monsterScaleInterval);
-        const statMultiplier = 1 + (scaleLevel * CONFIG.wave.monsterScaleFactor);
-        this.maxHealth = Math.round(this.config.baseHealth * statMultiplier);
-        this.attack = this.config.baseAttack * statMultiplier;
+        let baseStatMultiplier = 1 + (scaleLevel * CONFIG.wave.monsterScaleFactor);
+
+        const lateGameThreshold = CONFIG.wave.LATE_GAME_WAVE_THRESHOLD;
+        const extraScalingRate = CONFIG.wave.EXTRA_SCALING_PER_WAVE_AFTER_50;
+        if (wave > lateGameThreshold) {
+            const wavesPastThreshold = wave - lateGameThreshold;
+            const lateGameBonus = wavesPastThreshold * extraScalingRate;
+            baseStatMultiplier += lateGameBonus;
+        }
+
+
+        this.maxHealth = Math.round(this.config.baseHealth * baseStatMultiplier);
+        this.attack = this.config.baseAttack * baseStatMultiplier;
         this.attackRange = this.config.attackRange;
         this.attackRangeSq = this.attackRange * this.attackRange;
         this.attackSpeed = this.config.attackSpeed;
@@ -1125,7 +1150,7 @@ class Monster extends GameObject {
                 moveDirection = { x: 0, y: 0 };
             }
         } else {
-             moveDirection = { x: 0, y: 0 };
+            moveDirection = { x: 0, y: 0 };
         }
 
 
@@ -1153,9 +1178,9 @@ class Monster extends GameObject {
             const dSq = distanceSq(this.pos, player.pos);
             if (dSq < minDistanceSq) { minDistanceSq = dSq; closestTarget = player; }
         }
-         for (let i = 0; i < summons.length; i++) {
+        for (let i = 0; i < summons.length; i++) {
             const summon = summons[i];
-             if (summon.isAlive) {
+            if (summon.isAlive) {
                 const dSq = distanceSq(this.pos, summon.pos);
                 if (dSq < minDistanceSq) { minDistanceSq = dSq; closestTarget = summon; }
             }
@@ -1170,7 +1195,7 @@ class Monster extends GameObject {
 
         if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
             const effect = getVisualEffectFromPool(SlashEffect);
-            if(effect) {
+            if (effect) {
                 effect.init(this.pos, this.target.pos);
                 gameState.visualEffects.push(effect);
             }
@@ -1329,10 +1354,6 @@ function trySummon(type) {
         updateUI();
         return true;
     } else {
-        // Don't show message if holding
-        // if (!holdActionState.isHolding) {
-        //     showMessage(`靈魂不足 (需要 ${cost})`);
-        // }
         return false;
     }
 }
@@ -1349,7 +1370,7 @@ function tryUpgrade(type) {
         case 'Wraith':
             costKey = 'wraith'; levelKey = 'wraithLevel'; unitName = "怨靈";
             break;
-        default: return false; // Return false if type is invalid
+        default: return false;
     }
 
     cost = gameState.currentCosts[costKey];
@@ -1361,17 +1382,12 @@ function tryUpgrade(type) {
         gameState.currentCosts[costKey] += costIncrement;
         gameState.summons.forEach(s => { if (s.isAlive && s.config.type === type) { s.levelUp(); } });
         updateUI();
-        // Only show message if NOT holding, or if it's the first action of a hold
         if (!holdActionState.isHolding || holdActionState.actionType !== 'upgrade') {
-             showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
+            showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
         }
-        return true; // Indicate success
+        return true;
     } else {
-        // Don't show message if holding
-        // if (!holdActionState.isHolding) {
-        //     showMessage(`靈魂不足 (需要 ${cost})`);
-        // }
-        return false; // Indicate failure
+        return false;
     }
 }
 
@@ -1427,7 +1443,6 @@ function getPointerPosition(event) {
     };
 }
 
-// --- Hold Action Logic ---
 
 function stopHoldActionInternal() {
     if (holdActionState.timeoutId) {
@@ -1443,7 +1458,7 @@ function stopHoldActionInternal() {
 function startHoldAction(actionType, unitType) {
     if (gameState.isPaused || holdActionState.isHolding) return;
 
-    stopHoldActionInternal(); // Stop any previous hold action
+    stopHoldActionInternal();
 
     holdActionState.isHolding = true;
     holdActionState.actionType = actionType;
@@ -1455,7 +1470,7 @@ function startHoldAction(actionType, unitType) {
     holdActionState.timeoutId = setTimeout(() => {
         if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) return;
 
-        actionFn(unitType); // Attempt first action after delay
+        actionFn(unitType);
 
         holdActionState.intervalId = setInterval(() => {
             if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) {
@@ -1469,36 +1484,30 @@ function startHoldAction(actionType, unitType) {
 }
 
 function stopHoldAction(actionType, unitType) {
-    // Only stop if the *currently held* action matches the one being released
     if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
 
         const holdDuration = performance.now() - holdActionState.pointerDownTime;
         const actionFn = actionType === 'summon' ? trySummon : tryUpgrade;
 
-        // Handle short click: if timeout hasn't fired yet
         if (holdActionState.timeoutId && holdDuration < CONFIG.holdingButton.holdDelay) {
             clearTimeout(holdActionState.timeoutId);
-            holdActionState.timeoutId = null; // Clear state immediately
-            actionFn(unitType); // Perform the single action
+            holdActionState.timeoutId = null;
+            actionFn(unitType);
         }
 
-        stopHoldActionInternal(); // Clear interval if it was running
+        stopHoldActionInternal();
         holdActionState.isHolding = false;
         holdActionState.actionType = null;
         holdActionState.unitType = null;
         holdActionState.pointerDownTime = 0;
     } else if (!actionType && !unitType && holdActionState.isHolding) {
-         // General stop (e.g., pointerleave, pause)
-         stopHoldActionInternal();
-         holdActionState.isHolding = false;
-         holdActionState.actionType = null;
-         holdActionState.unitType = null;
-         holdActionState.pointerDownTime = 0;
+        stopHoldActionInternal();
+        holdActionState.isHolding = false;
+        holdActionState.actionType = null;
+        holdActionState.unitType = null;
+        holdActionState.pointerDownTime = 0;
     }
 }
-
-
-// --- End Hold Action Logic ---
 
 
 function updateUI() {
@@ -1510,15 +1519,15 @@ function updateUI() {
         uiElements.playerHealthInfo.textContent = `HP: -/-`;
     }
 
-    uiElements.soulsInfo.textContent = `靈魂: ${souls}`;
+    uiElements.soulsInfo.textContent = `靈魂: ${formatNumberK(souls)}`;
     uiElements.waveInfo.textContent = `第${gameState.currentWave}波`;
 
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
         uiElements.timerInfo.textContent = `下一波: 倒數 ${Math.ceil(gameState.timeToNextWave)} 秒`;
     } else if (!gameState.betweenWaves) {
         let aliveOnMap = 0;
-        for(let i=0; i<gameState.monsters.length; i++){
-            if(gameState.monsters[i].isAlive) aliveOnMap++;
+        for (let i = 0; i < gameState.monsters.length; i++) {
+            if (gameState.monsters[i].isAlive) aliveOnMap++;
         }
         uiElements.timerInfo.textContent = `怪物剩餘: ${aliveOnMap}`;
     } else {
@@ -1558,8 +1567,8 @@ function updateUI() {
         uiMap.level.textContent = `Lv ${level}`;
         uiMap.count.textContent = count;
 
-        uiMap.summonBtn.textContent = `召喚 (${summonCost}魂)`;
-        uiMap.upgradeBtn.textContent = `升級 (${upgradeCost}魂)`;
+        uiMap.summonBtn.textContent = `召喚\n(${formatNumberK(summonCost)}魂)`;
+        uiMap.upgradeBtn.textContent = `升級\n(${formatNumberK(upgradeCost)}魂)`;
 
         setButtonState(uiMap.summonBtn, !gameState.isPaused && !gameState.gameOver, summonCost);
         setButtonState(uiMap.upgradeBtn, !gameState.isPaused && !gameState.gameOver, upgradeCost);
@@ -1576,12 +1585,12 @@ function updateUI() {
 function setButtonState(button, isActionPossible, cost) {
     button.disabled = !isActionPossible;
     if (isActionPossible) {
-         if (gameState.souls >= cost) {
-             button.classList.add('can-afford');
-         } else {
-             button.classList.remove('can-afford');
-             button.disabled = true;
-         }
+        if (gameState.souls >= cost) {
+            button.classList.add('can-afford');
+        } else {
+            button.classList.remove('can-afford');
+            button.disabled = true;
+        }
     } else {
         button.classList.remove('can-afford');
     }
@@ -1704,8 +1713,8 @@ function restoreSummonsFromLoad() {
 function resetGameInternalState() {
     if (gameState.messageTimeout) clearTimeout(gameState.messageTimeout);
     if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
-    stopHoldActionInternal(); // Stop any holds
-    holdActionState = { actionType: null, unitType: null, timeoutId: null, intervalId: null, isHolding: false, pointerDownTime: 0 }; // Reset state
+    stopHoldActionInternal();
+    holdActionState = { actionType: null, unitType: null, timeoutId: null, intervalId: null, isHolding: false, pointerDownTime: 0 };
 
     projectilePool.length = 0;
     visualEffectPool.length = 0;
@@ -1756,7 +1765,7 @@ function togglePause() {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = null;
         }
-        stopHoldAction(); // Stop any ongoing hold action
+        stopHoldAction();
 
         drawGame();
         ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
@@ -1793,10 +1802,10 @@ function updateGame(deltaTime) {
         if (gameState.summons[i].isAlive) gameState.summons[i].update(deltaTime, gameState.monsters, gameState.summons, gameState.player);
     }
     for (let i = 0; i < gameState.monsters.length; i++) {
-         if (gameState.monsters[i].isAlive) gameState.monsters[i].update(deltaTime, gameState.player, gameState.summons);
+        if (gameState.monsters[i].isAlive) gameState.monsters[i].update(deltaTime, gameState.player, gameState.summons);
     }
-     for (let i = 0; i < gameState.projectiles.length; i++) {
-         if (gameState.projectiles[i].isAlive) gameState.projectiles[i].update(deltaTime);
+    for (let i = 0; i < gameState.projectiles.length; i++) {
+        if (gameState.projectiles[i].isAlive) gameState.projectiles[i].update(deltaTime);
     }
     for (let i = 0; i < gameState.visualEffects.length; i++) {
         if (gameState.visualEffects[i].isAlive) gameState.visualEffects[i].update(deltaTime);
@@ -1824,8 +1833,8 @@ function updateGame(deltaTime) {
 
     const liveEffects = [];
     for (let i = 0; i < gameState.visualEffects.length; i++) {
-         if (gameState.visualEffects[i].isAlive) liveEffects.push(gameState.visualEffects[i]);
-         else returnVisualEffectToPool(gameState.visualEffects[i]);
+        if (gameState.visualEffects[i].isAlive) liveEffects.push(gameState.visualEffects[i]);
+        else returnVisualEffectToPool(gameState.visualEffects[i]);
     }
     gameState.visualEffects = liveEffects;
 
@@ -1839,9 +1848,9 @@ function drawGame() {
 
     for (let i = 0; i < gameState.summons.length; i++) {
         const s = gameState.summons[i];
-         if (s.isAlive && s.config.type === 'Wraith' && s.drawAura) {
+        if (s.isAlive && s.config.type === 'Wraith' && s.drawAura) {
             s.drawAura(ctx);
-         }
+        }
     }
 
     for (let i = 0; i < gameState.monsters.length; i++) {
@@ -1850,8 +1859,8 @@ function drawGame() {
     for (let i = 0; i < gameState.summons.length; i++) {
         if (gameState.summons[i].isAlive) gameState.summons[i].draw(ctx);
     }
-     for (let i = 0; i < gameState.projectiles.length; i++) {
-         if (gameState.projectiles[i].isAlive) gameState.projectiles[i].draw(ctx);
+    for (let i = 0; i < gameState.projectiles.length; i++) {
+        if (gameState.projectiles[i].isAlive) gameState.projectiles[i].draw(ctx);
     }
     if (gameState.player && gameState.player.isAlive) gameState.player.draw(ctx);
 
@@ -1913,7 +1922,6 @@ function init() {
     canvas.addEventListener('pointercancel', handleCanvasPointerUp);
     canvas.addEventListener('pointerleave', handleCanvasPointerUp);
 
-    // --- Button Setup ---
     const setupHoldableButton = (button, actionType, unitType) => {
         button.addEventListener('pointerdown', (e) => {
             e.preventDefault();
@@ -1927,19 +1935,18 @@ function init() {
             }
         });
         button.addEventListener('pointerleave', (e) => {
-            // Only stop if the *current* hold matches this button's action
             if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
                 stopHoldAction(actionType, unitType);
                 if (button.hasPointerCapture(e.pointerId)) {
-                    try { button.releasePointerCapture(e.pointerId); } catch (err) {}
+                    try { button.releasePointerCapture(e.pointerId); } catch (err) { }
                 }
             }
         });
         button.addEventListener('pointercancel', (e) => {
-             if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
+            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
                 stopHoldAction(actionType, unitType);
                 if (button.hasPointerCapture(e.pointerId)) {
-                    try { button.releasePointerCapture(e.pointerId); } catch (err) {}
+                    try { button.releasePointerCapture(e.pointerId); } catch (err) { }
                 }
             }
         });
@@ -1952,7 +1959,6 @@ function init() {
     setupHoldableButton(uiElements.upgradeSkeletonBtn, 'upgrade', 'SkeletonWarrior');
     setupHoldableButton(uiElements.upgradeEyeMonsterBtn, 'upgrade', 'EyeMonster');
     setupHoldableButton(uiElements.upgradeWraithBtn, 'upgrade', 'Wraith');
-    // --- End Button Setup ---
 
 
     uiElements.restartButton.addEventListener('click', resetGame);
@@ -1964,12 +1970,10 @@ function init() {
             restoreSummonsFromLoad();
             updateUI();
             if (gameState.isPaused) {
-                togglePause();
-                togglePause();
-                 drawGame();
-                 ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                 ctx.fillStyle = "white"; ctx.font = "30px sans-serif"; ctx.textAlign = "center";
-                 ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
+                drawGame();
+                ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white"; ctx.font = "30px sans-serif"; ctx.textAlign = "center";
+                ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
             } else {
                 startGameLoop();
             }
