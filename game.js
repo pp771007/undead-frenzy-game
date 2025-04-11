@@ -30,7 +30,7 @@ const uiElements = {
 const CONFIG = {
     player: {
         baseHealth: 50, baseMoveSpeed: 90, radius: 12, color: '#03A9F4',
-        imageName: 'player', imgScaleMultiplier: 2.8,
+        imageName: 'player', imgScaleMultiplier: 4,
         initialSouls: 15,
         avoidanceRadius: 15,
     },
