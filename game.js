@@ -50,7 +50,7 @@ const CONFIG = {
     },
     eyeMonster: {
         type: 'EyeMonster', baseHealth: 8, baseAttack: 15, radius: 11,
-        imageName: 'eye_monster', imgScaleMultiplier: 2.6,
+        imageName: 'eye_monster', imgScaleMultiplier: 3,
         attackRange: 120,
         attackRangeUpgrade: 3,
         attackSpeed: 0.8, moveSpeed: 60, color: '#A1887F',
@@ -95,7 +95,7 @@ const CONFIG = {
     },
     basicMeleeMonster: {
         type: 'BasicMelee', baseHealth: 12, baseAttack: 5, radius: 12,
-        imageName: 'basic_melee', imgScaleMultiplier: 2.6,
+        imageName: 'basic_melee', imgScaleMultiplier: 3.8,
         attackRange: 20, attackSpeed: 1.0, moveSpeed: 50, color: '#EF5350',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
     },
@@ -108,7 +108,7 @@ const CONFIG = {
     },
     armoredMeleeMonster: {
         type: 'ArmoredMelee', baseHealth: 120, baseAttack: 30, radius: 15,
-        imageName: 'armored_melee', imgScaleMultiplier: 2.7,
+        imageName: 'armored_melee', imgScaleMultiplier: 4,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 30, color: '#B71C1C',
         soulDrop: 4, waveSpeedIncreaseFactor: 0.008,
         minWave: 20, waveInterval: 5,
@@ -235,6 +235,7 @@ async function loadAllImages() {
         basic_melee: 'basic_melee.png',
         fast_melee: 'fast_melee.png',
         armored_melee: 'armored_melee.png',
+        background: 'background.jpg',
     };
 
     const promises = Object.entries(imageSources).map(([name, src]) =>
@@ -880,8 +881,8 @@ class Wraith extends SummonUnit {
         if (!this.isAlive || !this.config.auraColor) return;
         const gradient = ctx.createRadialGradient(this.pos.x, this.pos.y, this.radius * 0.5, this.pos.x, this.pos.y, this.slowRadius);
         gradient.addColorStop(0, this.config.auraColor + '00');
-        gradient.addColorStop(0.7, this.config.auraColor + '15');
-        gradient.addColorStop(1, this.config.auraColor + '02');
+        gradient.addColorStop(0.7, this.config.auraColor + '70');
+        gradient.addColorStop(1, this.config.auraColor + '0F');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
@@ -1843,8 +1844,12 @@ function updateGame(deltaTime) {
 }
 
 function drawGame() {
-    ctx.fillStyle = '#333';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (images.background) {
+        ctx.drawImage(images.background, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
 
     for (let i = 0; i < gameState.summons.length; i++) {
         const s = gameState.summons[i];
