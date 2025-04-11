@@ -95,20 +95,20 @@ const CONFIG = {
     },
     basicMeleeMonster: {
         type: 'BasicMelee', baseHealth: 12, baseAttack: 5, radius: 12,
-        imageName: 'basic_melee', imgScaleMultiplier: 3.8,
+        imageName: 'basic_melee', imgScaleMultiplier: 5,
         attackRange: 20, attackSpeed: 1.0, moveSpeed: 50, color: '#EF5350',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
     },
     fastMeleeMonster: {
         type: 'FastMelee', baseHealth: 36, baseAttack: 9, radius: 11,
-        imageName: 'fast_melee', imgScaleMultiplier: 2.6,
+        imageName: 'fast_melee', imgScaleMultiplier: 3,
         attackRange: 18, attackSpeed: 1.2, moveSpeed: 95, color: '#FF7043',
         soulDrop: 3, waveSpeedIncreaseFactor: 0.012,
         minWave: 10, waveInterval: 3,
     },
     armoredMeleeMonster: {
         type: 'ArmoredMelee', baseHealth: 120, baseAttack: 30, radius: 15,
-        imageName: 'armored_melee', imgScaleMultiplier: 4,
+        imageName: 'armored_melee', imgScaleMultiplier: 6,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 30, color: '#B71C1C',
         soulDrop: 4, waveSpeedIncreaseFactor: 0.008,
         minWave: 20, waveInterval: 5,
