@@ -216,7 +216,7 @@
             pointer-events: none;
         }
 
-        #game-over-screen {
+        .overlay-screen {
             position: fixed;
             top: 0;
             left: 0;
@@ -232,20 +232,30 @@
             z-index: 10;
         }
 
-        #game-over-content {
+        .overlay-content {
             background-color: #333;
-            padding: clamp(20px, 5vh, 30px);
+            padding: clamp(15px, 4vh, 25px);
             border-radius: 10px;
+            max-height: 90vh;
+            overflow-y: auto;
+            width: 85%;
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+
+        .overlay-content h2 {
+            margin-top: 0;
+            font-size: clamp(20px, 5vw, 24px);
+            margin-bottom: clamp(15px, 3vh, 20px);
         }
 
         #game-over-content h2 {
-            margin-top: 0;
             color: #FF5252;
-            font-size: clamp(20px, 5vw, 24px);
         }
 
-        #game-over-content p {
+        .overlay-content p {
             font-size: clamp(14px, 3vw, 16px);
+            margin: 5px 0;
         }
 
         #restart-button {
@@ -257,14 +267,99 @@
             border: none;
             border-radius: 5px;
             color: white;
+            width: 100%;
         }
 
-        #restart-button:hover {
+        #resume-game-btn {
+            padding: clamp(10px, 2vh, 12px) clamp(20px, 5vw, 24px);
+            font-size: clamp(16px, 3.5vw, 18px);
+            margin-top: clamp(15px, 3vh, 20px);
+            cursor: pointer;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            width: 100%;
+            /* Fill the width */
+            box-sizing: border-box;
+        }
+
+
+        #restart-button:hover,
+        #resume-game-btn:hover {
             background-color: #66BB6A;
         }
 
         #bottom-ui .button-group {
             min-height: clamp(100px, 16vh, 120px);
+        }
+
+        .pause-section {
+            margin-bottom: clamp(15px, 3vh, 20px);
+            padding-bottom: clamp(10px, 2vh, 15px);
+            border-bottom: 1px solid #555;
+        }
+
+        .pause-section:last-of-type {
+            /* Target the last stat section */
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .pause-section h3 {
+            font-size: clamp(16px, 4vw, 18px);
+            margin-top: 0;
+            margin-bottom: 10px;
+            color: #9CCC65;
+        }
+
+        .pause-section h4 {
+            font-size: clamp(15px, 3.5vw, 17px);
+            margin-top: 12px;
+            margin-bottom: 8px;
+            color: #BA68C8;
+        }
+
+        .pause-section label {
+            font-size: clamp(14px, 3vw, 16px);
+            margin-right: 10px;
+            display: inline-block;
+            margin-bottom: 8px;
+        }
+
+        .pause-section input[type="range"] {
+            width: 60%;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+            /* Prevents items from overflowing */
+        }
+
+        .stat-row.images img {
+            width: clamp(28px, 20vw, 80px);
+            height: auto;
+            object-fit: contain;
+            margin-bottom: 3px;
+        }
+
+        .stat-row.counts span {
+            font-size: clamp(13px, 3vw, 15px);
+            font-weight: bold;
         }
     </style>
 </head>
@@ -319,13 +414,53 @@
     </div>
 
     <div id="message-area"></div>
-    <div id="game-over-screen">
-        <div id="game-over-content">
+
+    <div id="game-over-screen" class="overlay-screen">
+        <div id="game-over-content" class="overlay-content">
             <h2>遊戲結束</h2>
             <p id="final-wave-text">您存活了 0 波。</p>
             <button id="restart-button">重新開始</button>
         </div>
     </div>
+
+    <div id="pause-menu" class="overlay-screen">
+        <div id="pause-content" class="overlay-content">
+            <h2>遊戲暫停</h2>
+            <div class="pause-section">
+                <h3>設定</h3>
+                <label for="volume-slider">音樂音量:</label>
+                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5">
+            </div>
+            <div class="pause-section">
+                <h3>統計數據</h3>
+                <h4>總召喚量:</h4>
+                <div class="stat-row images">
+                    <div class="stat-item"><img src="skeleton_warrior.png" alt="骷髏戰士"></div>
+                    <div class="stat-item"><img src="eye_monster.png" alt="眼魔"></div>
+                    <div class="stat-item"><img src="wraith.png" alt="怨靈"></div>
+                </div>
+                <div class="stat-row counts">
+                    <div class="stat-item"><span id="stat-summon-skel">0</span></div>
+                    <div class="stat-item"><span id="stat-summon-eye">0</span></div>
+                    <div class="stat-item"><span id="stat-summon-wraith">0</span></div>
+                </div>
+                <h4>總擊殺數:</h4>
+                <div class="stat-row images">
+                    <div class="stat-item"><img src="basic_melee.png" alt="基礎近戰"></div>
+                    <div class="stat-item"><img src="fast_melee.png" alt="快速近戰"></div>
+                    <div class="stat-item"><img src="armored_melee.png" alt="裝甲近戰"></div>
+                </div>
+                <div class="stat-row counts">
+                    <div class="stat-item"><span id="stat-kill-basic">0</span></div>
+                    <div class="stat-item"><span id="stat-kill-fast">0</span></div>
+                    <div class="stat-item"><span id="stat-kill-armored">0</span></div>
+                </div>
+            </div>
+            <button id="resume-game-btn">繼續遊戲</button>
+        </div>
+    </div>
+
+    <audio id="bgm" loop src="background.mp3"></audio>
 
     <script src="game.js"></script>
 </body>

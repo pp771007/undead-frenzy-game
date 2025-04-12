@@ -25,6 +25,16 @@ const uiElements = {
     gameOverScreen: document.getElementById('game-over-screen'),
     finalWaveText: document.getElementById('final-wave-text'),
     restartButton: document.getElementById('restart-button'),
+    pauseMenu: document.getElementById('pause-menu'),
+    volumeSlider: document.getElementById('volume-slider'),
+    resumeGameBtn: document.getElementById('resume-game-btn'),
+    statSummonSkel: document.getElementById('stat-summon-skel'),
+    statSummonEye: document.getElementById('stat-summon-eye'),
+    statSummonWraith: document.getElementById('stat-summon-wraith'),
+    statKillBasic: document.getElementById('stat-kill-basic'),
+    statKillFast: document.getElementById('stat-kill-fast'),
+    statKillArmored: document.getElementById('stat-kill-armored'),
+    bgm: document.getElementById('bgm'),
 };
 
 const CONFIG = {
@@ -131,6 +141,9 @@ const CONFIG = {
     holdingButton: {
         holdDelay: 350,
         repeatInterval: 150,
+    },
+    audio: {
+        initialVolume: 0.3,
     }
 };
 
@@ -195,6 +208,10 @@ let gameState = {
     skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
     currentCosts: { ...CONFIG.upgradeCosts },
     imagesLoaded: false,
+    bgmVolume: CONFIG.audio.initialVolume,
+    musicStarted: false,
+    totalSummons: { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 },
+    totalKills: { BasicMelee: 0, FastMelee: 0, ArmoredMelee: 0 },
 };
 
 let holdActionState = {
@@ -219,7 +236,6 @@ function loadImage(src) {
         const img = new Image();
         img.onload = () => resolve(img);
         img.onerror = (err) => {
-            console.error("Failed to load image:", src, err);
             reject(err);
         };
         img.src = src;
@@ -244,10 +260,8 @@ async function loadAllImages() {
 
     try {
         await Promise.all(promises);
-        console.log("All images loaded successfully.");
         gameState.imagesLoaded = true;
     } catch (error) {
-        console.error("Error loading one or more images:", error);
         showMessage("部分圖片載入失敗，遊戲可能無法正常顯示！", 5000);
         gameState.imagesLoaded = true;
     }
@@ -1217,6 +1231,9 @@ class Monster extends GameObject {
     die() {
         this.isAlive = false;
         gameState.souls += this.config.soulDrop;
+        if (gameState.totalKills.hasOwnProperty(this.config.type)) {
+            gameState.totalKills[this.config.type]++;
+        }
         updateUI();
     }
 
@@ -1275,7 +1292,6 @@ function prepareNextWave() {
         }
     }
 
-    console.log(`Wave ${waveNum}: Spawning ${basicCount} Basic, ${waveNum >= fastConfig.minWave ? (1 + Math.floor((waveNum - fastConfig.minWave) / fastConfig.waveInterval)) : 0} Fast, ${waveNum >= armoredConfig.minWave ? (1 + Math.floor((waveNum - armoredConfig.minWave) / armoredConfig.waveInterval)) : 0} Armored`);
     updateUI();
 }
 
@@ -1347,12 +1363,16 @@ function trySummon(type) {
         const spawnPos = gameState.player.getSummonPosition();
         const newSummon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
         gameState.summons.push(newSummon);
+        if (gameState.totalSummons.hasOwnProperty(type)) {
+            gameState.totalSummons[type]++;
+        }
         switch (type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount++; break;
             case 'EyeMonster': gameState.eyeMonsterCount++; break;
             case 'Wraith': gameState.wraithCount++; break;
         }
         updateUI();
+        ensureMusicPlaying();
         return true;
     } else {
         return false;
@@ -1386,6 +1406,7 @@ function tryUpgrade(type) {
         if (!holdActionState.isHolding || holdActionState.actionType !== 'upgrade') {
             showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
         }
+        ensureMusicPlaying();
         return true;
     } else {
         return false;
@@ -1406,6 +1427,7 @@ function handleCanvasPointerDown(event) {
     inputState.pointerStartPos = pos;
     inputState.pointerCurrentPos = pos;
     inputState.movementVector = { x: 0, y: 0 };
+    ensureMusicPlaying();
 }
 
 function handleCanvasPointerMove(event) {
@@ -1604,6 +1626,7 @@ function showGameOver() {
         uiElements.gameOverScreen.style.display = 'flex';
         localStorage.removeItem(SAVE_KEY);
         updateUI();
+        pauseMusic();
         if (animationFrameId) {
             cancelAnimationFrame(animationFrameId);
             animationFrameId = null;
@@ -1611,12 +1634,12 @@ function showGameOver() {
     }
 }
 
-const SAVE_KEY = 'necromancerGameState_v15_pools';
-const SAVE_VERSION = 15;
+const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
+const SAVE_VERSION = 16;
 
 
 function saveGameState() {
-    if (!gameState.player || gameState.gameOver || gameState.isPaused) return;
+    if (!gameState.player || gameState.gameOver) return;
 
     const stateToSave = {
         saveVersion: SAVE_VERSION,
@@ -1633,13 +1656,15 @@ function saveGameState() {
         eyeMonsterCount: gameState.eyeMonsterCount,
         wraithCount: gameState.wraithCount,
         currentCosts: gameState.currentCosts,
+        bgmVolume: gameState.bgmVolume,
+        totalSummons: gameState.totalSummons,
+        totalKills: gameState.totalKills,
     };
 
     try {
         const savedString = JSON.stringify(stateToSave);
         localStorage.setItem(SAVE_KEY, savedString);
     } catch (error) {
-        console.error("儲存遊戲狀態失敗:", error);
         showMessage("儲存失敗!", 1500);
     }
 }
@@ -1650,16 +1675,14 @@ function loadGameState() {
         let loadedState;
         try { loadedState = JSON.parse(savedString); }
         catch (error) {
-            console.error("讀取遊戲狀態失敗 (解析錯誤):", error);
             localStorage.removeItem(SAVE_KEY); return false;
         }
 
         if (loadedState.saveVersion !== SAVE_VERSION) {
-            console.warn(`存檔版本不符 (需要 ${SAVE_VERSION}, 找到 ${loadedState.saveVersion}). 清除舊存檔並重置遊戲.`);
             localStorage.removeItem(SAVE_KEY); return false;
         }
 
-        resetGameInternalState();
+        resetGameInternalState(false); // Don't reset volume on load
 
         gameState.souls = loadedState.souls ?? CONFIG.player.initialSouls;
         gameState.currentWave = loadedState.currentWave ?? 0;
@@ -1674,14 +1697,19 @@ function loadGameState() {
         gameState.eyeMonsterCount = loadedState.eyeMonsterCount ?? 0;
         gameState.wraithCount = loadedState.wraithCount ?? 0;
 
+        gameState.bgmVolume = loadedState.bgmVolume ?? CONFIG.audio.initialVolume;
+        gameState.totalSummons = loadedState.totalSummons ?? { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 };
+        gameState.totalKills = loadedState.totalKills ?? { BasicMelee: 0, FastMelee: 0, ArmoredMelee: 0 };
+
         gameState.player = new Player(canvas.width / 2, canvas.height / 2);
         gameState.player.maxHealth = loadedState.playerMaxHealth ?? CONFIG.player.baseHealth;
         gameState.player.currentHealth = loadedState.playerCurrentHealth ?? gameState.player.maxHealth;
         gameState.player.maxHealth = Math.max(CONFIG.player.baseHealth, Math.round(gameState.player.maxHealth));
         gameState.player.currentHealth = Math.min(gameState.player.maxHealth, Math.max(0, Math.round(gameState.player.currentHealth)));
 
+        setMusicVolume(gameState.bgmVolume);
+        uiElements.volumeSlider.value = gameState.bgmVolume;
 
-        console.log("遊戲狀態已從 localStorage 載入 (版本相符)");
         showMessage("讀取存檔成功", 1500);
         return true;
 
@@ -1708,10 +1736,9 @@ function restoreSummonsFromLoad() {
         const summon = new Wraith(spawnPos.x, spawnPos.y, gameState.wraithLevel, gameState.player);
         gameState.summons.push(summon);
     }
-    console.log(`Restored ${gameState.summons.length} summons from loaded counts.`);
 }
 
-function resetGameInternalState() {
+function resetGameInternalState(resetAudio = true) {
     if (gameState.messageTimeout) clearTimeout(gameState.messageTimeout);
     if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
     stopHoldActionInternal();
@@ -1719,6 +1746,9 @@ function resetGameInternalState() {
 
     projectilePool.length = 0;
     visualEffectPool.length = 0;
+
+    const currentVolume = gameState.bgmVolume;
+    const musicWasStarted = gameState.musicStarted;
 
     gameState = {
         player: null,
@@ -1737,24 +1767,38 @@ function resetGameInternalState() {
             wraith: CONFIG.wraith.upgradeCostBase,
         },
         imagesLoaded: gameState.imagesLoaded,
+        bgmVolume: resetAudio ? CONFIG.audio.initialVolume : currentVolume,
+        musicStarted: resetAudio ? false : musicWasStarted,
+        totalSummons: { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 },
+        totalKills: { BasicMelee: 0, FastMelee: 0, ArmoredMelee: 0 },
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
 
 function resetGame() {
-    console.log("Resetting game...");
     localStorage.removeItem(SAVE_KEY);
-    resetGameInternalState();
+    resetGameInternalState(true);
     gameState.player = new Player(canvas.width / 2, canvas.height / 2);
     uiElements.gameOverScreen.style.display = 'none';
+    uiElements.pauseMenu.style.display = 'none';
     gameState.isPaused = false;
     gameState.betweenWaves = true;
     gameState.currentWave = 0;
     gameState.timeToNextWave = CONFIG.wave.betweenTime;
+    setMusicVolume(CONFIG.audio.initialVolume);
+    uiElements.volumeSlider.value = CONFIG.audio.initialVolume;
     updateUI();
     startGameLoop();
 }
 
+function updatePauseMenuStats() {
+    uiElements.statSummonSkel.textContent = formatNumberK(gameState.totalSummons.SkeletonWarrior);
+    uiElements.statSummonEye.textContent = formatNumberK(gameState.totalSummons.EyeMonster);
+    uiElements.statSummonWraith.textContent = formatNumberK(gameState.totalSummons.Wraith);
+    uiElements.statKillBasic.textContent = formatNumberK(gameState.totalKills.BasicMelee);
+    uiElements.statKillFast.textContent = formatNumberK(gameState.totalKills.FastMelee);
+    uiElements.statKillArmored.textContent = formatNumberK(gameState.totalKills.ArmoredMelee);
+}
 
 function togglePause() {
     if (gameState.gameOver) return;
@@ -1768,19 +1812,19 @@ function togglePause() {
         }
         stopHoldAction();
 
-        drawGame();
-        ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "white";
-        ctx.font = "30px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText("已暫停", canvas.width / 2, canvas.height / 2);
+        uiElements.volumeSlider.value = gameState.bgmVolume;
+        updatePauseMenuStats();
+        uiElements.pauseMenu.style.display = 'flex';
+
 
     } else {
+        uiElements.pauseMenu.style.display = 'none';
         uiElements.pauseResumeBtn.textContent = '暫停';
         startGameLoop();
     }
     updateUI();
+
+    ensureMusicPlaying();
 }
 
 function updateGame(deltaTime) {
@@ -1911,15 +1955,40 @@ function gameLoop(currentTime) {
 
 function startGameLoop() {
     if (animationFrameId === null && !gameState.isPaused && !gameState.gameOver) {
-        console.log("Starting game loop...");
         gameState.lastTime = performance.now();
+        ensureMusicPlaying();
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 }
 
+function ensureMusicPlaying() {
+    if (!gameState.musicStarted && uiElements.bgm) {
+        uiElements.bgm.play().then(() => {
+            gameState.musicStarted = true;
+        }).catch(error => {
+            gameState.musicStarted = false;
+        });
+    } else if (gameState.musicStarted && uiElements.bgm && uiElements.bgm.paused) {
+        uiElements.bgm.play().catch(e => { });
+    }
+}
+
+function pauseMusic() {
+    if (uiElements.bgm) {
+        uiElements.bgm.pause();
+    }
+}
+
+function setMusicVolume(volume) {
+    gameState.bgmVolume = Math.max(0, Math.min(1, volume));
+    if (uiElements.bgm) {
+        uiElements.bgm.volume = gameState.bgmVolume;
+    }
+}
 
 function init() {
-    console.log("Initializing Game...");
+    setMusicVolume(gameState.bgmVolume);
+    uiElements.volumeSlider.value = gameState.bgmVolume;
 
     canvas.addEventListener('pointerdown', handleCanvasPointerDown);
     canvas.addEventListener('pointermove', handleCanvasPointerMove);
@@ -1932,6 +2001,7 @@ function init() {
             e.preventDefault();
             button.setPointerCapture(e.pointerId);
             startHoldAction(actionType, unitType);
+            ensureMusicPlaying();
         });
         button.addEventListener('pointerup', (e) => {
             stopHoldAction(actionType, unitType);
@@ -1968,17 +2038,24 @@ function init() {
 
     uiElements.restartButton.addEventListener('click', resetGame);
     uiElements.pauseResumeBtn.addEventListener('click', togglePause);
+    uiElements.resumeGameBtn.addEventListener('click', togglePause);
+    uiElements.volumeSlider.addEventListener('input', (e) => {
+        setMusicVolume(parseFloat(e.target.value));
+    });
+    uiElements.volumeSlider.addEventListener('change', () => {
+        if (!gameState.isPaused) return;
+        saveGameState();
+    });
 
     loadAllImages().then(() => {
-        console.log("Image loading promise resolved. Proceeding with game setup.");
         if (loadGameState()) {
             restoreSummonsFromLoad();
             updateUI();
+            ensureMusicPlaying(); // Try playing music after loading state
             if (gameState.isPaused) {
-                drawGame();
-                ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "white"; ctx.font = "30px sans-serif"; ctx.textAlign = "center";
-                ctx.fillText("已暫停 (讀檔)", canvas.width / 2, canvas.height / 2);
+                uiElements.volumeSlider.value = gameState.bgmVolume;
+                updatePauseMenuStats();
+                uiElements.pauseMenu.style.display = 'flex';
             } else {
                 startGameLoop();
             }
@@ -1986,7 +2063,6 @@ function init() {
             resetGame();
         }
     }).catch(err => {
-        console.error("Image loading failed catastrophically. Game cannot start properly.", err);
         ctx.fillStyle = '#AF0000';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'white';
