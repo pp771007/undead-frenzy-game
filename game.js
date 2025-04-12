@@ -1622,7 +1622,7 @@ function setButtonState(button, isActionPossible, cost) {
 
 function showGameOver() {
     if (gameState.gameOver && uiElements.gameOverScreen.style.display !== 'flex') {
-        uiElements.finalWaveText.textContent = `您存活了 ${gameState.currentWave} 波.`;
+        uiElements.finalWaveText.textContent = `您存活了 ${gameState.currentWave - 1} 波。`;
         uiElements.gameOverScreen.style.display = 'flex';
         localStorage.removeItem(SAVE_KEY);
         updateUI();
