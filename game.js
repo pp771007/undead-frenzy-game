@@ -1682,7 +1682,7 @@ function loadGameState() {
             localStorage.removeItem(SAVE_KEY); return false;
         }
 
-        resetGameInternalState(false); // Don't reset volume on load
+        resetGameInternalState(false);
 
         gameState.souls = loadedState.souls ?? CONFIG.player.initialSouls;
         gameState.currentWave = loadedState.currentWave ?? 0;
@@ -1815,16 +1815,15 @@ function togglePause() {
         uiElements.volumeSlider.value = gameState.bgmVolume;
         updatePauseMenuStats();
         uiElements.pauseMenu.style.display = 'flex';
-
+        pauseMusic();
 
     } else {
         uiElements.pauseMenu.style.display = 'none';
         uiElements.pauseResumeBtn.textContent = '暫停';
         startGameLoop();
+        ensureMusicPlaying();
     }
     updateUI();
-
-    ensureMusicPlaying();
 }
 
 function updateGame(deltaTime) {
@@ -1956,12 +1955,15 @@ function gameLoop(currentTime) {
 function startGameLoop() {
     if (animationFrameId === null && !gameState.isPaused && !gameState.gameOver) {
         gameState.lastTime = performance.now();
-        ensureMusicPlaying();
+        if (!document.hidden) {
+            ensureMusicPlaying();
+        }
         animationFrameId = requestAnimationFrame(gameLoop);
     }
 }
 
 function ensureMusicPlaying() {
+    if (document.hidden || gameState.isPaused || gameState.gameOver) return;
     if (!gameState.musicStarted && uiElements.bgm) {
         uiElements.bgm.play().then(() => {
             gameState.musicStarted = true;
@@ -1986,6 +1988,18 @@ function setMusicVolume(volume) {
     }
 }
 
+function handleVisibilityChange() {
+    if (document.hidden) {
+        if (gameState.musicStarted && !gameState.isPaused && !gameState.gameOver) {
+            pauseMusic();
+        }
+    } else {
+        if (gameState.musicStarted && !gameState.isPaused && !gameState.gameOver) {
+            ensureMusicPlaying();
+        }
+    }
+}
+
 function init() {
     setMusicVolume(gameState.bgmVolume);
     uiElements.volumeSlider.value = gameState.bgmVolume;
@@ -1995,6 +2009,8 @@ function init() {
     canvas.addEventListener('pointerup', handleCanvasPointerUp);
     canvas.addEventListener('pointercancel', handleCanvasPointerUp);
     canvas.addEventListener('pointerleave', handleCanvasPointerUp);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const setupHoldableButton = (button, actionType, unitType) => {
         button.addEventListener('pointerdown', (e) => {
@@ -2051,7 +2067,9 @@ function init() {
         if (loadGameState()) {
             restoreSummonsFromLoad();
             updateUI();
-            ensureMusicPlaying(); // Try playing music after loading state
+            if (!document.hidden) {
+                ensureMusicPlaying();
+            }
             if (gameState.isPaused) {
                 uiElements.volumeSlider.value = gameState.bgmVolume;
                 updatePauseMenuStats();
