@@ -104,6 +104,37 @@
             width: 100%;
         }
 
+        #restart-confirm-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+            z-index: 20;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            max-width: 300px;
+            width: 90%;
+        }
+
+        #restart-confirm-dialog h3 {
+            margin: 0 0 15px 0;
+            color: #ff6b6b;
+        }
+
+        #restart-confirm-dialog .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        #restart-confirm-dialog button {
+            padding: 8px 20px;
+            min-height: auto;
+        }
 
         #bottom-ui {
             display: flex;
@@ -284,6 +315,32 @@
             box-sizing: border-box;
         }
 
+        #restart-game-btn,
+        #resume-game-btn {
+            padding: clamp(10px, 2vh, 12px) clamp(20px, 5vw, 24px);
+            font-size: clamp(16px, 3.5vw, 18px);
+            margin-top: clamp(15px, 3vh, 20px);
+            cursor: pointer;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #restart-game-btn {
+            background-color: #d32f2f;
+            margin-bottom: 0;
+        }
+
+        #restart-game-btn:hover {
+            background-color: #f44336;
+        }
+
+        #resume-game-btn:hover {
+            background-color: #66BB6A;
+        }
 
         #restart-button:hover,
         #resume-game-btn:hover {
@@ -456,7 +513,17 @@
                     <div class="stat-item"><span id="stat-kill-armored">0</span></div>
                 </div>
             </div>
+            <button id="restart-game-btn">重新開始</button>
             <button id="resume-game-btn">繼續遊戲</button>
+        </div>
+    </div>
+
+    <div id="restart-confirm-dialog">
+        <h3>確認重新開始？</h3>
+        <p>這將會清除目前的遊戲進度</p>
+        <div class="button-group">
+            <button id="restart-confirm-yes">確定</button>
+            <button id="restart-confirm-no">取消</button>
         </div>
     </div>
 

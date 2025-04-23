@@ -35,6 +35,10 @@ const uiElements = {
     statKillFast: document.getElementById('stat-kill-fast'),
     statKillArmored: document.getElementById('stat-kill-armored'),
     bgm: document.getElementById('bgm'),
+    restartGameBtn: document.getElementById('restart-game-btn'),
+    restartConfirmDialog: document.getElementById('restart-confirm-dialog'),
+    restartConfirmYes: document.getElementById('restart-confirm-yes'),
+    restartConfirmNo: document.getElementById('restart-confirm-no'),
 };
 
 const CONFIG = {
@@ -1603,6 +1607,7 @@ function updateUI() {
 
     uiElements.pauseResumeBtn.textContent = gameState.isPaused ? '繼續' : '暫停';
     uiElements.pauseResumeBtn.disabled = gameState.gameOver;
+    uiElements.restartGameBtn.disabled = gameState.gameOver;
 }
 
 function setButtonState(button, isActionPossible, cost) {
@@ -1824,6 +1829,19 @@ function togglePause() {
         ensureMusicPlaying();
     }
     updateUI();
+}
+
+function showRestartConfirmDialog() {
+    uiElements.restartConfirmDialog.style.display = 'block';
+}
+
+function hideRestartConfirmDialog() {
+    uiElements.restartConfirmDialog.style.display = 'none';
+}
+
+function handleRestartGame() {
+    hideRestartConfirmDialog();
+    resetGame();
 }
 
 function updateGame(deltaTime) {
@@ -2062,6 +2080,10 @@ function init() {
         if (!gameState.isPaused) return;
         saveGameState();
     });
+
+    uiElements.restartGameBtn.addEventListener('click', showRestartConfirmDialog);
+    uiElements.restartConfirmYes.addEventListener('click', handleRestartGame);
+    uiElements.restartConfirmNo.addEventListener('click', hideRestartConfirmDialog);
 
     loadAllImages().then(() => {
         if (loadGameState()) {
