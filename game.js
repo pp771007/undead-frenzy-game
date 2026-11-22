@@ -442,17 +442,22 @@ function formatNumberK(num) {
 // 原圖約 500px、畫面上只畫 30~60px；每格即時縮小上千張大圖是召喚物多時最吃效能的地方。
 // 依顯示尺寸預先縮一份（乘 SPRITE_RES 留給高解析度螢幕），之後每格直接貼。
 const SPRITE_RES = 2;
+// 震畫面的位移；單位直接 setTransform 時要加上它
+const drawOffset = { x: 0, y: 0 };
 const spriteCache = new Map();
-function getSprite(img, w, h, tint = null, strength = 0) {
+// flipped = 預先畫好朝左的版本：畫的時候不用每隻切換翻轉矩陣（數千隻時那個狀態切換會讓畫布整個卡住）
+function getSprite(img, w, h, tint = null, strength = 0, flipped = false) {
     const cw = Math.max(1, Math.ceil(w * SPRITE_RES)), ch = Math.max(1, Math.ceil(h * SPRITE_RES));
-    const key = `${img.src}|${cw}x${ch}|${tint}|${strength}`;
+    const key = `${img.src}|${cw}x${ch}|${tint}|${strength}|${flipped}`;
     let c = spriteCache.get(key);
     if (c) return c;
     c = document.createElement('canvas');
     c.width = cw; c.height = ch;
     const g = c.getContext('2d');
     g.imageSmoothingQuality = 'high';
+    if (flipped) { g.translate(cw, 0); g.scale(-1, 1); }
     g.drawImage(img, 0, 0, cw, ch);
+    g.setTransform(1, 0, 0, 1, 0, 0);
     if (tint) {
         g.globalCompositeOperation = 'source-atop';
         g.globalAlpha = strength;
@@ -463,45 +468,139 @@ function getSprite(img, w, h, tint = null, strength = 0) {
     return c;
 }
 
-// ---------- 召喚物空間格子：互相推開時只比對附近的，不用每隻跟全部比 ----------
-// 格子邊長要 ≥ 最大推開半徑（怨靈互推 25 × 1.5 = 37.5），查 3×3 格才不會漏
-const GRID_CELL = 40;
-const summonGrid = { cols: 0, rows: 0, cells: [] };
-function rebuildSummonGrid(summons) {
-    const cols = Math.ceil(canvas.width / GRID_CELL) + 1;
-    const rows = Math.ceil(canvas.height / GRID_CELL) + 1;
-    if (summonGrid.cols !== cols || summonGrid.rows !== rows) {
-        summonGrid.cols = cols; summonGrid.rows = rows;
-        summonGrid.cells = Array.from({ length: cols * rows }, () => []);
-    }
-    for (let i = 0; i < summonGrid.cells.length; i++) summonGrid.cells[i].length = 0;
-    for (let i = 0; i < summons.length; i++) {
-        const s = summons[i];
-        if (!s.isAlive) continue;
-        summonGrid.cells[gridIndex(s.pos)].push(s);
-    }
+// 怨靈光環：幾百隻怨靈每格各自產生大面積漸層很貴，同一個半徑畫一次存起來重複貼
+const auraCache = new Map();
+function getAuraSprite(color, radius, innerRadius) {
+    const r = Math.ceil(radius);
+    const key = `${color}|${r}`;
+    let c = auraCache.get(key);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = c.height = r * 2;
+    const g = c.getContext('2d');
+    const gradient = g.createRadialGradient(r, r, innerRadius, r, r, r);
+    gradient.addColorStop(0, color + '00');
+    gradient.addColorStop(0.7, color + '70');
+    gradient.addColorStop(1, color + '0F');
+    g.fillStyle = gradient;
+    g.beginPath();
+    g.arc(r, r, r, 0, Math.PI * 2);
+    g.fill();
+    auraCache.set(key, c);
+    return c;
 }
-function gridIndex(pos) {
-    const cx = Math.max(0, Math.min(summonGrid.cols - 1, Math.floor(pos.x / GRID_CELL)));
-    const cy = Math.max(0, Math.min(summonGrid.rows - 1, Math.floor(pos.y / GRID_CELL)));
-    return cy * summonGrid.cols + cx;
+
+// 幾百隻怨靈的光環疊在一起，全解析度混色的像素量會讓畫布卡死；
+// 光環本來就是模糊漸層，先畫在 1/AURA_LAYER_DIVISOR 解析度的圖層，再一次放大貼上
+const AURA_LAYER_DIVISOR = 4;
+let auraLayer = null;
+function drawAuraLayer() {
+    const wraiths = gameState.summons.filter(s => s.isAlive && s.config.type === 'Wraith');
+    if (wraiths.length === 0) return;
+    if (!auraLayer) {
+        auraLayer = document.createElement('canvas');
+        auraLayer.width = Math.ceil(canvas.width / AURA_LAYER_DIVISOR);
+        auraLayer.height = Math.ceil(canvas.height / AURA_LAYER_DIVISOR);
+    }
+    const g = auraLayer.getContext('2d');
+    g.clearRect(0, 0, auraLayer.width, auraLayer.height);
+    const scale = 1 / AURA_LAYER_DIVISOR;
+    for (let i = 0; i < wraiths.length; i++) wraiths[i].drawAura(g, scale);
+    ctx.drawImage(auraLayer, 0, 0, canvas.width, canvas.height);
 }
-function forEachSummonNear(pos, fn) {
-    const cx = Math.max(0, Math.min(summonGrid.cols - 1, Math.floor(pos.x / GRID_CELL)));
-    const cy = Math.max(0, Math.min(summonGrid.rows - 1, Math.floor(pos.y / GRID_CELL)));
-    for (let y = Math.max(0, cy - 1); y <= Math.min(summonGrid.rows - 1, cy + 1); y++) {
-        for (let x = Math.max(0, cx - 1); x <= Math.min(summonGrid.cols - 1, cx + 1); x++) {
-            const cell = summonGrid.cells[y * summonGrid.cols + x];
-            for (let i = 0; i < cell.length; i++) fn(cell[i]);
+
+// ---------- 空間格子：「找附近的怪 / 召喚物」只查附近格子，不用每隻跟全部比 ----------
+// 召喚物上千隻時，每隻跟每隻比對是平方成長；每格開始時把單位分進格子，查詢只看半徑涵蓋的格子。
+// 畫布外（剛生出來的怪）會被夾進邊緣格子，距離仍用真實座標算，不影響結果。
+class SpatialGrid {
+    constructor(cell) { this.cell = cell; this.cols = 0; this.rows = 0; this.cells = []; }
+    rebuild(items) {
+        const cols = Math.ceil(canvas.width / this.cell) + 1;
+        const rows = Math.ceil(canvas.height / this.cell) + 1;
+        if (this.cols !== cols || this.rows !== rows) {
+            this.cols = cols; this.rows = rows;
+            this.cells = Array.from({ length: cols * rows }, () => []);
+        }
+        for (let i = 0; i < this.cells.length; i++) this.cells[i].length = 0;
+        for (let i = 0; i < items.length; i++) {
+            const it = items[i];
+            if (it.isAlive) this.cells[this.cy(it.pos.y) * this.cols + this.cx(it.pos.x)].push(it);
         }
     }
+    cx(x) { return Math.max(0, Math.min(this.cols - 1, Math.floor(x / this.cell))); }
+    cy(y) { return Math.max(0, Math.min(this.rows - 1, Math.floor(y / this.cell))); }
+    // fn 回傳 true 就提早結束；回傳值表示有沒有提早結束
+    forEachInRadius(pos, r, fn) {
+        const x0 = this.cx(pos.x - r), x1 = this.cx(pos.x + r);
+        const y0 = this.cy(pos.y - r), y1 = this.cy(pos.y + r);
+        for (let y = y0; y <= y1; y++) {
+            for (let x = x0; x <= x1; x++) {
+                const cell = this.cells[y * this.cols + x];
+                for (let i = 0; i < cell.length; i++) if (fn(cell[i])) return true;
+            }
+        }
+        return false;
+    }
+    // 先看自己那一格、再看周圍 8 格；fn 回傳 true 就停。給「擠成一團時只參考最近幾個」用
+    forEachNearCenterFirst(pos, fn) {
+        const cx = this.cx(pos.x), cy = this.cy(pos.y);
+        const scan = (x, y) => {
+            if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return false;
+            const cell = this.cells[y * this.cols + x];
+            for (let i = 0; i < cell.length; i++) if (fn(cell[i])) return true;
+            return false;
+        };
+        if (scan(cx, cy)) return;
+        for (let i = 0; i < NEIGHBOR_OFFSETS.length; i++) {
+            if (scan(cx + NEIGHBOR_OFFSETS[i][0], cy + NEIGHBOR_OFFSETS[i][1])) return;
+        }
+    }
+    anyWithin(pos, r) {
+        const rSq = r * r;
+        return this.forEachInRadius(pos, r, it => it.isAlive && distanceSq(pos, it.pos) <= rSq);
+    }
+    // 由內往外一圈一圈找；某一圈的格子離 pos 至少 (k-1) 格，已經找到更近的就停
+    nearest(pos, maxR = Infinity) {
+        const cx = this.cx(pos.x), cy = this.cy(pos.y);
+        let best = null, bestSq = maxR === Infinity ? Infinity : maxR * maxR;
+        const maxRing = Math.max(this.cols, this.rows);
+        const visit = (x, y) => {
+            if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return;
+            const cell = this.cells[y * this.cols + x];
+            for (let i = 0; i < cell.length; i++) {
+                const it = cell[i];
+                if (!it.isAlive) continue;
+                const d = distanceSq(pos, it.pos);
+                if (d < bestSq) { bestSq = d; best = it; }
+            }
+        };
+        for (let k = 0; k <= maxRing; k++) {
+            const minDist = (k - 1) * this.cell;
+            if (minDist > 0 && minDist * minDist > bestSq) break;
+            if (k === 0) { visit(cx, cy); continue; }
+            for (let x = cx - k; x <= cx + k; x++) { visit(x, cy - k); visit(x, cy + k); }
+            for (let y = cy - k + 1; y <= cy + k - 1; y++) { visit(cx - k, y); visit(cx + k, y); }
+        }
+        return best;
+    }
 }
+const NEIGHBOR_OFFSETS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]];
+// 召喚物格子邊長要 ≥ 最大推開半徑（怨靈互推 25 × 1.5 = 37.5）
+const GRID_CELL = 40;
+// 擠成一團時推開力道早就頂到上限，參考最近這麼多個鄰居就夠；上千隻擠在一起時差別是平方 vs 線性
+const MAX_AVOID_NEIGHBORS = 12;
+const WRAITH_GRID_CELL = 75;
+const summonGrid = new SpatialGrid(GRID_CELL);
+const monsterGrid = new SpatialGrid(GRID_CELL);
+const wraithGrid = new SpatialGrid(WRAITH_GRID_CELL);
 
 // 上千隻召喚物擠在法師身邊時，就算只查附近格子，每隻附近還是有上百隻；
 // 推開方向每隻每 AVOID_RECALC_FRAMES 格才重算一次（各自錯開），其餘沿用，肉眼看不出差別
 const AVOID_RECALC_FRAMES = 3;
 let frameNo = 0;
 let avoidSlotCounter = 0;
+const MONSTER_RETARGET_FRAMES = 3;
+const TARGET_SEARCH_FRAMES = 3;
 
 // 眼魔分散火力用：每格開始時統計「每隻怪被幾隻眼魔瞄準」，選目標時查表，不用每隻眼魔掃全部召喚物
 let eyeTargetCounts = new Map();
@@ -632,16 +731,15 @@ class GameObject {
         if (this.image) {
             const s = this.drawScale || 1;
             const w = this.imageWidth * s, h = this.imageHeight * s;
-            ctx.save();
-            ctx.translate(this.pos.x, this.pos.y);
-            ctx.scale(this.facingDirection, 1);
-            const img = getSprite(this.image, this.imageWidth, this.imageHeight, this.tint, this.tintStrength || 0.45);
-            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            // 上千隻時每隻 save/restore、切換矩陣、查貼圖表都很貴：左右兩張貼圖預先備好、存在自己身上，直接貼
+            const flipped = this.facingDirection < 0;
+            const x = this.pos.x - w / 2, y = this.pos.y - h / 2;
+            ctx.drawImage(this.getCachedSprite(flipped), x, y, w, h);
             if (this.hitFlash > 0) {
                 ctx.globalAlpha = Math.min(1, this.hitFlash / CONFIG.visuals.hitFlashDuration) * 0.85;
-                ctx.drawImage(getSprite(this.image, this.imageWidth, this.imageHeight, '#FFFFFF', 1), -w / 2, -h / 2, w, h);
+                ctx.drawImage(getSprite(this.image, this.imageWidth, this.imageHeight, '#FFFFFF', 1, flipped), x, y, w, h);
+                ctx.globalAlpha = 1;
             }
-            ctx.restore();
         } else {
             ctx.fillStyle = this.color;
             ctx.beginPath();
@@ -672,6 +770,18 @@ class GameObject {
 
 
     update(deltaTime) { }
+
+    getCachedSprite(flipped) {
+        const key = `${this.tint}|${this.tintStrength}`;
+        if (this._spriteKey !== key) {
+            this._sprites = [
+                getSprite(this.image, this.imageWidth, this.imageHeight, this.tint, this.tintStrength || 0.45, false),
+                getSprite(this.image, this.imageWidth, this.imageHeight, this.tint, this.tintStrength || 0.45, true),
+            ];
+            this._spriteKey = key;
+        }
+        return this._sprites[flipped ? 1 : 0];
+    }
 
     tickFlash(deltaTime) {
         if (this.hitFlash > 0) this.hitFlash -= deltaTime;
@@ -834,21 +944,18 @@ class SummonUnit extends GameObject {
         if (!this.isAlive) return;
         this.tickFlash(deltaTime);
 
-        this.buffedMoveSpeedMultiplier = 1.0;
-        this.buffedAttackSpeedMultiplier = 1.0;
+        this.applyWraithBuff();
 
         if (this.attackCooldown > 0) { this.attackCooldown -= deltaTime; }
 
         if (this.config.type === 'EyeMonster') {
-            const retreatCheckDistSq = this.config.retreatCheckDistance * this.config.retreatCheckDistance;
-            let enemyNearby = monsters.some(m => m.isAlive && distanceSq(this.pos, m.pos) < retreatCheckDistSq);
-            this.isRetreatingFromMonster = enemyNearby;
+            this.isRetreatingFromMonster = monsterGrid.anyWithin(this.pos, this.config.retreatCheckDistance);
         } else {
             this.isRetreatingFromMonster = false;
         }
 
         if (this.config.type === 'Wraith') {
-            let monsterInRangeForAura = monsters.some(m => m.isAlive && distanceSq(this.pos, m.pos) <= this.slowRadiusSq);
+            let monsterInRangeForAura = monsterGrid.anyWithin(this.pos, this.slowRadius);
             this.isRetreatingToPlayer = monsterInRangeForAura;
             if (this.isRetreatingToPlayer) {
                 this.target = null;
@@ -860,12 +967,15 @@ class SummonUnit extends GameObject {
             this.target = null;
         }
 
-        if (!this.target && !this.isRetreatingFromMonster && !this.isRetreatingToPlayer) {
+        // 附近沒怪時不用每格重找（閒著的大軍每格掃一次很貴），每 TARGET_SEARCH_FRAMES 格找一次
+        if (this.searchSlot === undefined) this.searchSlot = (avoidSlotCounter++) % TARGET_SEARCH_FRAMES;
+        const searchThisFrame = (frameNo + this.searchSlot) % TARGET_SEARCH_FRAMES === 0;
+        if (!this.target && searchThisFrame && !this.isRetreatingFromMonster && !this.isRetreatingToPlayer) {
             if (this.config.type === 'EyeMonster') {
                 this.target = this.findBestTarget(monsters, otherSummons);
                 if (this.target) eyeTargetCounts.set(this.target, (eyeTargetCounts.get(this.target) || 0) + 1);
             } else if (this.config.type !== 'Wraith') {
-                this.target = this.findNearestMonster(monsters);
+                this.target = this.findNearestMonster();
             }
             if (this.target) {
                 this.isReturning = false;
@@ -991,8 +1101,8 @@ class SummonUnit extends GameObject {
 
         if (this.attackCooldown <= 0 && !this.isRetreatingFromMonster) {
             if (this.config.type === 'Wraith') {
-                if (monsters.some(m => m.isAlive && distanceSq(this.pos, m.pos) <= this.slowRadiusSq)) {
-                    this.applySlowAura(monsters);
+                if (monsterGrid.anyWithin(this.pos, this.slowRadius)) {
+                    this.applySlowAura();
                     this.attackCooldown = 1.0 / this.attackSpeed;
                 }
             }
@@ -1021,7 +1131,8 @@ class SummonUnit extends GameObject {
         const myAvoidanceRadius = this.config.avoidanceRadius;
         const myAvoidanceForce = this.config.avoidanceForce;
 
-        forEachSummonNear(this.pos, other => {
+        let neighbors = 0;
+        summonGrid.forEachNearCenterFirst(this.pos, other => {
             if (other !== this && other.isAlive) {
                 let currentAvoidanceRadius = Math.max(myAvoidanceRadius, other.config.avoidanceRadius);
 
@@ -1042,8 +1153,10 @@ class SummonUnit extends GameObject {
                     const pushStrength = (1.0 - (distance / combinedAvoidanceRadius)) * (1.0 - (distance / combinedAvoidanceRadius));
                     totalPushX += pushDirectionX * pushStrength * myAvoidanceForce;
                     totalPushY += pushDirectionY * pushStrength * myAvoidanceForce;
+                    if (++neighbors >= MAX_AVOID_NEIGHBORS) return true;
                 }
             }
+            return false;
         });
 
         if (player && player.isAlive && this.config.playerAvoidanceForce) {
@@ -1073,35 +1186,32 @@ class SummonUnit extends GameObject {
     }
 
 
-    findNearestMonster(monsters) {
-        let nearestTarget = null;
-        let minDistanceSq = this.config.targetSearchRadius * this.config.targetSearchRadius;
-        for (let i = 0; i < monsters.length; i++) {
-            const monster = monsters[i];
-            if (monster.isAlive) {
-                const dSq = distanceSq(this.pos, monster.pos);
-                if (dSq < minDistanceSq) {
-                    minDistanceSq = dSq;
-                    nearestTarget = monster;
-                }
-            }
-        }
-        return nearestTarget;
+    findNearestMonster() {
+        return monsterGrid.nearest(this.pos, this.config.targetSearchRadius);
     }
 
+    // 怨靈附近的骷髏移速加倍、眼魔攻速加倍
+    applyWraithBuff() {
+        this.buffedMoveSpeedMultiplier = 1.0;
+        this.buffedAttackSpeedMultiplier = 1.0;
+        const type = this.config.type;
+        if (type === 'Wraith') return;
+        const buffed = wraithGrid.forEachInRadius(this.pos, gameState.wraithBuffRadius, w =>
+            w.isAlive && distanceSq(this.pos, w.pos) <= w.buffRadiusSq);
+        if (!buffed) return;
+        if (type === 'SkeletonWarrior') this.buffedMoveSpeedMultiplier = this.config.wraithBuffMoveSpeedMultiplier;
+        else if (type === 'EyeMonster') this.buffedAttackSpeedMultiplier = this.config.wraithBuffAttackSpeedMultiplier;
+    }
 
     findBestTarget(monsters, otherSummons) {
         let potentialTargets = [];
-        for (let i = 0; i < monsters.length; i++) {
-            const m = monsters[i];
-            if (m.isAlive && distanceSq(this.pos, m.pos) <= this.attackRangeSq) {
-                potentialTargets.push(m);
-            }
-        }
+        monsterGrid.forEachInRadius(this.pos, this.attackRange, m => {
+            if (m.isAlive && distanceSq(this.pos, m.pos) <= this.attackRangeSq) potentialTargets.push(m);
+        });
 
 
         if (potentialTargets.length === 0) {
-            return this.findNearestMonster(monsters);
+            return this.findNearestMonster();
         }
 
         let targetCounts = {};
@@ -1178,16 +1288,16 @@ class SummonUnit extends GameObject {
         this.attackCooldown = cooldownDuration;
     }
 
-    applySlowAura(monsters) {
+    applySlowAura() {
         if (this.config.type !== 'Wraith') return;
-        for (let i = 0; i < monsters.length; i++) {
-            const monster = monsters[i];
+        const frost = blessVal('frostAura');
+        const frostDmg = frost > 0 ? Math.round(frost * (1 + this.level * this.config.upgradeBonus)) : 0;
+        monsterGrid.forEachInRadius(this.pos, this.slowRadius, monster => {
             if (monster.isAlive && distanceSq(this.pos, monster.pos) <= this.slowRadiusSq) {
                 monster.applySlow(this.slowAmount, this.config.slowDuration);
-                const frost = blessVal('frostAura');
-                if (frost > 0) monster.takeDamage(Math.round(frost * (1 + this.level * this.config.upgradeBonus)));
+                if (frostDmg) monster.takeDamage(frostDmg);
             }
-        }
+        });
     }
 
 
@@ -1239,31 +1349,11 @@ class Wraith extends SummonUnit {
         super(x, y, CONFIG.wraith, level, playerTransform);
     }
 
-    applyBuffAura(otherSummons) {
-        if (!this.isAlive) return;
-        for (let i = 0; i < otherSummons.length; i++) {
-            const summon = otherSummons[i];
-            if (summon.isAlive && summon !== this && distanceSq(this.pos, summon.pos) <= this.buffRadiusSq) {
-                if (summon.config.type === 'SkeletonWarrior' && summon.config.wraithBuffMoveSpeedMultiplier) {
-                    summon.buffedMoveSpeedMultiplier = Math.max(summon.buffedMoveSpeedMultiplier, summon.config.wraithBuffMoveSpeedMultiplier);
-                } else if (summon.config.type === 'EyeMonster' && summon.config.wraithBuffAttackSpeedMultiplier) {
-                    summon.buffedAttackSpeedMultiplier = Math.max(summon.buffedAttackSpeedMultiplier, summon.config.wraithBuffAttackSpeedMultiplier);
-                }
-            }
-        }
-    }
-
-    drawAura(ctx) {
+    drawAura(g, scale) {
         if (!this.isAlive || !this.config.auraColor) return;
-        const gradient = ctx.createRadialGradient(this.pos.x, this.pos.y, this.radius * 0.5, this.pos.x, this.pos.y, this.slowRadius);
-        gradient.addColorStop(0, this.config.auraColor + '00');
-        gradient.addColorStop(0.7, this.config.auraColor + '70');
-        gradient.addColorStop(1, this.config.auraColor + '0F');
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.slowRadius, 0, Math.PI * 2);
-        ctx.fill();
+        const r = this.slowRadius;
+        const d = r * 2 * scale;
+        g.drawImage(getAuraSprite(this.config.auraColor, r * scale, this.radius * 0.5 * scale), (this.pos.x - r) * scale, (this.pos.y - r) * scale, d, d);
     }
 
     draw(ctx) {
@@ -1648,7 +1738,11 @@ class Monster extends GameObject {
             if (Math.abs(this.knockVel.x) + Math.abs(this.knockVel.y) < 5) this.knockVel = null;
         }
 
-        this.findTarget(player, summons);
+        // 每 MONSTER_RETARGET_FRAMES 格重找一次最近目標（各自錯開）；目標死了立刻重找
+        if (this.retargetSlot === undefined) this.retargetSlot = (avoidSlotCounter++) % MONSTER_RETARGET_FRAMES;
+        if (!this.target || !this.target.isAlive || (frameNo + this.retargetSlot) % MONSTER_RETARGET_FRAMES === 0) {
+            this.findTarget(player, summons);
+        }
 
         let moveDirection = { x: 0, y: 0 };
         let moveX = 0;
@@ -1688,16 +1782,11 @@ class Monster extends GameObject {
         let minDistanceSq = Infinity;
 
         if (player.isAlive) {
-            const dSq = distanceSq(this.pos, player.pos);
-            if (dSq < minDistanceSq) { minDistanceSq = dSq; closestTarget = player; }
+            minDistanceSq = distanceSq(this.pos, player.pos);
+            closestTarget = player;
         }
-        for (let i = 0; i < summons.length; i++) {
-            const summon = summons[i];
-            if (summon.isAlive) {
-                const dSq = distanceSq(this.pos, summon.pos);
-                if (dSq < minDistanceSq) { minDistanceSq = dSq; closestTarget = summon; }
-            }
-        }
+        const nearestSummon = summonGrid.nearest(this.pos);
+        if (nearestSummon && distanceSq(this.pos, nearestSummon.pos) < minDistanceSq) closestTarget = nearestSummon;
         this.target = closestTarget;
     }
 
@@ -2714,16 +2803,18 @@ function updateGame(deltaTime) {
     updateTimers(deltaTime);
 
     const wraiths = [];
-    const nonWraiths = [];
+    let wraithBuffRadius = 0;
     for (let i = 0; i < gameState.summons.length; i++) {
         const s = gameState.summons[i];
-        if (s.isAlive) {
-            if (s.config.type === 'Wraith') wraiths.push(s);
-            else nonWraiths.push(s);
+        if (s.isAlive && s.config.type === 'Wraith') {
+            wraiths.push(s);
+            wraithBuffRadius = Math.max(wraithBuffRadius, s.buffRadius);
         }
     }
-    wraiths.forEach(wraith => wraith.applyBuffAura(nonWraiths));
-    rebuildSummonGrid(gameState.summons);
+    gameState.wraithBuffRadius = wraithBuffRadius;
+    wraithGrid.rebuild(wraiths);
+    summonGrid.rebuild(gameState.summons);
+    monsterGrid.rebuild(gameState.monsters);
     rebuildEyeTargetCounts(gameState.summons);
 
     if (gameState.player) gameState.player.update(deltaTime, getMoveVector());
@@ -2846,8 +2937,12 @@ function drawBanner() {
 function drawGame() {
     ctx.save();
     if (gameState.shake > 0) {
-        ctx.translate((Math.random() * 2 - 1) * gameState.shake, (Math.random() * 2 - 1) * gameState.shake);
+        drawOffset.x = (Math.random() * 2 - 1) * gameState.shake;
+        drawOffset.y = (Math.random() * 2 - 1) * gameState.shake;
+    } else {
+        drawOffset.x = 0; drawOffset.y = 0;
     }
+    ctx.setTransform(1, 0, 0, 1, drawOffset.x, drawOffset.y);
     if (images.background) {
         ctx.drawImage(images.background, -SHAKE_BG_MARGIN, -SHAKE_BG_MARGIN, canvas.width + SHAKE_BG_MARGIN * 2, canvas.height + SHAKE_BG_MARGIN * 2);
     } else {
@@ -2856,12 +2951,7 @@ function drawGame() {
     }
     for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].draw(ctx);
 
-    for (let i = 0; i < gameState.summons.length; i++) {
-        const s = gameState.summons[i];
-        if (s.isAlive && s.config.type === 'Wraith' && s.drawAura) {
-            s.drawAura(ctx);
-        }
-    }
+    drawAuraLayer();
 
     for (let i = 0; i < gameState.monsters.length; i++) {
         if (gameState.monsters[i].isAlive) gameState.monsters[i].draw(ctx);
