@@ -164,7 +164,10 @@ const CONFIG = {
     },
     wave: {
         betweenTime: 5,
-        scalePerWave: 0.035, lateWave: 30, lateScalePerWave: 0.03,
+        // 前 earlyWaves 波成長較快（前期原本最無聊，要有壓力）；之後的斜率與舊版相同
+        // （舊版：每 5 波 +10%、第 50 波後每波再 +0.7%），已經玩到很後面的存檔不會突然變難
+        earlyWaves: 20, earlyScalePerWave: 0.035,
+        scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
         basicBase: 3, basicPerWave: 1.3,
         bossEvery: 10, bossWaveCountFactor: 0.5,
         spawnIntervalBase: 0.9, spawnIntervalPerWave: 0.01, spawnIntervalMin: 0.35,
@@ -1504,7 +1507,10 @@ function bankAllOrbs() {
 
 function getWaveStatMultiplier(wave) {
     const W = CONFIG.wave;
-    return 1 + W.scalePerWave * (wave - 1) + Math.max(0, wave - W.lateWave) * W.lateScalePerWave;
+    return 1
+        + W.earlyScalePerWave * Math.min(wave - 1, W.earlyWaves - 1)
+        + W.scalePerWave * Math.max(0, wave - W.earlyWaves)
+        + W.lateScalePerWave * Math.max(0, wave - W.lateWave);
 }
 
 class Monster extends GameObject {
