@@ -20,6 +20,8 @@
             --bone-dim: #b9ae96;
             --gold: #e9c46a;
             --gold-deep: #9c7a3c;
+            /* 小字壓在戰場上：四邊 1px 描邊＋一點落影。單純往下 2px 的陰影在小字上會像重影 */
+            --text-outline: 1px 0 0 var(--ink), -1px 0 0 var(--ink), 0 1px 0 var(--ink), 0 -1px 0 var(--ink), 0 2px 2px rgba(0, 0, 0, 0.5);
             --soul: #7ff0f0;
             --blood: #e04848;
             --panel-top: #2f2342;
@@ -118,23 +120,25 @@
             justify-content: center;
             gap: 6px;
             min-height: 44px;
-            padding: 6px 16px;
+            padding: 4px 16px 8px;
             border: 3px solid var(--ink);
             border-radius: 12px;
             background: linear-gradient(var(--btn-top), var(--btn-bottom));
-            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 var(--btn-edge), 0 6px 10px rgba(0, 0, 0, 0.45);
+            /* 厚度畫在外框「裡面」(inset)，外面只有一圈跟外框同色的底：厚度跑到外框外的話看起來像兩顆按鈕疊歪 */
+            box-shadow: var(--btn-shadow);
+            --btn-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.3), inset 0 -4px 0 var(--btn-edge), 0 3px 0 var(--ink), 0 6px 10px rgba(0, 0, 0, 0.4);
             color: var(--bone);
             font-family: var(--font-display);
             font-weight: 900;
             font-size: 16px;
-            text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+            text-shadow: var(--text-outline);
             cursor: pointer;
             transition: transform 0.06s, box-shadow 0.06s, filter 0.15s;
         }
 
         .btn:active:not(:disabled) {
-            transform: translateY(3px);
-            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.2), 0 1px 0 var(--btn-edge), 0 2px 4px rgba(0, 0, 0, 0.45);
+            transform: translateY(2px);
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.2), inset 0 -2px 0 var(--btn-edge), 0 1px 0 var(--ink), 0 2px 4px rgba(0, 0, 0, 0.4);
         }
 
         .btn:disabled {
@@ -147,7 +151,7 @@
             --btn-bottom: #c4913a;
             --btn-edge: #7a5520;
             color: #3a2410;
-            text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
+            text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
         }
 
         .btn-green {
@@ -226,7 +230,7 @@
             font-family: var(--font-display);
             font-weight: 900;
             font-size: 17px;
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
         }
 
         .chip-icon {
@@ -277,6 +281,19 @@
             box-shadow: inset 0 0 0 1.5px var(--gold-deep), 0 3px 8px rgba(0, 0, 0, 0.5);
         }
 
+        #wave-plate.urgent {
+            animation: plate-urgent 0.5s ease-in-out infinite alternate;
+        }
+
+        #wave-plate.urgent #timer-info {
+            color: #ffab91;
+        }
+
+        @keyframes plate-urgent {
+            from { box-shadow: inset 0 0 0 1.5px var(--gold-deep), 0 3px 8px rgba(0, 0, 0, 0.5); }
+            to { box-shadow: inset 0 0 0 1.5px #ff7043, 0 0 14px rgba(255, 112, 67, 0.7); }
+        }
+
         #wave-plate .plate-icon {
             width: 30px;
             height: 30px;
@@ -288,7 +305,7 @@
             font-size: 17px;
             line-height: 1.1;
             color: var(--gold);
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
         }
 
         #timer-info {
@@ -377,7 +394,7 @@
             font-family: var(--font-display);
             font-weight: 900;
             font-size: 14px;
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
             cursor: pointer;
         }
 
@@ -474,7 +491,7 @@
             font-family: var(--font-display);
             font-weight: 900;
             font-size: 14px;
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
             white-space: nowrap;
         }
 
@@ -504,7 +521,7 @@
             font-weight: 900;
             font-size: 14px;
             color: var(--bone-dim);
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
         }
 
         .unit-btns {
@@ -516,7 +533,7 @@
             flex: 1;
             min-width: 0;
             min-height: 46px;
-            padding: 2px;
+            padding: 1px 2px 5px;
             flex-direction: column;
             gap: 0;
             font-size: 13px;
@@ -557,7 +574,7 @@
             font-size: 15px;
             white-space: nowrap;
             pointer-events: none;
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
         }
 
         /* ---------- 全畫面視窗 ---------- */
@@ -626,7 +643,7 @@
             font-size: 14px;
             letter-spacing: 0.5em;
             color: #c9a7e8;
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
         }
 
         .title-hero {
@@ -744,7 +761,7 @@
             font-weight: 900;
             font-size: 17px;
             color: var(--gold);
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
         }
 
         .draft-desc {
@@ -923,7 +940,7 @@
             font-weight: 900;
             font-size: 15px;
             color: var(--gold);
-            text-shadow: 0 2px 0 var(--ink);
+            text-shadow: var(--text-outline);
         }
 
         /* 設定滑桿 */
@@ -1125,8 +1142,8 @@
         }
 
         @keyframes hint {
-            0%, 100% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 var(--btn-edge), 0 0 0 0 rgba(233, 196, 106, 0.9); }
-            50% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 var(--btn-edge), 0 0 0 8px rgba(233, 196, 106, 0); }
+            0%, 100% { box-shadow: var(--btn-shadow), 0 0 0 0 rgba(233, 196, 106, 0.9); }
+            50% { box-shadow: var(--btn-shadow), 0 0 0 8px rgba(233, 196, 106, 0); }
         }
 
         @keyframes card-in {

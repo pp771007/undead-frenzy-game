@@ -49,6 +49,7 @@ const uiElements = {
     hudTop: $id('hud-top'),
     waveInfo: $id('wave-info'),
     timerInfo: $id('timer-info'),
+    wavePlate: $id('wave-plate'),
     soulsInfo: $id('souls-info'),
     playerHealthInfo: $id('player-health-info'),
     hpFill: $id('hp-fill'),
@@ -879,6 +880,7 @@ const SFX_DEFS = {
     nova: { gap: 0.2, fn: s => { s.tone(220, 0.45, { type: 'sawtooth', vol: 0.15, slideTo: 55 }); s.noise(0.4, { vol: 0.25, filterFreq: 900 }); } },
     draft: { gap: 0.3, fn: s => { [660, 880, 1100].forEach((f, i) => s.tone(f, 0.25, { vol: 0.12, delay: i * 0.08 })); } },
     pick: { gap: 0.2, fn: s => { [523, 784, 1046].forEach((f, i) => s.tone(f, 0.15, { type: 'triangle', vol: 0.14, delay: i * 0.05 })); } },
+    tick: { gap: 0.3, fn: s => { s.tone(880, 0.08, { type: 'square', vol: 0.07 }); s.tone(440, 0.12, { type: 'triangle', vol: 0.08 }); } },
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
@@ -904,13 +906,15 @@ function spawnFloatText(x, y, text, color = '#FFFFFF', size = 14, life = 0.9, ic
 // ---------- 畫布上的字：跟 HTML 介面同一套黑暗奇幻襯線字，深色粗描邊 ----------
 const CANVAS_FONT_FAMILY = '"Noto Serif TC", "Songti TC", "PMingLiU", serif';
 const TEXT_OUTLINE = '#0e0a14';
+const TEXT_OUTLINE_MAX = 11;
 function canvasFont(size, weight = 900) {
     return `${weight} ${size}px ${CANVAS_FONT_FAMILY}`;
 }
 function drawOutlinedText(text, x, y, size, color, weight = 900) {
     ctx.font = canvasFont(size, weight);
     ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(3, size * 0.22);
+    // 大字的描邊要封頂：照比例放大會把數字的內圈整個塗黑
+    ctx.lineWidth = Math.min(TEXT_OUTLINE_MAX, Math.max(3, size * 0.22));
     ctx.strokeStyle = TEXT_OUTLINE;
     ctx.strokeText(text, x, y);
     ctx.fillStyle = color;
@@ -2810,10 +2814,26 @@ function showTitle() {
     [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
     showScreen(uiElements.titleScreen, true);
     refreshTitle();
+    // 收掉遊戲中墊的那一筆歷史，標題畫面按返回才會照常離開
+    if (history.state && history.state.inGame) history.back();
+}
+
+// 手機的返回鍵 / 返回手勢：遊戲中先墊一筆歷史，按返回只會觸發 popstate（拿來暫停），不會直接離開頁面
+function armBackButton() {
+    if (!(history.state && history.state.inGame)) history.pushState({ inGame: true }, '');
+}
+function handleBackButton() {
+    if (appScreen !== 'playing') return;
+    armBackButton();
+    if (gameState.gameOver) { showTitle(); return; }
+    if (gameState.draftOpen) return;
+    if (uiElements.confirmDialog.style.display === 'flex') { showScreen(uiElements.confirmDialog, false); return; }
+    togglePause();
 }
 
 function enterPlaying() {
     appScreen = 'playing';
+    armBackButton();
     showScreen(uiElements.titleScreen, false);
     uiElements.hud.classList.remove('hidden');
     resizeCanvas();
@@ -2944,7 +2964,10 @@ function updateTimers(deltaTime) {
         if (gameState.banner.life <= 0) gameState.banner = null;
     }
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
+        const before = Math.ceil(gameState.timeToNextWave);
         gameState.timeToNextWave -= deltaTime;
+        const after = Math.ceil(gameState.timeToNextWave);
+        if (after !== before && after >= 1 && after <= COUNTDOWN_SECONDS) Sfx.play('tick');
         if (gameState.timeToNextWave <= 0) {
             prepareNextWave();
         }
@@ -3242,12 +3265,17 @@ function updateUI() {
     if (souls > lastShownSouls && !uiElements.soulsInfo.classList.contains('bump')) uiElements.soulsInfo.classList.add('bump');
     lastShownSouls = souls;
 
-    uiElements.waveInfo.textContent = gameState.currentWave > 0 ? `第 ${gameState.currentWave} 波` : '準備';
+    // 波次之間顯示「即將來的那一波」，不是剛打完的那一波
+    const holding = tutorial && gameState.currentWave === 0;
+    const secs = Math.ceil(gameState.timeToNextWave);
     if (gameState.betweenWaves) {
-        uiElements.timerInfo.textContent = tutorial && gameState.currentWave === 0 ? '先熟悉操作' : `下一波 ${Math.ceil(gameState.timeToNextWave)} 秒`;
+        uiElements.waveInfo.textContent = `第 ${gameState.currentWave + 1} 波`;
+        uiElements.timerInfo.textContent = holding ? '先熟悉操作' : `${secs} 秒後開戰`;
     } else {
+        uiElements.waveInfo.textContent = `第 ${gameState.currentWave} 波`;
         uiElements.timerInfo.textContent = `剩餘 ${countRemainingMonsters()}`;
     }
+    uiElements.wavePlate.classList.toggle('urgent', gameState.betweenWaves && !holding && secs <= COUNTDOWN_SECONDS);
 
     const canAct = !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen;
     for (const u of UNIT_UI) {
@@ -3762,6 +3790,26 @@ function roundRect(x, y, w, h, r) {
     ctx.closePath();
 }
 
+// 開戰前最後幾秒在畫面中間跳大數字：只看角落的小字很容易錯過開戰
+const COUNTDOWN_SECONDS = 3;
+function drawCountdown() {
+    if (appScreen !== 'playing' || !gameState.betweenWaves || gameState.draftOpen) return;
+    const t = gameState.timeToNextWave;
+    if (t <= 0 || t > COUNTDOWN_SECONDS) return;
+    const n = Math.ceil(t);
+    const elapsed = n - t;
+    const scale = 1 + Math.max(0, 0.2 - elapsed) * 3;
+    ctx.save();
+    ctx.globalAlpha = 1 - Math.max(0, elapsed - 0.75) * 2;
+    ctx.translate(view.cssW / 2, view.cssH * 0.36);
+    ctx.scale(scale, scale);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    drawOutlinedText(`第 ${gameState.currentWave + 1} 波`, 0, -64, 20, '#f4ecd8', 700);
+    drawOutlinedText(String(n), 0, 0, 96, n === 1 ? '#ff8a65' : '#e9c46a');
+    ctx.restore();
+}
+
 function drawBanner() {
     const b = gameState.banner;
     if (!b) return;
@@ -3849,6 +3897,7 @@ function drawGame() {
     drawEventOverlay();
     drawBossBar();
     drawStreak();
+    drawCountdown();
     drawBanner();
     drawJoystick();
     drawTutorial();
@@ -3986,6 +4035,11 @@ function bindVolumeSliders() {
 }
 
 function handleVisibilityChange() {
+    // 切到別的 App / 回桌面：自動暫停，回來時停在暫停選單，不會一回來就被圍死
+    if (document.hidden && appScreen === 'playing' && !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen) {
+        togglePause();
+        return;
+    }
     if (document.hidden) {
         if (gameState.musicStarted && !gameState.isPaused && !gameState.gameOver) {
             pauseMusic();
@@ -4028,6 +4082,7 @@ function init() {
     canvas.addEventListener('pointerleave', handleCanvasPointerUp);
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('popstate', handleBackButton);
 
     const setupHoldableButton = (button, actionType, unitType) => {
         button.addEventListener('pointerdown', (e) => {
