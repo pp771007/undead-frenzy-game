@@ -420,11 +420,12 @@ const BLESSINGS = {
     frenzyEye: { name: '狂熱之眼', max: 4, per: 0.3, desc: b => `眼魔攻速 +${pct(b.per)}` },
     wraithBlast: { name: '怨念爆裂', max: 4, per: 0.6, desc: b => `怨靈爆炸傷害 +${pct(b.per)}` },
     rebirth: { name: '輪迴', max: 2, per: 0.4, desc: b => `怨靈陣亡時 ${pct(b.per)} 重生` },
-    frostAura: { name: '寒冥光環', max: 3, per: 5, desc: () => '怨靈光環每秒造成傷害' },
+    frostAura: { name: '寒冥光環', max: 3, per: 5, desc: b => `怨靈光環持續傷害 ${b.per}（隨怨靈等級成長）` },
     raiseDead: { name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
     soulHarvest: { name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
     magnet: { name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
-    vitality: { name: '不死之軀', max: 5, per: 25, desc: b => `法師血量 +${b.per} 並回滿` },
+    // totalDesc：暫停選單顯示累積效果時用（「並回滿」只在選的當下成立）
+    vitality: { name: '不死之軀', max: 5, per: 25, desc: b => `法師血量 +${b.per} 並回滿`, totalDesc: b => `法師血量 +${b.per}` },
     novaPower: { name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
     pact: { name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
     lifesteal: { name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
@@ -3336,6 +3337,20 @@ function pickBlessing(id) {
     if (gameState.pendingDraft) openDraft();
 }
 
+// 暫停選單：每個祝福疊了幾層、加起來的實際效果
+function blessTotalDesc(id) {
+    const B = BLESSINGS[id], lv = bl(id);
+    return (B.totalDesc || B.desc)({ ...B, per: B.per * lv, cdPer: (B.cdPer || 0) * lv });
+}
+function renderBlessingDetail(container) {
+    const ids = Object.keys(BLESSINGS).filter(id => bl(id) > 0);
+    container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id => {
+        const B = BLESSINGS[id], lv = bl(id);
+        const pips = Array.from({ length: B.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
+        return `<div class="bless-row">${iconHtml(id)}<div class="bless-text"><div class="bless-name"><span class="nm">${B.name}</span><span class="pips">${pips}</span></div><div class="bless-effect">${blessTotalDesc(id)}</div></div></div>`;
+    }).join('');
+}
+
 function renderBlessingList(container) {
     const ids = Object.keys(BLESSINGS).filter(id => bl(id) > 0);
     container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id =>
@@ -4172,7 +4187,7 @@ function updatePauseMenuStats() {
     uiElements.statKillArmored.textContent = formatNumberK(gameState.totalKills.ArmoredMelee);
     uiElements.statKillBloater.textContent = formatNumberK(gameState.totalKills.Bloater);
     uiElements.statKillBoss.textContent = formatNumberK(gameState.totalKills.Boss);
-    renderBlessingList(uiElements.pauseBlessings);
+    renderBlessingDetail(uiElements.pauseBlessings);
     uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('crystal')}+${getRunReward()}`;
 }
 
