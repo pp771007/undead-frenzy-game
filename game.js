@@ -1147,6 +1147,17 @@ class SummonUnit extends GameObject {
 
         let moveDirection = { x: 0, y: 0 };
         let currentMoveSpeed = this.moveSpeed * this.buffedMoveSpeedMultiplier;
+        // 地圖無限大、法師比多數召喚物快：離太遠就加速追上，遠到出了畫面就直接傳送回身邊，
+        // 不然法師一路往前走，大軍會被甩在後面、法師一個人被圍
+        const distToPlayerSq = distanceSq(this.pos, this.playerTransform.pos);
+        if (distToPlayerSq > SUMMON_TELEPORT_DIST * SUMMON_TELEPORT_DIST && !inView(this.pos)) {
+            const p = getRandomSpawnPosNearPlayer(SUMMON_TELEPORT_SCATTER);
+            this.pos.x = p.x; this.pos.y = p.y;
+            this.target = null;
+            if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(p.x, p.y, '#7E57C2', 4, 50, 0.4);
+        } else if (distToPlayerSq > SUMMON_CATCHUP_DIST * SUMMON_CATCHUP_DIST && !this.target) {
+            currentMoveSpeed *= SUMMON_CATCHUP_MULT;
+        }
         let isIdle = true;
         let moveX = 0;
         let moveY = 0;
@@ -1492,6 +1503,12 @@ class SummonUnit extends GameObject {
         }
     }
 }
+
+const SUMMON_CATCHUP_DIST = 140;
+// 回到法師身邊的移動本來會再乘 0.5（見 update 的 isReturning 分支），所以倍率要夠大，最慢的怨靈才追得上法師
+const SUMMON_CATCHUP_MULT = 3.2;
+const SUMMON_TELEPORT_DIST = 520;
+const SUMMON_TELEPORT_SCATTER = 70;
 
 class SkeletonWarrior extends SummonUnit {
     constructor(x, y, level, playerTransform) {
