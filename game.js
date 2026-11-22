@@ -215,6 +215,32 @@ const CONFIG = {
     draft: {
         every: 3, optionCount: 3,
     },
+    // 兵種進化：等級到門檻就升一階（★），外型變大換色、多一個能力
+    evolution: {
+        levels: [10, 25, 50],
+        tints: ['#64B5F6', '#FFD54F', '#EF5350'],
+        tintStrength: [0.28, 0.32, 0.36],
+        sizeBonusPerTier: 0.12,
+        names: {
+            SkeletonWarrior: ['骨騎士', '骨將軍', '骨王'],
+            EyeMonster: ['彈射魔眼', '雙瞳魔眼', '爆裂魔眼'],
+            Wraith: ['衰弱怨靈', '脈衝怨靈', '湮滅怨靈'],
+        },
+        perks: {
+            SkeletonWarrior: ['20% 爆擊造成雙倍傷害', '攻擊橫掃周圍敵人', '陣亡時 50% 重組復活'],
+            EyeMonster: ['彈幕命中後彈射 1 次', '每次多射 1 發', '彈幕命中時爆炸'],
+            Wraith: ['光環內的怪攻擊力 -25%', '每 3 秒脈衝傷害', '死亡爆炸更大並定身'],
+        },
+        skelCritChance: 0.2, skelCritMult: 2,
+        skelCleave: 0.3,
+        skelReviveChance: 0.5, skelReviveHealth: 0.5,
+        eyeBounces: 1, eyeBounceRange: 90,
+        eyeExtraShots: 1,
+        eyeBlastRadius: 28, eyeBlastMult: 0.5,
+        wraithWeaken: 0.25,
+        wraithPulseInterval: 3, wraithPulseMult: 0.3,
+        wraithBlastRadiusMult: 1.5, wraithStunDuration: 1.0,
+    },
     holdingButton: {
         holdDelay: 350,
         repeatInterval: 150,
@@ -245,6 +271,13 @@ const BLESSINGS = {
     pact: { icon: '📜', name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
     lifesteal: { icon: '🩸', name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
 };
+
+function getTier(level) {
+    const lv = CONFIG.evolution.levels;
+    let t = 0;
+    while (t < lv.length && level >= lv[t]) t++;
+    return t;
+}
 
 function bl(id) { return (gameState.blessings && gameState.blessings[id]) || 0; }
 function blessVal(id) { return BLESSINGS[id].per * bl(id); }
@@ -694,6 +727,8 @@ const SFX_DEFS = {
     nova: { gap: 0.2, fn: s => { s.tone(220, 0.45, { type: 'sawtooth', vol: 0.15, slideTo: 55 }); s.noise(0.4, { vol: 0.25, filterFreq: 900 }); } },
     draft: { gap: 0.3, fn: s => { [660, 880, 1100].forEach((f, i) => s.tone(f, 0.25, { vol: 0.12, delay: i * 0.08 })); } },
     pick: { gap: 0.2, fn: s => { [523, 784, 1046].forEach((f, i) => s.tone(f, 0.15, { type: 'triangle', vol: 0.14, delay: i * 0.05 })); } },
+    evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
+    pulse: { gap: 0.15, fn: s => s.tone(300, 0.2, { vol: 0.08, slideTo: 120 }) },
     raise: { gap: 0.15, fn: s => s.tone(180, 0.25, { type: 'triangle', vol: 0.14, slideTo: 360 }) },
 };
 
@@ -927,6 +962,12 @@ class SummonUnit extends GameObject {
             this.buffRadius = 0;
             this.buffRadiusSq = 0;
         }
+
+        const E = CONFIG.evolution;
+        this.tier = getTier(this.level);
+        this.tint = this.tier > 0 ? E.tints[this.tier - 1] : null;
+        this.tintStrength = this.tier > 0 ? E.tintStrength[this.tier - 1] : 0;
+        this.drawScale = 1 + E.sizeBonusPerTier * this.tier;
 
         this.maxHealth = Math.round(this.maxHealth);
     }
@@ -1255,29 +1296,39 @@ class SummonUnit extends GameObject {
 
         const currentAttackDamage = Math.round(this.attack);
 
+        const E = CONFIG.evolution;
         if (this.config.type === 'EyeMonster') {
             const targets = [this.target];
-            const extra = blessVal('splitGaze');
+            const extra = blessVal('splitGaze') + (this.tier >= 2 ? E.eyeExtraShots : 0);
             if (extra > 0) {
-                const others = gameState.monsters
-                    .filter(m => m.isAlive && m !== this.target && distanceSq(this.pos, m.pos) <= this.attackRangeSq)
-                    .sort((a, b) => distanceSq(this.pos, a.pos) - distanceSq(this.pos, b.pos));
+                const others = [];
+                monsterGrid.forEachInRadius(this.pos, this.attackRange, m => {
+                    if (m.isAlive && m !== this.target && distanceSq(this.pos, m.pos) <= this.attackRangeSq) others.push(m);
+                });
+                others.sort((a, b) => distanceSq(this.pos, a.pos) - distanceSq(this.pos, b.pos));
                 for (let i = 0; i < extra; i++) targets.push(others[i] || this.target);
             }
+            const bounces = this.tier >= 1 ? E.eyeBounces : 0;
+            const blast = this.tier >= 3;
             targets.forEach(t => {
                 const projectile = getProjectileFromPool();
-                projectile.init(this.pos.x, this.pos.y, t, this.config, currentAttackDamage, this);
+                projectile.init(this.pos.x, this.pos.y, t, this.config, currentAttackDamage, this, bounces, blast);
                 gameState.projectiles.push(projectile);
             });
         } else if (this.config.type === 'SkeletonWarrior') {
             const mainTarget = this.target;
-            mainTarget.takeDamage(currentAttackDamage);
-            this.healFromDamage(currentAttackDamage);
-            const splash = blessVal('cleave');
+            let dmg = currentAttackDamage;
+            if (this.tier >= 1 && Math.random() < E.skelCritChance) {
+                dmg = Math.round(dmg * E.skelCritMult);
+                spawnParticles(mainTarget.pos.x, mainTarget.pos.y, '#FFEE58', 3, 60, 0.25, 2);
+            }
+            mainTarget.takeDamage(dmg);
+            this.healFromDamage(dmg);
+            const splash = blessVal('cleave') + (this.tier >= 2 ? E.skelCleave : 0);
             if (splash > 0) {
-                const splashDmg = Math.round(currentAttackDamage * splash);
+                const splashDmg = Math.round(dmg * splash);
                 const rSq = CLEAVE_RADIUS * CLEAVE_RADIUS;
-                gameState.monsters.forEach(m => {
+                monsterGrid.forEachInRadius(mainTarget.pos, CLEAVE_RADIUS, m => {
                     if (m !== mainTarget && m.isAlive && distanceSq(mainTarget.pos, m.pos) <= rSq) m.takeDamage(splashDmg);
                 });
             }
@@ -1298,9 +1349,11 @@ class SummonUnit extends GameObject {
         if (this.config.type !== 'Wraith') return;
         const frost = blessVal('frostAura');
         const frostDmg = frost > 0 ? Math.round(frost * (1 + this.level * this.config.upgradeBonus)) : 0;
+        const weaken = this.tier >= 1;
         monsterGrid.forEachInRadius(this.pos, this.slowRadius, monster => {
             if (monster.isAlive && distanceSq(this.pos, monster.pos) <= this.slowRadiusSq) {
                 monster.applySlow(this.slowAmount, this.config.slowDuration);
+                if (weaken) monster.weakenTimer = this.config.slowDuration;
                 if (frostDmg) monster.takeDamage(frostDmg);
             }
         });
@@ -1325,6 +1378,13 @@ class SummonUnit extends GameObject {
 
     die() {
         if (!this.isAlive) return;
+        const E = CONFIG.evolution;
+        if (this.config.type === 'SkeletonWarrior' && this.tier >= 3 && !this.revived && Math.random() < E.skelReviveChance) {
+            this.revived = true;
+            this.currentHealth = Math.round(this.maxHealth * E.skelReviveHealth);
+            spawnParticles(this.pos.x, this.pos.y, '#EF9A9A', 10, 60, 0.5);
+            return;
+        }
         this.isAlive = false;
         spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 10, 70, 0.45);
         switch (this.config.type) {
@@ -1368,24 +1428,48 @@ class Wraith extends SummonUnit {
 
     attackTarget() { }
 
+    explosionDamage() {
+        const explosionDamageMultiplier = 1 + (this.level * this.config.upgradeBonus);
+        return Math.round(CONFIG.wraith.explosionBaseDamage * explosionDamageMultiplier * (1 + blessVal('wraithBlast')));
+    }
+
+    update(deltaTime, monsters, otherSummons, player) {
+        super.update(deltaTime, monsters, otherSummons, player);
+        if (!this.isAlive || this.tier < 2) return;
+        const E = CONFIG.evolution;
+        this.pulseTimer = (this.pulseTimer ?? Math.random() * E.wraithPulseInterval) - deltaTime;
+        if (this.pulseTimer > 0) return;
+        this.pulseTimer = E.wraithPulseInterval;
+        if (!monsterGrid.anyWithin(this.pos, this.slowRadius)) return;
+        const dmg = Math.round(this.explosionDamage() * E.wraithPulseMult);
+        monsterGrid.forEachInRadius(this.pos, this.slowRadius, m => {
+            if (m.isAlive && distanceSq(this.pos, m.pos) <= this.slowRadiusSq) m.takeDamage(dmg);
+        });
+        if (gameState.visualEffects.length < MAX_AMBIENT_EFFECTS) {
+            gameState.visualEffects.push(new NovaEffect(this.pos, this.slowRadius, PULSE_EFFECT_COLORS));
+        }
+        Sfx.play('pulse');
+    }
+
     die() {
         if (!this.isAlive) return;
 
-        const explosionDamageMultiplier = 1 + (this.level * this.config.upgradeBonus);
-        const explosionDamage = Math.round(CONFIG.wraith.explosionBaseDamage * explosionDamageMultiplier * (1 + blessVal('wraithBlast')));
-        const explosionRadiusSq = this.slowRadiusSq;
+        const E = CONFIG.evolution;
+        const explosionDamage = this.explosionDamage();
+        const radius = this.slowRadius * (this.tier >= 3 ? E.wraithBlastRadiusMult : 1);
+        const explosionRadiusSq = radius * radius;
+        const stun = this.tier >= 3;
 
-        for (let i = 0; i < gameState.monsters.length; i++) {
-            const monster = gameState.monsters[i];
+        monsterGrid.forEachInRadius(this.pos, radius, monster => {
             if (monster.isAlive && distanceSq(this.pos, monster.pos) <= explosionRadiusSq) {
+                if (stun) monster.applySlow(1, E.wraithStunDuration);
                 monster.takeDamage(explosionDamage);
             }
-        }
-
+        });
 
         const effect = getVisualEffectFromPool(ExplosionEffect);
         if (effect) {
-            effect.init(this.pos, this.slowRadius);
+            effect.init(this.pos, radius);
             gameState.visualEffects.push(effect);
         }
         spawnParticles(this.pos.x, this.pos.y, '#FFB74D', 24, 160, 0.5, 3);
@@ -1411,8 +1495,10 @@ class Projectile {
         this.init(startX, startY, target, shooterConfig, damage);
     }
 
-    init(startX, startY, target, shooterConfig, damage, owner = null) {
+    init(startX, startY, target, shooterConfig, damage, owner = null, bounces = 0, blast = false) {
         this.owner = owner;
+        this.bounces = bounces;
+        this.blast = blast;
         this.pos = { x: startX, y: startY };
         this.radius = shooterConfig.projectileRadius;
         this.color = shooterConfig.projectileColor;
@@ -1436,8 +1522,11 @@ class Projectile {
             const hitRadiusSq = (this.radius + this.target.radius) * (this.radius + this.target.radius);
 
             if (distToTargetSq <= hitRadiusSq) {
-                this.target.takeDamage(this.damage);
+                const hit = this.target;
+                hit.takeDamage(this.damage);
                 if (this.owner) this.owner.healFromDamage(this.damage);
+                if (this.blast) this.explodeAt(hit);
+                if (this.bounces > 0 && this.bounceFrom(hit)) return;
                 this.isAlive = false;
                 return;
             }
@@ -1453,6 +1542,32 @@ class Projectile {
             this.pos.y < -margin || this.pos.y > canvas.height + margin) {
             this.isAlive = false;
         }
+    }
+
+    explodeAt(hit) {
+        const E = CONFIG.evolution;
+        const rSq = E.eyeBlastRadius * E.eyeBlastRadius;
+        const dmg = Math.round(this.damage * E.eyeBlastMult);
+        monsterGrid.forEachInRadius(hit.pos, E.eyeBlastRadius, m => {
+            if (m !== hit && m.isAlive && distanceSq(hit.pos, m.pos) <= rSq) m.takeDamage(dmg);
+        });
+        spawnParticles(hit.pos.x, hit.pos.y, '#F48FB1', 4, 70, 0.3, 2);
+    }
+
+    bounceFrom(hit) {
+        const E = CONFIG.evolution;
+        let next = null, best = E.eyeBounceRange * E.eyeBounceRange;
+        monsterGrid.forEachInRadius(hit.pos, E.eyeBounceRange, m => {
+            if (m === hit || !m.isAlive) return;
+            const d = distanceSq(hit.pos, m.pos);
+            if (d < best) { best = d; next = m; }
+        });
+        if (!next) return false;
+        this.bounces--;
+        this.target = next;
+        this.targetPos = { ...next.pos };
+        this.direction = normalizeVector({ x: next.pos.x - this.pos.x, y: next.pos.y - this.pos.y });
+        return true;
     }
 
     draw(ctx) {
@@ -1726,6 +1841,7 @@ class Monster extends GameObject {
         if (!this.isAlive) return;
         this.tickFlash(deltaTime);
 
+        if (this.weakenTimer > 0) this.weakenTimer -= deltaTime;
         if (this.slowTimer > 0) {
             this.slowTimer -= deltaTime;
             if (this.slowTimer <= 0) {
@@ -1800,7 +1916,7 @@ class Monster extends GameObject {
 
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
-        this.target.takeDamage(this.attack);
+        this.target.takeDamage(this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1));
 
         if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
             const effect = getVisualEffectFromPool(SlashEffect);
@@ -2085,19 +2201,25 @@ function checkWaveEndCondition() {
     }
 }
 
+const NOVA_EFFECT_COLORS = { fill: '156, 39, 176', stroke: '225, 190, 231' };
+const PULSE_EFFECT_COLORS = { fill: '77, 182, 172', stroke: '178, 223, 219' };
+// 脈衝這類「每隻都會一直放」的特效：場上特效太多時就不再加，避免大軍時畫面與效能被淹沒
+const MAX_AMBIENT_EFFECTS = 120;
+
 class NovaEffect extends TimedEffect {
-    constructor(pos, radius) {
+    constructor(pos, radius, colors = NOVA_EFFECT_COLORS) {
         super(pos, CONFIG.nova.effectDuration);
         this.radius = radius;
+        this.colors = colors;
     }
     draw(ctx) {
         if (!this.isAlive) return;
         const p = 1 - this.life / this.duration;
         const r = this.radius * (1 - Math.pow(1 - p, 3));
         ctx.save();
-        ctx.fillStyle = `rgba(156, 39, 176, ${(0.25 * (1 - p)).toFixed(2)})`;
+        ctx.fillStyle = `rgba(${this.colors.fill}, ${(0.25 * (1 - p)).toFixed(2)})`;
         ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = `rgba(225, 190, 231, ${(1 - p).toFixed(2)})`;
+        ctx.strokeStyle = `rgba(${this.colors.stroke}, ${(1 - p).toFixed(2)})`;
         ctx.lineWidth = 6 * (1 - p) + 1;
         ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
@@ -2279,6 +2401,22 @@ function trySummon(type) {
     }
 }
 
+function announceEvolution(type, tier) {
+    const E = CONFIG.evolution;
+    const name = E.names[type][tier - 1];
+    gameState.banner = {
+        text: `${'★'.repeat(tier)} ${name}`,
+        sub: E.perks[type][tier - 1],
+        color: E.tints[tier - 1],
+        life: CONFIG.wave.bannerDuration,
+    };
+    gameState.summons.forEach(s => {
+        if (s.isAlive && s.config.type === type) spawnParticles(s.pos.x, s.pos.y, E.tints[tier - 1], 6, 90, 0.7, 3);
+    });
+    addShake(4);
+    Sfx.play('evolve');
+}
+
 function tryUpgrade(type) {
     let cost, costIncrement, costKey, levelKey, unitName;
     switch (type) {
@@ -2300,7 +2438,9 @@ function tryUpgrade(type) {
 
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
+        const oldTier = getTier(gameState[levelKey]);
         gameState[levelKey]++;
+        const newTier = getTier(gameState[levelKey]);
         gameState.currentCosts[costKey] += costIncrement;
         gameState.summons.forEach(s => {
             if (s.isAlive && s.config.type === type) {
@@ -2309,8 +2449,9 @@ function tryUpgrade(type) {
             }
         });
         Sfx.play('upgrade');
+        if (newTier > oldTier) announceEvolution(type, newTier);
         updateUI();
-        if (!holdActionState.isHolding || holdActionState.actionType !== 'upgrade') {
+        if (newTier === oldTier && (!holdActionState.isHolding || holdActionState.actionType !== 'upgrade')) {
             showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
         }
         ensureMusicPlaying();
@@ -2491,7 +2632,14 @@ function updateUI() {
         }
 
         summonCost = getSummonCost(config);
-        uiMap.level.textContent = `Lv ${level}`;
+        const tier = getTier(level);
+        const nextLv = CONFIG.evolution.levels[tier];
+        const levelHtml = `Lv ${level} <span class="stars">${'★'.repeat(tier)}</span>` +
+            (nextLv ? `<br><span class="next-evo">${'★'.repeat(tier + 1)} Lv${nextLv}</span>` : '');
+        if (uiMap.level.dataset.html !== levelHtml) {
+            uiMap.level.innerHTML = levelHtml;
+            uiMap.level.dataset.html = levelHtml;
+        }
         uiMap.count.textContent = count;
 
         uiMap.summonBtn.textContent = `召喚\n(${formatNumberK(summonCost)}魂)`;
