@@ -179,7 +179,7 @@ const CONFIG = {
     },
     bloaterMonster: {
         type: 'Bloater', baseHealth: 18, baseAttack: 14, radius: 12,
-        imageName: 'basic_melee', imgScaleMultiplier: 5.5, tint: '#7CB342', tintStrength: 0.55,
+        imageName: 'basic_melee', art: 'bloater', imgScaleMultiplier: 5.5, tint: '#7CB342', tintStrength: 0.55,
         attackRange: 22, attackSpeed: 1.0, moveSpeed: 62, color: '#7CB342',
         soulDrop: 2, waveSpeedIncreaseFactor: 0.01,
         minWave: 8, waveInterval: 3,
@@ -195,7 +195,7 @@ const CONFIG = {
     },
     boss: {
         type: 'Boss', name: '骸骨巨像', baseHealth: 500, baseAttack: 22, radius: 26,
-        imageName: 'armored_melee', imgScaleMultiplier: 4.5, tint: '#AB47BC', tintStrength: 0.5,
+        imageName: 'armored_melee', art: 'boss_colossus', imgScaleMultiplier: 4.5, tint: '#AB47BC', tintStrength: 0.5,
         attackRange: 32, attackSpeed: 0.6, moveSpeed: 30, color: '#AB47BC',
         soulDrop: 40, waveSpeedIncreaseFactor: 0.004,
         slamInterval: 5, slamWindup: 1.1, slamRadius: 80, slamDamageMult: 1.0,
@@ -204,7 +204,7 @@ const CONFIG = {
     },
     plagueBoss: {
         type: 'Boss', name: '疫病母巢', baseHealth: 600, baseAttack: 18, radius: 24,
-        imageName: 'basic_melee', imgScaleMultiplier: 6.5, tint: '#33691E', tintStrength: 0.6,
+        imageName: 'basic_melee', art: 'boss_plague', imgScaleMultiplier: 6.5, tint: '#33691E', tintStrength: 0.6,
         attackRange: 30, attackSpeed: 0.8, moveSpeed: 26, color: '#33691E',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.004,
         spawnInterval: 4, spawnCountBase: 3, spawnCountPerTier: 1, spawnRadius: 40,
@@ -212,7 +212,7 @@ const CONFIG = {
     },
     hunterBoss: {
         type: 'Boss', name: '暗影獵手', baseHealth: 450, baseAttack: 26, radius: 20,
-        imageName: 'fast_melee', imgScaleMultiplier: 4.2, tint: '#311B92', tintStrength: 0.6,
+        imageName: 'fast_melee', art: 'boss_hunter', imgScaleMultiplier: 4.2, tint: '#311B92', tintStrength: 0.6,
         attackRange: 26, attackSpeed: 1.2, moveSpeed: 55, color: '#311B92',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.006,
         // 先畫一條預警線，再沿線高速衝過去，路上的召喚物 / 法師都吃傷害
@@ -222,7 +222,7 @@ const CONFIG = {
     },
     thief: {
         type: 'Thief', name: '金魂竊賊', baseHealth: 60, baseAttack: 0, radius: 11,
-        imageName: 'fast_melee', imgScaleMultiplier: 3, tint: '#FFC107', tintStrength: 0.55,
+        imageName: 'fast_melee', art: 'thief', imgScaleMultiplier: 3, tint: '#FFC107', tintStrength: 0.55,
         attackRange: 0, attackSpeed: 1, moveSpeed: 85, color: '#FFC107',
         soulDrop: 20, soulPerWave: 2, waveSpeedIncreaseFactor: 0.005,
         lifetime: 15, leashRadius: 260,
@@ -498,6 +498,15 @@ function loadImage(src) {
     });
 }
 
+const OPTIONAL_ART = {
+    ground: 'ground_tile.png',
+    boss_colossus: 'boss_colossus.png',
+    boss_plague: 'boss_plague.png',
+    boss_hunter: 'boss_hunter.png',
+    bloater: 'bloater.png',
+    thief: 'thief.png',
+};
+
 async function loadAllImages() {
     const imageSources = {
         player: 'player.png',
@@ -507,12 +516,15 @@ async function loadAllImages() {
         basic_melee: 'basic_melee.png',
         fast_melee: 'fast_melee.png',
         armored_melee: 'armored_melee.png',
-        background: 'background.jpg',
     };
 
     const promises = Object.entries(imageSources).map(([name, src]) =>
         loadImage(src).then(img => { images[name] = img; })
     );
+    // 新美術圖：有放檔案就用，沒有就沿用舊圖上色，不算載入失敗
+    Object.entries(OPTIONAL_ART).forEach(([name, src]) => {
+        promises.push(loadImage(src).then(img => { images[name] = img; }).catch(() => { }));
+    });
 
     try {
         await Promise.all(promises);
@@ -1870,11 +1882,13 @@ function getWaveStatMultiplier(wave) {
 class Monster extends GameObject {
     constructor(x, y, config, waveNumber, isElite = false) {
         const E = CONFIG.elite;
-        super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, config.imageName, config.imgScaleMultiplier);
+        // 有專屬新圖就用新圖、不再上色；沒有就用舊圖上色代替
+        const art = config.art && images[config.art] ? config.art : null;
+        super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, art || config.imageName, config.imgScaleMultiplier);
         this.config = config;
         this.isElite = isElite;
-        this.tint = isElite ? E.tint : config.tint;
-        this.tintStrength = isElite ? E.tintStrength : config.tintStrength;
+        this.tint = isElite ? E.tint : (art ? null : config.tint);
+        this.tintStrength = isElite ? E.tintStrength : (art ? 0 : config.tintStrength);
         this.id = `m_${Date.now()}_${Math.random()}`;
         this.attackCooldown = 0;
         this.target = null;
