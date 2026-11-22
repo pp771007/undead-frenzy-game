@@ -438,25 +438,81 @@ function formatNumberK(num) {
     return formatted + 'K';
 }
 
-// ---------- 上色圖快取（受擊閃白、精英金光、腐屍綠） ----------
-const TINT_MAX_SIZE = 256;
-const tintCache = new Map();
-function getTintedImage(img, color, strength) {
-    const key = `${img.src}|${color}|${strength}`;
-    let c = tintCache.get(key);
+// ---------- 縮好尺寸的貼圖快取（含受擊閃白、精英金光、腐屍綠） ----------
+// 原圖約 500px、畫面上只畫 30~60px；每格即時縮小上千張大圖是召喚物多時最吃效能的地方。
+// 依顯示尺寸預先縮一份（乘 SPRITE_RES 留給高解析度螢幕），之後每格直接貼。
+const SPRITE_RES = 2;
+const spriteCache = new Map();
+function getSprite(img, w, h, tint = null, strength = 0) {
+    const cw = Math.max(1, Math.ceil(w * SPRITE_RES)), ch = Math.max(1, Math.ceil(h * SPRITE_RES));
+    const key = `${img.src}|${cw}x${ch}|${tint}|${strength}`;
+    let c = spriteCache.get(key);
     if (c) return c;
-    const scale = Math.min(1, TINT_MAX_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
     c = document.createElement('canvas');
-    c.width = Math.max(1, Math.round(img.naturalWidth * scale));
-    c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    c.width = cw; c.height = ch;
     const g = c.getContext('2d');
-    g.drawImage(img, 0, 0, c.width, c.height);
-    g.globalCompositeOperation = 'source-atop';
-    g.globalAlpha = strength;
-    g.fillStyle = color;
-    g.fillRect(0, 0, c.width, c.height);
-    tintCache.set(key, c);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, 0, 0, cw, ch);
+    if (tint) {
+        g.globalCompositeOperation = 'source-atop';
+        g.globalAlpha = strength;
+        g.fillStyle = tint;
+        g.fillRect(0, 0, cw, ch);
+    }
+    spriteCache.set(key, c);
     return c;
+}
+
+// ---------- 召喚物空間格子：互相推開時只比對附近的，不用每隻跟全部比 ----------
+// 格子邊長要 ≥ 最大推開半徑（怨靈互推 25 × 1.5 = 37.5），查 3×3 格才不會漏
+const GRID_CELL = 40;
+const summonGrid = { cols: 0, rows: 0, cells: [] };
+function rebuildSummonGrid(summons) {
+    const cols = Math.ceil(canvas.width / GRID_CELL) + 1;
+    const rows = Math.ceil(canvas.height / GRID_CELL) + 1;
+    if (summonGrid.cols !== cols || summonGrid.rows !== rows) {
+        summonGrid.cols = cols; summonGrid.rows = rows;
+        summonGrid.cells = Array.from({ length: cols * rows }, () => []);
+    }
+    for (let i = 0; i < summonGrid.cells.length; i++) summonGrid.cells[i].length = 0;
+    for (let i = 0; i < summons.length; i++) {
+        const s = summons[i];
+        if (!s.isAlive) continue;
+        summonGrid.cells[gridIndex(s.pos)].push(s);
+    }
+}
+function gridIndex(pos) {
+    const cx = Math.max(0, Math.min(summonGrid.cols - 1, Math.floor(pos.x / GRID_CELL)));
+    const cy = Math.max(0, Math.min(summonGrid.rows - 1, Math.floor(pos.y / GRID_CELL)));
+    return cy * summonGrid.cols + cx;
+}
+function forEachSummonNear(pos, fn) {
+    const cx = Math.max(0, Math.min(summonGrid.cols - 1, Math.floor(pos.x / GRID_CELL)));
+    const cy = Math.max(0, Math.min(summonGrid.rows - 1, Math.floor(pos.y / GRID_CELL)));
+    for (let y = Math.max(0, cy - 1); y <= Math.min(summonGrid.rows - 1, cy + 1); y++) {
+        for (let x = Math.max(0, cx - 1); x <= Math.min(summonGrid.cols - 1, cx + 1); x++) {
+            const cell = summonGrid.cells[y * summonGrid.cols + x];
+            for (let i = 0; i < cell.length; i++) fn(cell[i]);
+        }
+    }
+}
+
+// 上千隻召喚物擠在法師身邊時，就算只查附近格子，每隻附近還是有上百隻；
+// 推開方向每隻每 AVOID_RECALC_FRAMES 格才重算一次（各自錯開），其餘沿用，肉眼看不出差別
+const AVOID_RECALC_FRAMES = 3;
+let frameNo = 0;
+let avoidSlotCounter = 0;
+
+// 眼魔分散火力用：每格開始時統計「每隻怪被幾隻眼魔瞄準」，選目標時查表，不用每隻眼魔掃全部召喚物
+let eyeTargetCounts = new Map();
+function rebuildEyeTargetCounts(summons) {
+    eyeTargetCounts = new Map();
+    for (let i = 0; i < summons.length; i++) {
+        const s = summons[i];
+        if (s.isAlive && s.config.type === 'EyeMonster' && s.target && s.target.isAlive) {
+            eyeTargetCounts.set(s.target, (eyeTargetCounts.get(s.target) || 0) + 1);
+        }
+    }
 }
 
 // ---------- 合成音效（不用音檔） ----------
@@ -579,11 +635,11 @@ class GameObject {
             ctx.save();
             ctx.translate(this.pos.x, this.pos.y);
             ctx.scale(this.facingDirection, 1);
-            const img = this.tint ? getTintedImage(this.image, this.tint, this.tintStrength || 0.45) : this.image;
+            const img = getSprite(this.image, this.imageWidth, this.imageHeight, this.tint, this.tintStrength || 0.45);
             ctx.drawImage(img, -w / 2, -h / 2, w, h);
             if (this.hitFlash > 0) {
                 ctx.globalAlpha = Math.min(1, this.hitFlash / CONFIG.visuals.hitFlashDuration) * 0.85;
-                ctx.drawImage(getTintedImage(this.image, '#FFFFFF', 1), -w / 2, -h / 2, w, h);
+                ctx.drawImage(getSprite(this.image, this.imageWidth, this.imageHeight, '#FFFFFF', 1), -w / 2, -h / 2, w, h);
             }
             ctx.restore();
         } else {
@@ -807,6 +863,7 @@ class SummonUnit extends GameObject {
         if (!this.target && !this.isRetreatingFromMonster && !this.isRetreatingToPlayer) {
             if (this.config.type === 'EyeMonster') {
                 this.target = this.findBestTarget(monsters, otherSummons);
+                if (this.target) eyeTargetCounts.set(this.target, (eyeTargetCounts.get(this.target) || 0) + 1);
             } else if (this.config.type !== 'Wraith') {
                 this.target = this.findNearestMonster(monsters);
             }
@@ -872,7 +929,7 @@ class SummonUnit extends GameObject {
             }
         }
 
-        const avoidanceVector = this.avoidOverlap(otherSummons, player);
+        const avoidanceVector = this.cachedAvoidance(player);
 
         let finalMove = { x: moveDirection.x * currentMoveSpeed, y: moveDirection.y * currentMoveSpeed };
 
@@ -914,7 +971,7 @@ class SummonUnit extends GameObject {
                 if (distToWanderTargetSq > 5 * 5) {
                     const wanderDir = normalizeVector({ x: this.wanderTargetPos.x - this.pos.x, y: this.wanderTargetPos.y - this.pos.y });
                     const wanderSpeed = this.moveSpeed * this.config.wanderSpeedFactor * this.buffedMoveSpeedMultiplier;
-                    const wanderAvoidance = this.avoidOverlap(otherSummons, player);
+                    const wanderAvoidance = this.cachedAvoidance(player);
                     const wanderMoveX = (wanderDir.x * wanderSpeed + wanderAvoidance.x * 0.5) * deltaTime;
                     const wanderMoveY = (wanderDir.y * wanderSpeed + wanderAvoidance.y * 0.5) * deltaTime;
                     this.pos.x += wanderMoveX;
@@ -950,13 +1007,21 @@ class SummonUnit extends GameObject {
         }
     }
 
-    avoidOverlap(otherSummons, player) {
+    cachedAvoidance(player) {
+        if (this.avoidSlot === undefined) this.avoidSlot = (avoidSlotCounter++) % AVOID_RECALC_FRAMES;
+        if (!this.avoidCache || (frameNo + this.avoidSlot) % AVOID_RECALC_FRAMES === 0) {
+            this.avoidCache = this.avoidOverlap(player);
+        }
+        return this.avoidCache;
+    }
+
+    avoidOverlap(player) {
         let totalPushX = 0;
         let totalPushY = 0;
         const myAvoidanceRadius = this.config.avoidanceRadius;
         const myAvoidanceForce = this.config.avoidanceForce;
 
-        otherSummons.forEach(other => {
+        forEachSummonNear(this.pos, other => {
             if (other !== this && other.isAlive) {
                 let currentAvoidanceRadius = Math.max(myAvoidanceRadius, other.config.avoidanceRadius);
 
@@ -1040,15 +1105,7 @@ class SummonUnit extends GameObject {
         }
 
         let targetCounts = {};
-        potentialTargets.forEach(pt => targetCounts[pt.id] = 0);
-
-        otherSummons.forEach(other => {
-            if (other !== this && other.isAlive && other.config.type === 'EyeMonster' && other.target && other.target.isAlive) {
-                if (targetCounts.hasOwnProperty(other.target.id)) {
-                    targetCounts[other.target.id]++;
-                }
-            }
-        });
+        potentialTargets.forEach(pt => targetCounts[pt.id] = eyeTargetCounts.get(pt) || 0);
 
         let minCount = Infinity;
         potentialTargets.forEach(pt => {
@@ -1416,7 +1473,7 @@ class ExplosionEffect extends TimedEffect {
 class DeathFadeEffect extends TimedEffect {
     constructor(obj) {
         super(obj.pos, CONFIG.visuals.deathFadeDuration);
-        this.image = obj.tint ? getTintedImage(obj.image, obj.tint, obj.tintStrength || 0.45) : obj.image;
+        this.image = obj.image ? getSprite(obj.image, obj.imageWidth, obj.imageHeight, obj.tint, obj.tintStrength || 0.45) : null;
         this.w = obj.imageWidth * (obj.drawScale || 1);
         this.h = obj.imageHeight * (obj.drawScale || 1);
         this.facing = obj.facingDirection;
@@ -2653,6 +2710,7 @@ function handleRestartGame() {
 }
 
 function updateGame(deltaTime) {
+    frameNo++;
     updateTimers(deltaTime);
 
     const wraiths = [];
@@ -2665,6 +2723,8 @@ function updateGame(deltaTime) {
         }
     }
     wraiths.forEach(wraith => wraith.applyBuffAura(nonWraiths));
+    rebuildSummonGrid(gameState.summons);
+    rebuildEyeTargetCounts(gameState.summons);
 
     if (gameState.player) gameState.player.update(deltaTime, getMoveVector());
 
