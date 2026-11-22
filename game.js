@@ -199,7 +199,7 @@ const CONFIG = {
     },
     bloaterMonster: {
         type: 'Bloater', baseHealth: 18, baseAttack: 14, radius: 12,
-        imageName: 'basic_melee', art: 'bloater', imgScaleMultiplier: 5.5, tint: '#7CB342', tintStrength: 0.55,
+        imageName: 'basic_melee', art: 'bloater', imgScaleMultiplier: 5.5, artScale: 4, tint: '#7CB342', tintStrength: 0.55,
         attackRange: 22, attackSpeed: 1.0, moveSpeed: 62, color: '#7CB342',
         soulDrop: 2, waveSpeedIncreaseFactor: 0.01,
         minWave: 8, waveInterval: 3,
@@ -224,7 +224,7 @@ const CONFIG = {
     },
     plagueBoss: {
         type: 'Boss', name: '疫病母巢', baseHealth: 600, baseAttack: 18, radius: 24,
-        imageName: 'basic_melee', art: 'boss_plague', imgScaleMultiplier: 6.5, tint: '#33691E', tintStrength: 0.6,
+        imageName: 'basic_melee', art: 'boss_plague', imgScaleMultiplier: 6.5, artScale: 5, tint: '#33691E', tintStrength: 0.6,
         attackRange: 30, attackSpeed: 0.8, moveSpeed: 26, color: '#33691E',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.004,
         spawnInterval: 4, spawnCountBase: 3, spawnCountPerTier: 1, spawnRadius: 40,
@@ -232,7 +232,7 @@ const CONFIG = {
     },
     hunterBoss: {
         type: 'Boss', name: '暗影獵手', baseHealth: 450, baseAttack: 26, radius: 20,
-        imageName: 'fast_melee', art: 'boss_hunter', imgScaleMultiplier: 4.2, tint: '#311B92', tintStrength: 0.6,
+        imageName: 'fast_melee', art: 'boss_hunter', imgScaleMultiplier: 4.2, artScale: 5, tint: '#311B92', tintStrength: 0.6,
         attackRange: 26, attackSpeed: 1.2, moveSpeed: 55, color: '#311B92',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.006,
         // 先畫一條預警線，再沿線高速衝過去，路上的召喚物 / 法師都吃傷害
@@ -242,10 +242,25 @@ const CONFIG = {
     },
     thief: {
         type: 'Thief', name: '金魂竊賊', baseHealth: 60, baseAttack: 0, radius: 11,
-        imageName: 'fast_melee', art: 'thief', imgScaleMultiplier: 3, tint: '#FFC107', tintStrength: 0.55,
-        attackRange: 0, attackSpeed: 1, moveSpeed: 85, color: '#FFC107',
+        imageName: 'fast_melee', art: 'thief', imgScaleMultiplier: 3, artScale: 4.5, tint: '#FFC107', tintStrength: 0.55,
+        // 要比法師（90）和骷髏（80）慢，帶著大軍追得上才有意思
+        attackRange: 0, attackSpeed: 1, moveSpeed: 60, color: '#FFC107',
         soulDrop: 20, soulPerWave: 2, waveSpeedIncreaseFactor: 0.005,
-        lifetime: 15, leashRadius: 260,
+        lifetime: 20, leashRadius: 260,
+    },
+    assassin: {
+        type: 'Assassin', baseHealth: 40, baseAttack: 0, radius: 11,
+        imageName: 'fast_melee', art: 'assassin', imgScaleMultiplier: 3, artScale: 3.5, tint: '#5E35B1', tintStrength: 0.6,
+        // attackRange 只用來決定她在法師身邊多遠停下來等瞬移，她本身不普攻
+        attackRange: 90, attackSpeed: 1, moveSpeed: 68, color: '#5E35B1',
+        soulDrop: 6, waveSpeedIncreaseFactor: 0.006,
+        minWave: 12, waveInterval: 7,
+        // 潛行時召喚物看不到她（見 SpatialGrid.rebuild），只在蓄力到刺完後現形的那段時間會被大軍圍毆，所以每隻幾乎都會出手一次。
+        // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
+        // 傷害是法師最大生命的固定比例、不隨波數變大：站著不動才會中，一直走一定閃得掉（走速 90 × 蓄力 0.75 秒 ≫ 判定半徑）
+        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 0.75, strikeRadius: 34, strikeHpRatio: 0.3,
+        // 平常半透明（潛行），蓄力到瞬移後這段時間現形
+        stealthAlpha: 0.5, revealTime: 1.5,
     },
     waveEvents: {
         startWave: 6, chance: 0.3,
@@ -550,12 +565,13 @@ function loadImage(src) {
 }
 
 const OPTIONAL_ART = {
-    ground: 'ground_tile.png',
+    ground: 'ground_tile.jpg',
     boss_colossus: 'boss_colossus.png',
     boss_plague: 'boss_plague.png',
     boss_hunter: 'boss_hunter.png',
     bloater: 'bloater.png',
     thief: 'thief.png',
+    assassin: 'assassin.png',
 };
 
 async function loadAllImages() {
@@ -711,7 +727,8 @@ class SpatialGrid {
         this.map.clear();
         for (let i = 0; i < items.length; i++) {
             const it = items[i];
-            if (!it.isAlive) continue;
+            // 潛行中的單位不放進格子：召喚物找目標、範圍傷害都看不到它（新星直接掃全部怪物，照樣打得到）
+            if (!it.isAlive || it.stealthed) continue;
             const k = this.key(this.cx(it.pos.x), this.cy(it.pos.y));
             let arr = this.map.get(k);
             if (!arr) { arr = this.pool.pop() || []; this.map.set(k, arr); }
@@ -884,6 +901,7 @@ const SFX_DEFS = {
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
+    mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
     pulse: { gap: 0.15, fn: s => s.tone(300, 0.2, { vol: 0.08, slideTo: 120 }) },
@@ -1985,7 +2003,9 @@ class Monster extends GameObject {
         const E = CONFIG.elite;
         // 有專屬新圖就用新圖、不再上色；沒有就用舊圖上色代替
         const art = config.art && images[config.art] ? config.art : null;
-        super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, art || config.imageName, config.imgScaleMultiplier);
+        // 新圖的留白和舊圖不同，各自有一個縮放
+        const scale = art && config.artScale ? config.artScale : config.imgScaleMultiplier;
+        super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, art || config.imageName, scale);
         this.config = config;
         this.isElite = isElite;
         this.tint = isElite ? E.tint : (art ? null : config.tint);
@@ -2456,6 +2476,89 @@ class ThiefMonster extends Monster {
     attackTarget() { }
 }
 
+class AssassinMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.assassin, waveNumber, isElite);
+        this.blinkTimer = CONFIG.assassin.blinkCooldown * randomInRange(0.3, 0.8);
+        this.windup = 0;
+        this.mark = null;
+        this.revealed = 0;
+    }
+    get stealthed() { return this.revealed <= 0; }
+    findTarget(player) {
+        this.target = player.isAlive ? player : null;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        if (this.revealed > 0) this.revealed -= deltaTime;
+        if (this.windup > 0) {
+            this.tickFlash(deltaTime);
+            this.windup -= deltaTime;
+            if (this.windup <= 0) this.strike(player);
+            return;
+        }
+        this.blinkTimer -= deltaTime;
+        if (this.blinkTimer <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.blinkRange * c.blinkRange) {
+            this.windup = c.blinkWindup;
+            this.mark = { x: player.pos.x, y: player.pos.y };
+            this.revealed = c.blinkWindup + c.revealTime;
+            Sfx.play('mark');
+            return;
+        }
+        super.update(deltaTime, player, summons);
+    }
+    attackTarget() { }
+    strike(player) {
+        const c = this.config;
+        spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 12, 80, 0.4, 3);
+        this.pos.x = this.mark.x;
+        this.pos.y = this.mark.y;
+        spawnParticles(this.pos.x, this.pos.y, '#B39DDB', 16, 120, 0.4, 3);
+        Sfx.play('dash');
+        if (player.isAlive && distanceSq(player.pos, this.mark) <= c.strikeRadius * c.strikeRadius) {
+            this.updateFacingDirection(player.pos.x - this.pos.x);
+            const effect = getVisualEffectFromPool(SlashEffect);
+            if (effect) { effect.init(this.pos, player.pos); gameState.visualEffects.push(effect); }
+            player.takeDamage(player.maxHealth * c.strikeHpRatio);
+        } else {
+            spawnFloatText(this.mark.x, this.mark.y - 20, '閃過', '#B3E5FC', 13);
+        }
+        this.mark = null;
+        this.blinkTimer = c.blinkCooldown;
+    }
+    // 標記另外畫在召喚物之上、法師之下：不然會被大軍蓋住，刺客本人在畫面外時也會漏畫
+    drawMark(ctx) {
+        {
+            const c = this.config;
+            const p = 1 - this.windup / c.blinkWindup;
+            const r = c.strikeRadius;
+            const { x, y } = this.mark;
+            ctx.save();
+            ctx.fillStyle = `rgba(229, 57, 53, ${(0.1 + 0.25 * p).toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 82, 82, 0.95)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+            // 往內收的圈：收到判定圈時就是出手的瞬間
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath(); ctx.arc(x, y, r * (2.2 - 1.2 * p), 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.moveTo(x - r * 0.45, y); ctx.lineTo(x + r * 0.45, y);
+            ctx.moveTo(x, y - r * 0.45); ctx.lineTo(x, y + r * 0.45);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        if (this.stealthed) ctx.globalAlpha = this.config.stealthAlpha;
+        super.draw(ctx);
+        ctx.globalAlpha = 1;
+    }
+}
+
 function getWaveEvent() {
     return gameState.waveEvent ? CONFIG.waveEvents.list[gameState.waveEvent] : null;
 }
@@ -2500,7 +2603,7 @@ function buildWaveQueue(wave) {
     const classes = [];
     const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
     add(BasicMeleeMonster, Math.round((W.basicBase + wave * W.basicPerWave) * factor));
-    [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster]]
+    [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster], [CONFIG.assassin, AssassinMonster]]
         .forEach(([cfg, Cls]) => {
             if (wave < cfg.minWave) return;
             const typeMult = Cls === BloaterMonster && ev && ev.bloaterMult ? ev.bloaterMult : 1;
@@ -3867,6 +3970,10 @@ function drawGame() {
     for (let i = 0; i < gameState.projectiles.length; i++) {
         const pr = gameState.projectiles[i];
         if (pr.isAlive && inView(pr.pos)) pr.draw(ctx);
+    }
+    for (let i = 0; i < gameState.monsters.length; i++) {
+        const m = gameState.monsters[i];
+        if (m.isAlive && m.mark) m.drawMark(ctx);
     }
     // 標題畫面上法師是 HTML 立繪，畫布這邊只留地面
     if (gameState.player && gameState.player.isAlive && appScreen !== 'title') gameState.player.draw(ctx);
