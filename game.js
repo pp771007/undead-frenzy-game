@@ -101,6 +101,9 @@ const CONFIG = {
         attackRange: 0,
         slowRadiusBase: 80,
         slowRadiusUpgrade: 5,
+        // 單隻怨靈的光環封頂：不封的話一隻高等怨靈就蓋滿全圖、怪物定身，挑戰直接消失
+        slowRadiusMax: 150,
+        slowAmountMax: 0.7,
         slowAmountBase: 0.5,
         slowAmountUpgrade: 0.025,
         slowDuration: 1.5, attackSpeed: 1.0, moveSpeed: 55, color: '#4DB6AC',
@@ -168,6 +171,9 @@ const CONFIG = {
         // （舊版：每 5 波 +10%、第 50 波後每波再 +0.7%），已經玩到很後面的存檔不會突然變難
         earlyWaves: 20, earlyScalePerWave: 0.035,
         scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
+        // 召喚物不設上限時，玩家收入隨怪物「數量」成長、戰力隨累積收入成長，線性變強的怪物永遠追不上
+        // （舊版就是這樣撐到無限波）。從 expStartWave 起再乘上 expGrowth^(超過的波數)，保證終究會被淹沒
+        expStartWave: 30, expGrowth: 1.08,
         basicBase: 3, basicPerWave: 1.3,
         bossEvery: 10, bossWaveCountFactor: 0.5,
         spawnIntervalBase: 0.9, spawnIntervalPerWave: 0.01, spawnIntervalMin: 0.35,
@@ -909,9 +915,9 @@ class SummonUnit extends GameObject {
         this.attackRangeSq = this.attackRange * this.attackRange;
 
         if (this.config.type === 'Wraith') {
-            this.slowRadius = this.config.slowRadiusBase + (this.level * this.config.slowRadiusUpgrade);
+            this.slowRadius = Math.min(this.config.slowRadiusMax, this.config.slowRadiusBase + (this.level * this.config.slowRadiusUpgrade));
             this.slowAmount = this.config.slowAmountBase + (this.level * this.config.slowAmountUpgrade);
-            this.slowAmount = Math.min(this.slowAmount, 0.9);
+            this.slowAmount = Math.min(this.slowAmount, this.config.slowAmountMax);
             this.slowRadiusSq = this.slowRadius * this.slowRadius;
             this.buffRadius = this.slowRadius;
             this.buffRadiusSq = this.slowRadiusSq;
@@ -1654,10 +1660,11 @@ function bankAllOrbs() {
 
 function getWaveStatMultiplier(wave) {
     const W = CONFIG.wave;
-    return 1
+    const linear = 1
         + W.earlyScalePerWave * Math.min(wave - 1, W.earlyWaves - 1)
         + W.scalePerWave * Math.max(0, wave - W.earlyWaves)
         + W.lateScalePerWave * Math.max(0, wave - W.lateWave);
+    return linear * Math.pow(W.expGrowth, Math.max(0, wave - W.expStartWave));
 }
 
 class Monster extends GameObject {
