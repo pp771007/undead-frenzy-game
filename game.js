@@ -277,18 +277,20 @@ const CONFIG = {
         // attackRange = 站在多遠外丟毒（不貼身），attackSpeed = 每秒丟幾次
         attackRange: 170, attackSpeed: 0.28, moveSpeed: 45, color: '#8E24AA',
         soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
-        minWave: 20, waveInterval: 4,
+        // 第 21 波＝首領後的喘息波，怪少，新敵人在這時候登場比較好學
+        minWave: 21, waveInterval: 4,
         // 往目標丟一團毒：落點先出現預警圈，飛行 lobTime 秒後變成毒池，持續 puddleLife 秒，每 puddleTick 秒對圈內的召喚物與法師造成傷害。
         // 懲罰大軍擠成一團、法師站著不動。
         // 對法師的傷害是最大生命的固定比例（同刺客）：照怪物攻擊算的話第 30 波站進去 1.5 秒就死，完全來不及反應
-        lobTime: 1.0, puddleRadius: 40, puddleLife: 3, puddleTick: 0.5, puddleDamageMult: 0.4, puddlePlayerHpRatio: 0.06,
+        throwWindup: 0.45, lobTime: 1.0, puddleRadius: 40, puddleLife: 3, puddleTick: 0.5, puddleDamageMult: 0.4, puddlePlayerHpRatio: 0.06,
     },
     eliteAffix: {
         // 這一波起精英怪會帶一個詞綴，牠腳下的圈換顏色
         startWave: 25,
         list: {
-            split: { color: '#9CCC65', count: 3, hpMult: 0.35 },
-            frenzy: { color: '#FF7043', threshold: 0.5, speedMult: 1.6, atkSpeedMult: 1.5 },
+            // badge：頭上徽章的字，光看腳下圈的顏色分不出是哪種
+            split: { badge: '裂', color: '#9CCC65', count: 3, hpMult: 0.35 },
+            frenzy: { badge: '狂', color: '#FF7043', threshold: 0.5, speedMult: 1.6, atkSpeedMult: 1.5 },
         },
     },
     waveEvents: {
@@ -2205,6 +2207,20 @@ class Monster extends GameObject {
             ctx.restore();
         }
         super.draw(ctx);
+        if (this.affix && this.isAlive) {
+            const A = CONFIG.eliteAffix.list[this.affix];
+            const bx = this.pos.x, by = this.pos.y - this.imageHeight * 0.5 - 12;
+            ctx.fillStyle = 'rgba(14, 10, 20, 0.9)';
+            ctx.beginPath(); ctx.arc(bx, by, 9, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = A.color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = canvasFont(11);
+            ctx.fillStyle = A.color;
+            ctx.fillText(A.badge, bx, by + 0.5);
+        }
     }
 
     applyWaveScaling(wave) {
@@ -2744,19 +2760,66 @@ class AssassinMonster extends Monster {
 class SpitterMonster extends Monster {
     constructor(x, y, waveNumber, isElite) {
         super(x, y, CONFIG.spitter, waveNumber, isElite);
+        this.throwWindup = 0;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        if (this.throwWindup > 0) {
+            // 丟之前先鼓起來、發綠光：看得出「這隻要丟東西了」
+            this.tickFlash(deltaTime);
+            this.throwWindup -= deltaTime;
+            const k = 1 - this.throwWindup / this.config.throwWindup;
+            this.drawScale = 1 + 0.25 * Math.sin(k * Math.PI);
+            if (this.throwWindup <= 0) { this.drawScale = 1; this.throwGlob(); }
+            return;
+        }
+        super.update(deltaTime, player, summons);
     }
     attackTarget() {
+        if (!this.target || !this.target.isAlive) return;
+        this.throwWindup = this.config.throwWindup;
+        this.attackCooldown = 1.0 / this.attackSpeed;
+    }
+    throwGlob() {
         if (!this.target || !this.target.isAlive) return;
         const c = this.config;
         const spread = c.puddleRadius * 0.4;
         gameState.hazards.push({
-            sx: this.pos.x, sy: this.pos.y,
+            sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.2,
             x: this.target.pos.x + randomInRange(-spread, spread), y: this.target.pos.y + randomInRange(-spread, spread),
             r: c.puddleRadius * (this.isElite ? CONFIG.elite.sizeMult : 1),
             flight: c.lobTime, life: c.puddleLife, tick: 0, dmg: this.attack * c.puddleDamageMult,
         });
-        this.attackCooldown = 1.0 / this.attackSpeed;
+        spawnParticles(this.pos.x, this.pos.y - this.imageHeight * 0.2, POISON_LIGHT, 8, 60, 0.35, 3);
     }
+    draw(ctx) {
+        if (this.isAlive && this.throwWindup > 0) {
+            const k = 1 - this.throwWindup / this.config.throwWindup;
+            ctx.globalAlpha = 0.25 + 0.45 * k;
+            const g = this.imageWidth * 1.6;
+            if (poisonGlowSprite) ctx.drawImage(poisonGlowSprite, this.pos.x - g / 2, this.pos.y - g / 2, g, g);
+            ctx.globalAlpha = 1;
+        }
+        super.draw(ctx);
+    }
+}
+
+// 毒的顏色一律用綠色（大家一看就懂是毒），投手本體是紫色，兩者靠那條拋物線連在一起
+const POISON_DARK = '#33691E';
+const POISON_MID = '#7CB342';
+const POISON_LIGHT = '#C5E1A5';
+let poisonGlowSprite = null;
+function buildPoisonGlow() {
+    const S = 64, r = S / 2;
+    poisonGlowSprite = document.createElement('canvas');
+    poisonGlowSprite.width = poisonGlowSprite.height = S;
+    const g = poisonGlowSprite.getContext('2d');
+    const grad = g.createRadialGradient(r, r, 0, r, r, r);
+    grad.addColorStop(0, 'rgba(197, 225, 165, 0.9)');
+    grad.addColorStop(0.5, 'rgba(124, 179, 66, 0.4)');
+    grad.addColorStop(1, 'rgba(124, 179, 66, 0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, S, S);
 }
 
 // 毒池：先飛（地上有預警圈）、落地後持續傷害圈內的召喚物與法師
@@ -2767,7 +2830,7 @@ function updateHazards(deltaTime) {
         if (h.flight > 0) {
             h.flight -= deltaTime;
             if (h.flight <= 0) {
-                spawnParticles(h.x, h.y, '#AB47BC', 12, 90, 0.4, 3);
+                spawnParticles(h.x, h.y, POISON_MID, 14, 90, 0.4, 3);
                 Sfx.play('splat');
             }
             continue;
@@ -2778,42 +2841,91 @@ function updateHazards(deltaTime) {
         h.tick = c.puddleTick;
         const rSq = h.r * h.r;
         summonGrid.forEachInRadius(h, h.r, s => { if (s.isAlive && distanceSq(h, s.pos) <= rSq) s.takeDamage(h.dmg); });
-        if (p && p.isAlive && distanceSq(h, p.pos) <= rSq) p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio);
+        if (p && p.isAlive && distanceSq(h, p.pos) <= rSq) {
+            p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio);
+            spawnFloatText(p.pos.x, p.pos.y - 30, '中毒', POISON_LIGHT, 13, 0.6);
+        }
     }
     gameState.hazards = gameState.hazards.filter(h => h.life > 0);
 }
 
+// 拋物線上的一點：k = 0 在投手手上，1 在落點
+function lobPoint(h, k) {
+    return { x: h.sx + (h.x - h.sx) * k, y: h.sy + (h.y - h.sy) * k - Math.sin(k * Math.PI) * LOB_ARC_HEIGHT };
+}
+const LOB_ARC_HEIGHT = 70;
+const LOB_PATH_DOTS = 12;
+
 function drawHazards() {
+    if (!poisonGlowSprite) buildPoisonGlow();
     const t = performance.now() / 1000;
-    const lob = CONFIG.spitter.lobTime;
+    const skull = getIconImage('skull');
     for (const h of gameState.hazards) {
-        if (!inView(h)) continue;
-        if (h.flight > 0) {
-            const k = 1 - h.flight / lob;
-            ctx.fillStyle = `rgba(206, 147, 216, ${(0.08 + 0.12 * k).toFixed(2)})`;
-            ctx.strokeStyle = `rgba(206, 147, 216, ${(0.4 + 0.5 * k).toFixed(2)})`;
-            ctx.lineWidth = 2;
-            ctx.setLineDash([5, 5]);
-            ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-            ctx.setLineDash([]);
-            // 飛行中的毒團：拋物線
-            const gx = h.sx + (h.x - h.sx) * k, gy = h.sy + (h.y - h.sy) * k - Math.sin(k * Math.PI) * 60;
-            ctx.fillStyle = '#AB47BC';
-            ctx.beginPath(); ctx.arc(gx, gy, 5, 0, Math.PI * 2); ctx.fill();
-            continue;
-        }
+        if (h.flight > 0 || !inView(h)) continue;
         const fade = Math.min(1, h.life * 2);
-        ctx.fillStyle = `rgba(123, 31, 162, ${(0.35 * fade).toFixed(2)})`;
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = 'rgba(124, 179, 66, 0.42)';
         ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = `rgba(186, 104, 200, ${(0.8 * fade).toFixed(2)})`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = POISON_DARK;
+        ctx.lineWidth = 3;
         ctx.stroke();
-        ctx.fillStyle = `rgba(225, 190, 231, ${(0.6 * fade).toFixed(2)})`;
-        for (let i = 0; i < 3; i++) {
-            const a = i * 2.1 + t * 1.3, rr = h.r * (0.25 + 0.2 * i);
-            const bs = 2 + 1.5 * Math.abs(Math.sin(t * 3 + i));
-            ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * rr, h.y + Math.sin(a) * rr * 0.6, bs, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = POISON_MID;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.r - 3, 0, Math.PI * 2); ctx.stroke();
+        // 冒泡＋往上飄的毒煙
+        for (let i = 0; i < 5; i++) {
+            const ph = (t * 0.8 + i * 0.37) % 1;
+            const a = i * 1.7, rr = h.r * (0.2 + 0.13 * i);
+            const bx = h.x + Math.cos(a) * rr, by = h.y + Math.sin(a) * rr * 0.6;
+            ctx.globalAlpha = fade * (1 - ph) * 0.8;
+            ctx.fillStyle = POISON_LIGHT;
+            ctx.beginPath(); ctx.arc(bx, by - ph * 26, 2.5 + ph * 4, 0, Math.PI * 2); ctx.fill();
         }
+        ctx.globalAlpha = fade * 0.9;
+        if (skull) ctx.drawImage(skull, h.x - 11, h.y - 11, 22, 22);
+        ctx.globalAlpha = 1;
+    }
+}
+
+// 飛行中的毒團與落點預警畫在召喚物之上：大軍擠在一起時才不會被蓋住
+function drawLobs() {
+    if (!gameState.hazards.length) return;
+    if (!poisonGlowSprite) buildPoisonGlow();
+    const lob = CONFIG.spitter.lobTime;
+    const skull = getIconImage('skull');
+    for (const h of gameState.hazards) {
+        if (h.flight <= 0) continue;
+        const k = 1 - h.flight / lob;
+        // 落點：跟巨像重擊同一套「紅圈越填越滿，滿了就落下」
+        if (inView(h)) {
+            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.2 * k).toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(h.x, h.y, h.r * k, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 82, 82, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2); ctx.stroke();
+            if (skull) { ctx.globalAlpha = 0.85; ctx.drawImage(skull, h.x - 10, h.y - 10, 20, 20); ctx.globalAlpha = 1; }
+        }
+        // 剩下要飛的那段拋物線畫成虛線：看得出是哪一隻丟的、會掉在哪
+        ctx.beginPath();
+        for (let i = 0; i <= LOB_PATH_DOTS; i++) {
+            const pt = lobPoint(h, k + (1 - k) * (i / LOB_PATH_DOTS));
+            if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.lineCap = 'round';
+        ctx.setLineDash([6, 6]);
+        ctx.strokeStyle = 'rgba(14, 10, 20, 0.6)';
+        ctx.lineWidth = 5;
+        ctx.stroke();
+        ctx.strokeStyle = POISON_LIGHT;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const g = lobPoint(h, k);
+        ctx.drawImage(poisonGlowSprite, g.x - 14, g.y - 14, 28, 28);
+        ctx.fillStyle = POISON_MID;
+        ctx.strokeStyle = POISON_DARK;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(g.x, g.y, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     }
 }
 
@@ -2938,6 +3050,15 @@ function updateSpawner(deltaTime) {
     }
 }
 
+// 新威脅第一次出現的那一波，橫幅改成介紹它：一句「看到什麼就做什麼」
+function getNewcomer(wave) {
+    const assassinWave = curseMods().assassinEarly ? ASSASSIN_EARLY_WAVE : CONFIG.assassin.minWave;
+    if (wave === assassinWave) return { name: '暗影刺客', hint: '腳下出現紅圈就快走開', icon: 'warning', color: '#EF9A9A' };
+    if (wave === CONFIG.spitter.minWave) return { name: '瘟疫投手', hint: '別站進綠色毒池', icon: 'plague', color: POISON_LIGHT };
+    if (wave === CONFIG.eliteAffix.startWave) return { name: '精英詞綴', hint: '「裂」會分裂、「狂」會暴走', icon: 'crown', color: '#FFD54F' };
+    return null;
+}
+
 function isFinalWave(wave) {
     return wave === CONFIG.wave.finalWave;
 }
@@ -2978,6 +3099,9 @@ function prepareNextWave() {
             const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
             gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'warning' };
         }
+    } else if (getNewcomer(waveNum)) {
+        const n = getNewcomer(waveNum);
+        gameState.banner = { text: n.name, sub: `新威脅 · ${n.hint}`, color: n.color, life: CONFIG.wave.bannerDuration * 1.8, icon: n.icon };
     } else if (ev) {
         gameState.banner = { text: ev.name, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3, icon: ev.icon };
     } else {
@@ -4435,6 +4559,7 @@ function drawGame() {
         const m = gameState.monsters[i];
         if (m.isAlive && m.mark) m.drawMark(ctx);
     }
+    drawLobs();
     // 標題畫面上法師是 HTML 立繪，畫布這邊只留地面
     if (gameState.player && gameState.player.isAlive && appScreen !== 'title') gameState.player.draw(ctx);
 
