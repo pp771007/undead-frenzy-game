@@ -38,6 +38,10 @@ const uiElements = {
     statKillBloater: document.getElementById('stat-kill-bloater'),
     statKillBoss: document.getElementById('stat-kill-boss'),
     skipWaveBtn: document.getElementById('skip-wave-btn'),
+    novaBtn: document.getElementById('nova-btn'),
+    draftScreen: document.getElementById('draft-screen'),
+    draftCards: document.getElementById('draft-cards'),
+    pauseBlessings: document.getElementById('pause-blessings'),
     bgm: document.getElementById('bgm'),
     restartGameBtn: document.getElementById('restart-game-btn'),
     restartConfirmDialog: document.getElementById('restart-confirm-dialog'),
@@ -190,6 +194,15 @@ const CONFIG = {
         // 數值大的才飄字，避免一大群小怪死掉時滿畫面 +1
         floatTextMinValue: 5,
     },
+    nova: {
+        radius: 110, baseDamage: 25, cooldown: 18,
+        knockbackSpeed: 280, knockbackFriction: 8, bossKnockbackMult: 0.2,
+        slowAmount: 0.5, slowDuration: 1.5,
+        effectDuration: 0.4,
+    },
+    draft: {
+        every: 3, optionCount: 3,
+    },
     holdingButton: {
         holdDelay: 350,
         repeatInterval: 150,
@@ -199,6 +212,43 @@ const CONFIG = {
         initialSfxVolume: 0.5,
     }
 };
+
+// ---------- 祝福（每 3 波 / 首領波三選一，可疊層） ----------
+const CLEAVE_RADIUS = 35;
+const pct = (v) => `${Math.round(v * 100)}%`;
+const BLESSINGS = {
+    boneBlade: { icon: '🗡️', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
+    cleave: { icon: '🌀', name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
+    boneArmor: { icon: '🛡️', name: '骨甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
+    splitGaze: { icon: '👁️', name: '分裂凝視', max: 3, per: 1, desc: b => `眼魔每次多射 ${b.per} 發` },
+    frenzyEye: { icon: '⚡', name: '狂熱之眼', max: 4, per: 0.3, desc: b => `眼魔攻速 +${pct(b.per)}` },
+    wraithBlast: { icon: '💣', name: '怨念爆裂', max: 4, per: 0.6, desc: b => `怨靈爆炸傷害 +${pct(b.per)}` },
+    rebirth: { icon: '♻️', name: '輪迴', max: 2, per: 0.4, desc: b => `怨靈陣亡時 ${pct(b.per)} 重生` },
+    frostAura: { icon: '❄️', name: '寒冥光環', max: 3, per: 5, desc: () => '怨靈光環每秒造成傷害' },
+    raiseDead: { icon: '⚰️', name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
+    soulHarvest: { icon: '💠', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
+    magnet: { icon: '🧲', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
+    vitality: { icon: '❤️', name: '不死之軀', max: 5, per: 25, desc: b => `法師血量 +${b.per} 並回滿` },
+    novaPower: { icon: '💥', name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
+    pact: { icon: '📜', name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
+    lifesteal: { icon: '🩸', name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
+};
+
+function bl(id) { return (gameState.blessings && gameState.blessings[id]) || 0; }
+function blessVal(id) { return BLESSINGS[id].per * bl(id); }
+
+function getSummonCost(config) {
+    return Math.max(1, Math.round(config.summonCost * (1 - blessVal('pact'))));
+}
+function getMagnetRadius() {
+    return CONFIG.player.magnetRadius * (1 + blessVal('magnet'));
+}
+function getNovaCooldown() {
+    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower'));
+}
+function getNovaDamage() {
+    return Math.round(CONFIG.nova.baseDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('novaPower')));
+}
 
 CONFIG.upgradeCosts = {
     skeletonWarrior: CONFIG.skeletonWarrior.upgradeCostBase,
@@ -271,6 +321,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
+    blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0,
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -473,6 +524,10 @@ const SFX_DEFS = {
     elite: { gap: 0.2, fn: s => { s.tone(990, 0.1, { type: 'triangle', vol: 0.12 }); s.tone(1320, 0.15, { type: 'triangle', vol: 0.12, delay: 0.08 }); } },
     wave: { gap: 0.5, fn: s => { s.tone(330, 0.12, { type: 'triangle', vol: 0.14 }); s.tone(440, 0.22, { type: 'triangle', vol: 0.14, delay: 0.12 }); } },
     gameover: { gap: 1, fn: s => s.tone(392, 0.9, { type: 'triangle', vol: 0.2, slideTo: 130 }) },
+    nova: { gap: 0.2, fn: s => { s.tone(220, 0.45, { type: 'sawtooth', vol: 0.15, slideTo: 55 }); s.noise(0.4, { vol: 0.25, filterFreq: 900 }); } },
+    draft: { gap: 0.3, fn: s => { [660, 880, 1100].forEach((f, i) => s.tone(f, 0.25, { vol: 0.12, delay: i * 0.08 })); } },
+    pick: { gap: 0.2, fn: s => { [523, 784, 1046].forEach((f, i) => s.tone(f, 0.15, { type: 'triangle', vol: 0.14, delay: i * 0.05 })); } },
+    raise: { gap: 0.15, fn: s => s.tone(180, 0.25, { type: 'triangle', vol: 0.14, slideTo: 360 }) },
 };
 
 // ---------- 粒子 / 飄字 / 震動 ----------
@@ -652,11 +707,26 @@ class SummonUnit extends GameObject {
         }
     }
 
+    // 拿到祝福時重算數值，血量照比例保留
+    refreshStats() {
+        const ratio = this.maxHealth > 0 ? this.currentHealth / this.maxHealth : 1;
+        this.computeStats();
+        this.currentHealth = Math.max(1, Math.round(this.maxHealth * ratio));
+    }
+
     applyLevelStats() {
+        this.computeStats();
+        this.applyLevelHealthGain();
+    }
+
+    computeStats() {
+        const type = this.config.type;
         const multiplier = 1 + (this.level * this.config.upgradeBonus);
-        this.maxHealth = Math.round(this.config.baseHealth * multiplier);
-        this.attack = (this.config.baseAttack > 0) ? (this.config.baseAttack * multiplier) : 0;
-        this.attackSpeed = this.config.attackSpeed;
+        this.maxHealth = Math.round(this.config.baseHealth * multiplier * (1 + blessVal('boneArmor')));
+        let attack = (this.config.baseAttack > 0) ? (this.config.baseAttack * multiplier) : 0;
+        if (type === 'SkeletonWarrior') attack *= 1 + blessVal('boneBlade');
+        this.attack = attack;
+        this.attackSpeed = this.config.attackSpeed * (type === 'EyeMonster' ? 1 + blessVal('frenzyEye') : 1);
         this.moveSpeed = this.config.moveSpeed;
 
         if (this.config.type === 'EyeMonster') {
@@ -680,14 +750,22 @@ class SummonUnit extends GameObject {
             this.buffRadiusSq = 0;
         }
 
+        this.maxHealth = Math.round(this.maxHealth);
+    }
+
+    applyLevelHealthGain() {
         if (this.currentHealth > 0 && this.level > 0 && this.config.upgradeBonus > 0) {
             const healthGainPerLevel = Math.round(this.config.baseHealth * this.config.upgradeBonus);
             if (healthGainPerLevel > 0) {
                 this.currentHealth += healthGainPerLevel;
             }
         }
-        this.maxHealth = Math.round(this.maxHealth);
         this.currentHealth = Math.round(Math.min(this.currentHealth, this.maxHealth));
+    }
+
+    healFromDamage(dealt) {
+        const ls = blessVal('lifesteal');
+        if (ls > 0 && this.isAlive) this.currentHealth = Math.min(this.maxHealth, this.currentHealth + dealt * ls);
     }
 
     update(deltaTime, monsters, otherSummons, player) {
@@ -996,20 +1074,34 @@ class SummonUnit extends GameObject {
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
 
-        const multiplier = 1 + (this.level * this.config.upgradeBonus);
-        const currentAttackDamage = (this.config.baseAttack > 0) ? Math.round(this.config.baseAttack * multiplier) : 0;
+        const currentAttackDamage = Math.round(this.attack);
 
         if (this.config.type === 'EyeMonster') {
-            const projectile = getProjectileFromPool();
-            projectile.init(
-                this.pos.x, this.pos.y,
-                this.target,
-                this.config,
-                currentAttackDamage
-            );
-            gameState.projectiles.push(projectile);
+            const targets = [this.target];
+            const extra = blessVal('splitGaze');
+            if (extra > 0) {
+                const others = gameState.monsters
+                    .filter(m => m.isAlive && m !== this.target && distanceSq(this.pos, m.pos) <= this.attackRangeSq)
+                    .sort((a, b) => distanceSq(this.pos, a.pos) - distanceSq(this.pos, b.pos));
+                for (let i = 0; i < extra; i++) targets.push(others[i] || this.target);
+            }
+            targets.forEach(t => {
+                const projectile = getProjectileFromPool();
+                projectile.init(this.pos.x, this.pos.y, t, this.config, currentAttackDamage, this);
+                gameState.projectiles.push(projectile);
+            });
         } else if (this.config.type === 'SkeletonWarrior') {
-            this.target.takeDamage(currentAttackDamage);
+            const mainTarget = this.target;
+            mainTarget.takeDamage(currentAttackDamage);
+            this.healFromDamage(currentAttackDamage);
+            const splash = blessVal('cleave');
+            if (splash > 0) {
+                const splashDmg = Math.round(currentAttackDamage * splash);
+                const rSq = CLEAVE_RADIUS * CLEAVE_RADIUS;
+                gameState.monsters.forEach(m => {
+                    if (m !== mainTarget && m.isAlive && distanceSq(mainTarget.pos, m.pos) <= rSq) m.takeDamage(splashDmg);
+                });
+            }
             const effect = getVisualEffectFromPool(SlashEffect);
             if (effect) {
                 effect.init(this.pos, this.target.pos);
@@ -1029,6 +1121,8 @@ class SummonUnit extends GameObject {
             const monster = monsters[i];
             if (monster.isAlive && distanceSq(this.pos, monster.pos) <= this.slowRadiusSq) {
                 monster.applySlow(this.slowAmount, this.config.slowDuration);
+                const frost = blessVal('frostAura');
+                if (frost > 0) monster.takeDamage(Math.round(frost * (1 + this.level * this.config.upgradeBonus)));
             }
         }
     }
@@ -1119,7 +1213,7 @@ class Wraith extends SummonUnit {
         if (!this.isAlive) return;
 
         const explosionDamageMultiplier = 1 + (this.level * this.config.upgradeBonus);
-        const explosionDamage = Math.round(CONFIG.wraith.explosionBaseDamage * explosionDamageMultiplier);
+        const explosionDamage = Math.round(CONFIG.wraith.explosionBaseDamage * explosionDamageMultiplier * (1 + blessVal('wraithBlast')));
         const explosionRadiusSq = this.slowRadiusSq;
 
         for (let i = 0; i < gameState.monsters.length; i++) {
@@ -1141,6 +1235,14 @@ class Wraith extends SummonUnit {
 
         this.isAlive = false;
         gameState.wraithCount--;
+        if (Math.random() < blessVal('rebirth') && gameState.player && gameState.player.isAlive) {
+            const pos = gameState.player.getSummonPosition();
+            gameState.summons.push(new Wraith(pos.x, pos.y, gameState.wraithLevel, gameState.player));
+            gameState.wraithCount++;
+            spawnParticles(pos.x, pos.y, '#4DB6AC', 14, 80, 0.6);
+            spawnFloatText(pos.x, pos.y - 16, '輪迴', '#80CBC4', 13);
+            Sfx.play('raise');
+        }
         updateUI();
     }
 }
@@ -1150,7 +1252,8 @@ class Projectile {
         this.init(startX, startY, target, shooterConfig, damage);
     }
 
-    init(startX, startY, target, shooterConfig, damage) {
+    init(startX, startY, target, shooterConfig, damage, owner = null) {
+        this.owner = owner;
         this.pos = { x: startX, y: startY };
         this.radius = shooterConfig.projectileRadius;
         this.color = shooterConfig.projectileColor;
@@ -1175,6 +1278,7 @@ class Projectile {
 
             if (distToTargetSq <= hitRadiusSq) {
                 this.target.takeDamage(this.damage);
+                if (this.owner) this.owner.healFromDamage(this.damage);
                 this.isAlive = false;
                 return;
             }
@@ -1342,7 +1446,7 @@ class SoulOrb {
         this.age += deltaTime;
         const dx = player.pos.x - this.pos.x, dy = player.pos.y - this.pos.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        const magnet = CONFIG.player.magnetRadius;
+        const magnet = getMagnetRadius();
         if (this.banked || dist < magnet) this.attracted = true;
         if (this.attracted && this.age > c.attractDelay) {
             const sp = c.attractSpeed + this.age * 60;
@@ -1470,6 +1574,14 @@ class Monster extends GameObject {
 
         if (this.attackCooldown > 0) { this.attackCooldown -= deltaTime; }
 
+        if (this.knockVel) {
+            this.pos.x += this.knockVel.x * deltaTime;
+            this.pos.y += this.knockVel.y * deltaTime;
+            const f = Math.max(0, 1 - CONFIG.nova.knockbackFriction * deltaTime);
+            this.knockVel.x *= f; this.knockVel.y *= f;
+            if (Math.abs(this.knockVel.x) + Math.abs(this.knockVel.y) < 5) this.knockVel = null;
+        }
+
         this.findTarget(player, summons);
 
         let moveDirection = { x: 0, y: 0 };
@@ -1552,7 +1664,18 @@ class Monster extends GameObject {
 
     die() {
         this.isAlive = false;
-        dropSouls(this.pos.x, this.pos.y, this.soulValue());
+        const souls = this.soulValue() * (1 + blessVal('soulHarvest')) + gameState.soulCarry;
+        const whole = Math.floor(souls);
+        gameState.soulCarry = souls - whole;
+        dropSouls(this.pos.x, this.pos.y, whole);
+        if (!(this instanceof BossMonster) && Math.random() < blessVal('raiseDead') && gameState.player) {
+            gameState.summons.push(new SkeletonWarrior(this.pos.x, this.pos.y, gameState.skeletonWarriorLevel, gameState.player));
+            gameState.skeletonWarriorCount++;
+            gameState.totalSummons.SkeletonWarrior++;
+            spawnParticles(this.pos.x, this.pos.y, '#B39DDB', 14, 90, 0.6);
+            spawnFloatText(this.pos.x, this.pos.y - 16, '復甦', '#B39DDB', 13);
+            Sfx.play('raise');
+        }
         spawnParticles(this.pos.x, this.pos.y, '#CE93D8', 8, 60, 0.6);
         if (this.isElite) {
             spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 16, 120, 0.7, 3);
@@ -1789,17 +1912,132 @@ function checkWaveEndCondition() {
             spawnFloatText(p.pos.x, p.pos.y - 24, `+${heal} HP`, '#81C784', 14, 1.2);
         }
         gameState.summons.forEach(s => { if (s.isAlive) s.currentHealth = s.maxHealth; });
+        queueDraftIfDue();
         gameState.projectiles.forEach(returnProjectileToPool);
         gameState.projectiles = [];
         gameState.visualEffects.forEach(returnVisualEffectToPool);
         gameState.visualEffects = [];
         saveGameState();
         updateUI();
+        if (gameState.pendingDraft) openDraft();
     }
+}
+
+class NovaEffect extends TimedEffect {
+    constructor(pos, radius) {
+        super(pos, CONFIG.nova.effectDuration);
+        this.radius = radius;
+    }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        const p = 1 - this.life / this.duration;
+        const r = this.radius * (1 - Math.pow(1 - p, 3));
+        ctx.save();
+        ctx.fillStyle = `rgba(156, 39, 176, ${(0.25 * (1 - p)).toFixed(2)})`;
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(225, 190, 231, ${(1 - p).toFixed(2)})`;
+        ctx.lineWidth = 6 * (1 - p) + 1;
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+    }
+}
+
+function useNova() {
+    const p = gameState.player;
+    if (!p || !p.isAlive || gameState.novaCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
+    const c = CONFIG.nova;
+    const dmg = getNovaDamage();
+    const rSq = c.radius * c.radius;
+    gameState.monsters.forEach(m => {
+        if (!m.isAlive) return;
+        const dSq = distanceSq(m.pos, p.pos);
+        if (dSq > rSq) return;
+        const dir = normalizeVector({ x: m.pos.x - p.pos.x, y: m.pos.y - p.pos.y });
+        const kb = c.knockbackSpeed * (m instanceof BossMonster ? c.bossKnockbackMult : 1);
+        m.knockVel = { x: dir.x * kb, y: dir.y * kb };
+        m.applySlow(c.slowAmount, c.slowDuration);
+        m.takeDamage(dmg);
+    });
+    gameState.visualEffects.push(new NovaEffect(p.pos, c.radius));
+    spawnParticles(p.pos.x, p.pos.y, '#CE93D8', 36, 260, 0.5, 3);
+    addShake(7);
+    Sfx.play('nova');
+    gameState.novaCooldown = getNovaCooldown();
+    ensureMusicPlaying();
+    updateUI();
+    return true;
+}
+
+function queueDraftIfDue() {
+    const w = gameState.currentWave;
+    if (w <= 0 || (w % CONFIG.draft.every !== 0 && w % CONFIG.wave.bossEvery !== 0)) return;
+    const eligible = Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max);
+    for (let i = eligible.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+    }
+    const options = eligible.slice(0, CONFIG.draft.optionCount);
+    if (options.length > 0) gameState.pendingDraft = { options };
+}
+
+function blessingPips(id, highlightNext) {
+    const cur = bl(id), max = BLESSINGS[id].max;
+    let html = '';
+    for (let i = 0; i < max; i++) {
+        const cls = i < cur ? 'pip on' : (highlightNext && i === cur ? 'pip next' : 'pip');
+        html += `<span class="${cls}"></span>`;
+    }
+    return html;
+}
+
+function openDraft() {
+    if (!gameState.pendingDraft) return;
+    stopHoldAction();
+    gameState.draftOpen = true;
+    const box = uiElements.draftCards;
+    box.innerHTML = '';
+    gameState.pendingDraft.options.forEach(id => {
+        const b = BLESSINGS[id];
+        const card = document.createElement('button');
+        card.className = 'draft-card';
+        card.innerHTML = `<span class="draft-icon">${b.icon}</span><span class="draft-text"><span class="draft-name">${b.name}<span class="pips">${blessingPips(id, true)}</span></span><span class="draft-desc">${b.desc(b)}</span></span>`;
+        card.addEventListener('click', () => pickBlessing(id));
+        box.appendChild(card);
+    });
+    uiElements.draftScreen.style.display = 'flex';
+    Sfx.play('draft');
+    updateUI();
+}
+
+function pickBlessing(id) {
+    if (!gameState.pendingDraft || !gameState.pendingDraft.options.includes(id)) return;
+    gameState.blessings[id] = bl(id) + 1;
+    if (id === 'vitality' && gameState.player) {
+        gameState.player.maxHealth += BLESSINGS.vitality.per;
+        gameState.player.currentHealth = gameState.player.maxHealth;
+    }
+    gameState.summons.forEach(s => { if (s.isAlive) s.refreshStats(); });
+    gameState.pendingDraft = null;
+    gameState.draftOpen = false;
+    uiElements.draftScreen.style.display = 'none';
+    if (gameState.player) {
+        spawnParticles(gameState.player.pos.x, gameState.player.pos.y, '#FFD54F', 24, 120, 0.7, 3);
+        spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, `${BLESSINGS[id].icon} ${BLESSINGS[id].name}`, '#FFD54F', 15, 1.4);
+    }
+    Sfx.play('pick');
+    saveGameState();
+    updateUI();
+}
+
+function renderBlessingList(container) {
+    const ids = Object.keys(BLESSINGS).filter(id => bl(id) > 0);
+    container.innerHTML = ids.length === 0 ? '<span class="empty-note">—</span>' : ids.map(id =>
+        `<span class="bless-chip">${BLESSINGS[id].icon} ${BLESSINGS[id].name}${bl(id) > 1 ? ` ×${bl(id)}` : ''}</span>`).join('');
 }
 
 function updateTimers(deltaTime) {
     updateSpawner(deltaTime);
+    gameState.novaCooldown = Math.max(0, gameState.novaCooldown - deltaTime);
     if (gameState.banner) {
         gameState.banner.life -= deltaTime;
         if (gameState.banner.life <= 0) gameState.banner = null;
@@ -1845,6 +2083,8 @@ function trySummon(type) {
         default: return false;
     }
 
+    cost = getSummonCost(config);
+    if (gameState.draftOpen) return false;
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
         const spawnPos = gameState.player.getSummonPosition();
@@ -1883,6 +2123,7 @@ function tryUpgrade(type) {
         default: return false;
     }
 
+    if (gameState.draftOpen) return false;
     cost = gameState.currentCosts[costKey];
     costIncrement = CONFIG.upgradeCostIncrements[costKey];
 
@@ -1974,7 +2215,7 @@ function stopHoldActionInternal() {
 }
 
 function startHoldAction(actionType, unitType) {
-    if (gameState.isPaused || holdActionState.isHolding) return;
+    if (gameState.isPaused || gameState.draftOpen || holdActionState.isHolding) return;
 
     stopHoldActionInternal();
 
@@ -2078,14 +2319,16 @@ function updateUI() {
             default: return;
         }
 
+        summonCost = getSummonCost(config);
         uiMap.level.textContent = `Lv ${level}`;
         uiMap.count.textContent = count;
 
         uiMap.summonBtn.textContent = `召喚\n(${formatNumberK(summonCost)}魂)`;
         uiMap.upgradeBtn.textContent = `升級\n(${formatNumberK(upgradeCost)}魂)`;
 
-        setButtonState(uiMap.summonBtn, !gameState.isPaused && !gameState.gameOver, summonCost);
-        setButtonState(uiMap.upgradeBtn, !gameState.isPaused && !gameState.gameOver, upgradeCost);
+        const canAct = !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen;
+        setButtonState(uiMap.summonBtn, canAct, summonCost);
+        setButtonState(uiMap.upgradeBtn, canAct, upgradeCost);
     }
 
     updateUnitUI('SkeletonWarrior');
@@ -2093,9 +2336,26 @@ function updateUI() {
     updateUnitUI('Wraith');
 
     uiElements.skipWaveBtn.style.display = gameState.betweenWaves && !gameState.gameOver ? '' : 'none';
+    updateNovaButton();
     uiElements.pauseResumeBtn.textContent = gameState.isPaused ? '▶ 繼續' : '⏸ 暫停';
     uiElements.pauseResumeBtn.disabled = gameState.gameOver;
     uiElements.restartGameBtn.disabled = gameState.gameOver;
+}
+
+function updateNovaButton() {
+    const btn = uiElements.novaBtn;
+    const cd = gameState.novaCooldown;
+    btn.disabled = gameState.gameOver || gameState.isPaused || gameState.draftOpen;
+    if (cd > 0) {
+        const done = (1 - cd / getNovaCooldown()) * 100;
+        btn.textContent = `💥 ${Math.ceil(cd)}`;
+        btn.style.background = `linear-gradient(to right, #4A148C ${done}%, #3a3a3a ${done}%)`;
+        btn.classList.remove('nova-ready');
+    } else {
+        btn.textContent = '💥 新星';
+        btn.style.background = '';
+        btn.classList.add('nova-ready');
+    }
 }
 
 function setButtonState(button, isActionPossible, cost) {
@@ -2128,7 +2388,9 @@ function showGameOver() {
 }
 
 const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
-const SAVE_VERSION = 16;
+const SAVE_VERSION = 17;
+// v16 是祝福系統之前的存檔，缺的欄位讀取時補預設值即可
+const COMPATIBLE_SAVE_VERSIONS = [16, 17];
 
 
 function saveGameState() {
@@ -2153,6 +2415,8 @@ function saveGameState() {
         sfxVolume: gameState.sfxVolume,
         totalSummons: gameState.totalSummons,
         totalKills: gameState.totalKills,
+        blessings: gameState.blessings,
+        pendingDraft: gameState.pendingDraft,
     };
 
     try {
@@ -2172,7 +2436,7 @@ function loadGameState() {
             localStorage.removeItem(SAVE_KEY); return false;
         }
 
-        if (loadedState.saveVersion !== SAVE_VERSION) {
+        if (!COMPATIBLE_SAVE_VERSIONS.includes(loadedState.saveVersion)) {
             localStorage.removeItem(SAVE_KEY); return false;
         }
 
@@ -2197,6 +2461,8 @@ function loadGameState() {
         uiElements.sfxSlider.value = gameState.sfxVolume;
         gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
+        gameState.blessings = loadedState.blessings ?? {};
+        gameState.pendingDraft = loadedState.pendingDraft ?? null;
 
         gameState.player = new Player(canvas.width / 2, canvas.height / 2);
         gameState.player.maxHealth = loadedState.playerMaxHealth ?? CONFIG.player.baseHealth;
@@ -2273,6 +2539,7 @@ function resetGameInternalState(resetAudio = true) {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
+        blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -2283,6 +2550,7 @@ function resetGame() {
     gameState.player = new Player(canvas.width / 2, canvas.height / 2);
     uiElements.gameOverScreen.style.display = 'none';
     uiElements.pauseMenu.style.display = 'none';
+    uiElements.draftScreen.style.display = 'none';
     gameState.isPaused = false;
     gameState.betweenWaves = true;
     gameState.currentWave = 0;
@@ -2302,10 +2570,11 @@ function updatePauseMenuStats() {
     uiElements.statKillArmored.textContent = formatNumberK(gameState.totalKills.ArmoredMelee);
     uiElements.statKillBloater.textContent = formatNumberK(gameState.totalKills.Bloater);
     uiElements.statKillBoss.textContent = formatNumberK(gameState.totalKills.Boss);
+    renderBlessingList(uiElements.pauseBlessings);
 }
 
 function togglePause() {
-    if (gameState.gameOver) return;
+    if (gameState.gameOver || gameState.draftOpen) return;
 
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
@@ -2570,7 +2839,7 @@ function gameLoop(currentTime) {
     deltaTime = Math.min(deltaTime, 0.1);
     gameState.lastTime = currentTime;
 
-    updateGame(deltaTime);
+    if (!gameState.draftOpen) updateGame(deltaTime);
     drawGame();
     updateUI();
 
@@ -2699,9 +2968,17 @@ function init() {
         if (gameState.isPaused) saveGameState();
     });
 
+    uiElements.novaBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); useNova(); });
+
     window.addEventListener('keydown', (e) => {
+        if (gameState.draftOpen) {
+            const idx = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
+            if (idx >= 0 && gameState.pendingDraft && gameState.pendingDraft.options[idx]) pickBlessing(gameState.pendingDraft.options[idx]);
+            return;
+        }
         if (e.code === 'Escape' || e.code === 'KeyP') { togglePause(); return; }
         if (gameState.isPaused || gameState.gameOver) return;
+        if (e.code === 'Space') { e.preventDefault(); useNova(); return; }
         if (MOVE_KEYS[e.code]) { keysDown.add(e.code); e.preventDefault(); ensureMusicPlaying(); return; }
         const unit = UNIT_HOTKEYS[e.code];
         if (unit) { e.shiftKey ? tryUpgrade(unit) : trySummon(unit); }
@@ -2723,6 +3000,7 @@ function init() {
         if (loadGameState()) {
             restoreSummonsFromLoad();
             updateUI();
+            if (gameState.pendingDraft) openDraft();
             if (!document.hidden) {
                 ensureMusicPlaying();
             }
