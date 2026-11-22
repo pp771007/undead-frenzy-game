@@ -324,7 +324,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -1974,6 +1974,10 @@ function useNova() {
 function queueDraftIfDue() {
     const w = gameState.currentWave;
     if (w <= 0 || (w % CONFIG.draft.every !== 0 && w % CONFIG.wave.bossEvery !== 0)) return;
+    queueDraft();
+}
+
+function queueDraft() {
     const eligible = Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max);
     for (let i = eligible.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -2023,6 +2027,10 @@ function pickBlessing(id) {
     gameState.pendingDraft = null;
     gameState.draftOpen = false;
     uiElements.draftScreen.style.display = 'none';
+    if (gameState.extraDrafts > 0) {
+        gameState.extraDrafts--;
+        queueDraft();
+    }
     if (gameState.player) {
         spawnParticles(gameState.player.pos.x, gameState.player.pos.y, '#FFD54F', 24, 120, 0.7, 3);
         spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, `${BLESSINGS[id].icon} ${BLESSINGS[id].name}`, '#FFD54F', 15, 1.4);
@@ -2030,6 +2038,7 @@ function pickBlessing(id) {
     Sfx.play('pick');
     saveGameState();
     updateUI();
+    if (gameState.pendingDraft) openDraft();
 }
 
 function renderBlessingList(container) {
@@ -2435,6 +2444,7 @@ function saveGameState() {
         totalKills: gameState.totalKills,
         blessings: gameState.blessings,
         pendingDraft: gameState.pendingDraft,
+        extraDrafts: gameState.extraDrafts,
     };
 
     try {
@@ -2481,6 +2491,12 @@ function loadGameState() {
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
         gameState.blessings = loadedState.blessings ?? {};
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
+        gameState.extraDrafts = loadedState.extraDrafts ?? 0;
+        // 祝福系統之前的存檔：照已經打過的波數補發當初該拿到的祝福選擇
+        if (loadedState.saveVersion < 17 && gameState.currentWave >= CONFIG.draft.every) {
+            gameState.extraDrafts = Math.floor(gameState.currentWave / CONFIG.draft.every) - 1;
+            queueDraft();
+        }
 
         gameState.player = new Player(canvas.width / 2, canvas.height / 2);
         gameState.player.maxHealth = loadedState.playerMaxHealth ?? CONFIG.player.baseHealth;
@@ -2557,7 +2573,7 @@ function resetGameInternalState(resetAudio = true) {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
