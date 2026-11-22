@@ -50,6 +50,9 @@ const uiElements = {
     waveInfo: $id('wave-info'),
     timerInfo: $id('timer-info'),
     wavePlate: $id('wave-plate'),
+    hudBottom: $id('hud-bottom'),
+    pauseReward: $id('pause-reward'),
+    gameoverTitle: $id('gameover-title'),
     soulsInfo: $id('souls-info'),
     playerHealthInfo: $id('player-health-info'),
     hpFill: $id('hp-fill'),
@@ -317,10 +320,13 @@ const CONFIG = {
     orbs: {
         maxOrbsPerDrop: 4,
         popSpeedMin: 40, popSpeedMax: 110,
+        popLiftMin: 70, popLiftMax: 130, gravity: 520, bounce: 0.35, bounceStop: 25,
         friction: 4,
         // 剛掉出來的一小段時間不吸，讓「噴出來」看得見
         attractDelay: 0.25,
-        attractSpeed: 380,
+        attractSpeed: 380, attractAccel: 600,
+        // 被吸時的側向弧度與它消失的速度（每秒）
+        swirl: 0.9, swirlDecay: 2.5,
         pickupPadding: 8,
         // 數值大的才飄字，避免一大群小怪死掉時滿畫面 +1
         floatTextMinValue: 5,
@@ -897,6 +903,7 @@ const SFX_DEFS = {
     nova: { gap: 0.2, fn: s => { s.tone(220, 0.45, { type: 'sawtooth', vol: 0.15, slideTo: 55 }); s.noise(0.4, { vol: 0.25, filterFreq: 900 }); } },
     draft: { gap: 0.3, fn: s => { [660, 880, 1100].forEach((f, i) => s.tone(f, 0.25, { vol: 0.12, delay: i * 0.08 })); } },
     pick: { gap: 0.2, fn: s => { [523, 784, 1046].forEach((f, i) => s.tone(f, 0.15, { type: 'triangle', vol: 0.14, delay: i * 0.05 })); } },
+    deny: { gap: 0.12, fn: s => { s.tone(200, 0.09, { type: 'square', vol: 0.06 }); s.tone(150, 0.12, { type: 'square', vol: 0.06, delay: 0.08 }); } },
     tick: { gap: 0.3, fn: s => { s.tone(880, 0.08, { type: 'square', vol: 0.07 }); s.tone(440, 0.12, { type: 'triangle', vol: 0.08 }); } },
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
@@ -1044,6 +1051,13 @@ class GameObject {
     }
 }
 
+// 扣血後白色殘影每秒縮短的比例；低於這個比例血條閃紅
+const PLAYER_HP_TRAIL_SPEED = 0.6;
+const PLAYER_HP_LOW = 0.3;
+// 吸到靈魂時法師身上的光暈：每吸一顆加一點，每秒淡掉這麼多
+const ABSORB_GLOW_PER_ORB = 0.35;
+const ABSORB_GLOW_DECAY = 2.5;
+
 class Player extends GameObject {
     constructor(x, y) {
         const config = CONFIG.player;
@@ -1051,10 +1065,15 @@ class Player extends GameObject {
         this.maxHealth = config.baseHealth;
         this.currentHealth = this.maxHealth;
         this.moveSpeed = config.baseMoveSpeed;
+        this.hpTrail = 1;
+        this.absorbGlow = 0;
     }
     update(deltaTime, moveVec) {
         if (!this.isAlive) return;
         this.tickFlash(deltaTime);
+        const ratio = this.currentHealth / this.maxHealth;
+        this.hpTrail = ratio > this.hpTrail ? ratio : Math.max(ratio, this.hpTrail - PLAYER_HP_TRAIL_SPEED * deltaTime);
+        this.absorbGlow = Math.max(0, this.absorbGlow - ABSORB_GLOW_DECAY * deltaTime);
         const moveX = moveVec.x * this.moveSpeed * deltaTime;
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
         this.pos.x += moveX;
@@ -1074,6 +1093,34 @@ class Player extends GameObject {
             this.die();
         }
         updateUI();
+    }
+    draw(ctx) {
+        if (this.isAlive && this.absorbGlow > 0 && orbGlowSprite) {
+            const g = 70 + this.absorbGlow * 20;
+            ctx.globalAlpha = Math.min(1, this.absorbGlow) * 0.75;
+            ctx.drawImage(orbGlowSprite, this.pos.x - g / 2, this.pos.y - g / 2, g, g);
+            ctx.globalAlpha = 1;
+        }
+        super.draw(ctx);
+    }
+    // 法師的血條一直貼在腳下：眼睛本來就盯著法師，不用另外去看角落
+    drawHealthBar(ctx) {
+        if (!this.isAlive) return;
+        const w = 38, h = 6;
+        const x = this.pos.x - w / 2, y = this.pos.y + this.imageHeight * 0.5 + 1;
+        const ratio = Math.max(0, this.currentHealth / this.maxHealth);
+        ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
+        roundRect(x - 1.5, y - 1.5, w + 3, h + 3, 3);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        if (this.hpTrail > ratio) ctx.fillRect(x, y, w * this.hpTrail, h);
+        const low = ratio <= PLAYER_HP_LOW;
+        ctx.fillStyle = ratio > 0.5 ? '#66BB6A' : (low ? '#EF5350' : '#FFCA28');
+        if (low) ctx.globalAlpha = 0.6 + 0.4 * Math.sin(performance.now() / 90);
+        ctx.fillRect(x, y, w * ratio, h);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillRect(x, y, w * ratio, h * 0.4);
     }
     die() {
         this.isAlive = false;
@@ -1925,23 +1972,42 @@ class SoulOrb {
         const v = randomInRange(c.popSpeedMin, c.popSpeedMax);
         this.vel = { x: Math.cos(a) * v, y: Math.sin(a) * v };
         this.value = value;
-        this.size = 3 + Math.min(4, value * 0.7);
+        this.size = ORB_SIZE_BASE + Math.min(ORB_SIZE_BONUS_MAX, value * ORB_SIZE_PER_VALUE);
         this.age = 0;
         this.attracted = false;
+        this.pullTime = 0;
+        this.spin = Math.random() < 0.5 ? -1 : 1;
+        this.dist = Infinity;
+        // 噴出來時往上彈一下再落地，看起來像「掉出來」
+        this.z = 0;
+        this.vz = randomInRange(c.popLiftMin, c.popLiftMax);
         this.banked = false;
         this.isAlive = true;
     }
     update(deltaTime, player) {
         const c = CONFIG.orbs;
         this.age += deltaTime;
+        if (this.z > 0 || this.vz > 0) {
+            this.vz -= c.gravity * deltaTime;
+            this.z += this.vz * deltaTime;
+            if (this.z <= 0) { this.z = 0; this.vz = -this.vz * c.bounce; if (this.vz < c.bounceStop) this.vz = 0; }
+        }
         const dx = player.pos.x - this.pos.x, dy = player.pos.y - this.pos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        this.dist = dist;
         const magnet = getMagnetRadius();
         if (this.banked || dist < magnet) this.attracted = true;
         if (this.attracted && this.age > c.attractDelay) {
-            const sp = c.attractSpeed + this.age * 60;
-            this.vel.x = dx / (dist || 1) * sp;
-            this.vel.y = dy / (dist || 1) * sp;
+            // 一開始帶一點側向速度、越飛越直：繞一小段弧線被吸進去，而不是一條直線
+            this.pullTime += deltaTime;
+            const swirl = Math.max(0, 1 - this.pullTime * c.swirlDecay) * c.swirl * this.spin;
+            const ux = dx / dist, uy = dy / dist;
+            const dir = normalizeVector({ x: ux - uy * swirl, y: uy + ux * swirl });
+            const sp = c.attractSpeed + this.pullTime * c.attractAccel;
+            this.vel.x = dir.x * sp;
+            this.vel.y = dir.y * sp;
+            this.z *= Math.max(0, 1 - 8 * deltaTime);
+            this.vz = 0;
         } else {
             const f = Math.max(0, 1 - c.friction * deltaTime);
             this.vel.x *= f; this.vel.y *= f;
@@ -1955,20 +2021,67 @@ class SoulOrb {
                 if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${this.value}`, '#80DEEA');
                 updateUI();
             }
+            player.absorbGlow = Math.min(1.5, player.absorbGlow + ABSORB_GLOW_PER_ORB);
             Sfx.play('orb');
         }
     }
     draw(ctx) {
-        const bob = Math.sin(this.age * 6) * 1.2;
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.fillStyle = '#4DD0E1';
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y + bob, this.size * 2, 0, Math.PI * 2); ctx.fill();
+        if (!orbSprite) buildOrbSprites();
+        const flying = this.attracted && this.pullTime > 0;
+        // 越靠近法師越小，像被吸進身體裡
+        const shrink = flying ? Math.max(0.35, Math.min(1, this.dist / 45)) : 1;
+        const s = this.size * shrink;
+        const x = this.pos.x;
+        const bob = flying || this.z > 0 ? 0 : Math.sin(this.age * 5 + this.spin) * 1.5;
+        const y = this.pos.y - this.z + bob;
+        if (!flying) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath(); ctx.ellipse(x, this.pos.y + s * 0.45, s * 0.35, s * 0.13, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        if (flying) {
+            // 拖尾：沿著來的方向放幾團越來越淡、越來越小的光
+            for (let i = 1; i <= ORB_TRAIL_GHOSTS; i++) {
+                const k = i * ORB_TRAIL_STEP;
+                const gs = s * (1.6 - i * 0.35);
+                ctx.globalAlpha = 0.5 - i * 0.15;
+                ctx.drawImage(orbGlowSprite, x - this.vel.x * k - gs / 2, y - this.vel.y * k - gs / 2, gs, gs);
+            }
+            ctx.globalAlpha = 1;
+        }
+        const pulse = 0.55 + 0.2 * Math.sin(this.age * 7 + this.spin * 2);
+        const g = s * 2.2;
+        ctx.globalAlpha = pulse;
+        ctx.drawImage(orbGlowSprite, x - g / 2, y - g / 2, g, g);
         ctx.globalAlpha = 1;
-        ctx.fillStyle = '#E0F7FA';
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y + bob, this.size, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+        ctx.drawImage(orbSprite, x - s / 2, y - s / 2, s, s);
     }
+}
+
+// 靈魂光球用自繪的靈魂火焰圖示；先縮成小張貼圖，上百顆一起畫才不會每顆都去縮放向量圖
+const ORB_SIZE_BASE = 14;
+const ORB_SIZE_PER_VALUE = 1.6;
+const ORB_SIZE_BONUS_MAX = 8;
+const ORB_SPRITE_PX = 48;
+const ORB_TRAIL_GHOSTS = 3;
+const ORB_TRAIL_STEP = 0.014;
+let orbSprite = null, orbGlowSprite = null;
+function buildOrbSprites() {
+    const icon = getIconImage('soul');
+    orbSprite = document.createElement('canvas');
+    orbSprite.width = orbSprite.height = ORB_SPRITE_PX;
+    const g = orbSprite.getContext('2d');
+    if (icon) g.drawImage(icon, 0, 0, ORB_SPRITE_PX, ORB_SPRITE_PX);
+    else { g.fillStyle = '#E0F7FA'; g.beginPath(); g.arc(ORB_SPRITE_PX / 2, ORB_SPRITE_PX / 2, ORB_SPRITE_PX / 3, 0, Math.PI * 2); g.fill(); }
+    orbGlowSprite = document.createElement('canvas');
+    orbGlowSprite.width = orbGlowSprite.height = ORB_SPRITE_PX;
+    const gg = orbGlowSprite.getContext('2d');
+    const r = ORB_SPRITE_PX / 2;
+    const grad = gg.createRadialGradient(r, r, 0, r, r, r);
+    grad.addColorStop(0, 'rgba(128, 222, 234, 0.9)');
+    grad.addColorStop(0.4, 'rgba(77, 208, 225, 0.35)');
+    grad.addColorStop(1, 'rgba(77, 208, 225, 0)');
+    gg.fillStyle = grad;
+    gg.fillRect(0, 0, ORB_SPRITE_PX, ORB_SPRITE_PX);
 }
 
 function dropSouls(x, y, amount) {
@@ -2268,6 +2381,7 @@ class BossMonster extends Monster {
         super.die();
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
+        spawnFloatText(this.pos.x, this.pos.y - 8, `+${CRYSTALS_PER_BOSS}`, '#CE93D8', 17, 1.6, 'crystal');
         addShake(14);
         Sfx.play('bossDie');
     }
@@ -2702,6 +2816,7 @@ function checkWaveEndCondition() {
             spawnFloatText(p.pos.x, p.pos.y - 24, `+${heal} HP`, '#81C784', 14, 1.2);
         }
         gameState.summons.forEach(s => { if (s.isAlive) s.currentHealth = s.maxHealth; });
+        spawnCrystalText(CRYSTALS_PER_WAVE);
         queueDraftIfDue();
         gameState.projectiles.forEach(returnProjectileToPool);
         gameState.projectiles = [];
@@ -3309,6 +3424,15 @@ function startHoldAction(actionType, unitType) {
     }, CONFIG.holdingButton.holdDelay);
 }
 
+// 靈魂不夠 / 冷卻中還按：不能沒反應，否則玩家以為沒按到
+function denyFeedback(el) {
+    Sfx.unlock();
+    Sfx.play('deny');
+    el.classList.remove('deny-shake');
+    void el.offsetWidth;
+    el.classList.add('deny-shake');
+}
+
 function stopHoldAction(actionType, unitType) {
     if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
 
@@ -3424,9 +3548,31 @@ function updateNovaButton() {
     }
 }
 
-function showGameOver() {
+// 撐過的波數：波次之間代表這一波已經清完；打到一半就只算到上一波
+function getSurvivedWaves() {
+    return Math.max(0, gameState.betweenWaves ? gameState.currentWave : gameState.currentWave - 1);
+}
+function getRunReward() {
+    return getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS;
+}
+function spawnCrystalText(amount) {
+    const p = gameState.player;
+    if (p && amount > 0) spawnFloatText(p.pos.x, p.pos.y - 44, `+${amount}`, '#CE93D8', 15, 1.4, 'crystal');
+}
+
+function endRunFromPause() {
+    showConfirm('結束這局？', `結算並獲得 ${getRunReward()} 結晶`, '結束', () => {
+        showScreen(uiElements.pauseMenu, false);
+        gameState.isPaused = false;
+        gameState.gameOver = true;
+        showGameOver(false);
+    });
+}
+
+function showGameOver(died = true) {
     if (!gameState.gameOver || uiElements.gameOverScreen.style.display === 'flex') return;
-    const survived = Math.max(0, gameState.currentWave - 1);
+    uiElements.gameoverTitle.textContent = died ? '陣亡' : '本局結束';
+    const survived = getSurvivedWaves();
     const best = getBestWave();
     const isRecord = survived > best;
     if (isRecord) {
@@ -3440,7 +3586,7 @@ function showGameOver() {
     uiElements.finalKills.textContent = formatNumberK(kills);
     uiElements.finalSummons.textContent = formatNumberK(summons);
     uiElements.finalStreak.textContent = formatNumberK(gameState.bestStreak);
-    const reward = survived * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS;
+    const reward = getRunReward();
     meta.crystals += reward;
     saveMeta();
     uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward}`;
@@ -3637,6 +3783,7 @@ function updatePauseMenuStats() {
     uiElements.statKillBloater.textContent = formatNumberK(gameState.totalKills.Bloater);
     uiElements.statKillBoss.textContent = formatNumberK(gameState.totalKills.Boss);
     renderBlessingList(uiElements.pauseBlessings);
+    uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('crystal')}+${getRunReward()}`;
 }
 
 function togglePause() {
@@ -3662,9 +3809,6 @@ function leaveToTitleFromPause() {
     else showConfirm('回到標題？', '這一波的進度不會保留', '回標題', go);
 }
 
-function restartFromPause() {
-    showConfirm('重新開始？', '目前的進度會被清除', '重來', () => { resetGame(); enterPlaying(); });
-}
 
 function updateGame(deltaTime) {
     frameNo++;
@@ -3893,6 +4037,54 @@ function roundRect(x, y, w, h, r) {
     ctx.closePath();
 }
 
+// 竊賊、首領跑出畫面時，在畫面邊緣畫一個指向牠的標記
+const POINTER_EDGE_PAD = 30;
+const POINTER_TOP_EXTRA = 70;
+function drawOffscreenPointers() {
+    if (appScreen !== 'playing' || !gameState.player) return;
+    let bottom = 0;
+    for (let i = 0; i < gameState.monsters.length; i++) {
+        const m = gameState.monsters[i];
+        const isThief = m instanceof ThiefMonster;
+        if (!m.isAlive || !(isThief || m instanceof BossMonster)) continue;
+        const sx = (m.pos.x - camera.x) * view.unitPx, sy = (m.pos.y - camera.y) * view.unitPx;
+        if (sx > 0 && sx < view.cssW && sy > 0 && sy < view.cssH) continue;
+        if (!bottom) {
+            const hb = uiElements.hudBottom.getBoundingClientRect();
+            bottom = (hb.height ? hb.top : view.cssH) - POINTER_EDGE_PAD;
+        }
+        const left = POINTER_EDGE_PAD, right = view.cssW - POINTER_EDGE_PAD;
+        const top = hudTop + POINTER_TOP_EXTRA;
+        const cx = view.cssW / 2, cy = (top + bottom) / 2;
+        const dx = sx - cx, dy = sy - cy;
+        const s = Math.min(Math.abs(dx) > 0.01 ? (dx > 0 ? right - cx : cx - left) / Math.abs(dx) : Infinity,
+            Math.abs(dy) > 0.01 ? (dy > 0 ? bottom - cy : cy - top) / Math.abs(dy) : Infinity);
+        const px = cx + dx * s, py = cy + dy * s;
+        const ang = Math.atan2(dy, dx);
+        const color = isThief ? '#FFD54F' : '#CE93D8';
+        const pulse = 1 + 0.08 * Math.sin(performance.now() / 150);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.scale(pulse, pulse);
+        ctx.save();
+        ctx.rotate(ang);
+        ctx.fillStyle = color;
+        ctx.strokeStyle = TEXT_OUTLINE;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(29, 0); ctx.lineTo(17, -9); ctx.lineTo(17, 9); ctx.closePath();
+        ctx.stroke(); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
+        ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = color;
+        ctx.stroke();
+        const icon = getIconImage(isThief ? 'sack' : 'skull');
+        if (icon) ctx.drawImage(icon, -12, -12, 24, 24);
+        ctx.restore();
+    }
+}
+
 // 開戰前最後幾秒在畫面中間跳大數字：只看角落的小字很容易錯過開戰
 const COUNTDOWN_SECONDS = 3;
 function drawCountdown() {
@@ -4004,6 +4196,7 @@ function drawGame() {
     drawEventOverlay();
     drawBossBar();
     drawStreak();
+    drawOffscreenPointers();
     drawCountdown();
     drawBanner();
     drawJoystick();
@@ -4195,6 +4388,8 @@ function init() {
         button.addEventListener('pointerdown', (e) => {
             e.preventDefault();
             button.setPointerCapture(e.pointerId);
+            // 一樣開始長按：按著等靈魂進帳，夠了就會自動買下去
+            if (button.classList.contains('cant-afford')) denyFeedback(button);
             startHoldAction(actionType, unitType);
             ensureMusicPlaying();
         });
@@ -4233,7 +4428,7 @@ function init() {
     onTap(uiElements.pauseResumeBtn, togglePause);
     onTap(uiElements.resumeGameBtn, togglePause);
     onTap(uiElements.pauseTitleBtn, leaveToTitleFromPause);
-    onTap(uiElements.restartGameBtn, restartFromPause);
+    onTap(uiElements.restartGameBtn, endRunFromPause);
     onTap(uiElements.restartButton, () => { resetGame(); enterPlaying(); });
     onTap(uiElements.gameoverTitleBtn, showTitle);
     onTap(uiElements.gameoverMetaBtn, () => openMeta('gameover'));
@@ -4247,7 +4442,10 @@ function init() {
     });
     uiElements.soulsInfo.addEventListener('animationend', () => uiElements.soulsInfo.classList.remove('bump'));
 
-    uiElements.novaBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); useNova(); });
+    uiElements.novaBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        if (!useNova() && gameState.novaCooldown > 0 && !gameState.isPaused) denyFeedback(uiElements.novaBtn);
+    });
 
     window.addEventListener('keydown', (e) => {
         if (gameState.draftOpen) {
