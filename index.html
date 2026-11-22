@@ -624,8 +624,98 @@
 
         /* 從結算 / 標題開出來的視窗要蓋在它們上面 */
         #meta-screen,
-        #settings-screen {
+        #settings-screen,
+        #curse-screen {
             z-index: 15;
+        }
+
+        /* 通關 / 詛咒 */
+        .title-text.victory,
+        #game-over-screen .title-text.victory {
+            font-size: 40px;
+            color: #ffd27a;
+            text-shadow: 0 3px 0 var(--ink), 0 0 22px rgba(255, 196, 80, 0.7);
+        }
+
+        .victory-sub {
+            color: var(--bone-dim);
+            margin: 2px 0 10px;
+        }
+
+        .reward-line.curse-unlock {
+            background: rgba(229, 57, 53, 0.15);
+            border-color: rgba(239, 83, 80, 0.6);
+            color: #ffcdd2;
+        }
+
+        .curse-stepper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 18px;
+            margin-bottom: 12px;
+        }
+
+        .curse-stepper .btn {
+            width: 52px;
+            font-size: 26px;
+            padding: 0 0 4px;
+        }
+
+        #curse-level {
+            min-width: 56px;
+            text-align: center;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 40px;
+            color: #ff8a80;
+            text-shadow: var(--text-outline);
+        }
+
+        #curse-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 52vh;
+            overflow-y: auto;
+        }
+
+        .curse-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--ink);
+            opacity: 0.45;
+        }
+
+        .curse-row.on {
+            opacity: 1;
+            border-color: rgba(239, 83, 80, 0.75);
+            background: rgba(183, 28, 28, 0.22);
+        }
+
+        .curse-row.locked {
+            opacity: 0.3;
+        }
+
+        .curse-row>.icon {
+            width: 30px;
+            height: 30px;
+        }
+
+        .curse-row .lv {
+            min-width: 18px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            color: #ff8a80;
+        }
+
+        .curse-row .meta-desc {
+            flex: 1;
+            text-align: left;
         }
 
         /* 標題畫面 */
@@ -1246,6 +1336,7 @@
             <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
             <div class="title-row">
                 <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
+                <button id="title-curse-btn" class="btn btn-red hidden"><span class="btn-icon" data-icon="skull"></span>詛咒</button>
                 <button id="title-settings-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gear"></span>設定</button>
             </div>
         </div>
@@ -1262,6 +1353,39 @@
             <div id="meta-list"></div>
             <div class="stack">
                 <button id="meta-close-btn" class="btn btn-dark">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 詛咒（通關後解鎖的自選難度） -->
+    <div id="curse-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <div class="meta-head">
+                <h2 class="title-text">詛咒</h2>
+                <span class="crystal-count" id="curse-mult"></span>
+            </div>
+            <div class="curse-stepper">
+                <button id="curse-minus" class="btn btn-dark" aria-label="降低">−</button>
+                <span id="curse-level">0</span>
+                <button id="curse-plus" class="btn btn-red" aria-label="提高">+</button>
+            </div>
+            <div id="curse-list"></div>
+            <div class="stack">
+                <button id="curse-close-btn" class="btn btn-dark">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通關 -->
+    <div id="victory-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <div class="title-text victory">凱旋</div>
+            <div class="victory-sub">擊敗最終首領</div>
+            <div class="reward-line" id="victory-reward"></div>
+            <div class="reward-line curse-unlock hidden" id="victory-unlock"></div>
+            <div class="stack">
+                <button id="victory-continue-btn" class="btn btn-red btn-big"><span class="btn-icon" data-icon="flame"></span>挑戰無盡</button>
+                <button id="victory-end-btn" class="btn btn-gold"><span class="btn-icon" data-icon="trophy"></span>結算</button>
             </div>
         </div>
     </div>

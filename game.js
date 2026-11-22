@@ -51,6 +51,11 @@ const uiElements = {
     timerInfo: $id('timer-info'),
     wavePlate: $id('wave-plate'),
     hudBottom: $id('hud-bottom'),
+    victoryScreen: $id('victory-screen'), victoryReward: $id('victory-reward'), victoryUnlock: $id('victory-unlock'),
+    victoryContinueBtn: $id('victory-continue-btn'), victoryEndBtn: $id('victory-end-btn'),
+    titleCurseBtn: $id('title-curse-btn'), curseScreen: $id('curse-screen'), curseList: $id('curse-list'),
+    curseLevel: $id('curse-level'), curseMult: $id('curse-mult'), curseMinus: $id('curse-minus'), cursePlus: $id('curse-plus'),
+    curseCloseBtn: $id('curse-close-btn'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
     soulsInfo: $id('souls-info'),
@@ -265,6 +270,27 @@ const CONFIG = {
         // 平常半透明（潛行），蓄力到瞬移後這段時間現形
         stealthAlpha: 0.5, revealTime: 1.5,
     },
+    spitter: {
+        type: 'Spitter', baseHealth: 30, baseAttack: 5, radius: 12,
+        // 沒有專屬圖：借疫病母巢的圖縮小、染紫，跟首領分得開
+        imageName: 'basic_melee', art: 'boss_plague', imgScaleMultiplier: 5, artScale: 3.6, tint: '#8E24AA', tintStrength: 0.5, keepTintOnArt: true,
+        // attackRange = 站在多遠外丟毒（不貼身），attackSpeed = 每秒丟幾次
+        attackRange: 170, attackSpeed: 0.28, moveSpeed: 45, color: '#8E24AA',
+        soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
+        minWave: 20, waveInterval: 4,
+        // 往目標丟一團毒：落點先出現預警圈，飛行 lobTime 秒後變成毒池，持續 puddleLife 秒，每 puddleTick 秒對圈內的召喚物與法師造成傷害。
+        // 懲罰大軍擠成一團、法師站著不動。
+        // 對法師的傷害是最大生命的固定比例（同刺客）：照怪物攻擊算的話第 30 波站進去 1.5 秒就死，完全來不及反應
+        lobTime: 1.0, puddleRadius: 40, puddleLife: 3, puddleTick: 0.5, puddleDamageMult: 0.4, puddlePlayerHpRatio: 0.06,
+    },
+    eliteAffix: {
+        // 這一波起精英怪會帶一個詞綴，牠腳下的圈換顏色
+        startWave: 25,
+        list: {
+            split: { color: '#9CCC65', count: 3, hpMult: 0.35 },
+            frenzy: { color: '#FF7043', threshold: 0.5, speedMult: 1.6, atkSpeedMult: 1.5 },
+        },
+    },
     waveEvents: {
         startWave: 6, chance: 0.3,
         list: {
@@ -289,15 +315,20 @@ const CONFIG = {
     },
     wave: {
         betweenTime: 5,
-        // 前 earlyWaves 波成長較快（前期原本最無聊，要有壓力）；之後的斜率與舊版相同
-        // （舊版：每 5 波 +10%、第 50 波後每波再 +0.7%），已經玩到很後面的存檔不會突然變難
+        // 前 earlyWaves 波每波成長較多，讓前期就有壓力
         earlyWaves: 20, earlyScalePerWave: 0.035,
         scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
         // 召喚物不設上限時，玩家收入隨怪物「數量」成長、戰力隨累積收入成長，線性變強的怪物永遠追不上
         // （舊版就是這樣撐到無限波）。從 expStartWave 起再乘上 expGrowth^(超過的波數)，保證終究會被淹沒
-        expStartWave: 30, expGrowth: 1.08,
+        expStartWave: 20, expGrowth: 1.075,
+        // 一局的目標：第 finalWave 波三隻首領同時出場，打贏算通關（約 25 分鐘）。
+        // 之後可以選擇繼續無盡模式，每波再多乘 endlessGrowth，通常十幾波內結束，不會變成一小時的慢慢輸
+        finalWave: 50, finalBossHpMult: 0.7, endlessGrowth: 1.05,
         basicBase: 3, basicPerWave: 1.3,
         bossEvery: 10, bossWaveCountFactor: 0.5,
+        // 每 10 波一輪的怪物數量（索引 = 波數 % 10，0 是首領波另外算）：
+        // 首領剛打完的兩波明顯變少，讓大軍爽割一輪，再一路加壓到下一隻首領（鋸齒形難度）
+        cycleCountFactors: [1, 0.55, 0.75, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3],
         spawnIntervalBase: 0.9, spawnIntervalPerWave: 0.01, spawnIntervalMin: 0.35,
         firstSpawnDelay: 0.8, packMin: 1, packMax: 4, packSpread: 25,
         healRatio: 0.2,
@@ -421,7 +452,7 @@ const META_UPGRADES = {
 const CRYSTALS_PER_WAVE = 2;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, tutorialDone: false, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume };
+    return { crystals: 0, upgrades: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume };
 }
 function loadMeta() {
     try {
@@ -524,6 +555,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
+    hazards: [], curse: 0, endless: false, victoryOpen: false,
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -908,6 +940,8 @@ const SFX_DEFS = {
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
+    splat: { gap: 0.15, fn: s => { s.noise(0.2, { vol: 0.15, filterFreq: 700 }); s.tone(140, 0.18, { vol: 0.08, slideTo: 70 }); } },
+    victory: { gap: 1, fn: s => { [523, 659, 784, 1046, 1318].forEach((f, i) => s.tone(f, 0.35, { type: 'triangle', vol: 0.16, delay: i * 0.12 })); } },
     mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
@@ -1054,6 +1088,7 @@ class GameObject {
 // 扣血後白色殘影每秒縮短的比例；低於這個比例血條閃紅
 const PLAYER_HP_TRAIL_SPEED = 0.6;
 const PLAYER_HP_LOW = 0.3;
+const PLAYER_MAX_HIT_RATIO = 0.4;
 // 吸到靈魂時法師身上的光暈：每吸一顆加一點，每秒淡掉這麼多
 const ABSORB_GLOW_PER_ORB = 0.35;
 const ABSORB_GLOW_DECAY = 2.5;
@@ -1083,7 +1118,8 @@ class Player extends GameObject {
     }
     takeDamage(amount) {
         if (!this.isAlive) return;
-        this.currentHealth -= amount;
+        // 單一下傷害封頂：滿血不會被一下秒掉（後期精英腐屍一爆就超過法師血量），死亡要來自看得到的壓力
+        this.currentHealth -= Math.min(amount, this.maxHealth * PLAYER_MAX_HIT_RATIO);
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
         this.hitFlash = CONFIG.visuals.hitFlashDuration;
         gameState.hurtFlash = CONFIG.visuals.hurtFlashDuration;
@@ -2108,7 +2144,8 @@ function getWaveStatMultiplier(wave) {
         + W.earlyScalePerWave * Math.min(wave - 1, W.earlyWaves - 1)
         + W.scalePerWave * Math.max(0, wave - W.earlyWaves)
         + W.lateScalePerWave * Math.max(0, wave - W.lateWave);
-    return linear * Math.pow(W.expGrowth, Math.max(0, wave - W.expStartWave));
+    return linear * Math.pow(W.expGrowth, Math.max(0, wave - W.expStartWave))
+        * Math.pow(W.endlessGrowth, Math.max(0, wave - W.finalWave));
 }
 
 class Monster extends GameObject {
@@ -2121,8 +2158,10 @@ class Monster extends GameObject {
         super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, art || config.imageName, scale);
         this.config = config;
         this.isElite = isElite;
-        this.tint = isElite ? E.tint : (art ? null : config.tint);
-        this.tintStrength = isElite ? E.tintStrength : (art ? 0 : config.tintStrength);
+        const keepTint = !art || config.keepTintOnArt;
+        this.tint = isElite ? E.tint : (keepTint ? config.tint : null);
+        this.tintStrength = isElite ? E.tintStrength : (keepTint ? config.tintStrength : 0);
+        this.waveNumber = waveNumber;
         this.id = `m_${Date.now()}_${Math.random()}`;
         this.attackCooldown = 0;
         this.target = null;
@@ -2138,7 +2177,16 @@ class Monster extends GameObject {
         if (isElite) {
             this.maxHealth = Math.round(this.maxHealth * E.hpMult);
             this.attack *= E.atkMult;
+            if (waveNumber >= CONFIG.eliteAffix.startWave && !(this instanceof BossMonster)) {
+                const ids = Object.keys(CONFIG.eliteAffix.list);
+                this.affix = ids[Math.floor(Math.random() * ids.length)];
+            }
         }
+        const cm = curseMods();
+        this.maxHealth = Math.round(this.maxHealth * cm.hpMult);
+        this.attack *= cm.atkMult;
+        this.baseMoveSpeed *= cm.speedMult;
+        this.moveSpeed = this.baseMoveSpeed;
         this.currentHealth = this.maxHealth;
     }
 
@@ -2149,8 +2197,8 @@ class Monster extends GameObject {
     draw(ctx) {
         if (this.isElite && this.isAlive) {
             ctx.save();
-            ctx.strokeStyle = 'rgba(255, 213, 79, 0.85)';
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = this.affix ? CONFIG.eliteAffix.list[this.affix].color : 'rgba(255, 213, 79, 0.85)';
+            ctx.lineWidth = this.enraged ? 4 : 2;
             ctx.beginPath();
             ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.38, this.radius * 1.3, this.radius * 0.5, 0, 0, Math.PI * 2);
             ctx.stroke();
@@ -2276,14 +2324,24 @@ class Monster extends GameObject {
         this.hitFlash = CONFIG.visuals.hitFlashDuration;
         Sfx.play('hit');
 
-        if (this.currentHealth <= 0) { this.die(); }
+        if (this.currentHealth <= 0) { this.die(); return; }
+        if (this.affix === 'frenzy' && !this.enraged) {
+            const F = CONFIG.eliteAffix.list.frenzy;
+            if (this.currentHealth < this.maxHealth * F.threshold) {
+                this.enraged = true;
+                this.baseMoveSpeed *= F.speedMult;
+                this.attackSpeed *= F.atkSpeedMult;
+                spawnParticles(this.pos.x, this.pos.y, F.color, 14, 100, 0.5, 3);
+                spawnFloatText(this.pos.x, this.pos.y - 20, '狂暴', F.color, 13);
+            }
+        }
     }
 
     die() {
         this.isAlive = false;
         registerKill();
         const ev = getWaveEvent();
-        const souls = this.soulValue() * (1 + blessVal('soulHarvest')) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus())
+        const souls = this.soulValue() * (1 + blessVal('soulHarvest')) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus()) * curseMods().soulMult
             + gameState.soulCarry;
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
@@ -2301,6 +2359,16 @@ class Monster extends GameObject {
             spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 16, 120, 0.7, 3);
             spawnFloatText(this.pos.x, this.pos.y - 18, '精英擊破', '#FFD54F', 13);
             Sfx.play('elite');
+        }
+        if (this.affix === 'split') {
+            const S = CONFIG.eliteAffix.list.split;
+            for (let i = 0; i < S.count; i++) {
+                const a = (i / S.count) * Math.PI * 2;
+                const m = new this.constructor(this.pos.x + Math.cos(a) * 14, this.pos.y + Math.sin(a) * 14, this.waveNumber, false);
+                m.maxHealth = m.currentHealth = Math.max(1, Math.round(m.maxHealth * S.hpMult));
+                gameState.monsters.push(m);
+            }
+            spawnParticles(this.pos.x, this.pos.y, S.color, 18, 110, 0.5, 3);
         }
         gameState.visualEffects.push(new DeathFadeEffect(this));
         Sfx.play('kill');
@@ -2371,7 +2439,7 @@ class BossMonster extends Monster {
     constructor(x, y, waveNumber, config) {
         super(x, y, config, waveNumber, false);
         this.tier = Math.max(1, Math.floor(waveNumber / CONFIG.wave.bossEvery));
-        this.waveNumber = waveNumber;
+        this.maxHealth = this.currentHealth = Math.round(this.maxHealth * curseMods().bossHpMult);
     }
     applySlow(amount, duration) {
         super.applySlow(amount * (1 - this.config.slowResist), duration);
@@ -2673,6 +2741,110 @@ class AssassinMonster extends Monster {
     }
 }
 
+class SpitterMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.spitter, waveNumber, isElite);
+    }
+    attackTarget() {
+        if (!this.target || !this.target.isAlive) return;
+        const c = this.config;
+        const spread = c.puddleRadius * 0.4;
+        gameState.hazards.push({
+            sx: this.pos.x, sy: this.pos.y,
+            x: this.target.pos.x + randomInRange(-spread, spread), y: this.target.pos.y + randomInRange(-spread, spread),
+            r: c.puddleRadius * (this.isElite ? CONFIG.elite.sizeMult : 1),
+            flight: c.lobTime, life: c.puddleLife, tick: 0, dmg: this.attack * c.puddleDamageMult,
+        });
+        this.attackCooldown = 1.0 / this.attackSpeed;
+    }
+}
+
+// 毒池：先飛（地上有預警圈）、落地後持續傷害圈內的召喚物與法師
+function updateHazards(deltaTime) {
+    const c = CONFIG.spitter;
+    const p = gameState.player;
+    for (const h of gameState.hazards) {
+        if (h.flight > 0) {
+            h.flight -= deltaTime;
+            if (h.flight <= 0) {
+                spawnParticles(h.x, h.y, '#AB47BC', 12, 90, 0.4, 3);
+                Sfx.play('splat');
+            }
+            continue;
+        }
+        h.life -= deltaTime;
+        h.tick -= deltaTime;
+        if (h.tick > 0) continue;
+        h.tick = c.puddleTick;
+        const rSq = h.r * h.r;
+        summonGrid.forEachInRadius(h, h.r, s => { if (s.isAlive && distanceSq(h, s.pos) <= rSq) s.takeDamage(h.dmg); });
+        if (p && p.isAlive && distanceSq(h, p.pos) <= rSq) p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio);
+    }
+    gameState.hazards = gameState.hazards.filter(h => h.life > 0);
+}
+
+function drawHazards() {
+    const t = performance.now() / 1000;
+    const lob = CONFIG.spitter.lobTime;
+    for (const h of gameState.hazards) {
+        if (!inView(h)) continue;
+        if (h.flight > 0) {
+            const k = 1 - h.flight / lob;
+            ctx.fillStyle = `rgba(206, 147, 216, ${(0.08 + 0.12 * k).toFixed(2)})`;
+            ctx.strokeStyle = `rgba(206, 147, 216, ${(0.4 + 0.5 * k).toFixed(2)})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            ctx.setLineDash([]);
+            // 飛行中的毒團：拋物線
+            const gx = h.sx + (h.x - h.sx) * k, gy = h.sy + (h.y - h.sy) * k - Math.sin(k * Math.PI) * 60;
+            ctx.fillStyle = '#AB47BC';
+            ctx.beginPath(); ctx.arc(gx, gy, 5, 0, Math.PI * 2); ctx.fill();
+            continue;
+        }
+        const fade = Math.min(1, h.life * 2);
+        ctx.fillStyle = `rgba(123, 31, 162, ${(0.35 * fade).toFixed(2)})`;
+        ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(186, 104, 200, ${(0.8 * fade).toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = `rgba(225, 190, 231, ${(0.6 * fade).toFixed(2)})`;
+        for (let i = 0; i < 3; i++) {
+            const a = i * 2.1 + t * 1.3, rr = h.r * (0.25 + 0.2 * i);
+            const bs = 2 + 1.5 * Math.abs(Math.sin(t * 3 + i));
+            ctx.beginPath(); ctx.arc(h.x + Math.cos(a) * rr, h.y + Math.sin(a) * rr * 0.6, bs, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+}
+
+// ---------- 詛咒：通關後解鎖的自選難度，每一級多一條規則、結晶倍率跟著提高（同 Hades 熱度 / Slay the Spire 進階） ----------
+const CURSES = [
+    { icon: 'claws', name: '兇暴', desc: '怪物血量 +25%', hpMult: 1.25 },
+    { icon: 'warning', name: '暗殺令', desc: '刺客提早出現、數量加倍', assassinEarly: true },
+    { icon: 'fastForward', name: '疾行', desc: '怪物移速 +15%', speedMult: 1.15 },
+    { icon: 'soul', name: '貧瘠', desc: '靈魂掉落 -20%', soulMult: 0.8 },
+    { icon: 'crown', name: '精英橫行', desc: '精英怪機率 ×2', eliteMult: 2 },
+    { icon: 'skull', name: '暴君', desc: '首領血量 +50%', bossHpMult: 1.5 },
+    { icon: 'heart', name: '脆弱', desc: '法師血量 -30%', mageHpMult: 0.7 },
+    { icon: 'flame', name: '血債', desc: '怪物攻擊 +30%', atkMult: 1.3 },
+];
+const CURSE_CRYSTAL_STEP = 0.3;
+const ASSASSIN_EARLY_WAVE = 6;
+const VICTORY_CRYSTALS = 100;
+function curseMods() {
+    const m = { hpMult: 1, atkMult: 1, speedMult: 1, soulMult: 1, eliteMult: 1, bossHpMult: 1, mageHpMult: 1, assassinEarly: false };
+    const lv = (gameState && gameState.curse) || 0;
+    for (let i = 0; i < lv && i < CURSES.length; i++) {
+        const c = CURSES[i];
+        for (const k of ['hpMult', 'atkMult', 'speedMult', 'soulMult', 'eliteMult', 'bossHpMult', 'mageHpMult']) if (c[k]) m[k] *= c[k];
+        if (c.assassinEarly) m.assassinEarly = true;
+    }
+    return m;
+}
+function curseCrystalMult(lv = gameState.curse || 0) {
+    return 1 + CURSE_CRYSTAL_STEP * lv;
+}
+
 function getWaveEvent() {
     return gameState.waveEvent ? CONFIG.waveEvents.list[gameState.waveEvent] : null;
 }
@@ -2713,25 +2885,31 @@ function buildWaveQueue(wave) {
     const W = CONFIG.wave;
     const isBossWave = wave % W.bossEvery === 0;
     const ev = getWaveEvent();
-    const factor = (isBossWave ? W.bossWaveCountFactor : 1) * (ev && ev.countMult ? ev.countMult : 1);
+    const cm = curseMods();
+    const cycle = isBossWave ? W.bossWaveCountFactor : W.cycleCountFactors[wave % W.bossEvery];
+    const factor = cycle * (ev && ev.countMult ? ev.countMult : 1);
     const classes = [];
     const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
     add(BasicMeleeMonster, Math.round((W.basicBase + wave * W.basicPerWave) * factor));
-    [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster], [CONFIG.assassin, AssassinMonster]]
+    [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster],
+    [CONFIG.assassin, AssassinMonster], [CONFIG.spitter, SpitterMonster]]
         .forEach(([cfg, Cls]) => {
-            if (wave < cfg.minWave) return;
-            const typeMult = Cls === BloaterMonster && ev && ev.bloaterMult ? ev.bloaterMult : 1;
-            add(Cls, Math.max(1, Math.round((1 + Math.floor((wave - cfg.minWave) / cfg.waveInterval)) * factor * typeMult)));
+            const early = Cls === AssassinMonster && cm.assassinEarly;
+            const minWave = early ? ASSASSIN_EARLY_WAVE : cfg.minWave;
+            if (wave < minWave) return;
+            const typeMult = (Cls === BloaterMonster && ev && ev.bloaterMult ? ev.bloaterMult : 1) * (early ? 2 : 1);
+            add(Cls, Math.max(1, Math.round((1 + Math.floor((wave - minWave) / cfg.waveInterval)) * factor * typeMult)));
         });
-        if (ev && ev.thieves) add(ThiefMonster, ev.thieves);
+    if (ev && ev.thieves) add(ThiefMonster, ev.thieves);
     for (let i = classes.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [classes[i], classes[j]] = [classes[j], classes[i]];
     }
-    let eliteChance = getEliteChance(wave);
+    let eliteChance = getEliteChance(wave) * cm.eliteMult;
     if (ev && ev.eliteMult) eliteChance = Math.min(ev.eliteMax, Math.max(CONFIG.elite.chanceBase, eliteChance) * ev.eliteMult);
     const queue = classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Math.random() < eliteChance }));
-    if (isBossWave) queue.unshift({ Cls: getBossClass(wave), elite: false });
+    if (isFinalWave(wave)) BOSS_ROTATION.slice().reverse().forEach(Cls => queue.unshift({ Cls, elite: false, hpMult: W.finalBossHpMult }));
+    else if (isBossWave) queue.unshift({ Cls: getBossClass(wave), elite: false });
     return queue;
 }
 
@@ -2751,11 +2929,21 @@ function updateSpawner(deltaTime) {
     const packSize = head.Cls.prototype instanceof BossMonster ? 1 : W.packMin + Math.floor(Math.random() * (W.packMax - W.packMin + 1));
     const origin = getRandomPositionOutsideView();
     for (let i = 0; i < packSize && gameState.spawnQueue.length > 0; i++) {
-        const { Cls, elite } = gameState.spawnQueue.shift();
+        const { Cls, elite, hpMult } = gameState.spawnQueue.shift();
         const x = origin.x + randomInRange(-W.packSpread, W.packSpread);
         const y = origin.y + randomInRange(-W.packSpread, W.packSpread);
-        gameState.monsters.push(new Cls(x, y, wave, elite));
+        const m = new Cls(x, y, wave, elite);
+        if (hpMult) m.maxHealth = m.currentHealth = Math.round(m.maxHealth * hpMult);
+        gameState.monsters.push(m);
     }
+}
+
+function isFinalWave(wave) {
+    return wave === CONFIG.wave.finalWave;
+}
+// 通關前顯示離終點還有多遠；通關後是無盡模式
+function waveLabel(wave) {
+    return gameState.endless ? `無盡 ${wave}` : `第 ${wave}/${CONFIG.wave.finalWave} 波`;
 }
 
 function getAliveBoss() {
@@ -2770,6 +2958,7 @@ function prepareNextWave() {
     gameState.currentWave++;
     gameState.betweenWaves = false;
     gameState.monsters = [];
+    gameState.hazards = [];
     gameState.projectiles.forEach(returnProjectileToPool);
     gameState.projectiles = [];
     gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -2783,8 +2972,12 @@ function prepareNextWave() {
     const isBossWave = waveNum % CONFIG.wave.bossEvery === 0;
     const ev = getWaveEvent();
     if (isBossWave) {
-        const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
-        gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'warning' };
+        if (isFinalWave(waveNum)) {
+            gameState.banner = { text: '最終決戰', sub: '三首領同時降臨', color: '#FF8A65', life: CONFIG.wave.bannerDuration * 1.5, icon: 'crown' };
+        } else {
+            const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
+            gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'warning' };
+        }
     } else if (ev) {
         gameState.banner = { text: ev.name, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3, icon: ev.icon };
     } else {
@@ -2822,10 +3015,47 @@ function checkWaveEndCondition() {
         gameState.projectiles = [];
         gameState.visualEffects.forEach(returnVisualEffectToPool);
         gameState.visualEffects = [];
+        gameState.hazards = [];
+        const won = isFinalWave(gameState.currentWave) && !gameState.endless;
+        if (won) gameState.endless = true;
         saveGameState();
         updateUI();
-        if (gameState.pendingDraft) openDraft();
+        if (won) showVictory();
+        else if (gameState.pendingDraft) openDraft();
     }
+}
+
+// ---------- 通關 ----------
+function showVictory() {
+    const lv = gameState.curse || 0;
+    const bonus = Math.round(VICTORY_CRYSTALS * curseCrystalMult(lv));
+    meta.crystals += bonus;
+    meta.wins = (meta.wins || 0) + 1;
+    const unlockedBefore = meta.curseUnlocked || 0;
+    if (lv >= unlockedBefore && unlockedBefore < CURSES.length) meta.curseUnlocked = lv + 1;
+    saveMeta();
+    gameState.victoryOpen = true;
+    stopHoldAction();
+    uiElements.victoryReward.innerHTML = `${iconHtml('crystal')}+${bonus}`;
+    const newCurse = (meta.curseUnlocked || 0) > unlockedBefore;
+    uiElements.victoryUnlock.classList.toggle('hidden', !newCurse);
+    if (newCurse) uiElements.victoryUnlock.innerHTML = `${iconHtml(CURSES[meta.curseUnlocked - 1].icon)}解鎖詛咒 ${meta.curseUnlocked}`;
+    showScreen(uiElements.victoryScreen, true);
+    Sfx.play('victory');
+}
+
+function continueEndless() {
+    gameState.victoryOpen = false;
+    showScreen(uiElements.victoryScreen, false);
+    loopLastTime = performance.now();
+    if (gameState.pendingDraft) openDraft();
+}
+
+function endRunFromVictory() {
+    gameState.victoryOpen = false;
+    showScreen(uiElements.victoryScreen, false);
+    gameState.gameOver = true;
+    showGameOver('victory');
 }
 
 const NOVA_EFFECT_COLORS = { fill: '156, 39, 176', stroke: '225, 190, 231' };
@@ -3020,8 +3250,13 @@ function refreshTitle() {
     if (save) uiElements.titleContinueBtn.innerHTML = `${iconHtml('play', 'icon btn-icon')}繼續 · 第 ${save.currentWave} 波`;
     uiElements.titleStartBtn.classList.toggle('btn-gold', !save);
     uiElements.titleStartBtn.classList.toggle('btn-green', !!save);
+    const curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
+    uiElements.titleStartBtn.textContent = curse > 0 ? `開始遊戲 · 詛咒 ${curse}` : '開始遊戲';
+    uiElements.titleCurseBtn.classList.toggle('hidden', !(meta.curseUnlocked > 0));
     const best = getBestWave();
+    const wins = meta.wins || 0;
     uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
+        (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         `<span class="crystal-count">${iconHtml('crystal')}${meta.crystals}</span>`;
 }
 
@@ -3029,7 +3264,7 @@ function showTitle() {
     appScreen = 'title';
     gameState.isPaused = false;
     uiElements.hud.classList.add('hidden');
-    [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
+    [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen, uiElements.victoryScreen].forEach(el => showScreen(el, false));
     showScreen(uiElements.titleScreen, true);
     refreshTitle();
     // 收掉遊戲中墊的那一筆歷史，標題畫面按返回才會照常離開
@@ -3044,7 +3279,7 @@ function handleBackButton() {
     if (appScreen !== 'playing') return;
     armBackButton();
     if (gameState.gameOver) { showTitle(); return; }
-    if (gameState.draftOpen) return;
+    if (gameState.draftOpen || gameState.victoryOpen) return;
     if (uiElements.confirmDialog.style.display === 'flex') { showScreen(uiElements.confirmDialog, false); return; }
     togglePause();
 }
@@ -3107,6 +3342,26 @@ function buyMeta(id) {
     Sfx.unlock();
     Sfx.play('upgrade');
     renderMeta();
+}
+
+// ---------- 詛咒選單 ----------
+function renderCurse() {
+    const unlocked = meta.curseUnlocked || 0;
+    const sel = Math.min(meta.curseSelected || 0, unlocked);
+    uiElements.curseLevel.textContent = sel;
+    uiElements.curseMult.innerHTML = `${iconHtml('crystal')}×${curseCrystalMult(sel).toFixed(1)}`;
+    uiElements.curseMinus.disabled = sel <= 0;
+    uiElements.cursePlus.disabled = sel >= unlocked;
+    uiElements.curseList.innerHTML = CURSES.map((c, i) => {
+        const locked = i >= unlocked;
+        const cls = locked ? 'locked' : (i < sel ? 'on' : '');
+        return `<div class="curse-row ${cls}"><span class="lv">${i + 1}</span>${iconHtml(locked ? 'lock' : c.icon)}<div class="meta-desc">${c.desc}</div></div>`;
+    }).join('');
+}
+function stepCurse(d) {
+    meta.curseSelected = Math.max(0, Math.min(meta.curseUnlocked || 0, (meta.curseSelected || 0) + d));
+    saveMeta();
+    renderCurse();
 }
 
 // ---------- 新手提示（只在第一局）：先教移動，再教召喚 ----------
@@ -3496,10 +3751,10 @@ function updateUI() {
     const holding = tutorial && gameState.currentWave === 0;
     const secs = Math.ceil(gameState.timeToNextWave);
     if (gameState.betweenWaves) {
-        uiElements.waveInfo.textContent = `第 ${gameState.currentWave + 1} 波`;
+        uiElements.waveInfo.textContent = waveLabel(gameState.currentWave + 1);
         uiElements.timerInfo.textContent = holding ? '先熟悉操作' : `${secs} 秒後開戰`;
     } else {
-        uiElements.waveInfo.textContent = `第 ${gameState.currentWave} 波`;
+        uiElements.waveInfo.textContent = waveLabel(gameState.currentWave);
         uiElements.timerInfo.textContent = `剩餘 ${countRemainingMonsters()}`;
     }
     uiElements.wavePlate.classList.toggle('urgent', gameState.betweenWaves && !holding && secs <= COUNTDOWN_SECONDS);
@@ -3553,7 +3808,7 @@ function getSurvivedWaves() {
     return Math.max(0, gameState.betweenWaves ? gameState.currentWave : gameState.currentWave - 1);
 }
 function getRunReward() {
-    return getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS;
+    return Math.round((getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS) * curseCrystalMult());
 }
 function spawnCrystalText(amount) {
     const p = gameState.player;
@@ -3565,13 +3820,17 @@ function endRunFromPause() {
         showScreen(uiElements.pauseMenu, false);
         gameState.isPaused = false;
         gameState.gameOver = true;
-        showGameOver(false);
+        showGameOver('quit');
     });
 }
 
-function showGameOver(died = true) {
+const GAMEOVER_TITLES = { died: '陣亡', quit: '本局結束', victory: '凱旋' };
+function showGameOver(reason = 'died') {
     if (!gameState.gameOver || uiElements.gameOverScreen.style.display === 'flex') return;
-    uiElements.gameoverTitle.textContent = died ? '陣亡' : '本局結束';
+    // 通關後在無盡模式陣亡也算凱旋：這一局是贏的
+    const title = reason === 'died' && gameState.endless ? 'victory' : reason;
+    uiElements.gameoverTitle.textContent = GAMEOVER_TITLES[title];
+    uiElements.gameoverTitle.classList.toggle('victory', title === 'victory');
     const survived = getSurvivedWaves();
     const best = getBestWave();
     const isRecord = survived > best;
@@ -3629,6 +3888,8 @@ function saveGameState() {
         pendingDraft: gameState.pendingDraft,
         bestStreak: gameState.bestStreak,
         extraDrafts: gameState.extraDrafts,
+        curse: gameState.curse,
+        endless: gameState.endless,
     };
 
     try {
@@ -3673,6 +3934,9 @@ function loadGameState() {
         gameState.blessings = loadedState.blessings ?? {};
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
+        gameState.curse = loadedState.curse ?? 0;
+        // 已經過了最終波的舊存檔直接算進無盡模式，不會再跳一次通關
+        gameState.endless = loadedState.endless ?? (gameState.currentWave >= CONFIG.wave.finalWave);
         // 祝福系統之前的存檔：照已經打過的波數補發當初該拿到的祝福選擇
         if (loadedState.saveVersion < 17 && gameState.currentWave >= CONFIG.draft.every) {
             gameState.extraDrafts = Math.floor(gameState.currentWave / CONFIG.draft.every) - 1;
@@ -3751,6 +4015,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
+        hazards: [], curse: 0, endless: false, victoryOpen: false,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -3758,8 +4023,9 @@ function resetGameInternalState() {
 // 新的一局（不碰存檔）：永久強化在這裡套用
 function setupNewRun() {
     resetGameInternalState();
+    gameState.curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     gameState.player = new Player(0, 0);
-    gameState.player.maxHealth = CONFIG.player.baseHealth + metaVal('mageHp');
+    gameState.player.maxHealth = Math.round((CONFIG.player.baseHealth + metaVal('mageHp')) * curseMods().mageHpMult);
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
     snapCamera();
@@ -3787,7 +4053,7 @@ function updatePauseMenuStats() {
 }
 
 function togglePause() {
-    if (appScreen !== 'playing' || gameState.gameOver || gameState.draftOpen) return;
+    if (appScreen !== 'playing' || gameState.gameOver || gameState.draftOpen || gameState.victoryOpen) return;
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
         stopHoldAction();
@@ -3838,6 +4104,7 @@ function updateGame(deltaTime) {
     for (let i = 0; i < gameState.monsters.length; i++) {
         if (gameState.monsters[i].isAlive) gameState.monsters[i].update(deltaTime, gameState.player, gameState.summons);
     }
+    updateHazards(deltaTime);
     for (let i = 0; i < gameState.projectiles.length; i++) {
         if (gameState.projectiles[i].isAlive) gameState.projectiles[i].update(deltaTime);
     }
@@ -4147,6 +4414,7 @@ function drawGame() {
     const z = view.zoom;
     ctx.setTransform(z, 0, 0, z, (-camera.x + drawOffset.x) * z, (-camera.y + drawOffset.y) * z);
     drawGround();
+    drawHazards();
     for (let i = 0; i < gameState.orbs.length; i++) if (inView(gameState.orbs[i].pos)) gameState.orbs[i].draw(ctx);
 
     drawAuraLayer();
@@ -4234,7 +4502,7 @@ function gameLoop(currentTime) {
     }
     if (appScreen !== 'playing' || gameState.isPaused || gameState.gameOver) return;
 
-    if (!gameState.draftOpen) updateGame(deltaTime);
+    if (!gameState.draftOpen && !gameState.victoryOpen) updateGame(deltaTime);
     updateTutorial();
     drawGame();
     updateUI();
@@ -4421,6 +4689,12 @@ function init() {
     onTap(uiElements.titleSettingsBtn, () => { syncVolumeSliders(); showScreen(uiElements.settingsScreen, true); });
     onTap(uiElements.settingsCloseBtn, () => { saveMeta(); showScreen(uiElements.settingsScreen, false); });
     onTap(uiElements.metaCloseBtn, closeMeta);
+    onTap(uiElements.titleCurseBtn, () => { renderCurse(); showScreen(uiElements.curseScreen, true); });
+    onTap(uiElements.curseCloseBtn, () => { showScreen(uiElements.curseScreen, false); refreshTitle(); });
+    onTap(uiElements.curseMinus, () => stepCurse(-1));
+    onTap(uiElements.cursePlus, () => stepCurse(1));
+    onTap(uiElements.victoryContinueBtn, continueEndless);
+    onTap(uiElements.victoryEndBtn, endRunFromVictory);
     uiElements.metaList.addEventListener('click', (e) => {
         const b = e.target.closest('[data-meta]');
         if (b && !b.disabled) buyMeta(b.dataset.meta);
