@@ -160,6 +160,48 @@ const CONFIG = {
         // 首領只吃一半的緩速，不然一隻怨靈就能把它定在原地
         slowResist: 0.5,
     },
+    plagueBoss: {
+        type: 'Boss', name: '疫病母巢', baseHealth: 600, baseAttack: 18, radius: 24,
+        imageName: 'basic_melee', imgScaleMultiplier: 6.5, tint: '#33691E', tintStrength: 0.6,
+        attackRange: 30, attackSpeed: 0.8, moveSpeed: 26, color: '#33691E',
+        soulDrop: 45, waveSpeedIncreaseFactor: 0.004,
+        spawnInterval: 4, spawnCountBase: 3, spawnCountPerTier: 1, spawnRadius: 40,
+        slowResist: 0.5,
+    },
+    hunterBoss: {
+        type: 'Boss', name: '暗影獵手', baseHealth: 450, baseAttack: 26, radius: 20,
+        imageName: 'fast_melee', imgScaleMultiplier: 4.2, tint: '#311B92', tintStrength: 0.6,
+        attackRange: 26, attackSpeed: 1.2, moveSpeed: 55, color: '#311B92',
+        soulDrop: 45, waveSpeedIncreaseFactor: 0.006,
+        // 先畫一條預警線，再沿線高速衝過去，路上的召喚物 / 法師都吃傷害
+        dashInterval: 4.5, dashWindup: 0.8, dashDistance: 260, dashSpeed: 700, dashWidth: 28,
+        dashDamageMult: 1.5, dashTriggerRange: 300,
+        slowResist: 0.5,
+    },
+    thief: {
+        type: 'Thief', name: '金魂竊賊', baseHealth: 60, baseAttack: 0, radius: 11,
+        imageName: 'fast_melee', imgScaleMultiplier: 3, tint: '#FFC107', tintStrength: 0.55,
+        attackRange: 0, attackSpeed: 1, moveSpeed: 85, color: '#FFC107',
+        soulDrop: 20, soulPerWave: 2, waveSpeedIncreaseFactor: 0.005,
+        lifetime: 15, edgeMargin: 20,
+    },
+    waveEvents: {
+        startWave: 6, chance: 0.3,
+        list: {
+            bloodMoon: { icon: '🌕', name: '血月', desc: '怪物 ×1.6、靈魂 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
+            eliteTide: { icon: '👑', name: '精英潮', desc: '精英怪大量出現', eliteMult: 4, eliteMax: 0.6, color: '#FFD54F' },
+            frenzy: { icon: '💢', name: '狂暴', desc: '怪物更快、靈魂 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
+            plague: { icon: '🤢', name: '腐屍狂潮', desc: '腐屍 ×3', bloaterMult: 3, color: '#AED581' },
+            treasure: { icon: '💰', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量靈魂', thieves: 3, color: '#FFE082' },
+        },
+    },
+    streak: {
+        // 這麼多秒內沒有新的擊殺，連殺就歸零
+        window: 2.5,
+        bonusStep: 25, bonusPerStep: 0.05, bonusMax: 0.5,
+        showFrom: 10,
+        milestones: [50, 100, 250, 500, 1000, 2500, 5000],
+    },
     elite: {
         startWave: 5, chanceBase: 0.03, chancePerWave: 0.004, chanceMax: 0.15,
         hpMult: 3, atkMult: 1.5, sizeMult: 1.25, soulMult: 4,
@@ -367,6 +409,7 @@ let gameState = {
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
+    waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -727,6 +770,9 @@ const SFX_DEFS = {
     nova: { gap: 0.2, fn: s => { s.tone(220, 0.45, { type: 'sawtooth', vol: 0.15, slideTo: 55 }); s.noise(0.4, { vol: 0.25, filterFreq: 900 }); } },
     draft: { gap: 0.3, fn: s => { [660, 880, 1100].forEach((f, i) => s.tone(f, 0.25, { vol: 0.12, delay: i * 0.08 })); } },
     pick: { gap: 0.2, fn: s => { [523, 784, 1046].forEach((f, i) => s.tone(f, 0.15, { type: 'triangle', vol: 0.14, delay: i * 0.05 })); } },
+    streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
+    spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
+    dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
     pulse: { gap: 0.15, fn: s => s.tone(300, 0.2, { vol: 0.08, slideTo: 120 }) },
     raise: { gap: 0.15, fn: s => s.tone(180, 0.25, { type: 'triangle', vol: 0.14, slideTo: 360 }) },
@@ -1796,6 +1842,12 @@ class Monster extends GameObject {
         this.speedMultiplier = 1.0;
         this.slowTimer = 0;
         this.applyWaveScaling(waveNumber);
+        const ev = getWaveEvent();
+        if (ev && ev.speedMult) {
+            this.baseMoveSpeed *= ev.speedMult;
+            this.moveSpeed = this.baseMoveSpeed;
+            this.attackSpeed *= ev.atkSpeedMult;
+        }
         if (isElite) {
             this.maxHealth = Math.round(this.maxHealth * E.hpMult);
             this.attack *= E.atkMult;
@@ -1942,7 +1994,10 @@ class Monster extends GameObject {
 
     die() {
         this.isAlive = false;
-        const souls = this.soulValue() * (1 + blessVal('soulHarvest')) + gameState.soulCarry;
+        registerKill();
+        const ev = getWaveEvent();
+        const souls = this.soulValue() * (1 + blessVal('soulHarvest')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus())
+            + gameState.soulCarry;
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
         dropSouls(this.pos.x, this.pos.y, whole);
@@ -2026,9 +2081,27 @@ class BloaterMonster extends Monster {
 }
 
 class BossMonster extends Monster {
-    constructor(x, y, waveNumber) {
-        super(x, y, CONFIG.boss, waveNumber, false);
+    constructor(x, y, waveNumber, config) {
+        super(x, y, config, waveNumber, false);
         this.tier = Math.max(1, Math.floor(waveNumber / CONFIG.wave.bossEvery));
+        this.waveNumber = waveNumber;
+    }
+    applySlow(amount, duration) {
+        super.applySlow(amount * (1 - this.config.slowResist), duration);
+    }
+    drawHealthBar() { }
+    die() {
+        super.die();
+        spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
+        spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
+        addShake(14);
+        Sfx.play('bossDie');
+    }
+}
+
+class ColossusBoss extends BossMonster {
+    constructor(x, y, waveNumber) {
+        super(x, y, waveNumber, CONFIG.boss);
         this.slamTimer = CONFIG.boss.slamInterval;
         this.windup = 0;
     }
@@ -2064,9 +2137,6 @@ class BossMonster extends Monster {
         addShake(10);
         Sfx.play('slam');
     }
-    applySlow(amount, duration) {
-        super.applySlow(amount * (1 - this.config.slowResist), duration);
-    }
     draw(ctx) {
         if (this.isAlive && this.windup > 0) {
             const c = this.config;
@@ -2081,13 +2151,183 @@ class BossMonster extends Monster {
         }
         super.draw(ctx);
     }
-    drawHealthBar() { }
-    die() {
-        super.die();
-        spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
-        spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
-        addShake(14);
-        Sfx.play('bossDie');
+}
+
+class PlagueBoss extends BossMonster {
+    constructor(x, y, waveNumber) {
+        super(x, y, waveNumber, CONFIG.plagueBoss);
+        this.spawnTimer = CONFIG.plagueBoss.spawnInterval * 0.5;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        super.update(deltaTime, player, summons);
+        const c = this.config;
+        this.spawnTimer -= deltaTime;
+        if (this.spawnTimer > 0) return;
+        this.spawnTimer = c.spawnInterval;
+        const n = c.spawnCountBase + c.spawnCountPerTier * (this.tier - 1);
+        for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2;
+            const x = this.pos.x + Math.cos(a) * c.spawnRadius, y = this.pos.y + Math.sin(a) * c.spawnRadius;
+            gameState.monsters.push(new BloaterMonster(x, y, this.waveNumber, false));
+            spawnParticles(x, y, '#9CCC65', 8, 60, 0.5);
+        }
+        this.hitFlash = CONFIG.visuals.hitFlashDuration * 2;
+        Sfx.play('spawn');
+    }
+}
+
+class HunterBoss extends BossMonster {
+    constructor(x, y, waveNumber) {
+        super(x, y, waveNumber, CONFIG.hunterBoss);
+        this.dashTimer = CONFIG.hunterBoss.dashInterval;
+        this.windup = 0;
+        this.dashLeft = 0;
+        this.dashDir = { x: 0, y: 0 };
+        this.dashHit = null;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        if (this.dashLeft > 0) {
+            this.tickFlash(deltaTime);
+            const step = Math.min(this.dashLeft, c.dashSpeed * deltaTime);
+            this.pos.x += this.dashDir.x * step;
+            this.pos.y += this.dashDir.y * step;
+            this.dashLeft -= step;
+            this.updateFacingDirection(this.dashDir.x);
+            const dmg = this.attack * c.dashDamageMult;
+            const wSq = c.dashWidth * c.dashWidth;
+            summonGrid.forEachInRadius(this.pos, c.dashWidth, s => {
+                if (s.isAlive && !this.dashHit.has(s) && distanceSq(this.pos, s.pos) <= wSq) { this.dashHit.add(s); s.takeDamage(dmg); }
+            });
+            if (player.isAlive && !this.dashHit.has(player) && distanceSq(this.pos, player.pos) <= wSq) { this.dashHit.add(player); player.takeDamage(dmg); }
+            if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 2, 30, 0.35, 3);
+            const m = c.radius;
+            if (this.pos.x < m || this.pos.y < m || this.pos.x > canvas.width - m || this.pos.y > canvas.height - m) this.dashLeft = 0;
+            return;
+        }
+        if (this.windup > 0) {
+            this.tickFlash(deltaTime);
+            this.windup -= deltaTime;
+            if (this.windup <= 0) {
+                this.dashLeft = c.dashDistance;
+                this.dashHit = new Set();
+                addShake(5);
+                Sfx.play('dash');
+            }
+            return;
+        }
+        this.dashTimer -= deltaTime;
+        if (this.dashTimer <= 0 && this.target && distanceSq(this.pos, this.target.pos) < c.dashTriggerRange * c.dashTriggerRange) {
+            this.dashTimer = c.dashInterval;
+            this.windup = c.dashWindup;
+            this.dashDir = normalizeVector({ x: this.target.pos.x - this.pos.x, y: this.target.pos.y - this.pos.y });
+            return;
+        }
+        super.update(deltaTime, player, summons);
+    }
+    draw(ctx) {
+        if (this.isAlive && this.windup > 0) {
+            const c = this.config;
+            const p = 1 - this.windup / c.dashWindup;
+            const ex = this.pos.x + this.dashDir.x * c.dashDistance, ey = this.pos.y + this.dashDir.y * c.dashDistance;
+            ctx.save();
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = `rgba(229, 57, 53, ${(0.15 + 0.25 * p).toFixed(2)})`;
+            ctx.lineWidth = c.dashWidth * 2;
+            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.strokeStyle = 'rgba(229, 57, 53, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(this.pos.x + (ex - this.pos.x) * p, this.pos.y + (ey - this.pos.y) * p); ctx.stroke();
+            ctx.restore();
+        }
+        super.draw(ctx);
+    }
+}
+
+// 首領輪替：第 10 / 20 / 30 波依序出場，之後重複（等級隨波數提高）
+const BOSS_ROTATION = [ColossusBoss, PlagueBoss, HunterBoss];
+function getBossClass(wave) {
+    const tier = Math.max(1, Math.floor(wave / CONFIG.wave.bossEvery));
+    return BOSS_ROTATION[(tier - 1) % BOSS_ROTATION.length];
+}
+const BOSS_CONFIG_OF = new Map([[ColossusBoss, () => CONFIG.boss], [PlagueBoss, () => CONFIG.plagueBoss], [HunterBoss, () => CONFIG.hunterBoss]]);
+
+class ThiefMonster extends Monster {
+    constructor(x, y, waveNumber) {
+        super(x, y, CONFIG.thief, waveNumber, false);
+        this.life = CONFIG.thief.lifetime;
+        this.waveNumber = waveNumber;
+    }
+    soulValue() {
+        return this.config.soulDrop + this.config.soulPerWave * this.waveNumber;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        this.tickFlash(deltaTime);
+        if (this.slowTimer > 0) { this.slowTimer -= deltaTime; if (this.slowTimer <= 0) { this.speedMultiplier = 1; this.slowTimer = 0; } }
+        if (this.knockVel) {
+            this.pos.x += this.knockVel.x * deltaTime; this.pos.y += this.knockVel.y * deltaTime;
+            const f = Math.max(0, 1 - CONFIG.nova.knockbackFriction * deltaTime);
+            this.knockVel.x *= f; this.knockVel.y *= f;
+            if (Math.abs(this.knockVel.x) + Math.abs(this.knockVel.y) < 5) this.knockVel = null;
+        }
+        this.life -= deltaTime;
+        const speed = this.baseMoveSpeed * this.speedMultiplier;
+        let dir;
+        if (this.life <= 0) {
+            // 時間到就往最近的邊逃走，跑出畫面就消失（不算擊殺、不掉靈魂）
+            const toEdges = [[-1, 0, this.pos.x], [1, 0, canvas.width - this.pos.x], [0, -1, this.pos.y], [0, 1, canvas.height - this.pos.y]];
+            toEdges.sort((a, b) => a[2] - b[2]);
+            dir = { x: toEdges[0][0], y: toEdges[0][1] };
+            if (this.pos.x < -30 || this.pos.y < -30 || this.pos.x > canvas.width + 30 || this.pos.y > canvas.height + 30) { this.isAlive = false; return; }
+        } else {
+            const threat = summonGrid.nearest(this.pos);
+            let tx = player.pos.x, ty = player.pos.y;
+            if (threat && distanceSq(this.pos, threat.pos) < distanceSq(this.pos, player.pos)) { tx = threat.pos.x; ty = threat.pos.y; }
+            dir = normalizeVector({ x: this.pos.x - tx, y: this.pos.y - ty });
+            // 貼牆時沿牆滑，不要卡死在角落外
+            const m = this.config.edgeMargin;
+            if ((this.pos.x < m && dir.x < 0) || (this.pos.x > canvas.width - m && dir.x > 0)) dir.x = 0;
+            if ((this.pos.y < m && dir.y < 0) || (this.pos.y > canvas.height - m && dir.y > 0)) dir.y = 0;
+            if (dir.x === 0 && dir.y === 0) dir = { x: 0, y: this.pos.y < canvas.height / 2 ? 1 : -1 };
+            dir = normalizeVector(dir);
+        }
+        this.pos.x += dir.x * speed * deltaTime;
+        this.pos.y += dir.y * speed * deltaTime;
+        this.updateFacingDirection(dir.x);
+    }
+    attackTarget() { }
+}
+
+function getWaveEvent() {
+    return gameState.waveEvent ? CONFIG.waveEvents.list[gameState.waveEvent] : null;
+}
+
+function rollWaveEvent(wave) {
+    const W = CONFIG.waveEvents;
+    const isBossWave = wave % CONFIG.wave.bossEvery === 0;
+    if (wave < W.startWave || isBossWave || gameState.lastEventWave === wave - 1) return null;
+    if (Math.random() >= W.chance) return null;
+    const ids = Object.keys(W.list);
+    return ids[Math.floor(Math.random() * ids.length)];
+}
+
+function getStreakBonus() {
+    const S = CONFIG.streak;
+    return Math.min(S.bonusMax, Math.floor(gameState.streak / S.bonusStep) * S.bonusPerStep);
+}
+
+function registerKill() {
+    gameState.streak++;
+    gameState.streakTimer = CONFIG.streak.window;
+    if (gameState.streak > gameState.bestStreak) gameState.bestStreak = gameState.streak;
+    if (CONFIG.streak.milestones.includes(gameState.streak)) {
+        const p = gameState.player;
+        if (p) spawnFloatText(canvas.width / 2, canvas.height * 0.25, `🔥 ${gameState.streak} 連殺！`, '#FFAB40', 22, 1.4);
+        addShake(3);
+        Sfx.play('streak');
     }
 }
 
@@ -2100,21 +2340,26 @@ function getEliteChance(wave) {
 function buildWaveQueue(wave) {
     const W = CONFIG.wave;
     const isBossWave = wave % W.bossEvery === 0;
-    const factor = isBossWave ? W.bossWaveCountFactor : 1;
+    const ev = getWaveEvent();
+    const factor = (isBossWave ? W.bossWaveCountFactor : 1) * (ev && ev.countMult ? ev.countMult : 1);
     const classes = [];
     const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
     add(BasicMeleeMonster, Math.round((W.basicBase + wave * W.basicPerWave) * factor));
     [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster]]
         .forEach(([cfg, Cls]) => {
-            if (wave >= cfg.minWave) add(Cls, Math.max(1, Math.round((1 + Math.floor((wave - cfg.minWave) / cfg.waveInterval)) * factor)));
+            if (wave < cfg.minWave) return;
+            const typeMult = Cls === BloaterMonster && ev && ev.bloaterMult ? ev.bloaterMult : 1;
+            add(Cls, Math.max(1, Math.round((1 + Math.floor((wave - cfg.minWave) / cfg.waveInterval)) * factor * typeMult)));
         });
+        if (ev && ev.thieves) add(ThiefMonster, ev.thieves);
     for (let i = classes.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [classes[i], classes[j]] = [classes[j], classes[i]];
     }
-    const eliteChance = getEliteChance(wave);
-    const queue = classes.map(Cls => ({ Cls, elite: Math.random() < eliteChance }));
-    if (isBossWave) queue.unshift({ Cls: BossMonster, elite: false });
+    let eliteChance = getEliteChance(wave);
+    if (ev && ev.eliteMult) eliteChance = Math.min(ev.eliteMax, Math.max(CONFIG.elite.chanceBase, eliteChance) * ev.eliteMult);
+    const queue = classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Math.random() < eliteChance }));
+    if (isBossWave) queue.unshift({ Cls: getBossClass(wave), elite: false });
     return queue;
 }
 
@@ -2131,7 +2376,7 @@ function updateSpawner(deltaTime) {
     const wave = gameState.currentWave;
     gameState.spawnTimer = getSpawnInterval(wave);
     const head = gameState.spawnQueue[0];
-    const packSize = head.Cls === BossMonster ? 1 : W.packMin + Math.floor(Math.random() * (W.packMax - W.packMin + 1));
+    const packSize = head.Cls.prototype instanceof BossMonster ? 1 : W.packMin + Math.floor(Math.random() * (W.packMax - W.packMin + 1));
     const origin = getRandomPositionOutsideCanvas();
     for (let i = 0; i < packSize && gameState.spawnQueue.length > 0; i++) {
         const { Cls, elite } = gameState.spawnQueue.shift();
@@ -2159,13 +2404,21 @@ function prepareNextWave() {
     gameState.visualEffects = [];
 
     const waveNum = gameState.currentWave;
+    gameState.waveEvent = rollWaveEvent(waveNum);
+    if (gameState.waveEvent) gameState.lastEventWave = waveNum;
     gameState.spawnQueue = buildWaveQueue(waveNum);
     gameState.spawnTimer = CONFIG.wave.firstSpawnDelay;
     const isBossWave = waveNum % CONFIG.wave.bossEvery === 0;
-    gameState.banner = isBossWave
-        ? { text: '⚠ 首領來襲', sub: `第 ${waveNum} 波 · ${CONFIG.boss.name}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration }
-        : { text: `第 ${waveNum} 波`, sub: '', color: '#FFFFFF', life: CONFIG.wave.bannerDuration };
-    Sfx.play(isBossWave ? 'boss' : 'wave');
+    const ev = getWaveEvent();
+    if (isBossWave) {
+        const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
+        gameState.banner = { text: '⚠ 首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration };
+    } else if (ev) {
+        gameState.banner = { text: `${ev.icon} ${ev.name}`, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3 };
+    } else {
+        gameState.banner = { text: `第 ${waveNum} 波`, sub: '', color: '#FFFFFF', life: CONFIG.wave.bannerDuration };
+    }
+    Sfx.play(isBossWave || ev ? 'boss' : 'wave');
 
     updateUI();
 }
@@ -2182,6 +2435,7 @@ function checkWaveEndCondition() {
     if (!gameState.betweenWaves && countRemainingMonsters() === 0) {
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
+        gameState.waveEvent = null;
         bankAllOrbs();
         const p = gameState.player;
         if (p && p.isAlive && p.currentHealth < p.maxHealth) {
@@ -2331,6 +2585,10 @@ function renderBlessingList(container) {
 function updateTimers(deltaTime) {
     updateSpawner(deltaTime);
     gameState.novaCooldown = Math.max(0, gameState.novaCooldown - deltaTime);
+    if (gameState.streakTimer > 0) {
+        gameState.streakTimer -= deltaTime;
+        if (gameState.streakTimer <= 0) gameState.streak = 0;
+    }
     if (gameState.banner) {
         gameState.banner.life -= deltaTime;
         if (gameState.banner.life <= 0) gameState.banner = null;
@@ -2706,7 +2964,7 @@ function showGameOver() {
         uiElements.bestWaveText.classList.toggle('new-record', isRecord);
         const kills = Object.values(gameState.totalKills).reduce((a, b) => a + b, 0);
         const summons = Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
-        uiElements.finalStatsText.textContent = `擊殺 ${formatNumberK(kills)} · 召喚 ${formatNumberK(summons)}`;
+        uiElements.finalStatsText.textContent = `擊殺 ${formatNumberK(kills)} · 召喚 ${formatNumberK(summons)} · 最高連殺 ${formatNumberK(gameState.bestStreak)}`;
         renderBlessingList(uiElements.finalBlessings);
         uiElements.gameOverScreen.style.display = 'flex';
         localStorage.removeItem(SAVE_KEY);
@@ -2751,6 +3009,7 @@ function saveGameState() {
         totalKills: gameState.totalKills,
         blessings: gameState.blessings,
         pendingDraft: gameState.pendingDraft,
+        bestStreak: gameState.bestStreak,
         extraDrafts: gameState.extraDrafts,
     };
 
@@ -2796,6 +3055,7 @@ function loadGameState() {
         uiElements.sfxSlider.value = gameState.sfxVolume;
         gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
+        gameState.bestStreak = loadedState.bestStreak ?? 0;
         gameState.blessings = loadedState.blessings ?? {};
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
@@ -2881,6 +3141,7 @@ function resetGameInternalState(resetAudio = true) {
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
+        waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -3041,6 +3302,50 @@ function updateParticlesAndTexts(deltaTime) {
 
 const SHAKE_BG_MARGIN = 16;
 
+function drawEventOverlay() {
+    const ev = getWaveEvent();
+    if (!ev) return;
+    if (ev.overlay) {
+        ctx.fillStyle = ev.overlay;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    const label = `${ev.icon} ${ev.name}`;
+    ctx.strokeText(label, 8, 20);
+    ctx.fillStyle = ev.color;
+    ctx.fillText(label, 8, 20);
+    ctx.restore();
+}
+
+function drawStreak() {
+    if (gameState.streak < CONFIG.streak.showFrom) return;
+    const bonus = getStreakBonus();
+    const fade = Math.min(1, gameState.streakTimer / CONFIG.streak.window * 3);
+    ctx.save();
+    ctx.globalAlpha = 0.4 + 0.6 * fade;
+    ctx.textAlign = 'right';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    ctx.font = 'bold 18px sans-serif';
+    const label = `🔥 ${gameState.streak}`;
+    ctx.strokeText(label, canvas.width - 8, 24);
+    ctx.fillStyle = '#FFAB40';
+    ctx.fillText(label, canvas.width - 8, 24);
+    if (bonus > 0) {
+        ctx.font = 'bold 12px sans-serif';
+        ctx.lineWidth = 3;
+        const b = `靈魂 +${pct(bonus)}`;
+        ctx.strokeText(b, canvas.width - 8, 40);
+        ctx.fillStyle = '#80DEEA';
+        ctx.fillText(b, canvas.width - 8, 40);
+    }
+    ctx.restore();
+}
+
 function drawBossBar() {
     const boss = getAliveBoss();
     if (!boss) return;
@@ -3143,7 +3448,9 @@ function drawGame() {
     ctx.globalAlpha = 1;
     ctx.restore();
 
+    drawEventOverlay();
     drawBossBar();
+    drawStreak();
     drawBanner();
 
     if (gameState.hurtFlash > 0) {
