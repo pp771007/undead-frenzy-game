@@ -27,6 +27,7 @@ const uiElements = {
     restartButton: document.getElementById('restart-button'),
     pauseMenu: document.getElementById('pause-menu'),
     volumeSlider: document.getElementById('volume-slider'),
+    sfxSlider: document.getElementById('sfx-slider'),
     resumeGameBtn: document.getElementById('resume-game-btn'),
     statSummonSkel: document.getElementById('stat-summon-skel'),
     statSummonEye: document.getElementById('stat-summon-eye'),
@@ -47,6 +48,7 @@ const CONFIG = {
         imageName: 'player', imgScaleMultiplier: 4,
         initialSouls: 15,
         avoidanceRadius: 15,
+        magnetRadius: 75,
     },
     skeletonWarrior: {
         type: 'SkeletonWarrior', baseHealth: 30, baseAttack: 5, radius: 10,
@@ -141,6 +143,22 @@ const CONFIG = {
         slashEffectArcAngle: Math.PI / 3,
         explosionEffectDuration: 0.35,
         explosionEffectColor: 'rgba(255, 165, 0, 0.8)',
+        hitFlashDuration: 0.12,
+        deathFadeDuration: 0.3,
+        maxParticles: 400,
+        shakeDecayPerSec: 30,
+        hurtFlashDuration: 0.35,
+    },
+    orbs: {
+        maxOrbsPerDrop: 4,
+        popSpeedMin: 40, popSpeedMax: 110,
+        friction: 4,
+        // 剛掉出來的一小段時間不吸，讓「噴出來」看得見
+        attractDelay: 0.25,
+        attractSpeed: 380,
+        pickupPadding: 8,
+        // 數值大的才飄字，避免一大群小怪死掉時滿畫面 +1
+        floatTextMinValue: 5,
     },
     holdingButton: {
         holdDelay: 350,
@@ -148,6 +166,7 @@ const CONFIG = {
     },
     audio: {
         initialVolume: 0.3,
+        initialSfxVolume: 0.5,
     }
 };
 
@@ -193,6 +212,8 @@ function getVisualEffectFromPool(EffectClass) {
 }
 
 function returnVisualEffectToPool(effect) {
+    // 只有 getVisualEffectFromPool 會重建的類別才回收，其他的放進池子只會佔位
+    if (!(effect instanceof SlashEffect) && !(effect instanceof ExplosionEffect)) return;
     if (visualEffectPool.length < MAX_POOL_SIZE) {
         effect.target = null;
         visualEffectPool.push(effect);
@@ -203,6 +224,9 @@ let gameState = {
     player: null, summons: [], monsters: [],
     projectiles: [],
     visualEffects: [],
+    orbs: [], particles: [], floatTexts: [],
+    shake: 0, hurtFlash: 0, soulCarry: 0,
+    sfxVolume: CONFIG.audio.initialSfxVolume,
     souls: CONFIG.player.initialSouls,
     currentWave: 0,
     timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
@@ -233,6 +257,19 @@ let inputState = {
     pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 },
     pointerId: null,
 };
+const keysDown = new Set();
+const MOVE_KEYS = {
+    KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1],
+    KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0],
+};
+const UNIT_HOTKEYS = { Digit1: 'SkeletonWarrior', Digit2: 'Wraith', Digit3: 'EyeMonster' };
+
+function getMoveVector() {
+    let x = 0, y = 0;
+    keysDown.forEach(code => { const v = MOVE_KEYS[code]; if (v) { x += v[0]; y += v[1]; } });
+    if (x !== 0 || y !== 0) return normalizeVector({ x, y });
+    return inputState.movementVector;
+}
 
 const images = {};
 function loadImage(src) {
@@ -310,6 +347,111 @@ function formatNumberK(num) {
     return formatted + 'K';
 }
 
+// ---------- 上色圖快取（受擊閃白、精英金光、腐屍綠） ----------
+const TINT_MAX_SIZE = 256;
+const tintCache = new Map();
+function getTintedImage(img, color, strength) {
+    const key = `${img.src}|${color}|${strength}`;
+    let c = tintCache.get(key);
+    if (c) return c;
+    const scale = Math.min(1, TINT_MAX_SIZE / Math.max(img.naturalWidth, img.naturalHeight));
+    c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    c.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const g = c.getContext('2d');
+    g.drawImage(img, 0, 0, c.width, c.height);
+    g.globalCompositeOperation = 'source-atop';
+    g.globalAlpha = strength;
+    g.fillStyle = color;
+    g.fillRect(0, 0, c.width, c.height);
+    tintCache.set(key, c);
+    return c;
+}
+
+// ---------- 合成音效（不用音檔） ----------
+const Sfx = {
+    ctx: null, master: null, noiseBuf: null, last: {},
+    unlock() {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!this.ctx) {
+            this.ctx = new AC();
+            this.master = this.ctx.createGain();
+            this.master.connect(this.ctx.destination);
+            const len = this.ctx.sampleRate;
+            this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+            const d = this.noiseBuf.getChannelData(0);
+            for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+            this.setVolume(gameState.sfxVolume);
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => { });
+    },
+    setVolume(v) { if (this.master) this.master.gain.value = v; },
+    tone(freq, dur, opt = {}) {
+        const { type = 'sine', vol = 0.2, slideTo = null, delay = 0 } = opt;
+        const t0 = this.ctx.currentTime + delay;
+        const o = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        o.type = type;
+        o.frequency.setValueAtTime(freq, t0);
+        if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+        g.gain.setValueAtTime(vol, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        o.connect(g); g.connect(this.master);
+        o.start(t0); o.stop(t0 + dur + 0.02);
+    },
+    noise(dur, opt = {}) {
+        const { vol = 0.2, filterFreq = 1200, delay = 0 } = opt;
+        const t0 = this.ctx.currentTime + delay;
+        const s = this.ctx.createBufferSource();
+        s.buffer = this.noiseBuf;
+        const f = this.ctx.createBiquadFilter();
+        f.type = 'lowpass'; f.frequency.value = filterFreq;
+        const g = this.ctx.createGain();
+        g.gain.setValueAtTime(vol, t0);
+        g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+        s.connect(f); f.connect(g); g.connect(this.master);
+        s.start(t0, Math.random() * 0.5); s.stop(t0 + dur + 0.02);
+    },
+    play(name) {
+        if (!this.ctx || this.ctx.state !== 'running' || gameState.sfxVolume <= 0) return;
+        const def = SFX_DEFS[name];
+        if (!def) return;
+        const now = this.ctx.currentTime;
+        if (this.last[name] && now - this.last[name] < def.gap) return;
+        this.last[name] = now;
+        def.fn(this);
+    },
+};
+// gap = 同一種音效最短間隔（秒），一群怪同時被打時不會炸成一團噪音
+const SFX_DEFS = {
+    hit: { gap: 0.05, fn: s => s.noise(0.04, { vol: 0.07, filterFreq: 2500 }) },
+    kill: { gap: 0.04, fn: s => s.tone(520, 0.09, { type: 'triangle', vol: 0.1, slideTo: 240 }) },
+    summon: { gap: 0.06, fn: s => s.tone(220, 0.16, { vol: 0.16, slideTo: 440 }) },
+    upgrade: { gap: 0.1, fn: s => { [523, 659, 784].forEach((f, i) => s.tone(f, 0.09, { type: 'triangle', vol: 0.12, delay: i * 0.06 })); } },
+    orb: { gap: 0.03, fn: s => s.tone(880, 0.06, { vol: 0.06, slideTo: 1320 }) },
+    explode: { gap: 0.08, fn: s => { s.noise(0.35, { vol: 0.3, filterFreq: 600 }); s.tone(90, 0.3, { vol: 0.25, slideTo: 40 }); } },
+    hurt: { gap: 0.15, fn: s => s.tone(160, 0.15, { type: 'square', vol: 0.08, slideTo: 90 }) },
+    wave: { gap: 0.5, fn: s => { s.tone(330, 0.12, { type: 'triangle', vol: 0.14 }); s.tone(440, 0.22, { type: 'triangle', vol: 0.14, delay: 0.12 }); } },
+    gameover: { gap: 1, fn: s => s.tone(392, 0.9, { type: 'triangle', vol: 0.2, slideTo: 130 }) },
+};
+
+// ---------- 粒子 / 飄字 / 震動 ----------
+function spawnParticles(x, y, color, count, speed = 80, life = 0.5, size = 2.5) {
+    const ps = gameState.particles;
+    for (let i = 0; i < count && ps.length < CONFIG.visuals.maxParticles; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = speed * (0.3 + Math.random() * 0.7);
+        ps.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, maxLife: life, color, size: size * (0.6 + Math.random() * 0.6) });
+    }
+}
+function spawnFloatText(x, y, text, color = '#FFFFFF', size = 14, life = 0.9) {
+    gameState.floatTexts.push({ x, y, text, color, size, life, maxLife: life });
+}
+function addShake(amount) {
+    gameState.shake = Math.min(14, Math.max(gameState.shake, amount));
+}
+
 
 class GameObject {
     constructor(x, y, radius, color, imageName = null, imgScaleMultiplier = 2.5) {
@@ -332,10 +474,17 @@ class GameObject {
         if (!this.isAlive) return;
 
         if (this.image) {
+            const s = this.drawScale || 1;
+            const w = this.imageWidth * s, h = this.imageHeight * s;
             ctx.save();
             ctx.translate(this.pos.x, this.pos.y);
             ctx.scale(this.facingDirection, 1);
-            ctx.drawImage(this.image, -this.imageWidth / 2, -this.imageHeight / 2, this.imageWidth, this.imageHeight);
+            const img = this.tint ? getTintedImage(this.image, this.tint, this.tintStrength || 0.45) : this.image;
+            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            if (this.hitFlash > 0) {
+                ctx.globalAlpha = Math.min(1, this.hitFlash / CONFIG.visuals.hitFlashDuration) * 0.85;
+                ctx.drawImage(getTintedImage(this.image, '#FFFFFF', 1), -w / 2, -h / 2, w, h);
+            }
             ctx.restore();
         } else {
             ctx.fillStyle = this.color;
@@ -368,6 +517,10 @@ class GameObject {
 
     update(deltaTime) { }
 
+    tickFlash(deltaTime) {
+        if (this.hitFlash > 0) this.hitFlash -= deltaTime;
+    }
+
     updateFacingDirection(moveX) {
         if (moveX > 0.1) {
             this.facingDirection = 1;
@@ -387,6 +540,7 @@ class Player extends GameObject {
     }
     update(deltaTime, moveVec) {
         if (!this.isAlive) return;
+        this.tickFlash(deltaTime);
         const moveX = moveVec.x * this.moveSpeed * deltaTime;
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
         this.pos.x += moveX;
@@ -400,6 +554,10 @@ class Player extends GameObject {
         if (!this.isAlive) return;
         this.currentHealth -= amount;
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
+        this.hitFlash = CONFIG.visuals.hitFlashDuration;
+        gameState.hurtFlash = CONFIG.visuals.hurtFlashDuration;
+        addShake(4);
+        Sfx.play('hurt');
         if (this.currentHealth <= 0) {
             this.die();
         }
@@ -408,10 +566,11 @@ class Player extends GameObject {
     die() {
         this.isAlive = false;
         gameState.gameOver = true;
+        Sfx.play('gameover');
         showGameOver();
     }
     getSummonPosition() {
-        const direction = normalizeVector(inputState.movementVector);
+        const direction = normalizeVector(getMoveVector());
         const spawnDist = (this.imageWidth ? this.imageWidth / 2 : this.radius) + 15;
         let spawnX = this.pos.x + spawnDist;
         let spawnY = this.pos.y;
@@ -494,6 +653,7 @@ class SummonUnit extends GameObject {
 
     update(deltaTime, monsters, otherSummons, player) {
         if (!this.isAlive) return;
+        this.tickFlash(deltaTime);
 
         this.buffedMoveSpeedMultiplier = 1.0;
         this.buffedAttackSpeedMultiplier = 1.0;
@@ -839,6 +999,7 @@ class SummonUnit extends GameObject {
         if (!this.isAlive) return;
         this.currentHealth -= amount;
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
+        this.hitFlash = CONFIG.visuals.hitFlashDuration;
         if (this.currentHealth <= 0) {
             this.die();
         }
@@ -853,6 +1014,7 @@ class SummonUnit extends GameObject {
     die() {
         if (!this.isAlive) return;
         this.isAlive = false;
+        spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 10, 70, 0.45);
         switch (this.config.type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount--; break;
             case 'EyeMonster': gameState.eyeMonsterCount--; break;
@@ -934,6 +1096,9 @@ class Wraith extends SummonUnit {
             effect.init(this.pos, this.slowRadius);
             gameState.visualEffects.push(effect);
         }
+        spawnParticles(this.pos.x, this.pos.y, '#FFB74D', 24, 160, 0.5, 3);
+        addShake(6);
+        Sfx.play('explode');
 
         this.isAlive = false;
         gameState.wraithCount--;
@@ -1099,6 +1264,98 @@ class ExplosionEffect extends TimedEffect {
 }
 
 
+class DeathFadeEffect extends TimedEffect {
+    constructor(obj) {
+        super(obj.pos, CONFIG.visuals.deathFadeDuration);
+        this.image = obj.tint ? getTintedImage(obj.image, obj.tint, obj.tintStrength || 0.45) : obj.image;
+        this.w = obj.imageWidth * (obj.drawScale || 1);
+        this.h = obj.imageHeight * (obj.drawScale || 1);
+        this.facing = obj.facingDirection;
+    }
+    draw(ctx) {
+        if (!this.isAlive || !this.image) return;
+        const p = 1 - this.life / this.duration;
+        ctx.save();
+        ctx.globalAlpha = 1 - p;
+        ctx.translate(this.pos.x, this.pos.y + p * 6);
+        ctx.scale(this.facing * (1 + p * 0.2), 1 - p * 0.6);
+        ctx.drawImage(this.image, -this.w / 2, -this.h / 2, this.w, this.h);
+        ctx.restore();
+    }
+}
+
+class SoulOrb {
+    constructor(x, y, value) {
+        const c = CONFIG.orbs;
+        this.pos = { x, y };
+        const a = Math.random() * Math.PI * 2;
+        const v = randomInRange(c.popSpeedMin, c.popSpeedMax);
+        this.vel = { x: Math.cos(a) * v, y: Math.sin(a) * v };
+        this.value = value;
+        this.size = 3 + Math.min(4, value * 0.7);
+        this.age = 0;
+        this.attracted = false;
+        this.banked = false;
+        this.isAlive = true;
+    }
+    update(deltaTime, player) {
+        const c = CONFIG.orbs;
+        this.age += deltaTime;
+        const dx = player.pos.x - this.pos.x, dy = player.pos.y - this.pos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const magnet = CONFIG.player.magnetRadius;
+        if (this.banked || dist < magnet) this.attracted = true;
+        if (this.attracted && this.age > c.attractDelay) {
+            const sp = c.attractSpeed + this.age * 60;
+            this.vel.x = dx / (dist || 1) * sp;
+            this.vel.y = dy / (dist || 1) * sp;
+        } else {
+            const f = Math.max(0, 1 - c.friction * deltaTime);
+            this.vel.x *= f; this.vel.y *= f;
+        }
+        this.pos.x = Math.max(4, Math.min(canvas.width - 4, this.pos.x + this.vel.x * deltaTime));
+        this.pos.y = Math.max(4, Math.min(canvas.height - 4, this.pos.y + this.vel.y * deltaTime));
+        if (this.age > c.attractDelay && dist < player.radius + c.pickupPadding) {
+            this.isAlive = false;
+            if (!this.banked) {
+                gameState.souls += this.value;
+                if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${this.value}`, '#80DEEA');
+                updateUI();
+            }
+            Sfx.play('orb');
+        }
+    }
+    draw(ctx) {
+        const bob = Math.sin(this.age * 6) * 1.2;
+        ctx.save();
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = '#4DD0E1';
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y + bob, this.size * 2, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#E0F7FA';
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y + bob, this.size, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+}
+
+function dropSouls(x, y, amount) {
+    if (amount <= 0) return;
+    const n = Math.min(CONFIG.orbs.maxOrbsPerDrop, amount);
+    const base = Math.floor(amount / n);
+    let rest = amount - base * n;
+    for (let i = 0; i < n; i++) {
+        const v = base + (rest > 0 ? 1 : 0);
+        if (rest > 0) rest--;
+        gameState.orbs.push(new SoulOrb(x, y, v));
+    }
+}
+
+function bankAllOrbs() {
+    gameState.orbs.forEach(o => {
+        if (!o.banked) { gameState.souls += o.value; o.banked = true; }
+    });
+}
+
 class Monster extends GameObject {
     constructor(x, y, config, waveNumber) {
         super(x, y, config.radius, config.color, config.imageName, config.imgScaleMultiplier);
@@ -1142,6 +1399,7 @@ class Monster extends GameObject {
 
     update(deltaTime, player, summons) {
         if (!this.isAlive) return;
+        this.tickFlash(deltaTime);
 
         if (this.slowTimer > 0) {
             this.slowTimer -= deltaTime;
@@ -1228,13 +1486,18 @@ class Monster extends GameObject {
         if (!this.isAlive) return;
         this.currentHealth -= amount;
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
+        this.hitFlash = CONFIG.visuals.hitFlashDuration;
+        Sfx.play('hit');
 
         if (this.currentHealth <= 0) { this.die(); }
     }
 
     die() {
         this.isAlive = false;
-        gameState.souls += this.config.soulDrop;
+        dropSouls(this.pos.x, this.pos.y, this.config.soulDrop);
+        spawnParticles(this.pos.x, this.pos.y, '#CE93D8', 8, 60, 0.6);
+        gameState.visualEffects.push(new DeathFadeEffect(this));
+        Sfx.play('kill');
         if (gameState.totalKills.hasOwnProperty(this.config.type)) {
             gameState.totalKills[this.config.type]++;
         }
@@ -1311,6 +1574,7 @@ function checkWaveEndCondition() {
     if (!gameState.betweenWaves && !monstersAlive) {
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
+        bankAllOrbs();
         gameState.projectiles.forEach(returnProjectileToPool);
         gameState.projectiles = [];
         gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -1367,6 +1631,8 @@ function trySummon(type) {
         const spawnPos = gameState.player.getSummonPosition();
         const newSummon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
         gameState.summons.push(newSummon);
+        spawnParticles(spawnPos.x, spawnPos.y, '#7E57C2', 12, 70, 0.5);
+        Sfx.play('summon');
         if (gameState.totalSummons.hasOwnProperty(type)) {
             gameState.totalSummons[type]++;
         }
@@ -1405,7 +1671,13 @@ function tryUpgrade(type) {
         gameState.souls -= cost;
         gameState[levelKey]++;
         gameState.currentCosts[costKey] += costIncrement;
-        gameState.summons.forEach(s => { if (s.isAlive && s.config.type === type) { s.levelUp(); } });
+        gameState.summons.forEach(s => {
+            if (s.isAlive && s.config.type === type) {
+                s.levelUp();
+                spawnParticles(s.pos.x, s.pos.y, '#FFD54F', 5, 50, 0.4);
+            }
+        });
+        Sfx.play('upgrade');
         updateUI();
         if (!holdActionState.isHolding || holdActionState.actionType !== 'upgrade') {
             showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
@@ -1662,6 +1934,7 @@ function saveGameState() {
         wraithCount: gameState.wraithCount,
         currentCosts: gameState.currentCosts,
         bgmVolume: gameState.bgmVolume,
+        sfxVolume: gameState.sfxVolume,
         totalSummons: gameState.totalSummons,
         totalKills: gameState.totalKills,
     };
@@ -1703,6 +1976,9 @@ function loadGameState() {
         gameState.wraithCount = loadedState.wraithCount ?? 0;
 
         gameState.bgmVolume = loadedState.bgmVolume ?? CONFIG.audio.initialVolume;
+        gameState.sfxVolume = loadedState.sfxVolume ?? CONFIG.audio.initialSfxVolume;
+        Sfx.setVolume(gameState.sfxVolume);
+        uiElements.sfxSlider.value = gameState.sfxVolume;
         gameState.totalSummons = loadedState.totalSummons ?? { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 };
         gameState.totalKills = loadedState.totalKills ?? { BasicMelee: 0, FastMelee: 0, ArmoredMelee: 0 };
 
@@ -1753,11 +2029,15 @@ function resetGameInternalState(resetAudio = true) {
     visualEffectPool.length = 0;
 
     const currentVolume = gameState.bgmVolume;
+    const currentSfxVolume = gameState.sfxVolume;
     const musicWasStarted = gameState.musicStarted;
 
     gameState = {
         player: null,
         summons: [], monsters: [], projectiles: [], visualEffects: [],
+        orbs: [], particles: [], floatTexts: [],
+        shake: 0, hurtFlash: 0, soulCarry: 0,
+        sfxVolume: currentSfxVolume,
         souls: CONFIG.player.initialSouls,
         currentWave: 0,
         timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
@@ -1858,7 +2138,7 @@ function updateGame(deltaTime) {
     }
     wraiths.forEach(wraith => wraith.applyBuffAura(nonWraiths));
 
-    if (gameState.player) gameState.player.update(deltaTime, inputState.movementVector);
+    if (gameState.player) gameState.player.update(deltaTime, getMoveVector());
 
     for (let i = 0; i < gameState.summons.length; i++) {
         if (gameState.summons[i].isAlive) gameState.summons[i].update(deltaTime, gameState.monsters, gameState.summons, gameState.player);
@@ -1872,6 +2152,11 @@ function updateGame(deltaTime) {
     for (let i = 0; i < gameState.visualEffects.length; i++) {
         if (gameState.visualEffects[i].isAlive) gameState.visualEffects[i].update(deltaTime);
     }
+    if (gameState.player) {
+        for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].update(deltaTime, gameState.player);
+        gameState.orbs = gameState.orbs.filter(o => o.isAlive);
+    }
+    updateParticlesAndTexts(deltaTime);
 
 
     const liveSummons = [];
@@ -1904,13 +2189,36 @@ function updateGame(deltaTime) {
     checkWaveEndCondition();
 }
 
+function updateParticlesAndTexts(deltaTime) {
+    const ps = gameState.particles;
+    for (let i = 0; i < ps.length; i++) {
+        const p = ps[i];
+        p.life -= deltaTime;
+        p.x += p.vx * deltaTime; p.y += p.vy * deltaTime;
+        p.vx *= 0.94; p.vy *= 0.94;
+    }
+    gameState.particles = ps.filter(p => p.life > 0);
+    const ft = gameState.floatTexts;
+    for (let i = 0; i < ft.length; i++) { ft[i].life -= deltaTime; ft[i].y -= 28 * deltaTime; }
+    gameState.floatTexts = ft.filter(t => t.life > 0);
+    gameState.shake = Math.max(0, gameState.shake - CONFIG.visuals.shakeDecayPerSec * deltaTime);
+    gameState.hurtFlash = Math.max(0, gameState.hurtFlash - deltaTime);
+}
+
+const SHAKE_BG_MARGIN = 16;
+
 function drawGame() {
+    ctx.save();
+    if (gameState.shake > 0) {
+        ctx.translate((Math.random() * 2 - 1) * gameState.shake, (Math.random() * 2 - 1) * gameState.shake);
+    }
     if (images.background) {
-        ctx.drawImage(images.background, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(images.background, -SHAKE_BG_MARGIN, -SHAKE_BG_MARGIN, canvas.width + SHAKE_BG_MARGIN * 2, canvas.height + SHAKE_BG_MARGIN * 2);
     } else {
         ctx.fillStyle = '#333';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(-SHAKE_BG_MARGIN, -SHAKE_BG_MARGIN, canvas.width + SHAKE_BG_MARGIN * 2, canvas.height + SHAKE_BG_MARGIN * 2);
     }
+    for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].draw(ctx);
 
     for (let i = 0; i < gameState.summons.length; i++) {
         const s = gameState.summons[i];
@@ -1932,6 +2240,35 @@ function drawGame() {
 
     for (let i = 0; i < gameState.visualEffects.length; i++) {
         if (gameState.visualEffects[i].isAlive) gameState.visualEffects[i].draw(ctx);
+    }
+    const ps = gameState.particles;
+    for (let i = 0; i < ps.length; i++) {
+        const p = ps[i];
+        ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    for (const t of gameState.floatTexts) {
+        ctx.globalAlpha = Math.min(1, t.life / t.maxLife * 2);
+        ctx.font = `bold ${t.size}px sans-serif`;
+        ctx.strokeText(t.text, t.x, t.y);
+        ctx.fillStyle = t.color;
+        ctx.fillText(t.text, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    if (gameState.hurtFlash > 0) {
+        const a = gameState.hurtFlash / CONFIG.visuals.hurtFlashDuration;
+        const g = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, canvas.height * 0.35, canvas.width / 2, canvas.height / 2, canvas.width * 0.6);
+        g.addColorStop(0, 'rgba(200,0,0,0)');
+        g.addColorStop(1, `rgba(200,0,0,${(0.45 * a).toFixed(2)})`);
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 }
 
@@ -1981,6 +2318,7 @@ function startGameLoop() {
 }
 
 function ensureMusicPlaying() {
+    Sfx.unlock();
     if (document.hidden || gameState.isPaused || gameState.gameOver) return;
     if (!gameState.musicStarted && uiElements.bgm) {
         uiElements.bgm.play().then(() => {
@@ -2080,6 +2418,26 @@ function init() {
         if (!gameState.isPaused) return;
         saveGameState();
     });
+    uiElements.sfxSlider.value = gameState.sfxVolume;
+    uiElements.sfxSlider.addEventListener('input', (e) => {
+        gameState.sfxVolume = parseFloat(e.target.value);
+        Sfx.unlock();
+        Sfx.setVolume(gameState.sfxVolume);
+        Sfx.play('orb');
+    });
+    uiElements.sfxSlider.addEventListener('change', () => {
+        if (gameState.isPaused) saveGameState();
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.code === 'Escape' || e.code === 'KeyP') { togglePause(); return; }
+        if (gameState.isPaused || gameState.gameOver) return;
+        if (MOVE_KEYS[e.code]) { keysDown.add(e.code); e.preventDefault(); ensureMusicPlaying(); return; }
+        const unit = UNIT_HOTKEYS[e.code];
+        if (unit) { e.shiftKey ? tryUpgrade(unit) : trySummon(unit); }
+    });
+    window.addEventListener('keyup', (e) => keysDown.delete(e.code));
+    window.addEventListener('blur', () => keysDown.clear());
 
     uiElements.restartGameBtn.addEventListener('click', showRestartConfirmDialog);
     uiElements.restartConfirmYes.addEventListener('click', handleRestartGame);
