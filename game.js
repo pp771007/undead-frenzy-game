@@ -35,6 +35,9 @@ const uiElements = {
     statKillBasic: document.getElementById('stat-kill-basic'),
     statKillFast: document.getElementById('stat-kill-fast'),
     statKillArmored: document.getElementById('stat-kill-armored'),
+    statKillBloater: document.getElementById('stat-kill-bloater'),
+    statKillBoss: document.getElementById('stat-kill-boss'),
+    skipWaveBtn: document.getElementById('skip-wave-btn'),
     bgm: document.getElementById('bgm'),
     restartGameBtn: document.getElementById('restart-game-btn'),
     restartConfirmDialog: document.getElementById('restart-confirm-dialog'),
@@ -46,12 +49,12 @@ const CONFIG = {
     player: {
         baseHealth: 50, baseMoveSpeed: 90, radius: 12, color: '#03A9F4',
         imageName: 'player', imgScaleMultiplier: 4,
-        initialSouls: 15,
+        initialSouls: 20,
         avoidanceRadius: 15,
         magnetRadius: 75,
     },
     skeletonWarrior: {
-        type: 'SkeletonWarrior', baseHealth: 30, baseAttack: 5, radius: 10,
+        type: 'SkeletonWarrior', baseHealth: 36, baseAttack: 5, radius: 10,
         imageName: 'skeleton_warrior', imgScaleMultiplier: 2.8,
         attackRange: 25, attackSpeed: 1.0, moveSpeed: 80, color: '#FFFFFF',
         upgradeBonus: 0.10,
@@ -65,7 +68,7 @@ const CONFIG = {
         wraithBuffMoveSpeedMultiplier: 2.0,
     },
     eyeMonster: {
-        type: 'EyeMonster', baseHealth: 8, baseAttack: 15, radius: 11,
+        type: 'EyeMonster', baseHealth: 12, baseAttack: 15, radius: 11,
         imageName: 'eye_monster', imgScaleMultiplier: 3,
         attackRange: 120,
         attackRangeUpgrade: 3,
@@ -110,30 +113,57 @@ const CONFIG = {
         explosionBaseDamage: 45,
     },
     basicMeleeMonster: {
-        type: 'BasicMelee', baseHealth: 12, baseAttack: 5, radius: 12,
+        type: 'BasicMelee', baseHealth: 12, baseAttack: 4, radius: 12,
         imageName: 'basic_melee', imgScaleMultiplier: 5,
         attackRange: 20, attackSpeed: 1.0, moveSpeed: 50, color: '#EF5350',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
     },
     fastMeleeMonster: {
-        type: 'FastMelee', baseHealth: 36, baseAttack: 9, radius: 11,
+        type: 'FastMelee', baseHealth: 20, baseAttack: 6, radius: 11,
         imageName: 'fast_melee', imgScaleMultiplier: 3,
         attackRange: 18, attackSpeed: 1.2, moveSpeed: 95, color: '#FF7043',
-        soulDrop: 3, waveSpeedIncreaseFactor: 0.012,
-        minWave: 10, waveInterval: 3,
+        soulDrop: 2, waveSpeedIncreaseFactor: 0.012,
+        minWave: 4, waveInterval: 2,
+    },
+    bloaterMonster: {
+        type: 'Bloater', baseHealth: 18, baseAttack: 14, radius: 12,
+        imageName: 'basic_melee', imgScaleMultiplier: 5.5, tint: '#7CB342', tintStrength: 0.55,
+        attackRange: 22, attackSpeed: 1.0, moveSpeed: 62, color: '#7CB342',
+        soulDrop: 2, waveSpeedIncreaseFactor: 0.01,
+        minWave: 8, waveInterval: 3,
+        // 貼上目標後先膨脹一下才爆，給召喚物一個把它打掉的空檔
+        fuseTime: 0.6, blastRadius: 42,
     },
     armoredMeleeMonster: {
-        type: 'ArmoredMelee', baseHealth: 120, baseAttack: 30, radius: 15,
+        type: 'ArmoredMelee', baseHealth: 90, baseAttack: 18, radius: 15,
         imageName: 'armored_melee', imgScaleMultiplier: 6,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 30, color: '#B71C1C',
-        soulDrop: 4, waveSpeedIncreaseFactor: 0.008,
-        minWave: 20, waveInterval: 5,
+        soulDrop: 5, waveSpeedIncreaseFactor: 0.008,
+        minWave: 9, waveInterval: 4,
+    },
+    boss: {
+        type: 'Boss', name: '骸骨巨像', baseHealth: 500, baseAttack: 22, radius: 26,
+        imageName: 'armored_melee', imgScaleMultiplier: 4.5, tint: '#AB47BC', tintStrength: 0.5,
+        attackRange: 32, attackSpeed: 0.6, moveSpeed: 30, color: '#AB47BC',
+        soulDrop: 40, waveSpeedIncreaseFactor: 0.004,
+        slamInterval: 5, slamWindup: 1.1, slamRadius: 80, slamDamageMult: 1.0,
+        // 首領只吃一半的緩速，不然一隻怨靈就能把它定在原地
+        slowResist: 0.5,
+    },
+    elite: {
+        startWave: 5, chanceBase: 0.03, chancePerWave: 0.004, chanceMax: 0.15,
+        hpMult: 3, atkMult: 1.5, sizeMult: 1.25, soulMult: 4,
+        tint: '#FFD54F', tintStrength: 0.35,
     },
     wave: {
-        baseTime: 30, betweenTime: 5, monsterScaleInterval: 5, monsterScaleFactor: 0.10,
-        basicMonsterBaseCount: 1, basicMonsterIncrement: 1,
-        LATE_GAME_WAVE_THRESHOLD: 50,
-        EXTRA_SCALING_PER_WAVE_AFTER_50: 0.007,
+        betweenTime: 5,
+        scalePerWave: 0.035, lateWave: 30, lateScalePerWave: 0.03,
+        basicBase: 3, basicPerWave: 1.3,
+        bossEvery: 10, bossWaveCountFactor: 0.5,
+        spawnIntervalBase: 0.9, spawnIntervalPerWave: 0.01, spawnIntervalMin: 0.35,
+        firstSpawnDelay: 0.8, packMin: 1, packMax: 4, packSpread: 25,
+        healRatio: 0.2,
+        bannerDuration: 1.8,
     },
     visuals: {
         slashEffectDuration: 0.15,
@@ -238,9 +268,13 @@ let gameState = {
     imagesLoaded: false,
     bgmVolume: CONFIG.audio.initialVolume,
     musicStarted: false,
-    totalSummons: { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 },
-    totalKills: { BasicMelee: 0, FastMelee: 0, ArmoredMelee: 0 },
+    totalSummons: emptySummonStats(),
+    totalKills: emptyKillStats(),
+    spawnQueue: [], spawnTimer: 0, banner: null,
 };
+
+function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
+function emptyKillStats() { return { BasicMelee: 0, FastMelee: 0, Bloater: 0, ArmoredMelee: 0, Boss: 0 }; }
 
 let holdActionState = {
     actionType: null,
@@ -432,6 +466,11 @@ const SFX_DEFS = {
     orb: { gap: 0.03, fn: s => s.tone(880, 0.06, { vol: 0.06, slideTo: 1320 }) },
     explode: { gap: 0.08, fn: s => { s.noise(0.35, { vol: 0.3, filterFreq: 600 }); s.tone(90, 0.3, { vol: 0.25, slideTo: 40 }); } },
     hurt: { gap: 0.15, fn: s => s.tone(160, 0.15, { type: 'square', vol: 0.08, slideTo: 90 }) },
+    bloat: { gap: 0.08, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 800 }); s.tone(140, 0.2, { vol: 0.2, slideTo: 50 }); } },
+    slam: { gap: 0.3, fn: s => { s.noise(0.5, { vol: 0.45, filterFreq: 300 }); s.tone(60, 0.5, { vol: 0.4, slideTo: 30 }); } },
+    boss: { gap: 1, fn: s => { s.tone(110, 0.5, { type: 'sawtooth', vol: 0.15 }); s.tone(82, 0.7, { type: 'sawtooth', vol: 0.15, delay: 0.3 }); } },
+    bossDie: { gap: 1, fn: s => { s.noise(0.9, { vol: 0.4, filterFreq: 500 }); [392, 523, 659, 784].forEach((f, i) => s.tone(f, 0.18, { type: 'triangle', vol: 0.15, delay: 0.2 + i * 0.1 })); } },
+    elite: { gap: 0.2, fn: s => { s.tone(990, 0.1, { type: 'triangle', vol: 0.12 }); s.tone(1320, 0.15, { type: 'triangle', vol: 0.12, delay: 0.08 }); } },
     wave: { gap: 0.5, fn: s => { s.tone(330, 0.12, { type: 'triangle', vol: 0.14 }); s.tone(440, 0.22, { type: 'triangle', vol: 0.14, delay: 0.12 }); } },
     gameover: { gap: 1, fn: s => s.tone(392, 0.9, { type: 'triangle', vol: 0.2, slideTo: 130 }) },
 };
@@ -1356,32 +1395,51 @@ function bankAllOrbs() {
     });
 }
 
+function getWaveStatMultiplier(wave) {
+    const W = CONFIG.wave;
+    return 1 + W.scalePerWave * (wave - 1) + Math.max(0, wave - W.lateWave) * W.lateScalePerWave;
+}
+
 class Monster extends GameObject {
-    constructor(x, y, config, waveNumber) {
-        super(x, y, config.radius, config.color, config.imageName, config.imgScaleMultiplier);
+    constructor(x, y, config, waveNumber, isElite = false) {
+        const E = CONFIG.elite;
+        super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, config.imageName, config.imgScaleMultiplier);
         this.config = config;
+        this.isElite = isElite;
+        this.tint = isElite ? E.tint : config.tint;
+        this.tintStrength = isElite ? E.tintStrength : config.tintStrength;
         this.id = `m_${Date.now()}_${Math.random()}`;
         this.attackCooldown = 0;
         this.target = null;
         this.speedMultiplier = 1.0;
         this.slowTimer = 0;
         this.applyWaveScaling(waveNumber);
+        if (isElite) {
+            this.maxHealth = Math.round(this.maxHealth * E.hpMult);
+            this.attack *= E.atkMult;
+        }
         this.currentHealth = this.maxHealth;
     }
 
-    applyWaveScaling(wave) {
-        const scaleLevel = Math.floor((wave - 1) / CONFIG.wave.monsterScaleInterval);
-        let baseStatMultiplier = 1 + (scaleLevel * CONFIG.wave.monsterScaleFactor);
+    soulValue() {
+        return this.config.soulDrop * (this.isElite ? CONFIG.elite.soulMult : 1);
+    }
 
-        const lateGameThreshold = CONFIG.wave.LATE_GAME_WAVE_THRESHOLD;
-        const extraScalingRate = CONFIG.wave.EXTRA_SCALING_PER_WAVE_AFTER_50;
-        if (wave > lateGameThreshold) {
-            const wavesPastThreshold = wave - lateGameThreshold;
-            const lateGameBonus = wavesPastThreshold * extraScalingRate;
-            baseStatMultiplier += lateGameBonus;
+    draw(ctx) {
+        if (this.isElite && this.isAlive) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(255, 213, 79, 0.85)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.38, this.radius * 1.3, this.radius * 0.5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
         }
+        super.draw(ctx);
+    }
 
-
+    applyWaveScaling(wave) {
+        const baseStatMultiplier = getWaveStatMultiplier(wave);
         this.maxHealth = Math.round(this.config.baseHealth * baseStatMultiplier);
         this.attack = this.config.baseAttack * baseStatMultiplier;
         this.attackRange = this.config.attackRange;
@@ -1494,8 +1552,13 @@ class Monster extends GameObject {
 
     die() {
         this.isAlive = false;
-        dropSouls(this.pos.x, this.pos.y, this.config.soulDrop);
+        dropSouls(this.pos.x, this.pos.y, this.soulValue());
         spawnParticles(this.pos.x, this.pos.y, '#CE93D8', 8, 60, 0.6);
+        if (this.isElite) {
+            spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 16, 120, 0.7, 3);
+            spawnFloatText(this.pos.x, this.pos.y - 18, '精英擊破', '#FFD54F', 13);
+            Sfx.play('elite');
+        }
         gameState.visualEffects.push(new DeathFadeEffect(this));
         Sfx.play('kill');
         if (gameState.totalKills.hasOwnProperty(this.config.type)) {
@@ -1514,13 +1577,175 @@ class Monster extends GameObject {
 }
 
 class BasicMeleeMonster extends Monster {
-    constructor(x, y, waveNumber) { super(x, y, CONFIG.basicMeleeMonster, waveNumber); }
+    constructor(x, y, waveNumber, isElite) { super(x, y, CONFIG.basicMeleeMonster, waveNumber, isElite); }
 }
 class FastMeleeMonster extends Monster {
-    constructor(x, y, waveNumber) { super(x, y, CONFIG.fastMeleeMonster, waveNumber); }
+    constructor(x, y, waveNumber, isElite) { super(x, y, CONFIG.fastMeleeMonster, waveNumber, isElite); }
 }
 class ArmoredMeleeMonster extends Monster {
-    constructor(x, y, waveNumber) { super(x, y, CONFIG.armoredMeleeMonster, waveNumber); }
+    constructor(x, y, waveNumber, isElite) { super(x, y, CONFIG.armoredMeleeMonster, waveNumber, isElite); }
+}
+
+class BloaterMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.bloaterMonster, waveNumber, isElite);
+        this.fuse = 0;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        if (this.fuse > 0) {
+            this.tickFlash(deltaTime);
+            this.fuse -= deltaTime;
+            const p = 1 - this.fuse / this.config.fuseTime;
+            this.drawScale = 1 + p * 0.45 + Math.sin(p * 30) * 0.05;
+            if (this.fuse <= 0) this.explode(player, summons);
+            return;
+        }
+        super.update(deltaTime, player, summons);
+    }
+    attackTarget() {
+        this.fuse = this.config.fuseTime;
+    }
+    explode(player, summons) {
+        const r = this.config.blastRadius * (this.isElite ? CONFIG.elite.sizeMult : 1);
+        const rSq = r * r;
+        for (let i = 0; i < summons.length; i++) {
+            const s = summons[i];
+            if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(this.attack);
+        }
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(this.attack);
+        const effect = getVisualEffectFromPool(ExplosionEffect);
+        if (effect) { effect.init(this.pos, r); gameState.visualEffects.push(effect); }
+        spawnParticles(this.pos.x, this.pos.y, '#9CCC65', 22, 140, 0.55, 3);
+        addShake(5);
+        Sfx.play('bloat');
+        // 自爆不算擊殺、不掉靈魂：要在它膨脹時先打掉才有獎勵
+        this.isAlive = false;
+    }
+}
+
+class BossMonster extends Monster {
+    constructor(x, y, waveNumber) {
+        super(x, y, CONFIG.boss, waveNumber, false);
+        this.tier = Math.max(1, Math.floor(waveNumber / CONFIG.wave.bossEvery));
+        this.slamTimer = CONFIG.boss.slamInterval;
+        this.windup = 0;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        if (this.windup > 0) {
+            this.tickFlash(deltaTime);
+            this.windup -= deltaTime;
+            if (this.windup <= 0) this.slam(player, summons);
+            return;
+        }
+        this.slamTimer -= deltaTime;
+        if (this.slamTimer <= 0 && this.target && distanceSq(this.pos, this.target.pos) < (c.slamRadius * 1.5) ** 2) {
+            this.windup = c.slamWindup;
+            this.slamTimer = c.slamInterval;
+            return;
+        }
+        super.update(deltaTime, player, summons);
+    }
+    slam(player, summons) {
+        const c = this.config;
+        const rSq = c.slamRadius * c.slamRadius;
+        const dmg = this.attack * c.slamDamageMult;
+        for (let i = 0; i < summons.length; i++) {
+            const s = summons[i];
+            if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg);
+        }
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(dmg);
+        const effect = getVisualEffectFromPool(ExplosionEffect);
+        if (effect) { effect.init(this.pos, c.slamRadius); gameState.visualEffects.push(effect); }
+        spawnParticles(this.pos.x, this.pos.y, '#BA68C8', 30, 180, 0.6, 3);
+        addShake(10);
+        Sfx.play('slam');
+    }
+    applySlow(amount, duration) {
+        super.applySlow(amount * (1 - this.config.slowResist), duration);
+    }
+    draw(ctx) {
+        if (this.isAlive && this.windup > 0) {
+            const c = this.config;
+            const p = 1 - this.windup / c.slamWindup;
+            ctx.save();
+            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.18 * p).toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, c.slamRadius * p, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(229, 57, 53, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, c.slamRadius, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+        }
+        super.draw(ctx);
+    }
+    drawHealthBar() { }
+    die() {
+        super.die();
+        spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
+        spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
+        addShake(14);
+        Sfx.play('bossDie');
+    }
+}
+
+function getEliteChance(wave) {
+    const E = CONFIG.elite;
+    if (wave < E.startWave) return 0;
+    return Math.min(E.chanceMax, E.chanceBase + E.chancePerWave * (wave - E.startWave));
+}
+
+function buildWaveQueue(wave) {
+    const W = CONFIG.wave;
+    const isBossWave = wave % W.bossEvery === 0;
+    const factor = isBossWave ? W.bossWaveCountFactor : 1;
+    const classes = [];
+    const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
+    add(BasicMeleeMonster, Math.round((W.basicBase + wave * W.basicPerWave) * factor));
+    [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster]]
+        .forEach(([cfg, Cls]) => {
+            if (wave >= cfg.minWave) add(Cls, Math.max(1, Math.round((1 + Math.floor((wave - cfg.minWave) / cfg.waveInterval)) * factor)));
+        });
+    for (let i = classes.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [classes[i], classes[j]] = [classes[j], classes[i]];
+    }
+    const eliteChance = getEliteChance(wave);
+    const queue = classes.map(Cls => ({ Cls, elite: Math.random() < eliteChance }));
+    if (isBossWave) queue.unshift({ Cls: BossMonster, elite: false });
+    return queue;
+}
+
+function getSpawnInterval(wave) {
+    const W = CONFIG.wave;
+    return Math.max(W.spawnIntervalMin, W.spawnIntervalBase - W.spawnIntervalPerWave * wave);
+}
+
+function updateSpawner(deltaTime) {
+    if (gameState.betweenWaves || gameState.spawnQueue.length === 0) return;
+    gameState.spawnTimer -= deltaTime;
+    if (gameState.spawnTimer > 0) return;
+    const W = CONFIG.wave;
+    const wave = gameState.currentWave;
+    gameState.spawnTimer = getSpawnInterval(wave);
+    const head = gameState.spawnQueue[0];
+    const packSize = head.Cls === BossMonster ? 1 : W.packMin + Math.floor(Math.random() * (W.packMax - W.packMin + 1));
+    const origin = getRandomPositionOutsideCanvas();
+    for (let i = 0; i < packSize && gameState.spawnQueue.length > 0; i++) {
+        const { Cls, elite } = gameState.spawnQueue.shift();
+        const x = origin.x + randomInRange(-W.packSpread, W.packSpread);
+        const y = origin.y + randomInRange(-W.packSpread, W.packSpread);
+        gameState.monsters.push(new Cls(x, y, wave, elite));
+    }
+}
+
+function getAliveBoss() {
+    for (let i = 0; i < gameState.monsters.length; i++) {
+        const m = gameState.monsters[i];
+        if (m.isAlive && m instanceof BossMonster) return m;
+    }
+    return null;
 }
 
 function prepareNextWave() {
@@ -1532,49 +1757,38 @@ function prepareNextWave() {
     gameState.visualEffects.forEach(returnVisualEffectToPool);
     gameState.visualEffects = [];
 
-
     const waveNum = gameState.currentWave;
-
-    const basicCount = CONFIG.wave.basicMonsterBaseCount + (waveNum - 1) * CONFIG.wave.basicMonsterIncrement;
-    for (let i = 0; i < basicCount; i++) {
-        const spawnPos = getRandomPositionOutsideCanvas();
-        gameState.monsters.push(new BasicMeleeMonster(spawnPos.x, spawnPos.y, waveNum));
-    }
-
-    const fastConfig = CONFIG.fastMeleeMonster;
-    if (waveNum >= fastConfig.minWave) {
-        const fastCount = 1 + Math.floor((waveNum - fastConfig.minWave) / fastConfig.waveInterval);
-        for (let i = 0; i < fastCount; i++) {
-            const spawnPos = getRandomPositionOutsideCanvas();
-            gameState.monsters.push(new FastMeleeMonster(spawnPos.x, spawnPos.y, waveNum));
-        }
-    }
-
-    const armoredConfig = CONFIG.armoredMeleeMonster;
-    if (waveNum >= armoredConfig.minWave) {
-        const armoredCount = 1 + Math.floor((waveNum - armoredConfig.minWave) / armoredConfig.waveInterval);
-        for (let i = 0; i < armoredCount; i++) {
-            const spawnPos = getRandomPositionOutsideCanvas();
-            gameState.monsters.push(new ArmoredMeleeMonster(spawnPos.x, spawnPos.y, waveNum));
-        }
-    }
+    gameState.spawnQueue = buildWaveQueue(waveNum);
+    gameState.spawnTimer = CONFIG.wave.firstSpawnDelay;
+    const isBossWave = waveNum % CONFIG.wave.bossEvery === 0;
+    gameState.banner = isBossWave
+        ? { text: '⚠ 首領來襲', sub: `第 ${waveNum} 波 · ${CONFIG.boss.name}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration }
+        : { text: `第 ${waveNum} 波`, sub: '', color: '#FFFFFF', life: CONFIG.wave.bannerDuration };
+    Sfx.play(isBossWave ? 'boss' : 'wave');
 
     updateUI();
 }
 
-function checkWaveEndCondition() {
-    let monstersAlive = false;
+function countRemainingMonsters() {
+    let alive = 0;
     for (let i = 0; i < gameState.monsters.length; i++) {
-        if (gameState.monsters[i].isAlive) {
-            monstersAlive = true;
-            break;
-        }
+        if (gameState.monsters[i].isAlive) alive++;
     }
+    return alive + gameState.spawnQueue.length;
+}
 
-    if (!gameState.betweenWaves && !monstersAlive) {
+function checkWaveEndCondition() {
+    if (!gameState.betweenWaves && countRemainingMonsters() === 0) {
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
         bankAllOrbs();
+        const p = gameState.player;
+        if (p && p.isAlive && p.currentHealth < p.maxHealth) {
+            const heal = Math.min(p.maxHealth - p.currentHealth, Math.ceil(p.maxHealth * CONFIG.wave.healRatio));
+            p.currentHealth += heal;
+            spawnFloatText(p.pos.x, p.pos.y - 24, `+${heal} HP`, '#81C784', 14, 1.2);
+        }
+        gameState.summons.forEach(s => { if (s.isAlive) s.currentHealth = s.maxHealth; });
         gameState.projectiles.forEach(returnProjectileToPool);
         gameState.projectiles = [];
         gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -1585,6 +1799,11 @@ function checkWaveEndCondition() {
 }
 
 function updateTimers(deltaTime) {
+    updateSpawner(deltaTime);
+    if (gameState.banner) {
+        gameState.banner.life -= deltaTime;
+        if (gameState.banner.life <= 0) gameState.banner = null;
+    }
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
         gameState.timeToNextWave -= deltaTime;
         if (gameState.timeToNextWave <= 0) {
@@ -1824,11 +2043,7 @@ function updateUI() {
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
         uiElements.timerInfo.textContent = `下一波: 倒數 ${Math.ceil(gameState.timeToNextWave)} 秒`;
     } else if (!gameState.betweenWaves) {
-        let aliveOnMap = 0;
-        for (let i = 0; i < gameState.monsters.length; i++) {
-            if (gameState.monsters[i].isAlive) aliveOnMap++;
-        }
-        uiElements.timerInfo.textContent = `怪物剩餘: ${aliveOnMap}`;
+        uiElements.timerInfo.textContent = `怪物剩餘: ${countRemainingMonsters()}`;
     } else {
         uiElements.timerInfo.textContent = `準備開始`;
     }
@@ -1877,7 +2092,8 @@ function updateUI() {
     updateUnitUI('EyeMonster');
     updateUnitUI('Wraith');
 
-    uiElements.pauseResumeBtn.textContent = gameState.isPaused ? '繼續' : '暫停';
+    uiElements.skipWaveBtn.style.display = gameState.betweenWaves && !gameState.gameOver ? '' : 'none';
+    uiElements.pauseResumeBtn.textContent = gameState.isPaused ? '▶ 繼續' : '⏸ 暫停';
     uiElements.pauseResumeBtn.disabled = gameState.gameOver;
     uiElements.restartGameBtn.disabled = gameState.gameOver;
 }
@@ -1979,8 +2195,8 @@ function loadGameState() {
         gameState.sfxVolume = loadedState.sfxVolume ?? CONFIG.audio.initialSfxVolume;
         Sfx.setVolume(gameState.sfxVolume);
         uiElements.sfxSlider.value = gameState.sfxVolume;
-        gameState.totalSummons = loadedState.totalSummons ?? { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 };
-        gameState.totalKills = loadedState.totalKills ?? { BasicMelee: 0, FastMelee: 0, ArmoredMelee: 0 };
+        gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
+        gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
 
         gameState.player = new Player(canvas.width / 2, canvas.height / 2);
         gameState.player.maxHealth = loadedState.playerMaxHealth ?? CONFIG.player.baseHealth;
@@ -2054,8 +2270,9 @@ function resetGameInternalState(resetAudio = true) {
         imagesLoaded: gameState.imagesLoaded,
         bgmVolume: resetAudio ? CONFIG.audio.initialVolume : currentVolume,
         musicStarted: resetAudio ? false : musicWasStarted,
-        totalSummons: { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 },
-        totalKills: { BasicMelee: 0, FastMelee: 0, ArmoredMelee: 0 },
+        totalSummons: emptySummonStats(),
+        totalKills: emptyKillStats(),
+        spawnQueue: [], spawnTimer: 0, banner: null,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -2083,6 +2300,8 @@ function updatePauseMenuStats() {
     uiElements.statKillBasic.textContent = formatNumberK(gameState.totalKills.BasicMelee);
     uiElements.statKillFast.textContent = formatNumberK(gameState.totalKills.FastMelee);
     uiElements.statKillArmored.textContent = formatNumberK(gameState.totalKills.ArmoredMelee);
+    uiElements.statKillBloater.textContent = formatNumberK(gameState.totalKills.Bloater);
+    uiElements.statKillBoss.textContent = formatNumberK(gameState.totalKills.Boss);
 }
 
 function togglePause() {
@@ -2207,6 +2426,54 @@ function updateParticlesAndTexts(deltaTime) {
 
 const SHAKE_BG_MARGIN = 16;
 
+function drawBossBar() {
+    const boss = getAliveBoss();
+    if (!boss) return;
+    const w = canvas.width * 0.6, h = 8;
+    const x = (canvas.width - w) / 2, y = 22;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+    const label = `${boss.config.name} Lv${boss.tier}`;
+    ctx.strokeText(label, canvas.width / 2, y - 5);
+    ctx.fillStyle = '#E1BEE7';
+    ctx.fillText(label, canvas.width / 2, y - 5);
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+    ctx.fillStyle = '#8E24AA';
+    ctx.fillRect(x, y, w * boss.currentHealth / boss.maxHealth, h);
+    ctx.restore();
+}
+
+function drawBanner() {
+    const b = gameState.banner;
+    if (!b) return;
+    const total = CONFIG.wave.bannerDuration;
+    const t = total - b.life;
+    const alpha = Math.min(1, t * 4, b.life * 2.5);
+    const scale = 1 + Math.max(0, 0.25 - t) * 1.5;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(canvas.width / 2, canvas.height * 0.4);
+    ctx.scale(scale, scale);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+    ctx.font = 'bold 40px sans-serif';
+    ctx.strokeText(b.text, 0, 0);
+    ctx.fillStyle = b.color;
+    ctx.fillText(b.text, 0, 0);
+    if (b.sub) {
+        ctx.font = 'bold 18px sans-serif';
+        ctx.lineWidth = 4;
+        ctx.strokeText(b.sub, 0, 30);
+        ctx.fillText(b.sub, 0, 30);
+    }
+    ctx.restore();
+}
+
 function drawGame() {
     ctx.save();
     if (gameState.shake > 0) {
@@ -2261,6 +2528,9 @@ function drawGame() {
     }
     ctx.globalAlpha = 1;
     ctx.restore();
+
+    drawBossBar();
+    drawBanner();
 
     if (gameState.hurtFlash > 0) {
         const a = gameState.hurtFlash / CONFIG.visuals.hurtFlashDuration;
@@ -2439,6 +2709,12 @@ function init() {
     window.addEventListener('keyup', (e) => keysDown.delete(e.code));
     window.addEventListener('blur', () => keysDown.clear());
 
+    uiElements.skipWaveBtn.addEventListener('click', () => {
+        if (gameState.betweenWaves && !gameState.isPaused && !gameState.gameOver) {
+            gameState.timeToNextWave = 0;
+            ensureMusicPlaying();
+        }
+    });
     uiElements.restartGameBtn.addEventListener('click', showRestartConfirmDialog);
     uiElements.restartConfirmYes.addEventListener('click', handleRestartGame);
     uiElements.restartConfirmNo.addEventListener('click', hideRestartConfirmDialog);

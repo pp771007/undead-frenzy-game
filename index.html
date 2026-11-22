@@ -93,15 +93,21 @@
         }
 
         #pause-container {
-            text-align: center;
+            display: flex;
+            gap: 6px;
             padding: clamp(5px, 1.5vh, 8px) 0;
             flex-shrink: 0;
         }
 
-        #pause-resume-btn {
-            padding: clamp(5px, 1vh, 7px) 15px;
+        #pause-container button {
+            padding: clamp(5px, 1vh, 7px) 10px;
             font-size: clamp(15px, 3vw, 18px);
-            width: 100%;
+            flex: 1;
+        }
+
+        #skip-wave-btn {
+            background-color: #1565C0;
+            border-color: #42A5F5;
         }
 
         #restart-confirm-dialog {
@@ -414,6 +420,18 @@
             margin-bottom: 3px;
         }
 
+        .stat-row.images img {
+            width: clamp(28px, 12vw, 64px);
+        }
+
+        img.tint-bloater {
+            filter: sepia(1) hue-rotate(50deg) saturate(3);
+        }
+
+        img.tint-boss {
+            filter: sepia(1) hue-rotate(230deg) saturate(2.5);
+        }
+
         .stat-row.counts span {
             font-size: clamp(13px, 3vw, 15px);
             font-weight: bold;
@@ -434,7 +452,8 @@
         <canvas id="gameCanvas" width="600" height="400"></canvas>
 
         <div id="pause-container">
-            <button id="pause-resume-btn">暫停</button>
+            <button id="pause-resume-btn">⏸ 暫停</button>
+            <button id="skip-wave-btn">⏩ 開戰</button>
         </div>
 
         <div id="bottom-ui">
@@ -508,12 +527,16 @@
                 <div class="stat-row images">
                     <div class="stat-item"><img src="basic_melee.png" alt="基礎近戰"></div>
                     <div class="stat-item"><img src="fast_melee.png" alt="快速近戰"></div>
+                    <div class="stat-item"><img src="basic_melee.png" class="tint-bloater" alt="腐屍"></div>
                     <div class="stat-item"><img src="armored_melee.png" alt="裝甲近戰"></div>
+                    <div class="stat-item"><img src="armored_melee.png" class="tint-boss" alt="首領"></div>
                 </div>
                 <div class="stat-row counts">
                     <div class="stat-item"><span id="stat-kill-basic">0</span></div>
                     <div class="stat-item"><span id="stat-kill-fast">0</span></div>
+                    <div class="stat-item"><span id="stat-kill-bloater">0</span></div>
                     <div class="stat-item"><span id="stat-kill-armored">0</span></div>
+                    <div class="stat-item"><span id="stat-kill-boss">0</span></div>
                 </div>
             </div>
             <button id="restart-game-btn">重新開始</button>
