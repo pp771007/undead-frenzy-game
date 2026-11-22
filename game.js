@@ -7,7 +7,6 @@ const uiElements = {
     waveInfo: document.getElementById('wave-info'),
     timerInfo: document.getElementById('timer-info'),
     soulsInfo: document.getElementById('souls-info'),
-    popInfo: document.getElementById('pop-info'),
     playerHealthInfo: document.getElementById('player-health-info'),
     skelLevel: document.getElementById('skel-level'),
     skelCount: document.getElementById('skel-count'),
@@ -80,7 +79,6 @@ const CONFIG = {
         imageName: 'eye_monster', imgScaleMultiplier: 3,
         attackRange: 120,
         attackRangeUpgrade: 3,
-        attackRangeMax: 200,
         attackSpeed: 0.8, moveSpeed: 60, color: '#A1887F',
         upgradeBonus: 0.10,
         summonCost: 8,
@@ -103,9 +101,6 @@ const CONFIG = {
         attackRange: 0,
         slowRadiusBase: 80,
         slowRadiusUpgrade: 5,
-        // 半徑與緩速都要封頂：不封的話高等怨靈的光環蓋滿整張地圖、怪物幾乎定身（模擬過撐到第 90 波）
-        slowRadiusMax: 150,
-        slowAmountMax: 0.7,
         slowAmountBase: 0.5,
         slowAmountUpgrade: 0.025,
         slowDuration: 1.5, attackSpeed: 1.0, moveSpeed: 55, color: '#4DB6AC',
@@ -169,8 +164,7 @@ const CONFIG = {
     },
     wave: {
         betweenTime: 5,
-        // 前期線性成長；第 30 波後改成每波乘上 lateGrowth。線性時召喚物升級永遠追得上（模擬過 80 波不死）
-        scalePerWave: 0.035, lateWave: 30, lateGrowth: 1.08,
+        scalePerWave: 0.035, lateWave: 30, lateScalePerWave: 0.03,
         basicBase: 3, basicPerWave: 1.3,
         bossEvery: 10, bossWaveCountFactor: 0.5,
         spawnIntervalBase: 0.9, spawnIntervalPerWave: 0.01, spawnIntervalMin: 0.35,
@@ -212,9 +206,6 @@ const CONFIG = {
     draft: {
         every: 3, optionCount: 3,
     },
-    // 召喚物總數上限：沒有上限時靈魂收入會滾雪球（模擬到第 100 波累積上千隻、手機一定卡），
-    // 有上限後多的靈魂只能拿去升級，後期怪物成長才追得上
-    summonCap: 40,
     holdingButton: {
         holdDelay: 350,
         repeatInterval: 150,
@@ -248,13 +239,6 @@ const BLESSINGS = {
 
 function bl(id) { return (gameState.blessings && gameState.blessings[id]) || 0; }
 function blessVal(id) { return BLESSINGS[id].per * bl(id); }
-
-function getSummonTotal() {
-    return gameState.skeletonWarriorCount + gameState.eyeMonsterCount + gameState.wraithCount;
-}
-function isSummonCapReached() {
-    return getSummonTotal() >= CONFIG.summonCap;
-}
 
 function getSummonCost(config) {
     return Math.max(1, Math.round(config.summonCost * (1 - blessVal('pact'))));
@@ -749,16 +733,16 @@ class SummonUnit extends GameObject {
         this.moveSpeed = this.config.moveSpeed;
 
         if (this.config.type === 'EyeMonster') {
-            this.attackRange = Math.min(this.config.attackRangeMax, this.config.attackRange + (this.level * this.config.attackRangeUpgrade));
+            this.attackRange = this.config.attackRange + (this.level * this.config.attackRangeUpgrade);
         } else {
             this.attackRange = this.config.attackRange;
         }
         this.attackRangeSq = this.attackRange * this.attackRange;
 
         if (this.config.type === 'Wraith') {
-            this.slowRadius = Math.min(this.config.slowRadiusMax, this.config.slowRadiusBase + (this.level * this.config.slowRadiusUpgrade));
+            this.slowRadius = this.config.slowRadiusBase + (this.level * this.config.slowRadiusUpgrade);
             this.slowAmount = this.config.slowAmountBase + (this.level * this.config.slowAmountUpgrade);
-            this.slowAmount = Math.min(this.slowAmount, this.config.slowAmountMax);
+            this.slowAmount = Math.min(this.slowAmount, 0.9);
             this.slowRadiusSq = this.slowRadius * this.slowRadius;
             this.buffRadius = this.slowRadius;
             this.buffRadiusSq = this.slowRadiusSq;
@@ -1520,7 +1504,7 @@ function bankAllOrbs() {
 
 function getWaveStatMultiplier(wave) {
     const W = CONFIG.wave;
-    return (1 + W.scalePerWave * (wave - 1)) * Math.pow(W.lateGrowth, Math.max(0, wave - W.lateWave));
+    return 1 + W.scalePerWave * (wave - 1) + Math.max(0, wave - W.lateWave) * W.lateScalePerWave;
 }
 
 class Monster extends GameObject {
@@ -1687,7 +1671,7 @@ class Monster extends GameObject {
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
         dropSouls(this.pos.x, this.pos.y, whole);
-        if (!(this instanceof BossMonster) && !isSummonCapReached() && Math.random() < blessVal('raiseDead') && gameState.player) {
+        if (!(this instanceof BossMonster) && Math.random() < blessVal('raiseDead') && gameState.player) {
             gameState.summons.push(new SkeletonWarrior(this.pos.x, this.pos.y, gameState.skeletonWarriorLevel, gameState.player));
             gameState.skeletonWarriorCount++;
             gameState.totalSummons.SkeletonWarrior++;
@@ -2112,7 +2096,7 @@ function trySummon(type) {
     }
 
     cost = getSummonCost(config);
-    if (gameState.draftOpen || isSummonCapReached()) return false;
+    if (gameState.draftOpen) return false;
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
         const spawnPos = gameState.player.getSummonPosition();
@@ -2307,9 +2291,6 @@ function updateUI() {
     }
 
     uiElements.soulsInfo.textContent = `靈魂: ${formatNumberK(souls)}`;
-    const capFull = isSummonCapReached();
-    uiElements.popInfo.textContent = `👥 ${getSummonTotal()}/${CONFIG.summonCap}`;
-    uiElements.popInfo.classList.toggle('full', capFull);
     uiElements.waveInfo.textContent = `第${gameState.currentWave}波`;
 
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
@@ -2354,11 +2335,11 @@ function updateUI() {
         uiMap.level.textContent = `Lv ${level}`;
         uiMap.count.textContent = count;
 
-        uiMap.summonBtn.textContent = capFull ? '召喚\n(已滿)' : `召喚\n(${formatNumberK(summonCost)}魂)`;
+        uiMap.summonBtn.textContent = `召喚\n(${formatNumberK(summonCost)}魂)`;
         uiMap.upgradeBtn.textContent = `升級\n(${formatNumberK(upgradeCost)}魂)`;
 
         const canAct = !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen;
-        setButtonState(uiMap.summonBtn, canAct && !capFull, summonCost);
+        setButtonState(uiMap.summonBtn, canAct, summonCost);
         setButtonState(uiMap.upgradeBtn, canAct, upgradeCost);
     }
 
