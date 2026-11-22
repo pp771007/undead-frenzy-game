@@ -24,6 +24,9 @@ const uiElements = {
     messageArea: document.getElementById('message-area'),
     gameOverScreen: document.getElementById('game-over-screen'),
     finalWaveText: document.getElementById('final-wave-text'),
+    bestWaveText: document.getElementById('best-wave-text'),
+    finalStatsText: document.getElementById('final-stats-text'),
+    finalBlessings: document.getElementById('final-blessings'),
     restartButton: document.getElementById('restart-button'),
     pauseMenu: document.getElementById('pause-menu'),
     volumeSlider: document.getElementById('volume-slider'),
@@ -2375,7 +2378,20 @@ function setButtonState(button, isActionPossible, cost) {
 
 function showGameOver() {
     if (gameState.gameOver && uiElements.gameOverScreen.style.display !== 'flex') {
-        uiElements.finalWaveText.textContent = `您存活了 ${gameState.currentWave - 1} 波。`;
+        const survived = Math.max(0, gameState.currentWave - 1);
+        uiElements.finalWaveText.textContent = `您存活了 ${survived} 波。`;
+        let best = 0;
+        try { best = parseInt(localStorage.getItem(BEST_WAVE_KEY), 10) || 0; } catch (e) { }
+        const isRecord = survived > best;
+        if (isRecord) {
+            try { localStorage.setItem(BEST_WAVE_KEY, String(survived)); } catch (e) { }
+        }
+        uiElements.bestWaveText.textContent = isRecord ? '🏆 新紀錄！' : `最佳紀錄：${best} 波`;
+        uiElements.bestWaveText.classList.toggle('new-record', isRecord);
+        const kills = Object.values(gameState.totalKills).reduce((a, b) => a + b, 0);
+        const summons = Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
+        uiElements.finalStatsText.textContent = `擊殺 ${formatNumberK(kills)} · 召喚 ${formatNumberK(summons)}`;
+        renderBlessingList(uiElements.finalBlessings);
         uiElements.gameOverScreen.style.display = 'flex';
         localStorage.removeItem(SAVE_KEY);
         updateUI();
@@ -2388,6 +2404,8 @@ function showGameOver() {
 }
 
 const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
+// 跟存檔分開放：遊戲結束會刪存檔，紀錄要留著
+const BEST_WAVE_KEY = 'undeadFrenzy_bestWave';
 const SAVE_VERSION = 17;
 // v16 是祝福系統之前的存檔，缺的欄位讀取時補預設值即可
 const COMPATIBLE_SAVE_VERSIONS = [16, 17];

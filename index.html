@@ -392,6 +392,25 @@
             color: #FF5252;
         }
 
+        #final-wave-text {
+            font-size: clamp(18px, 4.5vw, 22px);
+            font-weight: bold;
+        }
+
+        #best-wave-text {
+            color: #BDBDBD;
+        }
+
+        #best-wave-text.new-record {
+            color: #FFD54F;
+            font-weight: bold;
+            font-size: clamp(17px, 4vw, 20px);
+        }
+
+        #final-blessings {
+            margin-top: 12px;
+        }
+
         .overlay-content p {
             font-size: clamp(14px, 3vw, 16px);
             margin: 5px 0;
@@ -598,6 +617,9 @@
         <div id="game-over-content" class="overlay-content">
             <h2>遊戲結束</h2>
             <p id="final-wave-text">您存活了 0 波。</p>
+            <p id="best-wave-text"></p>
+            <p id="final-stats-text"></p>
+            <div id="final-blessings" class="bless-list"></div>
             <button id="restart-button">重新開始</button>
         </div>
     </div>
