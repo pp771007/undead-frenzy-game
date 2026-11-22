@@ -879,6 +879,7 @@ const SFX_DEFS = {
     nova: { gap: 0.2, fn: s => { s.tone(220, 0.45, { type: 'sawtooth', vol: 0.15, slideTo: 55 }); s.noise(0.4, { vol: 0.25, filterFreq: 900 }); } },
     draft: { gap: 0.3, fn: s => { [660, 880, 1100].forEach((f, i) => s.tone(f, 0.25, { vol: 0.12, delay: i * 0.08 })); } },
     pick: { gap: 0.2, fn: s => { [523, 784, 1046].forEach((f, i) => s.tone(f, 0.15, { type: 'triangle', vol: 0.14, delay: i * 0.05 })); } },
+    click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
@@ -3851,6 +3852,7 @@ function drawGame() {
     drawBanner();
     drawJoystick();
     drawTutorial();
+    if (appScreen === 'title') drawTitleWisps();
 
     if (gameState.hurtFlash > 0) {
         const a = gameState.hurtFlash / CONFIG.visuals.hurtFlashDuration;
@@ -3893,6 +3895,30 @@ function startGameLoop() {
     if (animationFrameId !== null) return;
     loopLastTime = performance.now();
     animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+// 標題畫面背景緩緩飄升的靈魂光點：不存狀態，位置直接由時間算出來
+const TITLE_WISP_COUNT = 36;
+function drawTitleWisps() {
+    const t = performance.now() / 1000;
+    const W = view.cssW, H = view.cssH;
+    ctx.save();
+    for (let i = 0; i < TITLE_WISP_COUNT; i++) {
+        const h1 = (Math.sin(i * 12.9898) * 43758.5453) % 1, h2 = (Math.sin(i * 78.233) * 12543.123) % 1;
+        const r1 = Math.abs(h1), r2 = Math.abs(h2);
+        const speed = 12 + r2 * 26;
+        const y = H + 20 - ((t * speed + r1 * (H + 40)) % (H + 40));
+        const x = r1 * W + Math.sin(t * (0.4 + r2) + i) * 18;
+        const size = 1.5 + r2 * 2.5;
+        const alpha = 0.25 + 0.35 * Math.sin(t * (1 + r1) + i) ** 2;
+        ctx.globalAlpha = alpha * 0.35;
+        ctx.fillStyle = '#7ff0f0';
+        ctx.beginPath(); ctx.arc(x, y, size * 3, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#d6fbfb';
+        ctx.beginPath(); ctx.arc(x, y, size, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
 }
 
 function drawLoading() {
@@ -4031,7 +4057,7 @@ function init() {
     setupHoldableButton(uiElements.upgradeEyeMonsterBtn, 'upgrade', 'EyeMonster');
     setupHoldableButton(uiElements.upgradeWraithBtn, 'upgrade', 'Wraith');
 
-    const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
+    const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); Sfx.play('click'); fn(); });
     onTap(uiElements.titleStartBtn, startNewRun);
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
