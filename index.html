@@ -7,43 +7,197 @@
     <title>亡靈狂潮 (Undead Frenzy)</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <meta name="description" content="體驗黑暗奇幻生存！《亡靈狂潮》讓你扮演死靈法師，召喚不死生物對抗怪物潮。收集靈魂、強化僕從，挑戰你的生存極限！">
-    <meta name="theme-color" content="#1a1622">
+    <meta name="theme-color" content="#140f1c">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
+            --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+            --ink: #0e0a14;
+            --bone: #f4ecd8;
+            --bone-dim: #b9ae96;
+            --gold: #e9c46a;
+            --gold-deep: #9c7a3c;
+            --soul: #7ff0f0;
+            --blood: #e04848;
+            --panel-top: #2f2342;
+            --panel-bottom: #1b1426;
+            --purple: #8e44ad;
+        }
+
         * {
-            touch-action: manipulation;
             box-sizing: border-box;
+            touch-action: manipulation;
         }
 
         html,
         body {
             height: 100%;
             margin: 0;
-            padding: 0;
             overflow: hidden;
-            -webkit-text-size-adjust: 100%;
             overscroll-behavior: none;
+            -webkit-text-size-adjust: 100%;
         }
 
         body {
             position: fixed;
             inset: 0;
-            background-color: #1a1622;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: white;
+            background: #140f1c;
+            color: var(--bone);
+            font-family: var(--font-ui);
             -webkit-user-select: none;
             user-select: none;
         }
 
-        /* ---------- 遊戲畫面鋪滿整個螢幕 ---------- */
+        .hidden {
+            display: none !important;
+        }
+
         #gameCanvas {
             position: fixed;
             inset: 0;
             display: block;
             touch-action: none;
-            background-color: #2b2822;
+            background: #221e1a;
         }
 
-        /* ---------- 上方狀態列（浮在畫面上） ---------- */
+        /* ---------- 圖示 ---------- */
+        .icon,
+        [data-icon] {
+            display: inline-flex;
+            width: 1.2em;
+            height: 1.2em;
+            flex-shrink: 0;
+        }
+
+        .icon svg,
+        [data-icon] svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* ---------- 共用：面板 ---------- */
+        .panel {
+            position: relative;
+            background: linear-gradient(var(--panel-top), var(--panel-bottom));
+            border: 3px solid var(--ink);
+            border-radius: 16px;
+            box-shadow:
+                inset 0 0 0 2px var(--gold-deep),
+                inset 0 0 0 4px var(--ink),
+                inset 0 6px 18px rgba(255, 255, 255, 0.05),
+                0 12px 32px rgba(0, 0, 0, 0.6);
+        }
+
+        .title-text {
+            font-family: var(--font-display);
+            font-weight: 900;
+            color: var(--gold);
+            text-shadow: 0 2px 0 var(--ink), 0 0 12px rgba(233, 196, 106, 0.35);
+            letter-spacing: 0.06em;
+        }
+
+        /* ---------- 共用：按鈕 ---------- */
+        button {
+            font-family: inherit;
+            color: inherit;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        .btn {
+            --btn-top: #6b4f8a;
+            --btn-bottom: #4a3463;
+            --btn-edge: #2b1d3b;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 44px;
+            padding: 6px 16px;
+            border: 3px solid var(--ink);
+            border-radius: 12px;
+            background: linear-gradient(var(--btn-top), var(--btn-bottom));
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 var(--btn-edge), 0 6px 10px rgba(0, 0, 0, 0.45);
+            color: var(--bone);
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 16px;
+            text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6);
+            cursor: pointer;
+            transition: transform 0.06s, box-shadow 0.06s, filter 0.15s;
+        }
+
+        .btn:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.2), 0 1px 0 var(--btn-edge), 0 2px 4px rgba(0, 0, 0, 0.45);
+        }
+
+        .btn:disabled {
+            filter: grayscale(0.85) brightness(0.65);
+            cursor: default;
+        }
+
+        .btn-gold {
+            --btn-top: #f2cf73;
+            --btn-bottom: #c4913a;
+            --btn-edge: #7a5520;
+            color: #3a2410;
+            text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
+        }
+
+        .btn-green {
+            --btn-top: #8fcf5a;
+            --btn-bottom: #4e9a2e;
+            --btn-edge: #2c5c18;
+        }
+
+        .btn-blue {
+            --btn-top: #5aa9e6;
+            --btn-bottom: #2f6fb3;
+            --btn-edge: #1b3f6b;
+        }
+
+        .btn-red {
+            --btn-top: #e66a5a;
+            --btn-bottom: #b23a2e;
+            --btn-edge: #6b1e17;
+        }
+
+        .btn-dark {
+            --btn-top: #3a3046;
+            --btn-bottom: #261e30;
+            --btn-edge: #120d18;
+        }
+
+        .btn-big {
+            min-height: 56px;
+            font-size: 20px;
+            border-radius: 14px;
+        }
+
+        .btn-icon {
+            width: 22px;
+            height: 22px;
+        }
+
+        .price {
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            font-family: var(--font-display);
+        }
+
+        .price .icon {
+            width: 15px;
+            height: 15px;
+        }
+
+        /* ---------- HUD ---------- */
         #hud-top {
             position: fixed;
             top: 0;
@@ -54,65 +208,93 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 6px;
-            padding: calc(env(safe-area-inset-top) + 6px) 8px 14px;
-            background: linear-gradient(rgba(10, 6, 16, 0.6), rgba(10, 6, 16, 0));
+            padding: calc(env(safe-area-inset-top) + 8px) 8px 18px;
+            background: linear-gradient(rgba(14, 10, 20, 0.75), rgba(14, 10, 20, 0));
             pointer-events: none;
         }
 
-        .hud-pill {
-            background: rgba(10, 6, 16, 0.5);
-            border-radius: 12px;
-            padding: 4px 10px;
-            font-weight: bold;
-            font-size: 15px;
-            line-height: 1.25;
-            text-shadow: 0 1px 2px #000;
-        }
-
-        #hp-pill {
+        .hud-chip {
             display: flex;
             align-items: center;
+            height: 34px;
+            padding: 0 10px 0 4px;
             gap: 6px;
+            background: linear-gradient(#2a2036, #17111f);
+            border: 2px solid var(--ink);
+            border-radius: 17px;
+            box-shadow: inset 0 0 0 1.5px var(--gold-deep), 0 3px 8px rgba(0, 0, 0, 0.5);
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 17px;
+            text-shadow: 0 2px 0 var(--ink);
+        }
+
+        .chip-icon {
+            width: 30px;
+            height: 30px;
+            margin-left: -2px;
+            filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.4));
         }
 
         .hp-bar {
-            width: 64px;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 4px;
+            position: relative;
+            width: 92px;
+            height: 16px;
+            background: #120d18;
+            border: 2px solid var(--ink);
+            border-radius: 8px;
             overflow: hidden;
         }
 
         #hp-fill {
             height: 100%;
             width: 100%;
-            background: #66BB6A;
-            transition: width 0.15s;
-        }
-
-        #hp-fill.mid {
-            background: #FFC107;
-        }
-
-        #hp-fill.low {
-            background: #F44336;
+            background: linear-gradient(#ff7a7a, #c62f2f);
+            box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35);
+            transition: width 0.2s;
         }
 
         #player-health-info {
-            font-size: 13px;
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-family: var(--font-ui);
+            font-weight: 800;
+            text-shadow: 0 1px 2px #000;
         }
 
-        #wave-pill {
+        #wave-plate {
             display: flex;
-            flex-direction: column;
             align-items: center;
-            text-align: center;
+            gap: 4px;
+            padding: 3px 14px 3px 6px;
+            background: linear-gradient(#2a2036, #17111f);
+            border: 2px solid var(--ink);
+            border-radius: 12px;
+            box-shadow: inset 0 0 0 1.5px var(--gold-deep), 0 3px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        #wave-plate .plate-icon {
+            width: 30px;
+            height: 30px;
+        }
+
+        #wave-info {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 17px;
+            line-height: 1.1;
+            color: var(--gold);
+            text-shadow: 0 2px 0 var(--ink);
         }
 
         #timer-info {
-            font-size: 12px;
-            font-weight: normal;
-            color: #E0E0E0;
+            font-size: 11px;
+            color: var(--bone-dim);
+            line-height: 1.2;
         }
 
         .hud-right {
@@ -122,17 +304,29 @@
             gap: 6px;
         }
 
-        #pause-resume-btn {
-            pointer-events: auto;
-            min-height: 30px;
-            padding: 4px 10px;
-            font-size: 13px;
-            border-radius: 12px;
-            background: rgba(10, 6, 16, 0.55);
-            border-color: rgba(255, 255, 255, 0.25);
+        #souls-info {
+            min-width: 30px;
+            color: var(--soul);
         }
 
-        /* ---------- 下方操作區（浮在畫面上） ---------- */
+        #souls-info.bump {
+            animation: bump 0.25s;
+        }
+
+        #pause-resume-btn {
+            pointer-events: auto;
+            min-height: 32px;
+            padding: 2px 10px 2px 6px;
+            font-size: 13px;
+            border-width: 2px;
+            border-radius: 10px;
+        }
+
+        #pause-resume-btn .btn-icon {
+            width: 16px;
+            height: 16px;
+        }
+
         #hud-bottom {
             position: fixed;
             left: 0;
@@ -142,8 +336,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 6px;
-            padding: 0 8px calc(env(safe-area-inset-bottom) + 8px);
+            gap: 8px;
+            padding: 18px 8px calc(env(safe-area-inset-bottom) + 8px);
+            background: linear-gradient(rgba(14, 10, 20, 0), rgba(14, 10, 20, 0.6) 40%);
             pointer-events: none;
         }
 
@@ -151,7 +346,7 @@
             position: relative;
             width: 100%;
             max-width: 560px;
-            min-height: 70px;
+            min-height: 72px;
             display: flex;
             justify-content: center;
             align-items: flex-end;
@@ -159,11 +354,8 @@
 
         #skip-wave-btn {
             pointer-events: auto;
-            border-radius: 20px;
-            padding: 8px 20px;
-            background-color: #1565C0;
-            border-color: #42A5F5;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+            border-radius: 22px;
+            padding: 6px 20px 6px 14px;
         }
 
         #nova-btn {
@@ -171,30 +363,37 @@
             position: absolute;
             right: 0;
             bottom: 0;
-            width: 70px;
-            height: 70px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
-            font-size: 14px;
-            line-height: 1.15;
-            background: rgba(20, 16, 30, 0.7);
-            border: 2px solid rgba(206, 147, 216, 0.4);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-        }
-
-        #nova-btn {
+            border: 3px solid var(--ink);
+            display: flex;
             flex-direction: column;
-            gap: 1px;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            background: #1d1628;
+            box-shadow: inset 0 0 0 2px var(--gold-deep), 0 4px 0 #0b0810, 0 6px 12px rgba(0, 0, 0, 0.5);
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 14px;
+            text-shadow: 0 2px 0 var(--ink);
+            cursor: pointer;
         }
 
-        .nova-icon {
-            font-size: 24px;
-            line-height: 1;
+        #nova-btn .icon {
+            width: 34px;
+            height: 34px;
         }
 
         #nova-btn.nova-ready {
-            background: radial-gradient(circle, #9C27B0, #6A1B9A);
-            border-color: #E1BEE7;
-            box-shadow: 0 0 14px rgba(206, 147, 216, 0.8);
+            background: radial-gradient(circle at 50% 35%, #b55ce6, #5e2385);
+            box-shadow: inset 0 0 0 2px var(--gold), 0 4px 0 #2e0f45, 0 0 18px rgba(192, 107, 245, 0.75);
+            animation: nova-glow 1.6s ease-in-out infinite;
+        }
+
+        #nova-btn:active {
+            transform: translateY(3px);
         }
 
         #unit-cards {
@@ -210,13 +409,9 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 6px;
             padding: 6px;
-            background: rgba(20, 16, 30, 0.66);
-            -webkit-backdrop-filter: blur(4px);
-            backdrop-filter: blur(4px);
-            border: 1px solid rgba(206, 147, 216, 0.3);
-            border-radius: 12px;
+            border-radius: 14px;
         }
 
         .unit-head {
@@ -224,51 +419,92 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            min-height: 34px;
         }
 
-        .unit-icon {
-            width: 34px;
-            height: 34px;
-            object-fit: contain;
+        .portrait {
+            position: relative;
+            width: 40px;
+            height: 40px;
             flex-shrink: 0;
+            border-radius: 50%;
+            background: radial-gradient(#4a3a5e, #1d1628);
+            border: 2px solid var(--ink);
+            box-shadow: inset 0 0 0 1.5px var(--gold-deep);
+        }
+
+        .portrait img {
+            position: absolute;
+            inset: 3px;
+            width: calc(100% - 6px);
+            height: calc(100% - 6px);
+            object-fit: contain;
+        }
+
+        .lv-badge {
+            position: absolute;
+            right: -6px;
+            bottom: -4px;
+            min-width: 20px;
+            height: 18px;
+            padding: 0 4px;
+            border-radius: 9px;
+            background: linear-gradient(#f2cf73, #c4913a);
+            border: 2px solid var(--ink);
+            color: #3a2410;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 11px;
+            line-height: 14px;
+            text-align: center;
+        }
+
+        .lv-badge.pop {
+            animation: pop 0.35s;
         }
 
         .unit-info {
             display: flex;
             flex-direction: column;
             min-width: 0;
-            line-height: 1.15;
+            gap: 1px;
         }
 
-        .unit-label {
-            font-size: 13px;
-            font-weight: bold;
+        .unit-name {
+            padding-right: 30px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 14px;
+            text-shadow: 0 2px 0 var(--ink);
             white-space: nowrap;
         }
 
-        .stats-label {
-            font-size: 12px;
-            color: #E0E0E0;
+        .unit-stars {
+            display: flex;
+            align-items: center;
+            gap: 1px;
+            font-size: 10px;
+            color: var(--bone-dim);
             white-space: nowrap;
         }
 
-        .stars {
-            color: #FFD54F;
+        .unit-stars .icon {
+            width: 12px;
+            height: 12px;
         }
 
-        .next-evo {
-            font-size: 0.85em;
-            color: #9E9E9E;
+        .unit-stars .icon.off {
+            filter: grayscale(1) brightness(0.45);
         }
 
         .unit-count {
             position: absolute;
-            top: 0;
-            right: 2px;
+            top: -2px;
+            right: 0;
+            font-family: var(--font-display);
+            font-weight: 900;
             font-size: 14px;
-            font-weight: bold;
-            text-shadow: 0 1px 2px #000;
+            color: var(--bone-dim);
+            text-shadow: 0 2px 0 var(--ink);
         }
 
         .unit-btns {
@@ -276,128 +512,246 @@
             gap: 4px;
         }
 
-        .unit-btns button {
+        .unit-btns .btn {
             flex: 1;
-            min-height: 42px;
-            padding: 3px 2px;
-            font-size: 13px;
-            border-radius: 8px;
-        }
-
-        /* ---------- 按鈕共用 ---------- */
-        button {
-            padding: 6px 4px;
-            font-size: 14px;
-            font-weight: bold;
-            font-family: inherit;
-            cursor: pointer;
             min-width: 0;
-            min-height: 40px;
-            border: 1px solid #888;
-            background-color: #555;
-            color: white;
-            border-radius: 6px;
-            transition: background-color 0.1s, border-color 0.1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            line-height: 1.1;
-            flex-shrink: 0;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            white-space: pre-wrap;
+            min-height: 46px;
+            padding: 2px;
+            flex-direction: column;
+            gap: 0;
+            font-size: 13px;
+            border-width: 2px;
+            border-radius: 10px;
+            line-height: 1.15;
         }
 
-        button:active {
-            background-color: #777;
+        .unit-btns .btn .price {
+            font-size: 13px;
         }
 
-        button.can-afford {
-            background-color: #689F38;
-            border: 1px solid #9CCC65;
-            color: #FFFFFF;
+        .unit-btns .btn.cant-afford {
+            --btn-top: #3a3046;
+            --btn-bottom: #261e30;
+            --btn-edge: #120d18;
         }
 
-        button.can-afford:active {
-            background-color: #8BC34A;
+        .unit-btns .btn.cant-afford .price {
+            color: #ff8a80;
         }
 
-        button:disabled {
-            background-color: rgba(66, 66, 66, 0.8);
-            border: 1px solid #616161;
-            opacity: 0.6;
-            cursor: not-allowed;
+        .hint-pulse {
+            animation: hint 1s ease-in-out infinite;
         }
 
+        /* ---------- 小提示 ---------- */
         #message-area {
             position: fixed;
-            top: calc(env(safe-area-inset-top) + 70px);
+            top: calc(env(safe-area-inset-top) + 76px);
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: 7px 12px;
-            border-radius: 8px;
-            font-size: 15px;
-            display: none;
             z-index: 5;
-            text-align: center;
-            pointer-events: none;
+            display: none;
+            padding: 8px 16px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 15px;
             white-space: nowrap;
+            pointer-events: none;
+            text-shadow: 0 2px 0 var(--ink);
         }
 
-        /* ---------- 彈窗（祝福 / 暫停 / 結算） ---------- */
-        #draft-cards {
+        /* ---------- 全畫面視窗 ---------- */
+        .overlay-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 10;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: calc(env(safe-area-inset-top) + 12px) 14px calc(env(safe-area-inset-bottom) + 12px);
+            background: radial-gradient(ellipse at center, rgba(20, 12, 30, 0.75), rgba(8, 5, 12, 0.92));
+            text-align: center;
+        }
+
+        .overlay-content {
+            width: 100%;
+            max-width: 480px;
+            max-height: 100%;
+            overflow-y: auto;
+            padding: 22px 18px 20px;
+        }
+
+        .overlay-content h2 {
+            margin: 0 0 14px;
+            font-size: 26px;
+        }
+
+        .stack {
             display: flex;
             flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        /* 從結算 / 標題開出來的視窗要蓋在它們上面 */
+        #meta-screen,
+        #settings-screen {
+            z-index: 15;
+        }
+
+        /* 標題畫面 */
+        #title-screen {
+            background: radial-gradient(ellipse at 50% 40%, rgba(40, 20, 60, 0.35), rgba(8, 5, 12, 0.85));
+        }
+
+        .logo {
+            margin: 0;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: clamp(48px, 15vw, 84px);
+            line-height: 1;
+            letter-spacing: 0.08em;
+            background: linear-gradient(#fff3c4, #e9c46a 45%, #9c6a2c);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            filter: drop-shadow(0 4px 0 #0e0a14) drop-shadow(0 0 18px rgba(192, 107, 245, 0.6));
+        }
+
+        .logo-sub {
+            margin-top: 8px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 0.5em;
+            color: #c9a7e8;
+            text-shadow: 0 2px 0 var(--ink);
+        }
+
+        .title-hero {
+            width: 120px;
+            height: auto;
+            margin: 14px auto 0;
+            display: block;
+            filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 20px rgba(192, 107, 245, 0.45));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .title-menu {
+            width: 100%;
+            max-width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 22px;
+        }
+
+        .title-menu .btn {
+            width: 100%;
+        }
+
+        .title-row {
+            display: flex;
             gap: 10px;
         }
 
-        .draft-card {
-            display: flex;
+        .title-row .btn {
+            flex: 1;
+            font-size: 15px;
+        }
+
+        .best-line {
+            margin-top: 16px;
+            display: inline-flex;
             align-items: center;
-            justify-content: flex-start;
-            gap: 12px;
-            padding: 12px;
-            min-height: 72px;
-            text-align: left;
-            background-color: #3d3550;
-            border: 1px solid #7E57C2;
-            border-radius: 8px;
-            white-space: normal;
+            gap: 6px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            color: var(--bone-dim);
+            font-size: 14px;
         }
 
-        .draft-card:active,
-        .draft-card:hover {
-            background-color: #4e4468;
-            border-color: #FFD54F;
+        .best-line .icon {
+            width: 20px;
+            height: 20px;
         }
 
-        .draft-icon {
-            font-size: 34px;
-            line-height: 1;
-            flex-shrink: 0;
+        .crystal-count {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            color: #d1b3ff;
         }
 
-        .draft-text {
+        .crystal-count .icon {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* 祝福三選一 */
+        #draft-screen .title-text {
+            font-size: 26px;
+            margin-bottom: 16px;
+        }
+
+        #draft-cards {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 560px;
+            justify-content: center;
+        }
+
+        .draft-card {
+            flex: 1;
+            max-width: 170px;
+            min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 8px 14px;
+            cursor: pointer;
+            font-family: var(--font-ui);
+            animation: card-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+        }
+
+        .draft-card:nth-child(2) {
+            animation-delay: 0.08s;
+        }
+
+        .draft-card:nth-child(3) {
+            animation-delay: 0.16s;
+        }
+
+        .draft-card:active {
+            transform: scale(0.96);
+        }
+
+        .draft-card .card-icon {
+            width: 64px;
+            height: 64px;
+            padding: 6px;
+            border-radius: 50%;
+            background: radial-gradient(rgba(233, 196, 106, 0.25), rgba(0, 0, 0, 0));
         }
 
         .draft-name {
-            font-size: clamp(16px, 4vw, 18px);
-            color: #FFD54F;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 17px;
+            color: var(--gold);
+            text-shadow: 0 2px 0 var(--ink);
         }
 
         .draft-desc {
-            font-size: clamp(14px, 3.4vw, 15px);
-            font-weight: normal;
-            color: #E0E0E0;
+            font-size: 13px;
+            line-height: 1.35;
+            color: var(--bone);
+            min-height: 2.7em;
         }
 
         .pips {
@@ -406,225 +760,248 @@
         }
 
         .pip {
-            width: 8px;
-            height: 8px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
-            border: 1px solid #9E9E9E;
+            border: 2px solid var(--ink);
+            background: #3a3046;
         }
 
         .pip.on {
-            background-color: #FFD54F;
-            border-color: #FFD54F;
+            background: var(--gold);
         }
 
         .pip.next {
-            background-color: #FFD54F;
-            border-color: #FFF;
-            animation: pip-blink 0.8s infinite alternate;
+            background: var(--gold);
+            animation: blink 0.8s infinite alternate;
         }
 
-        @keyframes pip-blink {
-            from {
-                opacity: 0.3;
-            }
-
-            to {
-                opacity: 1;
-            }
+        #reroll-btn {
+            margin-top: 18px;
+            font-size: 15px;
         }
 
+        /* 祝福列表（暫停 / 結算） */
         .bless-list {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 8px;
             justify-content: center;
         }
 
         .bless-chip {
-            background-color: #3d3550;
-            border: 1px solid #7E57C2;
-            border-radius: 12px;
-            padding: 3px 10px;
-            font-size: 14px;
-        }
-
-        #restart-confirm-dialog {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #333;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            display: none;
-            z-index: 20;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            max-width: 300px;
-            width: 90%;
-        }
-
-        #restart-confirm-dialog h3 {
-            margin: 0 0 15px 0;
-            color: #ff6b6b;
-        }
-
-        #restart-confirm-dialog .button-group {
+            position: relative;
             display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-
-        #restart-confirm-dialog button {
-            padding: 8px 20px;
-            min-height: auto;
-        }
-
-        .overlay-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
             flex-direction: column;
-            justify-content: center;
             align-items: center;
-            text-align: center;
-            display: none;
-            z-index: 10;
+            width: 62px;
+            gap: 2px;
+            font-size: 11px;
+            color: var(--bone-dim);
         }
 
-        .overlay-content {
-            background-color: #2d2838;
-            padding: clamp(15px, 4vh, 25px);
-            border-radius: 12px;
-            max-height: 90vh;
-            overflow-y: auto;
-            width: 88%;
-            max-width: 500px;
+        .bless-chip .icon {
+            width: 40px;
+            height: 40px;
         }
 
-        .overlay-content h2 {
-            margin-top: 0;
-            font-size: clamp(20px, 5vw, 24px);
-            margin-bottom: clamp(15px, 3vh, 20px);
+        .bless-chip b {
+            position: absolute;
+            top: -2px;
+            right: 6px;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            background: var(--gold);
+            border: 2px solid var(--ink);
+            color: #3a2410;
+            font-family: var(--font-display);
+            font-size: 11px;
+            line-height: 14px;
         }
 
-        #game-over-content h2 {
-            color: #FF5252;
+        .empty-note {
+            color: var(--bone-dim);
+            font-size: 13px;
         }
 
-        #final-wave-text {
-            font-size: clamp(18px, 4.5vw, 22px);
-            font-weight: bold;
+        /* 結算 */
+        #game-over-screen .title-text {
+            font-size: 36px;
+            color: #ff7a6a;
+            text-shadow: 0 3px 0 var(--ink), 0 0 16px rgba(224, 72, 72, 0.5);
+        }
+
+        .result-wave {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 64px;
+            line-height: 1;
+            color: var(--bone);
+            text-shadow: 0 4px 0 var(--ink);
+        }
+
+        .result-wave-label {
+            font-family: var(--font-display);
+            font-weight: 700;
+            color: var(--bone-dim);
+            margin-bottom: 10px;
         }
 
         #best-wave-text {
-            color: #BDBDBD;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            color: var(--bone-dim);
+            min-height: 24px;
         }
 
         #best-wave-text.new-record {
-            color: #FFD54F;
-            font-weight: bold;
-            font-size: clamp(17px, 4vw, 20px);
+            color: var(--gold);
+            font-size: 18px;
+            animation: pop 0.5s;
         }
 
-        #final-blessings {
-            margin-top: 12px;
+        #best-wave-text .icon {
+            width: 22px;
+            height: 22px;
         }
 
-        .overlay-content p {
-            font-size: clamp(14px, 3vw, 16px);
-            margin: 5px 0;
-        }
-
-        #restart-button,
-        #restart-game-btn,
-        #resume-game-btn {
-            padding: clamp(10px, 2vh, 12px) clamp(20px, 5vw, 24px);
-            font-size: clamp(16px, 3.5vw, 18px);
-            margin-top: clamp(15px, 3vh, 20px);
-            cursor: pointer;
-            background-color: #4CAF50;
-            border: none;
-            border-radius: 6px;
-            color: white;
-            width: 100%;
-        }
-
-        #restart-game-btn {
-            background-color: #d32f2f;
-        }
-
-        #restart-game-btn:hover {
-            background-color: #f44336;
-        }
-
-        #restart-button:hover,
-        #resume-game-btn:hover {
-            background-color: #66BB6A;
-        }
-
-        .pause-section {
-            margin-bottom: clamp(15px, 3vh, 20px);
-            padding-bottom: clamp(10px, 2vh, 15px);
-            border-bottom: 1px solid #555;
-        }
-
-        .pause-section:last-of-type {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-
-        .pause-section h3 {
-            font-size: clamp(16px, 4vw, 18px);
-            margin-top: 0;
-            margin-bottom: 10px;
-            color: #9CCC65;
-        }
-
-        .pause-section h4 {
-            font-size: clamp(15px, 3.5vw, 17px);
-            margin-top: 12px;
-            margin-bottom: 8px;
-            color: #BA68C8;
-        }
-
-        .pause-section label {
-            font-size: clamp(14px, 3vw, 16px);
-            margin-right: 10px;
-            display: inline-block;
-            margin-bottom: 8px;
-        }
-
-        .pause-section input[type="range"] {
-            width: 60%;
-            vertical-align: middle;
-            cursor: pointer;
-        }
-
-        .stat-row {
+        .result-stats {
             display: flex;
-            justify-content: space-around;
-            align-items: center;
-            margin-bottom: 5px;
+            justify-content: center;
+            gap: 10px;
+            margin: 14px 0;
         }
 
-        .stat-item {
+        .result-stat {
+            flex: 1;
+            max-width: 110px;
+            padding: 8px 4px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--ink);
+        }
+
+        .result-stat b {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 20px;
+            color: var(--bone);
+        }
+
+        .result-stat span {
+            font-size: 11px;
+            color: var(--bone-dim);
+        }
+
+        .reward-line {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 6px 0 4px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            background: rgba(179, 136, 255, 0.15);
+            border: 2px solid rgba(179, 136, 255, 0.5);
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 18px;
+            color: #e1d0ff;
+        }
+
+        .reward-line .icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .section-title {
+            margin: 18px 0 8px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 15px;
+            color: var(--gold);
+            text-shadow: 0 2px 0 var(--ink);
+        }
+
+        /* 設定滑桿 */
+        .setting-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .setting-row .icon {
+            width: 26px;
+            height: 26px;
+        }
+
+        .setting-row input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 12px;
+            border-radius: 6px;
+            background: #120d18;
+            border: 2px solid var(--ink);
+            box-shadow: inset 0 0 0 1px var(--gold-deep);
+            outline: none;
+        }
+
+        .setting-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: linear-gradient(#f2cf73, #c4913a);
+            border: 3px solid var(--ink);
+            cursor: pointer;
+        }
+
+        .setting-row input[type="range"]::-moz-range-thumb {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(#f2cf73, #c4913a);
+            border: 3px solid var(--ink);
+            cursor: pointer;
+        }
+
+        /* 統計 */
+        .stat-grid {
+            display: grid;
+            gap: 8px;
+        }
+
+        .stat-grid.cols-5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+
+        .stat-grid.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+            max-width: 300px;
+            margin: 0 auto;
+        }
+
+        .stat-cell {
             display: flex;
             flex-direction: column;
             align-items: center;
-            flex: 1;
-            min-width: 0;
+            gap: 2px;
         }
 
-        .stat-row.images img {
-            width: clamp(28px, 12vw, 64px);
-            height: auto;
+        .stat-cell img {
+            width: 40px;
+            height: 40px;
             object-fit: contain;
-            margin-bottom: 3px;
+        }
+
+        .stat-cell b {
+            font-family: var(--font-display);
+            font-size: 15px;
         }
 
         img.tint-bloater {
@@ -635,9 +1012,135 @@
             filter: sepia(1) hue-rotate(230deg) saturate(2.5);
         }
 
-        .stat-row.counts span {
-            font-size: clamp(13px, 3vw, 15px);
-            font-weight: bold;
+        /* 永久強化 */
+        #meta-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: left;
+        }
+
+        .meta-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 8px 8px 10px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--ink);
+        }
+
+        .meta-row>.icon {
+            width: 38px;
+            height: 38px;
+        }
+
+        .meta-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .meta-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 15px;
+        }
+
+        .meta-desc {
+            font-size: 12px;
+            color: var(--bone-dim);
+            margin-top: 2px;
+        }
+
+        .meta-row .btn {
+            min-height: 40px;
+            min-width: 72px;
+            padding: 4px 10px;
+            font-size: 15px;
+            border-width: 2px;
+        }
+
+        .meta-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .meta-head h2 {
+            margin: 0;
+        }
+
+        /* 確認視窗 */
+        #confirm-dialog .overlay-content {
+            max-width: 340px;
+        }
+
+        #confirm-text {
+            color: var(--bone);
+            font-size: 15px;
+            margin: 4px 0 6px;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn-row .btn {
+            flex: 1;
+        }
+
+        /* ---------- 動畫 ---------- */
+        @keyframes pop {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.45); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes bump {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.18); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes blink {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes nova-glow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+
+        @keyframes hint {
+            0%, 100% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 var(--btn-edge), 0 0 0 0 rgba(233, 196, 106, 0.9); }
+            50% { box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 4px 0 var(--btn-edge), 0 0 0 8px rgba(233, 196, 106, 0); }
+        }
+
+        @keyframes card-in {
+            from { opacity: 0; transform: perspective(600px) rotateY(90deg) scale(0.8); }
+            to { opacity: 1; transform: perspective(600px) rotateY(0) scale(1); }
+        }
+
+        .screen-in {
+            animation: screen-in 0.25s ease-out both;
+        }
+
+        @keyframes screen-in {
+            from { opacity: 0; transform: scale(0.94); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
@@ -645,155 +1148,193 @@
 <body>
     <canvas id="gameCanvas"></canvas>
 
-    <div id="hud-top">
-        <div class="hud-pill" id="hp-pill">
-            <span>❤️</span>
-            <div class="hp-bar">
-                <div id="hp-fill"></div>
+    <div id="hud" class="hidden">
+        <div id="hud-top">
+            <div class="hud-chip">
+                <span class="chip-icon" data-icon="heart"></span>
+                <div class="hp-bar">
+                    <div id="hp-fill"></div>
+                    <span id="player-health-info"></span>
+                </div>
             </div>
-            <span id="player-health-info"></span>
+            <div id="wave-plate">
+                <span class="plate-icon" data-icon="skull"></span>
+                <div>
+                    <div id="wave-info"></div>
+                    <div id="timer-info"></div>
+                </div>
+            </div>
+            <div class="hud-right">
+                <div class="hud-chip"><span class="chip-icon" data-icon="soul"></span><span id="souls-info">0</span></div>
+                <button id="pause-resume-btn" class="btn btn-dark"><span class="btn-icon" data-icon="pause"></span>暫停</button>
+            </div>
         </div>
-        <div class="hud-pill" id="wave-pill">
-            <span id="wave-info"></span>
-            <span id="timer-info"></span>
-        </div>
-        <div class="hud-right">
-            <div class="hud-pill"><span id="souls-info"></span></div>
-            <button id="pause-resume-btn">⏸ 暫停</button>
-        </div>
-    </div>
 
-    <div id="hud-bottom">
-        <div id="action-row">
-            <button id="skip-wave-btn">⏩ 開戰</button>
-            <button id="nova-btn">💥 新星</button>
-        </div>
-        <div id="unit-cards">
-            <div class="unit-card">
-                <div class="unit-head">
-                    <img src="skeleton_warrior.png" class="unit-icon" alt="">
-                    <div class="unit-info">
-                        <span class="unit-label">骷髏</span>
-                        <span id="skel-level" class="stats-label">Lv 0</span>
+        <div id="hud-bottom">
+            <div id="action-row">
+                <button id="skip-wave-btn" class="btn btn-blue"><span class="btn-icon" data-icon="fastForward"></span>開戰</button>
+                <button id="nova-btn"></button>
+            </div>
+            <div id="unit-cards">
+                <div class="unit-card panel">
+                    <div class="unit-head">
+                        <div class="portrait"><img src="skeleton_warrior.png" alt=""><span class="lv-badge" id="skel-level">0</span></div>
+                        <div class="unit-info"><span class="unit-name">骷髏</span><span class="unit-stars" id="skel-stars"></span></div>
+                        <span class="unit-count">×<span id="skel-count">0</span></span>
                     </div>
-                    <span class="unit-count">×<span id="skel-count">0</span></span>
-                </div>
-                <div class="unit-btns">
-                    <button id="summon-skeleton-btn">召喚</button>
-                    <button id="upgrade-skeleton-btn">升級</button>
-                </div>
-            </div>
-            <div class="unit-card">
-                <div class="unit-head">
-                    <img src="wraith.png" class="unit-icon" alt="">
-                    <div class="unit-info">
-                        <span class="unit-label">怨靈</span>
-                        <span id="wraith-level" class="stats-label">Lv 0</span>
+                    <div class="unit-btns">
+                        <button id="summon-skeleton-btn" class="btn btn-green"></button>
+                        <button id="upgrade-skeleton-btn" class="btn btn-gold"></button>
                     </div>
-                    <span class="unit-count">×<span id="wraith-count">0</span></span>
                 </div>
-                <div class="unit-btns">
-                    <button id="summon-wraith-btn">召喚</button>
-                    <button id="upgrade-wraith-btn">升級</button>
-                </div>
-            </div>
-            <div class="unit-card">
-                <div class="unit-head">
-                    <img src="eye_monster.png" class="unit-icon" alt="">
-                    <div class="unit-info">
-                        <span class="unit-label">眼魔</span>
-                        <span id="eye-monster-level" class="stats-label">Lv 0</span>
+                <div class="unit-card panel">
+                    <div class="unit-head">
+                        <div class="portrait"><img src="wraith.png" alt=""><span class="lv-badge" id="wraith-level">0</span></div>
+                        <div class="unit-info"><span class="unit-name">怨靈</span><span class="unit-stars" id="wraith-stars"></span></div>
+                        <span class="unit-count">×<span id="wraith-count">0</span></span>
                     </div>
-                    <span class="unit-count">×<span id="eye-monster-count">0</span></span>
+                    <div class="unit-btns">
+                        <button id="summon-wraith-btn" class="btn btn-green"></button>
+                        <button id="upgrade-wraith-btn" class="btn btn-gold"></button>
+                    </div>
                 </div>
-                <div class="unit-btns">
-                    <button id="summon-eye-monster-btn">召喚</button>
-                    <button id="upgrade-eye-monster-btn">升級</button>
+                <div class="unit-card panel">
+                    <div class="unit-head">
+                        <div class="portrait"><img src="eye_monster.png" alt=""><span class="lv-badge" id="eye-monster-level">0</span></div>
+                        <div class="unit-info"><span class="unit-name">眼魔</span><span class="unit-stars" id="eye-monster-stars"></span></div>
+                        <span class="unit-count">×<span id="eye-monster-count">0</span></span>
+                    </div>
+                    <div class="unit-btns">
+                        <button id="summon-eye-monster-btn" class="btn btn-green"></button>
+                        <button id="upgrade-eye-monster-btn" class="btn btn-gold"></button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="message-area"></div>
+    <div id="message-area" class="panel"></div>
 
-    <div id="game-over-screen" class="overlay-screen">
-        <div id="game-over-content" class="overlay-content">
-            <h2>遊戲結束</h2>
-            <p id="final-wave-text">您存活了 0 波。</p>
-            <p id="best-wave-text"></p>
-            <p id="final-stats-text"></p>
-            <div id="final-blessings" class="bless-list"></div>
-            <button id="restart-button">重新開始</button>
+    <!-- 標題畫面 -->
+    <div id="title-screen" class="overlay-screen">
+        <h1 class="logo">亡靈狂潮</h1>
+        <div class="logo-sub">UNDEAD FRENZY</div>
+        <img class="title-hero" src="player.png" alt="">
+        <div class="title-menu">
+            <button id="title-continue-btn" class="btn btn-gold btn-big hidden"></button>
+            <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
+            <div class="title-row">
+                <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
+                <button id="title-settings-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gear"></span>設定</button>
+            </div>
+        </div>
+        <div class="best-line" id="title-best"></div>
+    </div>
+
+    <!-- 永久強化 -->
+    <div id="meta-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <div class="meta-head">
+                <h2 class="title-text">永久強化</h2>
+                <span class="crystal-count" id="meta-crystals"></span>
+            </div>
+            <div id="meta-list"></div>
+            <div class="stack">
+                <button id="meta-close-btn" class="btn btn-dark">返回</button>
+            </div>
         </div>
     </div>
 
-    <div id="pause-menu" class="overlay-screen">
-        <div id="pause-content" class="overlay-content">
-            <h2>遊戲暫停</h2>
-            <div class="pause-section">
-                <h3>設定</h3>
-                <label for="volume-slider">音樂音量:</label>
-                <input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5">
-                <br>
-                <label for="sfx-slider">音效音量:</label>
-                <input type="range" id="sfx-slider" min="0" max="1" step="0.01" value="0.5">
+    <!-- 設定（標題畫面用） -->
+    <div id="settings-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <h2 class="title-text">設定</h2>
+            <div class="setting-row"><span data-icon="music"></span><input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
+            <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
+            <div class="stack">
+                <button id="settings-close-btn" class="btn btn-dark">返回</button>
             </div>
-            <div class="pause-section">
-                <h3>祝福</h3>
-                <div id="pause-blessings" class="bless-list"></div>
-            </div>
-            <div class="pause-section">
-                <h3>統計數據</h3>
-                <h4>總召喚量:</h4>
-                <div class="stat-row images">
-                    <div class="stat-item"><img src="skeleton_warrior.png" alt="骷髏戰士"></div>
-                    <div class="stat-item"><img src="eye_monster.png" alt="眼魔"></div>
-                    <div class="stat-item"><img src="wraith.png" alt="怨靈"></div>
-                </div>
-                <div class="stat-row counts">
-                    <div class="stat-item"><span id="stat-summon-skel">0</span></div>
-                    <div class="stat-item"><span id="stat-summon-eye">0</span></div>
-                    <div class="stat-item"><span id="stat-summon-wraith">0</span></div>
-                </div>
-                <h4>總擊殺數:</h4>
-                <div class="stat-row images">
-                    <div class="stat-item"><img src="basic_melee.png" alt="基礎近戰"></div>
-                    <div class="stat-item"><img src="fast_melee.png" alt="快速近戰"></div>
-                    <div class="stat-item"><img src="basic_melee.png" class="tint-bloater" alt="腐屍"></div>
-                    <div class="stat-item"><img src="armored_melee.png" alt="裝甲近戰"></div>
-                    <div class="stat-item"><img src="armored_melee.png" class="tint-boss" alt="首領"></div>
-                </div>
-                <div class="stat-row counts">
-                    <div class="stat-item"><span id="stat-kill-basic">0</span></div>
-                    <div class="stat-item"><span id="stat-kill-fast">0</span></div>
-                    <div class="stat-item"><span id="stat-kill-bloater">0</span></div>
-                    <div class="stat-item"><span id="stat-kill-armored">0</span></div>
-                    <div class="stat-item"><span id="stat-kill-boss">0</span></div>
-                </div>
-            </div>
-            <button id="restart-game-btn">重新開始</button>
-            <button id="resume-game-btn">繼續遊戲</button>
         </div>
     </div>
 
+    <!-- 祝福三選一 -->
     <div id="draft-screen" class="overlay-screen">
-        <div class="overlay-content">
-            <h2>選擇一項祝福</h2>
-            <div id="draft-cards"></div>
+        <div class="title-text">選擇祝福</div>
+        <div id="draft-cards"></div>
+        <button id="reroll-btn" class="btn btn-blue"></button>
+    </div>
+
+    <!-- 暫停 -->
+    <div id="pause-menu" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <h2 class="title-text">暫停</h2>
+            <div class="setting-row"><span data-icon="music"></span><input type="range" id="pause-volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
+            <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="pause-sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
+            <div class="section-title">本局祝福</div>
+            <div id="pause-blessings" class="bless-list"></div>
+            <div class="section-title">擊殺</div>
+            <div class="stat-grid cols-5">
+                <div class="stat-cell"><img src="basic_melee.png" alt=""><b id="stat-kill-basic">0</b></div>
+                <div class="stat-cell"><img src="fast_melee.png" alt=""><b id="stat-kill-fast">0</b></div>
+                <div class="stat-cell"><img src="basic_melee.png" class="tint-bloater" alt=""><b id="stat-kill-bloater">0</b></div>
+                <div class="stat-cell"><img src="armored_melee.png" alt=""><b id="stat-kill-armored">0</b></div>
+                <div class="stat-cell"><img src="armored_melee.png" class="tint-boss" alt=""><b id="stat-kill-boss">0</b></div>
+            </div>
+            <div class="section-title">召喚</div>
+            <div class="stat-grid cols-3">
+                <div class="stat-cell"><img src="skeleton_warrior.png" alt=""><b id="stat-summon-skel">0</b></div>
+                <div class="stat-cell"><img src="wraith.png" alt=""><b id="stat-summon-wraith">0</b></div>
+                <div class="stat-cell"><img src="eye_monster.png" alt=""><b id="stat-summon-eye">0</b></div>
+            </div>
+            <div class="stack">
+                <button id="resume-game-btn" class="btn btn-green btn-big"><span class="btn-icon" data-icon="play"></span>繼續</button>
+                <div class="btn-row" style="margin-top:0">
+                    <button id="pause-title-btn" class="btn btn-dark"><span class="btn-icon" data-icon="home"></span>標題</button>
+                    <button id="restart-game-btn" class="btn btn-red"><span class="btn-icon" data-icon="reroll"></span>重來</button>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="restart-confirm-dialog">
-        <h3>確認重新開始？</h3>
-        <p>這將會清除目前的遊戲進度</p>
-        <div class="button-group">
-            <button id="restart-confirm-yes">確定</button>
-            <button id="restart-confirm-no">取消</button>
+    <!-- 結算 -->
+    <div id="game-over-screen" class="overlay-screen">
+        <div id="game-over-content" class="overlay-content panel screen-in">
+            <div class="title-text">陣亡</div>
+            <div class="result-wave" id="final-wave-text">0</div>
+            <div class="result-wave-label">撐過的波數</div>
+            <div id="best-wave-text"></div>
+            <div class="result-stats">
+                <div class="result-stat"><b id="final-kills">0</b><span>擊殺</span></div>
+                <div class="result-stat"><b id="final-summons">0</b><span>召喚</span></div>
+                <div class="result-stat"><b id="final-streak">0</b><span>最高連殺</span></div>
+            </div>
+            <div class="reward-line" id="final-reward"></div>
+            <div id="final-blessings" class="bless-list" style="margin-top:12px"></div>
+            <div class="stack">
+                <button id="restart-button" class="btn btn-green btn-big">再戰一局</button>
+                <div class="btn-row" style="margin-top:0">
+                    <button id="gameover-title-btn" class="btn btn-dark"><span class="btn-icon" data-icon="home"></span>標題</button>
+                    <button id="gameover-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 確認 -->
+    <div id="confirm-dialog" class="overlay-screen" style="z-index:20">
+        <div class="overlay-content panel screen-in">
+            <h2 class="title-text" id="confirm-title"></h2>
+            <p id="confirm-text"></p>
+            <div class="btn-row">
+                <button id="confirm-no" class="btn btn-dark">取消</button>
+                <button id="confirm-yes" class="btn btn-red">確定</button>
+            </div>
         </div>
     </div>
 
     <audio id="bgm" loop src="background.mp3"></audio>
 
+    <script src="icons.js"></script>
     <script src="game.js"></script>
 </body>
 

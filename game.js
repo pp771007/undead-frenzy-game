@@ -43,55 +43,74 @@ function inView(pos) {
         pos.y > camera.y - CULL_MARGIN && pos.y < camera.y + view.h + CULL_MARGIN;
 }
 
+const $id = (id) => document.getElementById(id);
 const uiElements = {
-    waveInfo: document.getElementById('wave-info'),
-    timerInfo: document.getElementById('timer-info'),
-    soulsInfo: document.getElementById('souls-info'),
-    playerHealthInfo: document.getElementById('player-health-info'),
-    hpFill: document.getElementById('hp-fill'),
-    hudTop: document.getElementById('hud-top'),
-    skelLevel: document.getElementById('skel-level'),
-    skelCount: document.getElementById('skel-count'),
-    summonSkeletonBtn: document.getElementById('summon-skeleton-btn'),
-    upgradeSkeletonBtn: document.getElementById('upgrade-skeleton-btn'),
-    eyeMonsterLevel: document.getElementById('eye-monster-level'),
-    eyeMonsterCount: document.getElementById('eye-monster-count'),
-    summonEyeMonsterBtn: document.getElementById('summon-eye-monster-btn'),
-    upgradeEyeMonsterBtn: document.getElementById('upgrade-eye-monster-btn'),
-    wraithLevel: document.getElementById('wraith-level'),
-    wraithCount: document.getElementById('wraith-count'),
-    summonWraithBtn: document.getElementById('summon-wraith-btn'),
-    upgradeWraithBtn: document.getElementById('upgrade-wraith-btn'),
-    pauseResumeBtn: document.getElementById('pause-resume-btn'),
-    messageArea: document.getElementById('message-area'),
-    gameOverScreen: document.getElementById('game-over-screen'),
-    finalWaveText: document.getElementById('final-wave-text'),
-    bestWaveText: document.getElementById('best-wave-text'),
-    finalStatsText: document.getElementById('final-stats-text'),
-    finalBlessings: document.getElementById('final-blessings'),
-    restartButton: document.getElementById('restart-button'),
-    pauseMenu: document.getElementById('pause-menu'),
-    volumeSlider: document.getElementById('volume-slider'),
-    sfxSlider: document.getElementById('sfx-slider'),
-    resumeGameBtn: document.getElementById('resume-game-btn'),
-    statSummonSkel: document.getElementById('stat-summon-skel'),
-    statSummonEye: document.getElementById('stat-summon-eye'),
-    statSummonWraith: document.getElementById('stat-summon-wraith'),
-    statKillBasic: document.getElementById('stat-kill-basic'),
-    statKillFast: document.getElementById('stat-kill-fast'),
-    statKillArmored: document.getElementById('stat-kill-armored'),
-    statKillBloater: document.getElementById('stat-kill-bloater'),
-    statKillBoss: document.getElementById('stat-kill-boss'),
-    skipWaveBtn: document.getElementById('skip-wave-btn'),
-    novaBtn: document.getElementById('nova-btn'),
-    draftScreen: document.getElementById('draft-screen'),
-    draftCards: document.getElementById('draft-cards'),
-    pauseBlessings: document.getElementById('pause-blessings'),
-    bgm: document.getElementById('bgm'),
-    restartGameBtn: document.getElementById('restart-game-btn'),
-    restartConfirmDialog: document.getElementById('restart-confirm-dialog'),
-    restartConfirmYes: document.getElementById('restart-confirm-yes'),
-    restartConfirmNo: document.getElementById('restart-confirm-no'),
+    hud: $id('hud'),
+    hudTop: $id('hud-top'),
+    waveInfo: $id('wave-info'),
+    timerInfo: $id('timer-info'),
+    soulsInfo: $id('souls-info'),
+    playerHealthInfo: $id('player-health-info'),
+    hpFill: $id('hp-fill'),
+    skelLevel: $id('skel-level'), skelStars: $id('skel-stars'), skelCount: $id('skel-count'),
+    summonSkeletonBtn: $id('summon-skeleton-btn'), upgradeSkeletonBtn: $id('upgrade-skeleton-btn'),
+    eyeMonsterLevel: $id('eye-monster-level'), eyeMonsterStars: $id('eye-monster-stars'), eyeMonsterCount: $id('eye-monster-count'),
+    summonEyeMonsterBtn: $id('summon-eye-monster-btn'), upgradeEyeMonsterBtn: $id('upgrade-eye-monster-btn'),
+    wraithLevel: $id('wraith-level'), wraithStars: $id('wraith-stars'), wraithCount: $id('wraith-count'),
+    summonWraithBtn: $id('summon-wraith-btn'), upgradeWraithBtn: $id('upgrade-wraith-btn'),
+    pauseResumeBtn: $id('pause-resume-btn'),
+    skipWaveBtn: $id('skip-wave-btn'),
+    novaBtn: $id('nova-btn'),
+    messageArea: $id('message-area'),
+    titleScreen: $id('title-screen'),
+    titleContinueBtn: $id('title-continue-btn'),
+    titleStartBtn: $id('title-start-btn'),
+    titleMetaBtn: $id('title-meta-btn'),
+    titleSettingsBtn: $id('title-settings-btn'),
+    titleBest: $id('title-best'),
+    metaScreen: $id('meta-screen'),
+    metaList: $id('meta-list'),
+    metaCrystals: $id('meta-crystals'),
+    metaCloseBtn: $id('meta-close-btn'),
+    settingsScreen: $id('settings-screen'),
+    settingsCloseBtn: $id('settings-close-btn'),
+    volumeSlider: $id('volume-slider'),
+    sfxSlider: $id('sfx-slider'),
+    pauseVolumeSlider: $id('pause-volume-slider'),
+    pauseSfxSlider: $id('pause-sfx-slider'),
+    draftScreen: $id('draft-screen'),
+    draftCards: $id('draft-cards'),
+    rerollBtn: $id('reroll-btn'),
+    pauseMenu: $id('pause-menu'),
+    pauseBlessings: $id('pause-blessings'),
+    resumeGameBtn: $id('resume-game-btn'),
+    pauseTitleBtn: $id('pause-title-btn'),
+    restartGameBtn: $id('restart-game-btn'),
+    statSummonSkel: $id('stat-summon-skel'),
+    statSummonEye: $id('stat-summon-eye'),
+    statSummonWraith: $id('stat-summon-wraith'),
+    statKillBasic: $id('stat-kill-basic'),
+    statKillFast: $id('stat-kill-fast'),
+    statKillArmored: $id('stat-kill-armored'),
+    statKillBloater: $id('stat-kill-bloater'),
+    statKillBoss: $id('stat-kill-boss'),
+    gameOverScreen: $id('game-over-screen'),
+    finalWaveText: $id('final-wave-text'),
+    bestWaveText: $id('best-wave-text'),
+    finalKills: $id('final-kills'),
+    finalSummons: $id('final-summons'),
+    finalStreak: $id('final-streak'),
+    finalReward: $id('final-reward'),
+    finalBlessings: $id('final-blessings'),
+    restartButton: $id('restart-button'),
+    gameoverTitleBtn: $id('gameover-title-btn'),
+    gameoverMetaBtn: $id('gameover-meta-btn'),
+    confirmDialog: $id('confirm-dialog'),
+    confirmTitle: $id('confirm-title'),
+    confirmText: $id('confirm-text'),
+    confirmYes: $id('confirm-yes'),
+    confirmNo: $id('confirm-no'),
+    bgm: $id('bgm'),
 };
 
 const CONFIG = {
@@ -230,11 +249,11 @@ const CONFIG = {
     waveEvents: {
         startWave: 6, chance: 0.3,
         list: {
-            bloodMoon: { icon: '🌕', name: '血月', desc: '怪物 ×1.6、靈魂 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
-            eliteTide: { icon: '👑', name: '精英潮', desc: '精英怪大量出現', eliteMult: 4, eliteMax: 0.6, color: '#FFD54F' },
-            frenzy: { icon: '💢', name: '狂暴', desc: '怪物更快、靈魂 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
-            plague: { icon: '🤢', name: '腐屍狂潮', desc: '腐屍 ×3', bloaterMult: 3, color: '#AED581' },
-            treasure: { icon: '💰', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量靈魂', thieves: 3, color: '#FFE082' },
+            bloodMoon: { icon: 'bloodMoon', name: '血月', desc: '怪物 ×1.6、靈魂 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
+            eliteTide: { icon: 'crown', name: '精英潮', desc: '精英怪大量出現', eliteMult: 4, eliteMax: 0.6, color: '#FFD54F' },
+            frenzy: { icon: 'claws', name: '狂暴', desc: '怪物更快、靈魂 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
+            plague: { icon: 'plague', name: '腐屍狂潮', desc: '腐屍 ×3', bloaterMult: 3, color: '#AED581' },
+            treasure: { icon: 'sack', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量靈魂', thieves: 3, color: '#FFE082' },
         },
     },
     streak: {
@@ -299,7 +318,7 @@ const CONFIG = {
     draft: {
         every: 3, optionCount: 3,
     },
-    // 兵種進化：等級到門檻就升一階（★），外型變大換色、多一個能力
+    // 兵種進化：等級到門檻就升一階（一顆星），外型變大換色、多一個能力
     evolution: {
         levels: [10, 25, 50],
         tints: ['#64B5F6', '#FFD54F', '#EF5350'],
@@ -335,25 +354,25 @@ const CONFIG = {
     }
 };
 
-// ---------- 祝福（每 3 波 / 首領波三選一，可疊層） ----------
+// ---------- 祝福（每 3 波 / 首領波三選一，可疊層）；圖示名稱 = 祝福 id（icons.js） ----------
 const CLEAVE_RADIUS = 35;
 const pct = (v) => `${Math.round(v * 100)}%`;
 const BLESSINGS = {
-    boneBlade: { icon: '🗡️', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
-    cleave: { icon: '🌀', name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
-    boneArmor: { icon: '🛡️', name: '骨甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
-    splitGaze: { icon: '👁️', name: '分裂凝視', max: 3, per: 1, desc: b => `眼魔每次多射 ${b.per} 發` },
-    frenzyEye: { icon: '⚡', name: '狂熱之眼', max: 4, per: 0.3, desc: b => `眼魔攻速 +${pct(b.per)}` },
-    wraithBlast: { icon: '💣', name: '怨念爆裂', max: 4, per: 0.6, desc: b => `怨靈爆炸傷害 +${pct(b.per)}` },
-    rebirth: { icon: '♻️', name: '輪迴', max: 2, per: 0.4, desc: b => `怨靈陣亡時 ${pct(b.per)} 重生` },
-    frostAura: { icon: '❄️', name: '寒冥光環', max: 3, per: 5, desc: () => '怨靈光環每秒造成傷害' },
-    raiseDead: { icon: '⚰️', name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
-    soulHarvest: { icon: '💠', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
-    magnet: { icon: '🧲', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
-    vitality: { icon: '❤️', name: '不死之軀', max: 5, per: 25, desc: b => `法師血量 +${b.per} 並回滿` },
-    novaPower: { icon: '💥', name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
-    pact: { icon: '📜', name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
-    lifesteal: { icon: '🩸', name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
+    boneBlade: { name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
+    cleave: { name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
+    boneArmor: { name: '骨甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
+    splitGaze: { name: '分裂凝視', max: 3, per: 1, desc: b => `眼魔每次多射 ${b.per} 發` },
+    frenzyEye: { name: '狂熱之眼', max: 4, per: 0.3, desc: b => `眼魔攻速 +${pct(b.per)}` },
+    wraithBlast: { name: '怨念爆裂', max: 4, per: 0.6, desc: b => `怨靈爆炸傷害 +${pct(b.per)}` },
+    rebirth: { name: '輪迴', max: 2, per: 0.4, desc: b => `怨靈陣亡時 ${pct(b.per)} 重生` },
+    frostAura: { name: '寒冥光環', max: 3, per: 5, desc: () => '怨靈光環每秒造成傷害' },
+    raiseDead: { name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
+    soulHarvest: { name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
+    magnet: { name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
+    vitality: { name: '不死之軀', max: 5, per: 25, desc: b => `法師血量 +${b.per} 並回滿` },
+    novaPower: { name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
+    pact: { name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
+    lifesteal: { name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
 };
 
 function getTier(level) {
@@ -366,6 +385,37 @@ function getTier(level) {
 function bl(id) { return (gameState.blessings && gameState.blessings[id]) || 0; }
 function blessVal(id) { return BLESSINGS[id].per * bl(id); }
 
+// ---------- 永久強化（跨局保留）：每局結束依撐過的波數與擊敗的首領拿靈魂結晶 ----------
+const META_KEY = 'undeadFrenzy_meta';
+const META_UPGRADES = {
+    startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 10, costBase: 30, desc: m => `開局靈魂 +${m.per}` },
+    mageHp: { icon: 'heart', name: '法師體魄', max: 5, per: 10, costBase: 30, desc: m => `法師血量 +${m.per}` },
+    novaMastery: { icon: 'burst', name: '新星精通', max: 5, per: 0.08, costBase: 40, desc: m => `新星冷卻 -${pct(m.per)}` },
+    boneMarrow: { icon: 'boneArmor', name: '骨髓強化', max: 5, per: 0.06, costBase: 50, desc: m => `召喚物血量 +${pct(m.per)}` },
+    soulAffinity: { icon: 'soulHarvest', name: '靈魂親和', max: 5, per: 0.06, costBase: 50, desc: m => `靈魂掉落 +${pct(m.per)}` },
+    freeReroll: { icon: 'reroll', name: '先知之眼', max: 2, per: 1, costBase: 80, desc: m => `每次祝福免費重抽 ${m.per} 次` },
+    headStart: { icon: 'star', name: '開局祝福', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
+};
+const CRYSTALS_PER_WAVE = 2;
+const CRYSTALS_PER_BOSS = 15;
+function defaultMeta() {
+    return { crystals: 0, upgrades: {}, tutorialDone: false, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume };
+}
+function loadMeta() {
+    try {
+        const m = JSON.parse(localStorage.getItem(META_KEY));
+        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) } };
+    } catch (e) { }
+    return defaultMeta();
+}
+function saveMeta() {
+    try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) { }
+}
+const meta = loadMeta();
+function metaLv(id) { return meta.upgrades[id] || 0; }
+function metaVal(id) { return META_UPGRADES[id].per * metaLv(id); }
+function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
+
 function getSummonCost(config) {
     return Math.max(1, Math.round(config.summonCost * (1 - blessVal('pact'))));
 }
@@ -373,7 +423,7 @@ function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet'));
 }
 function getNovaCooldown() {
-    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower'));
+    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (1 - metaVal('novaMastery'));
 }
 function getNovaDamage() {
     return Math.round(CONFIG.nova.baseDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('novaPower')));
@@ -435,7 +485,7 @@ let gameState = {
     visualEffects: [],
     orbs: [], particles: [], floatTexts: [],
     shake: 0, hurtFlash: 0, soulCarry: 0,
-    sfxVolume: CONFIG.audio.initialSfxVolume,
+    sfxVolume: meta.sfxVolume,
     souls: CONFIG.player.initialSouls,
     currentWave: 0,
     timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
@@ -445,7 +495,7 @@ let gameState = {
     skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
     currentCosts: { ...CONFIG.upgradeCosts },
     imagesLoaded: false,
-    bgmVolume: CONFIG.audio.initialVolume,
+    bgmVolume: meta.bgmVolume,
     musicStarted: false,
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
@@ -846,8 +896,37 @@ function spawnParticles(x, y, color, count, speed = 80, life = 0.5, size = 2.5) 
         ps.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, maxLife: life, color, size: size * (0.6 + Math.random() * 0.6) });
     }
 }
-function spawnFloatText(x, y, text, color = '#FFFFFF', size = 14, life = 0.9) {
-    gameState.floatTexts.push({ x, y, text, color, size, life, maxLife: life });
+function spawnFloatText(x, y, text, color = '#FFFFFF', size = 14, life = 0.9, icon = null) {
+    gameState.floatTexts.push({ x, y, text, color, size, life, maxLife: life, icon });
+}
+
+// ---------- 畫布上的字：跟 HTML 介面同一套黑暗奇幻襯線字，深色粗描邊 ----------
+const CANVAS_FONT_FAMILY = '"Noto Serif TC", "Songti TC", "PMingLiU", serif';
+const TEXT_OUTLINE = '#0e0a14';
+function canvasFont(size, weight = 900) {
+    return `${weight} ${size}px ${CANVAS_FONT_FAMILY}`;
+}
+function drawOutlinedText(text, x, y, size, color, weight = 900) {
+    ctx.font = canvasFont(size, weight);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(3, size * 0.22);
+    ctx.strokeStyle = TEXT_OUTLINE;
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+}
+// 圖示＋文字並排置中（或靠左 / 靠右）
+function drawIconLabel(iconName, text, x, y, size, color, align = 'center') {
+    const img = iconName ? getIconImage(iconName) : null;
+    const iconSize = img ? size * 1.3 : 0;
+    const gap = img ? size * 0.3 : 0;
+    ctx.font = canvasFont(size);
+    const tw = ctx.measureText(text).width;
+    const total = iconSize + gap + tw;
+    let left = align === 'center' ? x - total / 2 : (align === 'right' ? x - total : x);
+    if (img) ctx.drawImage(img, left, y - iconSize * 0.72, iconSize, iconSize);
+    ctx.textAlign = 'left';
+    drawOutlinedText(text, left + iconSize + gap, y, size, color);
 }
 function addShake(amount) {
     gameState.shake = Math.min(14, Math.max(gameState.shake, amount));
@@ -1036,7 +1115,7 @@ class SummonUnit extends GameObject {
     computeStats() {
         const type = this.config.type;
         const multiplier = 1 + (this.level * this.config.upgradeBonus);
-        this.maxHealth = Math.round(this.config.baseHealth * multiplier * (1 + blessVal('boneArmor')));
+        this.maxHealth = Math.round(this.config.baseHealth * multiplier * (1 + blessVal('boneArmor')) * (1 + metaVal('boneMarrow')));
         let attack = (this.config.baseAttack > 0) ? (this.config.baseAttack * multiplier) : 0;
         if (type === 'SkeletonWarrior') attack *= 1 + blessVal('boneBlade');
         this.attack = attack;
@@ -2066,7 +2145,7 @@ class Monster extends GameObject {
         this.isAlive = false;
         registerKill();
         const ev = getWaveEvent();
-        const souls = this.soulValue() * (1 + blessVal('soulHarvest')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus())
+        const souls = this.soulValue() * (1 + blessVal('soulHarvest')) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus())
             + gameState.soulCarry;
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
@@ -2396,7 +2475,7 @@ function registerKill() {
     if (gameState.streak > gameState.bestStreak) gameState.bestStreak = gameState.streak;
     if (CONFIG.streak.milestones.includes(gameState.streak)) {
         const p = gameState.player;
-        if (p) spawnFloatText(p.pos.x, p.pos.y - 50, `🔥 ${gameState.streak} 連殺！`, '#FFAB40', 22, 1.4);
+        if (p) spawnFloatText(p.pos.x, p.pos.y - 50, `${gameState.streak} 連殺！`, '#FFAB40', 22, 1.4, 'flame');
         addShake(3);
         Sfx.play('streak');
     }
@@ -2483,9 +2562,9 @@ function prepareNextWave() {
     const ev = getWaveEvent();
     if (isBossWave) {
         const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
-        gameState.banner = { text: '⚠ 首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration };
+        gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'warning' };
     } else if (ev) {
-        gameState.banner = { text: `${ev.icon} ${ev.name}`, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3 };
+        gameState.banner = { text: ev.name, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3, icon: ev.icon };
     } else {
         gameState.banner = { text: `第 ${waveNum} 波`, sub: '', color: '#FFFFFF', life: CONFIG.wave.bannerDuration };
     }
@@ -2583,14 +2662,26 @@ function queueDraftIfDue() {
     queueDraft();
 }
 
-function queueDraft() {
+function rollDraftOptions() {
     const eligible = Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max);
     for (let i = eligible.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
     }
-    const options = eligible.slice(0, CONFIG.draft.optionCount);
-    if (options.length > 0) gameState.pendingDraft = { options };
+    return eligible.slice(0, CONFIG.draft.optionCount);
+}
+
+function queueDraft() {
+    const options = rollDraftOptions();
+    if (options.length > 0) gameState.pendingDraft = { options, rerolls: 0 };
+}
+
+// 重抽：永久強化給的免費次數用完後，每次比上一次貴
+const REROLL_BASE_COST = 20;
+function rerollCost() {
+    const used = gameState.pendingDraft ? (gameState.pendingDraft.rerolls || 0) : 0;
+    const free = metaLv('freeReroll');
+    return used < free ? 0 : REROLL_BASE_COST * (used - free + 1);
 }
 
 function blessingPips(id, highlightNext) {
@@ -2603,21 +2694,42 @@ function blessingPips(id, highlightNext) {
     return html;
 }
 
-function openDraft() {
-    if (!gameState.pendingDraft) return;
-    stopHoldAction();
-    gameState.draftOpen = true;
+function renderDraftCards() {
     const box = uiElements.draftCards;
     box.innerHTML = '';
     gameState.pendingDraft.options.forEach(id => {
         const b = BLESSINGS[id];
         const card = document.createElement('button');
-        card.className = 'draft-card';
-        card.innerHTML = `<span class="draft-icon">${b.icon}</span><span class="draft-text"><span class="draft-name">${b.name}<span class="pips">${blessingPips(id, true)}</span></span><span class="draft-desc">${b.desc(b)}</span></span>`;
+        card.className = 'draft-card panel';
+        card.innerHTML = `${iconHtml(id, 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>`;
         card.addEventListener('click', () => pickBlessing(id));
         box.appendChild(card);
     });
-    uiElements.draftScreen.style.display = 'flex';
+    const cost = rerollCost();
+    uiElements.rerollBtn.innerHTML = cost === 0
+        ? `${iconHtml('reroll', 'icon btn-icon')}免費重抽`
+        : `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">${iconHtml('soul')}${cost}</span>`;
+    uiElements.rerollBtn.disabled = gameState.souls < cost;
+}
+
+function openDraft() {
+    if (!gameState.pendingDraft) return;
+    stopHoldAction();
+    gameState.draftOpen = true;
+    renderDraftCards();
+    showScreen(uiElements.draftScreen, true);
+    Sfx.play('draft');
+    updateUI();
+}
+
+function rerollDraft() {
+    if (!gameState.pendingDraft) return;
+    const cost = rerollCost();
+    if (gameState.souls < cost) return;
+    gameState.souls -= cost;
+    gameState.pendingDraft.rerolls = (gameState.pendingDraft.rerolls || 0) + 1;
+    gameState.pendingDraft.options = rollDraftOptions();
+    renderDraftCards();
     Sfx.play('draft');
     updateUI();
 }
@@ -2632,14 +2744,14 @@ function pickBlessing(id) {
     gameState.summons.forEach(s => { if (s.isAlive) s.refreshStats(); });
     gameState.pendingDraft = null;
     gameState.draftOpen = false;
-    uiElements.draftScreen.style.display = 'none';
+    showScreen(uiElements.draftScreen, false);
     if (gameState.extraDrafts > 0) {
         gameState.extraDrafts--;
         queueDraft();
     }
     if (gameState.player) {
         spawnParticles(gameState.player.pos.x, gameState.player.pos.y, '#FFD54F', 24, 120, 0.7, 3);
-        spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, `${BLESSINGS[id].icon} ${BLESSINGS[id].name}`, '#FFD54F', 15, 1.4);
+        spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, BLESSINGS[id].name, '#FFD54F', 16, 1.4, id);
     }
     Sfx.play('pick');
     saveGameState();
@@ -2649,11 +2761,177 @@ function pickBlessing(id) {
 
 function renderBlessingList(container) {
     const ids = Object.keys(BLESSINGS).filter(id => bl(id) > 0);
-    container.innerHTML = ids.length === 0 ? '<span class="empty-note">—</span>' : ids.map(id =>
-        `<span class="bless-chip">${BLESSINGS[id].icon} ${BLESSINGS[id].name}${bl(id) > 1 ? ` ×${bl(id)}` : ''}</span>`).join('');
+    container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id =>
+        `<span class="bless-chip">${iconHtml(id)}${BLESSINGS[id].name}${bl(id) > 1 ? `<b>${bl(id)}</b>` : ''}</span>`).join('');
+}
+
+// ---------- 畫面切換：標題 / 遊玩中，以及疊在上面的視窗 ----------
+let appScreen = 'loading';
+function showScreen(el, show) {
+    el.style.display = show ? 'flex' : 'none';
+}
+
+let confirmAction = null;
+function showConfirm(title, text, yesLabel, onYes) {
+    uiElements.confirmTitle.textContent = title;
+    uiElements.confirmText.textContent = text;
+    uiElements.confirmYes.textContent = yesLabel;
+    confirmAction = onYes;
+    showScreen(uiElements.confirmDialog, true);
+}
+
+function peekSave() {
+    try {
+        const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+        if (s && COMPATIBLE_SAVE_VERSIONS.includes(s.saveVersion)) return s;
+    } catch (e) { }
+    return null;
+}
+function getBestWave() {
+    try { return parseInt(localStorage.getItem(BEST_WAVE_KEY), 10) || 0; } catch (e) { return 0; }
+}
+
+function refreshTitle() {
+    const save = peekSave();
+    uiElements.titleContinueBtn.classList.toggle('hidden', !save);
+    if (save) uiElements.titleContinueBtn.innerHTML = `${iconHtml('play', 'icon btn-icon')}繼續 · 第 ${save.currentWave} 波`;
+    uiElements.titleStartBtn.classList.toggle('btn-gold', !save);
+    uiElements.titleStartBtn.classList.toggle('btn-green', !!save);
+    const best = getBestWave();
+    uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
+        `<span class="crystal-count">${iconHtml('crystal')}${meta.crystals}</span>`;
+}
+
+function showTitle() {
+    appScreen = 'title';
+    gameState.isPaused = false;
+    uiElements.hud.classList.add('hidden');
+    [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
+    showScreen(uiElements.titleScreen, true);
+    refreshTitle();
+}
+
+function enterPlaying() {
+    appScreen = 'playing';
+    showScreen(uiElements.titleScreen, false);
+    uiElements.hud.classList.remove('hidden');
+    resizeCanvas();
+    loopLastTime = performance.now();
+    ensureMusicPlaying();
+    startTutorialIfNeeded();
+    updateUI();
+    if (gameState.pendingDraft) openDraft();
+}
+
+function startNewRun() {
+    const begin = () => { resetGame(); enterPlaying(); };
+    const save = peekSave();
+    if (save && save.currentWave > 0) showConfirm('開始新的一局？', `第 ${save.currentWave} 波的進度會被覆蓋`, '開始', begin);
+    else begin();
+}
+
+function continueRun() {
+    if (!loadGameState()) { refreshTitle(); return; }
+    restoreSummonsFromLoad();
+    enterPlaying();
+}
+
+let metaReturnTo = 'title';
+function openMeta(returnTo) {
+    metaReturnTo = returnTo;
+    renderMeta();
+    showScreen(uiElements.metaScreen, true);
+}
+function closeMeta() {
+    showScreen(uiElements.metaScreen, false);
+    if (metaReturnTo === 'title') refreshTitle();
+}
+function renderMeta() {
+    uiElements.metaCrystals.innerHTML = `${iconHtml('crystal')}${meta.crystals}`;
+    uiElements.metaList.innerHTML = Object.entries(META_UPGRADES).map(([id, m]) => {
+        const lv = metaLv(id), maxed = lv >= m.max, cost = metaCost(id);
+        const pips = Array.from({ length: m.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
+        const btn = maxed
+            ? '<button class="btn btn-dark" disabled>已滿</button>'
+            : `<button class="btn btn-gold" data-meta="${id}" ${meta.crystals < cost ? 'disabled' : ''}><span class="price">${iconHtml('crystal')}${cost}</span></button>`;
+        return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${m.desc(m)}</div></div>${btn}</div>`;
+    }).join('');
+}
+function buyMeta(id) {
+    const m = META_UPGRADES[id];
+    if (!m || metaLv(id) >= m.max) return;
+    const cost = metaCost(id);
+    if (meta.crystals < cost) return;
+    meta.crystals -= cost;
+    meta.upgrades[id] = metaLv(id) + 1;
+    saveMeta();
+    Sfx.unlock();
+    Sfx.play('upgrade');
+    renderMeta();
+}
+
+// ---------- 新手提示（只在第一局）：先教移動，再教召喚 ----------
+const TUTORIAL_MOVE_DIST = 60;
+let tutorial = null;
+function startTutorialIfNeeded() {
+    if (meta.tutorialDone || gameState.currentWave > 0 || !gameState.player) return;
+    tutorial = { step: 'move', start: { ...gameState.player.pos } };
+}
+function updateTutorial() {
+    if (!tutorial || !gameState.player) return;
+    if (tutorial.step === 'move' && distanceSq(gameState.player.pos, tutorial.start) > TUTORIAL_MOVE_DIST * TUTORIAL_MOVE_DIST) {
+        tutorial.step = 'summon';
+        uiElements.summonSkeletonBtn.classList.add('hint-pulse');
+    } else if (tutorial.step === 'summon' && gameState.totalSummons.SkeletonWarrior > 0) {
+        uiElements.summonSkeletonBtn.classList.remove('hint-pulse');
+        tutorial = null;
+        meta.tutorialDone = true;
+        saveMeta();
+    }
+}
+function drawTutorial() {
+    if (!tutorial) return;
+    const t = performance.now() / 1000;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.lineJoin = 'round';
+    if (tutorial.step === 'move') {
+        const cx = view.cssW / 2, cy = view.cssH * 0.6;
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = 'rgba(233, 196, 106, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(cx, cy, JOYSTICK_RADIUS, 0, Math.PI * 2); ctx.stroke();
+        const kx = cx + Math.sin(t * 2.2) * JOYSTICK_RADIUS * 0.7;
+        ctx.fillStyle = 'rgba(233, 196, 106, 0.9)';
+        ctx.beginPath(); ctx.arc(kx, cy, 18, 0, Math.PI * 2); ctx.fill();
+        drawOutlinedText('按住畫面拖曳移動', cx, cy - JOYSTICK_RADIUS - 18, 20, '#f4ecd8');
+    } else {
+        // 卡片是蓋在畫布上的 HTML，提示要畫在卡片上緣之上才看得到
+        const r = uiElements.summonSkeletonBtn.getBoundingClientRect();
+        const card = uiElements.summonSkeletonBtn.closest('.unit-card').getBoundingClientRect();
+        const x = r.left + r.width / 2, y = card.top - 6 + Math.sin(t * 5) * 4;
+        ctx.fillStyle = '#e9c46a';
+        ctx.strokeStyle = '#0e0a14';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y - 16); ctx.lineTo(x + 12, y - 16); ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.textAlign = 'left';
+        drawOutlinedText('召喚第一隻骷髏', Math.max(8, x - 30), y - 30, 18, '#f4ecd8');
+    }
+    ctx.restore();
+}
+
+function popLevelBadge(type) {
+    const el = { SkeletonWarrior: uiElements.skelLevel, EyeMonster: uiElements.eyeMonsterLevel, Wraith: uiElements.wraithLevel }[type];
+    if (!el) return;
+    el.classList.remove('pop');
+    void el.offsetWidth;
+    el.classList.add('pop');
 }
 
 function updateTimers(deltaTime) {
+    // 新手提示還沒走完前，第一波不開始倒數
+    if (tutorial && gameState.currentWave === 0) return;
     updateSpawner(deltaTime);
     gameState.novaCooldown = Math.max(0, gameState.novaCooldown - deltaTime);
     if (gameState.streakTimer > 0) {
@@ -2734,7 +3012,8 @@ function announceEvolution(type, tier) {
     const E = CONFIG.evolution;
     const name = E.names[type][tier - 1];
     gameState.banner = {
-        text: `${'★'.repeat(tier)} ${name}`,
+        text: name,
+        stars: tier,
         sub: E.perks[type][tier - 1],
         color: E.tints[tier - 1],
         life: CONFIG.wave.bannerDuration,
@@ -2778,11 +3057,9 @@ function tryUpgrade(type) {
             }
         });
         Sfx.play('upgrade');
+        popLevelBadge(type);
         if (newTier > oldTier) announceEvolution(type, newTier);
         updateUI();
-        if (newTier === oldTier && (!holdActionState.isHolding || holdActionState.actionType !== 'upgrade')) {
-            showMessage(`${unitName} 已升級！ (Lv ${gameState[levelKey]})`);
-        }
         ensureMusicPlaying();
         return true;
     } else {
@@ -2932,85 +3209,64 @@ function stopHoldAction(actionType, unitType) {
 }
 
 
+let lastShownSouls = 0;
+const UNIT_UI = [
+    { type: 'SkeletonWarrior', config: () => CONFIG.skeletonWarrior, countKey: 'skeletonWarriorCount', levelKey: 'skeletonWarriorLevel', costKey: 'skeletonWarrior', el: () => ({ level: uiElements.skelLevel, stars: uiElements.skelStars, count: uiElements.skelCount, summon: uiElements.summonSkeletonBtn, upgrade: uiElements.upgradeSkeletonBtn }) },
+    { type: 'EyeMonster', config: () => CONFIG.eyeMonster, countKey: 'eyeMonsterCount', levelKey: 'eyeMonsterLevel', costKey: 'eyeMonster', el: () => ({ level: uiElements.eyeMonsterLevel, stars: uiElements.eyeMonsterStars, count: uiElements.eyeMonsterCount, summon: uiElements.summonEyeMonsterBtn, upgrade: uiElements.upgradeEyeMonsterBtn }) },
+    { type: 'Wraith', config: () => CONFIG.wraith, countKey: 'wraithCount', levelKey: 'wraithLevel', costKey: 'wraith', el: () => ({ level: uiElements.wraithLevel, stars: uiElements.wraithStars, count: uiElements.wraithCount, summon: uiElements.summonWraithBtn, upgrade: uiElements.upgradeWraithBtn }) },
+];
+
+function starsHtml(tier) {
+    const lv = CONFIG.evolution.levels;
+    let html = '';
+    for (let i = 0; i < lv.length; i++) html += iconHtml('star', i < tier ? 'icon' : 'icon off');
+    if (tier < lv.length) html += `<span>Lv${lv[tier]}</span>`;
+    return html;
+}
+
+function priceButtonHtml(label, cost) {
+    return `<span>${label}</span><span class="price">${iconHtml('soul')}${formatNumberK(cost)}</span>`;
+}
+
 function updateUI() {
     const souls = gameState.souls;
-
-    if (gameState.player) {
-        const p = gameState.player;
+    const p = gameState.player;
+    if (p) {
         uiElements.playerHealthInfo.textContent = `${p.currentHealth}/${p.maxHealth}`;
         const ratio = p.maxHealth > 0 ? p.currentHealth / p.maxHealth : 0;
         uiElements.hpFill.style.width = `${Math.round(ratio * 100)}%`;
-        uiElements.hpFill.className = ratio > 0.5 ? '' : (ratio > 0.2 ? 'mid' : 'low');
+    }
+
+    uiElements.soulsInfo.textContent = formatNumberK(souls);
+    if (souls > lastShownSouls && !uiElements.soulsInfo.classList.contains('bump')) uiElements.soulsInfo.classList.add('bump');
+    lastShownSouls = souls;
+
+    uiElements.waveInfo.textContent = gameState.currentWave > 0 ? `第 ${gameState.currentWave} 波` : '準備';
+    if (gameState.betweenWaves) {
+        uiElements.timerInfo.textContent = tutorial && gameState.currentWave === 0 ? '先熟悉操作' : `下一波 ${Math.ceil(gameState.timeToNextWave)} 秒`;
     } else {
-        uiElements.playerHealthInfo.textContent = '-/-';
+        uiElements.timerInfo.textContent = `剩餘 ${countRemainingMonsters()}`;
     }
 
-    uiElements.soulsInfo.textContent = `靈魂: ${formatNumberK(souls)}`;
-    uiElements.waveInfo.textContent = `第${gameState.currentWave}波`;
-
-    if (gameState.betweenWaves && gameState.currentWave >= 0) {
-        uiElements.timerInfo.textContent = `下一波: 倒數 ${Math.ceil(gameState.timeToNextWave)} 秒`;
-    } else if (!gameState.betweenWaves) {
-        uiElements.timerInfo.textContent = `怪物剩餘: ${countRemainingMonsters()}`;
-    } else {
-        uiElements.timerInfo.textContent = `準備開始`;
+    const canAct = !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen;
+    for (const u of UNIT_UI) {
+        const el = u.el();
+        const level = gameState[u.levelKey];
+        const summonCost = getSummonCost(u.config());
+        const upgradeCost = gameState.currentCosts[u.costKey];
+        if (el.level.textContent !== String(level)) el.level.textContent = level;
+        setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
+        el.count.textContent = gameState[u.countKey];
+        setHtmlIfChanged(el.summon, priceButtonHtml('召喚', summonCost));
+        setHtmlIfChanged(el.upgrade, priceButtonHtml('升級', upgradeCost));
+        el.summon.disabled = !canAct;
+        el.upgrade.disabled = !canAct;
+        el.summon.classList.toggle('cant-afford', souls < summonCost);
+        el.upgrade.classList.toggle('cant-afford', souls < upgradeCost);
     }
 
-    function updateUnitUI(unitType) {
-        let config, count, level, summonCost, upgradeCost, uiMap;
-        switch (unitType) {
-            case 'SkeletonWarrior':
-                config = CONFIG.skeletonWarrior; count = gameState.skeletonWarriorCount; level = gameState.skeletonWarriorLevel;
-                summonCost = config.summonCost; upgradeCost = gameState.currentCosts.skeletonWarrior;
-                uiMap = {
-                    level: uiElements.skelLevel, count: uiElements.skelCount,
-                    summonBtn: uiElements.summonSkeletonBtn, upgradeBtn: uiElements.upgradeSkeletonBtn
-                };
-                break;
-            case 'EyeMonster':
-                config = CONFIG.eyeMonster; count = gameState.eyeMonsterCount; level = gameState.eyeMonsterLevel;
-                summonCost = config.summonCost; upgradeCost = gameState.currentCosts.eyeMonster;
-                uiMap = {
-                    level: uiElements.eyeMonsterLevel, count: uiElements.eyeMonsterCount,
-                    summonBtn: uiElements.summonEyeMonsterBtn, upgradeBtn: uiElements.upgradeEyeMonsterBtn
-                };
-                break;
-            case 'Wraith':
-                config = CONFIG.wraith; count = gameState.wraithCount; level = gameState.wraithLevel;
-                summonCost = config.summonCost; upgradeCost = gameState.currentCosts.wraith;
-                uiMap = {
-                    level: uiElements.wraithLevel, count: uiElements.wraithCount,
-                    summonBtn: uiElements.summonWraithBtn, upgradeBtn: uiElements.upgradeWraithBtn
-                };
-                break;
-            default: return;
-        }
-
-        summonCost = getSummonCost(config);
-        const tier = getTier(level);
-        const nextLv = CONFIG.evolution.levels[tier];
-        const levelHtml = `Lv ${level} <span class="stars">${'★'.repeat(tier)}</span>` +
-            (nextLv ? `<br><span class="next-evo">${'★'.repeat(tier + 1)} Lv${nextLv}</span>` : '');
-        setHtmlIfChanged(uiMap.level, levelHtml);
-        uiMap.count.textContent = count;
-
-        uiMap.summonBtn.textContent = `召喚\n(${formatNumberK(summonCost)}魂)`;
-        uiMap.upgradeBtn.textContent = `升級\n(${formatNumberK(upgradeCost)}魂)`;
-
-        const canAct = !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen;
-        setButtonState(uiMap.summonBtn, canAct, summonCost);
-        setButtonState(uiMap.upgradeBtn, canAct, upgradeCost);
-    }
-
-    updateUnitUI('SkeletonWarrior');
-    updateUnitUI('EyeMonster');
-    updateUnitUI('Wraith');
-
-    uiElements.skipWaveBtn.style.display = gameState.betweenWaves && !gameState.gameOver ? '' : 'none';
+    uiElements.skipWaveBtn.style.display = gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none';
     updateNovaButton();
-    uiElements.pauseResumeBtn.textContent = gameState.isPaused ? '▶ 繼續' : '⏸ 暫停';
-    uiElements.pauseResumeBtn.disabled = gameState.gameOver;
-    uiElements.restartGameBtn.disabled = gameState.gameOver;
 }
 
 // updateUI 每格都跑，innerHTML 只在內容真的變了才寫，避免每格重建 DOM
@@ -3026,56 +3282,41 @@ function updateNovaButton() {
     btn.disabled = gameState.gameOver || gameState.isPaused || gameState.draftOpen;
     if (cd > 0) {
         const done = (1 - cd / getNovaCooldown()) * 100;
-        setHtmlIfChanged(btn, `<span class="nova-icon">💥</span><span>${Math.ceil(cd)}</span>`);
-        btn.style.background = `conic-gradient(rgba(156, 39, 176, 0.85) ${done}%, rgba(20, 16, 30, 0.75) ${done}%)`;
+        setHtmlIfChanged(btn, `${iconHtml('burst')}<span>${Math.ceil(cd)}</span>`);
+        btn.style.background = `conic-gradient(rgba(156, 39, 176, 0.9) ${done}%, #1d1628 ${done}%)`;
         btn.classList.remove('nova-ready');
     } else {
-        setHtmlIfChanged(btn, '<span class="nova-icon">💥</span><span>新星</span>');
+        setHtmlIfChanged(btn, `${iconHtml('burst')}<span>新星</span>`);
         btn.style.background = '';
         btn.classList.add('nova-ready');
     }
 }
 
-function setButtonState(button, isActionPossible, cost) {
-    button.disabled = !isActionPossible;
-    if (isActionPossible) {
-        if (gameState.souls >= cost) {
-            button.classList.add('can-afford');
-        } else {
-            button.classList.remove('can-afford');
-            button.disabled = true;
-        }
-    } else {
-        button.classList.remove('can-afford');
-    }
-}
-
-
 function showGameOver() {
-    if (gameState.gameOver && uiElements.gameOverScreen.style.display !== 'flex') {
-        const survived = Math.max(0, gameState.currentWave - 1);
-        uiElements.finalWaveText.textContent = `您存活了 ${survived} 波。`;
-        let best = 0;
-        try { best = parseInt(localStorage.getItem(BEST_WAVE_KEY), 10) || 0; } catch (e) { }
-        const isRecord = survived > best;
-        if (isRecord) {
-            try { localStorage.setItem(BEST_WAVE_KEY, String(survived)); } catch (e) { }
-        }
-        uiElements.bestWaveText.textContent = isRecord ? '🏆 新紀錄！' : `最佳紀錄：${best} 波`;
-        uiElements.bestWaveText.classList.toggle('new-record', isRecord);
-        const kills = Object.values(gameState.totalKills).reduce((a, b) => a + b, 0);
-        const summons = Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
-        uiElements.finalStatsText.textContent = `擊殺 ${formatNumberK(kills)} · 召喚 ${formatNumberK(summons)} · 最高連殺 ${formatNumberK(gameState.bestStreak)}`;
-        renderBlessingList(uiElements.finalBlessings);
-        uiElements.gameOverScreen.style.display = 'flex';
-        localStorage.removeItem(SAVE_KEY);
-        updateUI();
-        pauseMusic();
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-        }
+    if (!gameState.gameOver || uiElements.gameOverScreen.style.display === 'flex') return;
+    const survived = Math.max(0, gameState.currentWave - 1);
+    const best = getBestWave();
+    const isRecord = survived > best;
+    if (isRecord) {
+        try { localStorage.setItem(BEST_WAVE_KEY, String(survived)); } catch (e) { }
     }
+    uiElements.finalWaveText.textContent = survived;
+    uiElements.bestWaveText.innerHTML = isRecord ? `${iconHtml('trophy')}新紀錄` : `最佳 ${best} 波`;
+    uiElements.bestWaveText.classList.toggle('new-record', isRecord);
+    const kills = Object.values(gameState.totalKills).reduce((a, b) => a + b, 0);
+    const summons = Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
+    uiElements.finalKills.textContent = formatNumberK(kills);
+    uiElements.finalSummons.textContent = formatNumberK(summons);
+    uiElements.finalStreak.textContent = formatNumberK(gameState.bestStreak);
+    const reward = survived * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS;
+    meta.crystals += reward;
+    saveMeta();
+    uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward}`;
+    renderBlessingList(uiElements.finalBlessings);
+    uiElements.hud.classList.add('hidden');
+    showScreen(uiElements.gameOverScreen, true);
+    localStorage.removeItem(SAVE_KEY);
+    pauseMusic();
 }
 
 const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
@@ -3104,8 +3345,6 @@ function saveGameState() {
         eyeMonsterCount: gameState.eyeMonsterCount,
         wraithCount: gameState.wraithCount,
         currentCosts: gameState.currentCosts,
-        bgmVolume: gameState.bgmVolume,
-        sfxVolume: gameState.sfxVolume,
         totalSummons: gameState.totalSummons,
         totalKills: gameState.totalKills,
         blessings: gameState.blessings,
@@ -3150,10 +3389,6 @@ function loadGameState() {
         gameState.eyeMonsterCount = loadedState.eyeMonsterCount ?? 0;
         gameState.wraithCount = loadedState.wraithCount ?? 0;
 
-        gameState.bgmVolume = loadedState.bgmVolume ?? CONFIG.audio.initialVolume;
-        gameState.sfxVolume = loadedState.sfxVolume ?? CONFIG.audio.initialSfxVolume;
-        Sfx.setVolume(gameState.sfxVolume);
-        uiElements.sfxSlider.value = gameState.sfxVolume;
         gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
         gameState.bestStreak = loadedState.bestStreak ?? 0;
@@ -3173,10 +3408,6 @@ function loadGameState() {
         gameState.player.maxHealth = Math.max(CONFIG.player.baseHealth, Math.round(gameState.player.maxHealth));
         gameState.player.currentHealth = Math.min(gameState.player.maxHealth, Math.max(0, Math.round(gameState.player.currentHealth)));
 
-        setMusicVolume(gameState.bgmVolume);
-        uiElements.volumeSlider.value = gameState.bgmVolume;
-
-        showMessage("讀取存檔成功", 1500);
         return true;
 
     }
@@ -3204,17 +3435,16 @@ function restoreSummonsFromLoad() {
     }
 }
 
-function resetGameInternalState(resetAudio = true) {
+function resetGameInternalState() {
     if (gameState.messageTimeout) clearTimeout(gameState.messageTimeout);
-    if (animationFrameId) { cancelAnimationFrame(animationFrameId); animationFrameId = null; }
     stopHoldActionInternal();
     holdActionState = { actionType: null, unitType: null, timeoutId: null, intervalId: null, isHolding: false, pointerDownTime: 0 };
 
     projectilePool.length = 0;
     visualEffectPool.length = 0;
+    tutorial = null;
+    uiElements.summonSkeletonBtn.classList.remove('hint-pulse');
 
-    const currentVolume = gameState.bgmVolume;
-    const currentSfxVolume = gameState.sfxVolume;
     const musicWasStarted = gameState.musicStarted;
 
     gameState = {
@@ -3222,12 +3452,11 @@ function resetGameInternalState(resetAudio = true) {
         summons: [], monsters: [], projectiles: [], visualEffects: [],
         orbs: [], particles: [], floatTexts: [],
         shake: 0, hurtFlash: 0, soulCarry: 0,
-        sfxVolume: currentSfxVolume,
+        sfxVolume: meta.sfxVolume,
         souls: CONFIG.player.initialSouls,
         currentWave: 0,
         timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
         gameOver: false, isPaused: false,
-        lastTime: performance.now(),
         messageTimeout: null,
         skeletonWarriorLevel: 0, eyeMonsterLevel: 0, wraithLevel: 0,
         skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
@@ -3237,8 +3466,8 @@ function resetGameInternalState(resetAudio = true) {
             wraith: CONFIG.wraith.upgradeCostBase,
         },
         imagesLoaded: gameState.imagesLoaded,
-        bgmVolume: resetAudio ? CONFIG.audio.initialVolume : currentVolume,
-        musicStarted: resetAudio ? false : musicWasStarted,
+        bgmVolume: meta.bgmVolume,
+        musicStarted: musicWasStarted,
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
@@ -3248,22 +3477,22 @@ function resetGameInternalState(resetAudio = true) {
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
 
+// 新的一局（不碰存檔）：永久強化在這裡套用
+function setupNewRun() {
+    resetGameInternalState();
+    gameState.player = new Player(0, 0);
+    gameState.player.maxHealth = CONFIG.player.baseHealth + metaVal('mageHp');
+    gameState.player.currentHealth = gameState.player.maxHealth;
+    gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
+    snapCamera();
+    [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
+}
+
 function resetGame() {
     localStorage.removeItem(SAVE_KEY);
-    resetGameInternalState(true);
-    gameState.player = new Player(0, 0);
-    snapCamera();
-    uiElements.gameOverScreen.style.display = 'none';
-    uiElements.pauseMenu.style.display = 'none';
-    uiElements.draftScreen.style.display = 'none';
-    gameState.isPaused = false;
-    gameState.betweenWaves = true;
-    gameState.currentWave = 0;
-    gameState.timeToNextWave = CONFIG.wave.betweenTime;
-    setMusicVolume(CONFIG.audio.initialVolume);
-    uiElements.volumeSlider.value = CONFIG.audio.initialVolume;
+    setupNewRun();
+    if (metaLv('headStart') > 0) queueDraft();
     updateUI();
-    startGameLoop();
 }
 
 function updatePauseMenuStats() {
@@ -3279,42 +3508,30 @@ function updatePauseMenuStats() {
 }
 
 function togglePause() {
-    if (gameState.gameOver || gameState.draftOpen) return;
-
+    if (appScreen !== 'playing' || gameState.gameOver || gameState.draftOpen) return;
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
-        uiElements.pauseResumeBtn.textContent = '繼續';
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-        }
         stopHoldAction();
-
-        uiElements.volumeSlider.value = gameState.bgmVolume;
+        syncVolumeSliders();
         updatePauseMenuStats();
-        uiElements.pauseMenu.style.display = 'flex';
+        showScreen(uiElements.pauseMenu, true);
         pauseMusic();
-
     } else {
-        uiElements.pauseMenu.style.display = 'none';
-        uiElements.pauseResumeBtn.textContent = '暫停';
-        startGameLoop();
+        showScreen(uiElements.pauseMenu, false);
+        loopLastTime = performance.now();
         ensureMusicPlaying();
     }
     updateUI();
 }
 
-function showRestartConfirmDialog() {
-    uiElements.restartConfirmDialog.style.display = 'block';
+function leaveToTitleFromPause() {
+    const go = () => { showScreen(uiElements.pauseMenu, false); showTitle(); };
+    if (gameState.betweenWaves) go();
+    else showConfirm('回到標題？', '這一波的進度不會保留', '回標題', go);
 }
 
-function hideRestartConfirmDialog() {
-    uiElements.restartConfirmDialog.style.display = 'none';
-}
-
-function handleRestartGame() {
-    hideRestartConfirmDialog();
-    resetGame();
+function restartFromPause() {
+    showConfirm('重新開始？', '目前的進度會被清除', '重來', () => { resetGame(); enterPlaying(); });
 }
 
 function updateGame(deltaTime) {
@@ -3488,14 +3705,7 @@ function drawEventOverlay() {
         ctx.fillRect(0, 0, view.cssW, view.cssH);
     }
     ctx.save();
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-    const label = `${ev.icon} ${ev.name}`;
-    ctx.strokeText(label, 10, hudTop + 18);
-    ctx.fillStyle = ev.color;
-    ctx.fillText(label, 10, hudTop + 18);
+    drawIconLabel(ev.icon, ev.name, 10, hudTop + 20, 15, ev.color, 'left');
     ctx.restore();
 }
 
@@ -3505,21 +3715,10 @@ function drawStreak() {
     const fade = Math.min(1, gameState.streakTimer / CONFIG.streak.window * 3);
     ctx.save();
     ctx.globalAlpha = 0.4 + 0.6 * fade;
-    ctx.textAlign = 'right';
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-    ctx.font = 'bold 18px sans-serif';
-    const label = `🔥 ${gameState.streak}`;
-    ctx.strokeText(label, view.cssW - 10, hudTop + 20);
-    ctx.fillStyle = '#FFAB40';
-    ctx.fillText(label, view.cssW - 10, hudTop + 20);
+    drawIconLabel('flame', String(gameState.streak), view.cssW - 10, hudTop + 24, 20, '#FFAB40', 'right');
     if (bonus > 0) {
-        ctx.font = 'bold 12px sans-serif';
-        ctx.lineWidth = 3;
-        const b = `靈魂 +${pct(bonus)}`;
-        ctx.strokeText(b, view.cssW - 10, hudTop + 36);
-        ctx.fillStyle = '#80DEEA';
-        ctx.fillText(b, view.cssW - 10, hudTop + 36);
+        ctx.textAlign = 'right';
+        drawOutlinedText(`靈魂 +${pct(bonus)}`, view.cssW - 10, hudTop + 42, 12, '#80DEEA');
     }
     ctx.restore();
 }
@@ -3527,22 +3726,39 @@ function drawStreak() {
 function drawBossBar() {
     const boss = getAliveBoss();
     if (!boss) return;
-    const w = Math.min(view.cssW * 0.5, 320), h = 8;
-    const x = (view.cssW - w) / 2, y = hudTop + 22;
+    const w = Math.min(view.cssW * 0.46, 300), h = 12;
+    const x = (view.cssW - w) / 2, y = hudTop + 26;
     ctx.save();
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(0,0,0,0.8)';
-    const label = `${boss.config.name} Lv${boss.tier}`;
-    ctx.strokeText(label, view.cssW / 2, y - 5);
-    ctx.fillStyle = '#E1BEE7';
-    ctx.fillText(label, view.cssW / 2, y - 5);
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
-    ctx.fillStyle = '#8E24AA';
-    ctx.fillRect(x, y, w * boss.currentHealth / boss.maxHealth, h);
+    drawIconLabel('skull', `${boss.config.name}  Lv${boss.tier}`, view.cssW / 2, y - 6, 14, '#E1BEE7');
+    // 外框：深色粗框 + 暗金細框，跟介面面板同一套
+    ctx.fillStyle = TEXT_OUTLINE;
+    roundRect(x - 3, y - 3, w + 6, h + 6, 8); ctx.fill();
+    ctx.fillStyle = '#2a1636';
+    roundRect(x, y, w, h, 6); ctx.fill();
+    const ratio = Math.max(0, boss.currentHealth / boss.maxHealth);
+    if (ratio > 0) {
+        const g = ctx.createLinearGradient(0, y, 0, y + h);
+        g.addColorStop(0, '#d17cf0'); g.addColorStop(1, '#7b1fa2');
+        ctx.fillStyle = g;
+        roundRect(x, y, w * ratio, h, 6); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillRect(x + 3, y + 2, Math.max(0, w * ratio - 6), 2);
+    }
+    ctx.strokeStyle = '#9c7a3c';
+    ctx.lineWidth = 1.5;
+    roundRect(x - 1, y - 1, w + 2, h + 2, 7); ctx.stroke();
     ctx.restore();
+}
+
+function roundRect(x, y, w, h, r) {
+    const rr = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rr);
+    ctx.arcTo(x + w, y + h, x, y + h, rr);
+    ctx.arcTo(x, y + h, x, y, rr);
+    ctx.arcTo(x, y, x + w, y, rr);
+    ctx.closePath();
 }
 
 function drawBanner() {
@@ -3556,18 +3772,22 @@ function drawBanner() {
     ctx.globalAlpha = alpha;
     ctx.translate(view.cssW / 2, view.cssH * 0.36);
     ctx.scale(scale, scale);
-    ctx.textAlign = 'center';
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = 'rgba(0,0,0,0.85)';
-    ctx.font = 'bold 40px sans-serif';
-    ctx.strokeText(b.text, 0, 0);
-    ctx.fillStyle = b.color;
-    ctx.fillText(b.text, 0, 0);
+    // 底下一條淡淡的暗色緞帶，讓大字在亂軍裡也看得清楚
+    const ribbon = ctx.createLinearGradient(-view.cssW / 2, 0, view.cssW / 2, 0);
+    ribbon.addColorStop(0, 'rgba(14,10,20,0)');
+    ribbon.addColorStop(0.5, 'rgba(14,10,20,0.6)');
+    ribbon.addColorStop(1, 'rgba(14,10,20,0)');
+    ctx.fillStyle = ribbon;
+    ctx.fillRect(-view.cssW / 2, -44, view.cssW, b.sub ? 88 : 64);
+    if (b.stars) {
+        const star = getIconImage('star');
+        const s = 30;
+        for (let i = 0; i < b.stars; i++) if (star) ctx.drawImage(star, (i - (b.stars - 1) / 2) * (s + 4) - s / 2, -78, s, s);
+    }
+    drawIconLabel(b.icon || null, b.text, 0, 0, 40, b.color);
     if (b.sub) {
-        ctx.font = 'bold 18px sans-serif';
-        ctx.lineWidth = 4;
-        ctx.strokeText(b.sub, 0, 30);
-        ctx.fillText(b.sub, 0, 30);
+        ctx.textAlign = 'center';
+        drawOutlinedText(b.sub, 0, 32, 17, '#f4ecd8', 700);
     }
     ctx.restore();
 }
@@ -3599,7 +3819,8 @@ function drawGame() {
         const pr = gameState.projectiles[i];
         if (pr.isAlive && inView(pr.pos)) pr.draw(ctx);
     }
-    if (gameState.player && gameState.player.isAlive) gameState.player.draw(ctx);
+    // 標題畫面上法師是 HTML 立繪，畫布這邊只留地面
+    if (gameState.player && gameState.player.isAlive && appScreen !== 'title') gameState.player.draw(ctx);
 
     for (let i = 0; i < gameState.visualEffects.length; i++) {
         if (gameState.visualEffects[i].isAlive) gameState.visualEffects[i].draw(ctx);
@@ -3618,10 +3839,7 @@ function drawGame() {
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
     for (const t of gameState.floatTexts) {
         ctx.globalAlpha = Math.min(1, t.life / t.maxLife * 2);
-        ctx.font = `bold ${t.size}px sans-serif`;
-        ctx.strokeText(t.text, t.x, t.y);
-        ctx.fillStyle = t.color;
-        ctx.fillText(t.text, t.x, t.y);
+        drawIconLabel(t.icon, t.text, t.x, t.y, t.size, t.color);
     }
     ctx.globalAlpha = 1;
     ctx.restore();
@@ -3632,6 +3850,7 @@ function drawGame() {
     drawStreak();
     drawBanner();
     drawJoystick();
+    drawTutorial();
 
     if (gameState.hurtFlash > 0) {
         const a = gameState.hurtFlash / CONFIG.visuals.hurtFlashDuration;
@@ -3646,49 +3865,43 @@ function drawGame() {
 }
 
 
+// 單一一條 rAF 迴圈一直跑，依目前畫面決定要更新什麼
 let animationFrameId = null;
+let loopLastTime = 0;
+const TITLE_DRIFT_SPEED = 14;
 function gameLoop(currentTime) {
-    if (!gameState.imagesLoaded) {
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = '#222';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.fillText("Loading Images...", canvas.width / 2, canvas.height / 2);
-        animationFrameId = requestAnimationFrame(gameLoop);
+    animationFrameId = requestAnimationFrame(gameLoop);
+    const deltaTime = Math.min(0.1, Math.max(0, (currentTime - loopLastTime) / 1000));
+    loopLastTime = currentTime;
+
+    if (!gameState.imagesLoaded) { drawLoading(); return; }
+    if (appScreen === 'title') {
+        camera.x += TITLE_DRIFT_SPEED * deltaTime;
+        camera.y += TITLE_DRIFT_SPEED * 0.4 * deltaTime;
+        drawGame();
         return;
     }
-
-    if (gameState.gameOver) {
-        showGameOver();
-        animationFrameId = null;
-        return;
-    }
-
-    if (gameState.isPaused) {
-        animationFrameId = null;
-        return;
-    }
-
-    let deltaTime = (currentTime - gameState.lastTime) / 1000;
-    deltaTime = Math.min(deltaTime, 0.1);
-    gameState.lastTime = currentTime;
+    if (appScreen !== 'playing' || gameState.isPaused || gameState.gameOver) return;
 
     if (!gameState.draftOpen) updateGame(deltaTime);
+    updateTutorial();
     drawGame();
     updateUI();
-
-    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function startGameLoop() {
-    if (animationFrameId === null && !gameState.isPaused && !gameState.gameOver) {
-        gameState.lastTime = performance.now();
-        if (!document.hidden) {
-            ensureMusicPlaying();
-        }
-        animationFrameId = requestAnimationFrame(gameLoop);
-    }
+    if (animationFrameId !== null) return;
+    loopLastTime = performance.now();
+    animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function drawLoading() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#140f1c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    setScreenTransform();
+    drawOutlinedText('載入中…', view.cssW / 2, view.cssH / 2, 22, '#e9c46a');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 function ensureMusicPlaying() {
@@ -3713,9 +3926,37 @@ function pauseMusic() {
 
 function setMusicVolume(volume) {
     gameState.bgmVolume = Math.max(0, Math.min(1, volume));
+    meta.bgmVolume = gameState.bgmVolume;
     if (uiElements.bgm) {
         uiElements.bgm.volume = gameState.bgmVolume;
     }
+}
+
+function setSfxVolume(volume) {
+    gameState.sfxVolume = Math.max(0, Math.min(1, volume));
+    meta.sfxVolume = gameState.sfxVolume;
+    Sfx.setVolume(gameState.sfxVolume);
+}
+
+// 標題的設定頁與暫停選單各有一組滑桿，數值同一份（存在永久資料裡）
+function syncVolumeSliders() {
+    uiElements.volumeSlider.value = uiElements.pauseVolumeSlider.value = meta.bgmVolume;
+    uiElements.sfxSlider.value = uiElements.pauseSfxSlider.value = meta.sfxVolume;
+}
+function bindVolumeSliders() {
+    [uiElements.volumeSlider, uiElements.pauseVolumeSlider].forEach(s => {
+        s.addEventListener('input', e => { setMusicVolume(parseFloat(e.target.value)); syncVolumeSliders(); });
+        s.addEventListener('change', saveMeta);
+    });
+    [uiElements.sfxSlider, uiElements.pauseSfxSlider].forEach(s => {
+        s.addEventListener('input', e => {
+            setSfxVolume(parseFloat(e.target.value));
+            syncVolumeSliders();
+            Sfx.unlock();
+            Sfx.play('orb');
+        });
+        s.addEventListener('change', saveMeta);
+    });
 }
 
 function handleVisibilityChange() {
@@ -3730,12 +3971,29 @@ function handleVisibilityChange() {
     }
 }
 
+function hydrateIcons() {
+    document.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = ICON_SVGS[el.dataset.icon] || ''; });
+}
+
+const FONT_LOAD_TIMEOUT_MS = 2500;
+function waitForFonts() {
+    if (!document.fonts || !document.fonts.load) return Promise.resolve();
+    const load = Promise.all([
+        document.fonts.load(`900 20px ${CANVAS_FONT_FAMILY}`),
+        document.fonts.load(`700 20px ${CANVAS_FONT_FAMILY}`),
+    ]).catch(() => { });
+    return Promise.race([load, new Promise(r => setTimeout(r, FONT_LOAD_TIMEOUT_MS))]);
+}
+
 function init() {
+    hydrateIcons();
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     if (window.visualViewport) window.visualViewport.addEventListener('resize', resizeCanvas);
-    setMusicVolume(gameState.bgmVolume);
-    uiElements.volumeSlider.value = gameState.bgmVolume;
+    setMusicVolume(meta.bgmVolume);
+    setSfxVolume(meta.sfxVolume);
+    syncVolumeSliders();
+    bindVolumeSliders();
 
     canvas.addEventListener('pointerdown', handleCanvasPointerDown);
     canvas.addEventListener('pointermove', handleCanvasPointerMove);
@@ -3752,59 +4010,54 @@ function init() {
             startHoldAction(actionType, unitType);
             ensureMusicPlaying();
         });
-        button.addEventListener('pointerup', (e) => {
+        const stop = (e) => {
             stopHoldAction(actionType, unitType);
             if (button.hasPointerCapture(e.pointerId)) {
-                button.releasePointerCapture(e.pointerId);
+                try { button.releasePointerCapture(e.pointerId); } catch (err) { }
             }
-        });
+        };
+        button.addEventListener('pointerup', stop);
         button.addEventListener('pointerleave', (e) => {
-            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
-                stopHoldAction(actionType, unitType);
-                if (button.hasPointerCapture(e.pointerId)) {
-                    try { button.releasePointerCapture(e.pointerId); } catch (err) { }
-                }
-            }
+            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
         });
         button.addEventListener('pointercancel', (e) => {
-            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
-                stopHoldAction(actionType, unitType);
-                if (button.hasPointerCapture(e.pointerId)) {
-                    try { button.releasePointerCapture(e.pointerId); } catch (err) { }
-                }
-            }
+            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
         });
     };
-
     setupHoldableButton(uiElements.summonSkeletonBtn, 'summon', 'SkeletonWarrior');
     setupHoldableButton(uiElements.summonEyeMonsterBtn, 'summon', 'EyeMonster');
     setupHoldableButton(uiElements.summonWraithBtn, 'summon', 'Wraith');
-
     setupHoldableButton(uiElements.upgradeSkeletonBtn, 'upgrade', 'SkeletonWarrior');
     setupHoldableButton(uiElements.upgradeEyeMonsterBtn, 'upgrade', 'EyeMonster');
     setupHoldableButton(uiElements.upgradeWraithBtn, 'upgrade', 'Wraith');
 
-
-    uiElements.restartButton.addEventListener('click', resetGame);
-    uiElements.pauseResumeBtn.addEventListener('click', togglePause);
-    uiElements.resumeGameBtn.addEventListener('click', togglePause);
-    uiElements.volumeSlider.addEventListener('input', (e) => {
-        setMusicVolume(parseFloat(e.target.value));
+    const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
+    onTap(uiElements.titleStartBtn, startNewRun);
+    onTap(uiElements.titleContinueBtn, continueRun);
+    onTap(uiElements.titleMetaBtn, () => openMeta('title'));
+    onTap(uiElements.titleSettingsBtn, () => { syncVolumeSliders(); showScreen(uiElements.settingsScreen, true); });
+    onTap(uiElements.settingsCloseBtn, () => { saveMeta(); showScreen(uiElements.settingsScreen, false); });
+    onTap(uiElements.metaCloseBtn, closeMeta);
+    uiElements.metaList.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-meta]');
+        if (b && !b.disabled) buyMeta(b.dataset.meta);
     });
-    uiElements.volumeSlider.addEventListener('change', () => {
-        if (!gameState.isPaused) return;
-        saveGameState();
+    onTap(uiElements.pauseResumeBtn, togglePause);
+    onTap(uiElements.resumeGameBtn, togglePause);
+    onTap(uiElements.pauseTitleBtn, leaveToTitleFromPause);
+    onTap(uiElements.restartGameBtn, restartFromPause);
+    onTap(uiElements.restartButton, () => { resetGame(); enterPlaying(); });
+    onTap(uiElements.gameoverTitleBtn, showTitle);
+    onTap(uiElements.gameoverMetaBtn, () => openMeta('gameover'));
+    onTap(uiElements.rerollBtn, rerollDraft);
+    onTap(uiElements.confirmNo, () => showScreen(uiElements.confirmDialog, false));
+    onTap(uiElements.confirmYes, () => {
+        showScreen(uiElements.confirmDialog, false);
+        const action = confirmAction;
+        confirmAction = null;
+        if (action) action();
     });
-    uiElements.sfxSlider.value = gameState.sfxVolume;
-    uiElements.sfxSlider.addEventListener('input', (e) => {
-        gameState.sfxVolume = parseFloat(e.target.value);
-        Sfx.unlock();
-        Sfx.setVolume(gameState.sfxVolume);
-        Sfx.play('orb');
-    });
-    uiElements.sfxSlider.addEventListener('change', () => {
-        if (gameState.isPaused) saveGameState();
-    });
+    uiElements.soulsInfo.addEventListener('animationend', () => uiElements.soulsInfo.classList.remove('bump'));
 
     uiElements.novaBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); useNova(); });
 
@@ -3814,6 +4067,7 @@ function init() {
             if (idx >= 0 && gameState.pendingDraft && gameState.pendingDraft.options[idx]) pickBlessing(gameState.pendingDraft.options[idx]);
             return;
         }
+        if (appScreen !== 'playing') return;
         if (e.code === 'Escape' || e.code === 'KeyP') { togglePause(); return; }
         if (gameState.isPaused || gameState.gameOver) return;
         if (e.code === 'Space') { e.preventDefault(); useNova(); return; }
@@ -3830,39 +4084,12 @@ function init() {
             ensureMusicPlaying();
         }
     });
-    uiElements.restartGameBtn.addEventListener('click', showRestartConfirmDialog);
-    uiElements.restartConfirmYes.addEventListener('click', handleRestartGame);
-    uiElements.restartConfirmNo.addEventListener('click', hideRestartConfirmDialog);
 
-    loadAllImages().then(() => {
-        if (loadGameState()) {
-            restoreSummonsFromLoad();
-            updateUI();
-            if (gameState.pendingDraft) openDraft();
-            if (!document.hidden) {
-                ensureMusicPlaying();
-            }
-            if (gameState.isPaused) {
-                uiElements.volumeSlider.value = gameState.bgmVolume;
-                updatePauseMenuStats();
-                uiElements.pauseMenu.style.display = 'flex';
-            } else {
-                startGameLoop();
-            }
-        } else {
-            resetGame();
-        }
-    }).catch(err => {
-        ctx.fillStyle = '#AF0000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = 'white';
-        ctx.textAlign = 'center';
-        ctx.font = '16px sans-serif';
-        ctx.fillText("錯誤：圖片載入失敗，請檢查檔案並重新整理。", canvas.width / 2, canvas.height / 2);
+    startGameLoop();
+    Promise.all([loadAllImages(), preloadIconImages(), waitForFonts()]).then(() => {
+        setupNewRun();
+        showTitle();
     });
-
-    requestAnimationFrame(gameLoop);
-
 }
 
 init();
