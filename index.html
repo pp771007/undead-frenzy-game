@@ -3,13 +3,15 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>亡靈狂潮 (Undead Frenzy)</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <meta name="description" content="體驗黑暗奇幻生存！《亡靈狂潮》讓你扮演死靈法師，召喚不死生物對抗怪物潮。收集靈魂、強化僕從，挑戰你的生存極限！">
+    <meta name="theme-color" content="#1a1622">
     <style>
         * {
             touch-action: manipulation;
+            box-sizing: border-box;
         }
 
         html,
@@ -19,103 +21,332 @@
             padding: 0;
             overflow: hidden;
             -webkit-text-size-adjust: 100%;
+            overscroll-behavior: none;
         }
 
         body {
-            display: flex;
-            flex-direction: column;
-            background-color: #212121;
+            position: fixed;
+            inset: 0;
+            background-color: #1a1622;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: white;
-            height: 100%;
             -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
             user-select: none;
         }
 
-        #ui-container {
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 5px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-
+        /* ---------- 遊戲畫面鋪滿整個螢幕 ---------- */
         #gameCanvas {
-            border: 1px solid #555;
-            background-color: #333;
-            touch-action: none;
-            width: 100%;
-            height: auto;
-            aspect-ratio: 600 / 400;
+            position: fixed;
+            inset: 0;
             display: block;
-            flex-shrink: 1;
-            min-height: 0;
-            image-rendering: pixelated;
-            image-rendering: crisp-edges;
+            touch-action: none;
+            background-color: #2b2822;
         }
 
-        #top-ui {
+        /* ---------- 上方狀態列（浮在畫面上） ---------- */
+        #hud-top {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 3;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: clamp(5px, 1.5vh, 8px) 0px clamp(3px, 1vh, 5px) 0px;
-            font-size: clamp(14px, 3.5vw, 18px);
-            flex-shrink: 0;
-            gap: 5px;
+            align-items: flex-start;
+            gap: 6px;
+            padding: calc(env(safe-area-inset-top) + 6px) 8px 14px;
+            background: linear-gradient(rgba(10, 6, 16, 0.6), rgba(10, 6, 16, 0));
+            pointer-events: none;
         }
 
-        #top-ui>div {
-            text-align: center;
-            flex-grow: 1;
-            margin: 0 5px;
-            line-height: 1.2;
+        .hud-pill {
+            background: rgba(10, 6, 16, 0.5);
+            border-radius: 12px;
+            padding: 4px 10px;
+            font-weight: bold;
+            font-size: 15px;
+            line-height: 1.25;
+            text-shadow: 0 1px 2px #000;
+        }
+
+        #hp-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .hp-bar {
+            width: 64px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #hp-fill {
+            height: 100%;
+            width: 100%;
+            background: #66BB6A;
+            transition: width 0.15s;
+        }
+
+        #hp-fill.mid {
+            background: #FFC107;
+        }
+
+        #hp-fill.low {
+            background: #F44336;
         }
 
         #player-health-info {
-            font-weight: bold;
-            text-align: left;
-            flex-shrink: 0;
-            min-width: 75px;
-            margin-left: 5px;
+            font-size: 13px;
         }
 
-        #souls-info {
-            font-weight: bold;
-            flex-shrink: 0;
-            min-width: 70px;
-            text-align: right;
-            margin-right: 5px;
-        }
-
-        #pause-container {
+        #wave-pill {
             display: flex;
-            gap: 6px;
-            padding: clamp(5px, 1.5vh, 8px) 0;
-            flex-shrink: 0;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
         }
 
-        #pause-container button {
-            padding: clamp(5px, 1vh, 7px) 10px;
-            font-size: clamp(15px, 3vw, 18px);
-            flex: 1;
+        #timer-info {
+            font-size: 12px;
+            font-weight: normal;
+            color: #E0E0E0;
+        }
+
+        .hud-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 6px;
+        }
+
+        #pause-resume-btn {
+            pointer-events: auto;
+            min-height: 30px;
+            padding: 4px 10px;
+            font-size: 13px;
+            border-radius: 12px;
+            background: rgba(10, 6, 16, 0.55);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ---------- 下方操作區（浮在畫面上） ---------- */
+        #hud-bottom {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 0 8px calc(env(safe-area-inset-bottom) + 8px);
+            pointer-events: none;
+        }
+
+        #action-row {
+            position: relative;
+            width: 100%;
+            max-width: 560px;
+            min-height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
         }
 
         #skip-wave-btn {
+            pointer-events: auto;
+            border-radius: 20px;
+            padding: 8px 20px;
             background-color: #1565C0;
             border-color: #42A5F5;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        #nova-btn {
+            pointer-events: auto;
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            font-size: 14px;
+            line-height: 1.15;
+            background: rgba(20, 16, 30, 0.7);
+            border: 2px solid rgba(206, 147, 216, 0.4);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        #nova-btn {
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .nova-icon {
+            font-size: 24px;
+            line-height: 1;
         }
 
         #nova-btn.nova-ready {
-            background-color: #7B1FA2;
-            border-color: #CE93D8;
-            box-shadow: 0 0 8px rgba(206, 147, 216, 0.6);
+            background: radial-gradient(circle, #9C27B0, #6A1B9A);
+            border-color: #E1BEE7;
+            box-shadow: 0 0 14px rgba(206, 147, 216, 0.8);
         }
 
+        #unit-cards {
+            pointer-events: auto;
+            width: 100%;
+            max-width: 560px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .unit-card {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 6px;
+            background: rgba(20, 16, 30, 0.66);
+            -webkit-backdrop-filter: blur(4px);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(206, 147, 216, 0.3);
+            border-radius: 12px;
+        }
+
+        .unit-head {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 34px;
+        }
+
+        .unit-icon {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .unit-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            line-height: 1.15;
+        }
+
+        .unit-label {
+            font-size: 13px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .stats-label {
+            font-size: 12px;
+            color: #E0E0E0;
+            white-space: nowrap;
+        }
+
+        .stars {
+            color: #FFD54F;
+        }
+
+        .next-evo {
+            font-size: 0.85em;
+            color: #9E9E9E;
+        }
+
+        .unit-count {
+            position: absolute;
+            top: 0;
+            right: 2px;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 1px 2px #000;
+        }
+
+        .unit-btns {
+            display: flex;
+            gap: 4px;
+        }
+
+        .unit-btns button {
+            flex: 1;
+            min-height: 42px;
+            padding: 3px 2px;
+            font-size: 13px;
+            border-radius: 8px;
+        }
+
+        /* ---------- 按鈕共用 ---------- */
+        button {
+            padding: 6px 4px;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            min-width: 0;
+            min-height: 40px;
+            border: 1px solid #888;
+            background-color: #555;
+            color: white;
+            border-radius: 6px;
+            transition: background-color 0.1s, border-color 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.1;
+            flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            white-space: pre-wrap;
+        }
+
+        button:active {
+            background-color: #777;
+        }
+
+        button.can-afford {
+            background-color: #689F38;
+            border: 1px solid #9CCC65;
+            color: #FFFFFF;
+        }
+
+        button.can-afford:active {
+            background-color: #8BC34A;
+        }
+
+        button:disabled {
+            background-color: rgba(66, 66, 66, 0.8);
+            border: 1px solid #616161;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #message-area {
+            position: fixed;
+            top: calc(env(safe-area-inset-top) + 70px);
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 7px 12px;
+            border-radius: 8px;
+            font-size: 15px;
+            display: none;
+            z-index: 5;
+            text-align: center;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        /* ---------- 彈窗（祝福 / 暫停 / 結算） ---------- */
         #draft-cards {
             display: flex;
             flex-direction: column;
@@ -193,8 +424,13 @@
         }
 
         @keyframes pip-blink {
-            from { opacity: 0.3; }
-            to { opacity: 1; }
+            from {
+                opacity: 0.3;
+            }
+
+            to {
+                opacity: 1;
+            }
         }
 
         .bless-list {
@@ -244,134 +480,13 @@
             min-height: auto;
         }
 
-        #bottom-ui {
-            display: flex;
-            justify-content: space-around;
-            background-color: #303030;
-            padding: clamp(5px, 1.5vh, 8px) 5px;
-            flex-wrap: nowrap;
-            gap: clamp(3px, 1vw, 5px);
-            flex-grow: 1;
-            overflow-y: auto;
-            align-items: stretch;
-            min-height: 0;
-        }
-
-        .bottom-column {
-            display: flex;
-            flex-direction: column;
-            gap: clamp(5px, 1.5vh, 8px);
-            flex: 1;
-            min-width: 0;
-        }
-
-
-        .button-group {
-            display: flex;
-            flex-direction: column;
-            align-items: stretch;
-            background-color: #3a3a3a;
-            padding: clamp(4px, 1vh, 6px);
-            border-radius: 5px;
-            box-sizing: border-box;
-            gap: clamp(5px, 1.5vh, 10px);
-            flex: 1;
-            justify-content: center;
-        }
-
-
-        button {
-            padding: clamp(5px, 1vh, 7px) clamp(3px, 1vw, 5px);
-            font-size: clamp(13px, 3vw, 16px);
-            font-weight: bold;
-            cursor: pointer;
-            min-width: 0;
-            min-height: clamp(38px, 5.5vh, 45px);
-            border: 1px solid #888;
-            background-color: #555;
-            color: white;
-            border-radius: 4px;
-            transition: background-color 0.1s, border-color 0.1s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            line-height: 1.1;
-            flex-shrink: 0;
-            -webkit-tap-highlight-color: transparent;
-            -webkit-touch-callout: none;
-            white-space: pre-wrap;
-        }
-
-        button:active {
-            background-color: #777;
-        }
-
-        button.can-afford {
-            background-color: #689F38;
-            border: 1px solid #9CCC65;
-            color: #FFFFFF;
-        }
-
-        button.can-afford:active {
-            background-color: #8BC34A;
-        }
-
-        button:disabled {
-            background-color: #424242;
-            border: 1px solid #616161;
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .stars {
-            color: #FFD54F;
-        }
-
-        .next-evo {
-            font-size: 0.8em;
-            color: #9E9E9E;
-        }
-
-        .unit-label {
-            font-size: clamp(14px, 3.2vw, 17px);
-            margin-bottom: clamp(1px, 0.5vh, 2px);
-            font-weight: bold;
-            text-align: center;
-            line-height: 1.1;
-        }
-
-        .stats-label {
-            font-size: clamp(13px, 2.8vw, 16px);
-            margin-bottom: clamp(1px, 0.5vh, 3px);
-            text-align: center;
-            line-height: 1.1;
-        }
-
-
-        #message-area {
-            position: absolute;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
-            padding: clamp(6px, 1vh, 8px) clamp(10px, 2vw, 12px);
-            border-radius: 5px;
-            font-size: clamp(14px, 2.5vw, 16px);
-            display: none;
-            z-index: 5;
-            text-align: center;
-            pointer-events: none;
-        }
-
         .overlay-screen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.85);
-            display: flex;
+            background-color: rgba(0, 0, 0, 0.8);
             flex-direction: column;
             justify-content: center;
             align-items: center;
@@ -381,14 +496,13 @@
         }
 
         .overlay-content {
-            background-color: #333;
+            background-color: #2d2838;
             padding: clamp(15px, 4vh, 25px);
-            border-radius: 10px;
+            border-radius: 12px;
             max-height: 90vh;
             overflow-y: auto;
-            width: 85%;
+            width: 88%;
             max-width: 500px;
-            box-sizing: border-box;
         }
 
         .overlay-content h2 {
@@ -425,32 +539,7 @@
             margin: 5px 0;
         }
 
-        #restart-button {
-            padding: clamp(10px, 2vh, 12px) clamp(20px, 5vw, 24px);
-            font-size: clamp(16px, 3.5vw, 18px);
-            margin-top: 15px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            border: none;
-            border-radius: 5px;
-            color: white;
-            width: 100%;
-        }
-
-        #resume-game-btn {
-            padding: clamp(10px, 2vh, 12px) clamp(20px, 5vw, 24px);
-            font-size: clamp(16px, 3.5vw, 18px);
-            margin-top: clamp(15px, 3vh, 20px);
-            cursor: pointer;
-            background-color: #4CAF50;
-            border: none;
-            border-radius: 5px;
-            color: white;
-            width: 100%;
-            /* Fill the width */
-            box-sizing: border-box;
-        }
-
+        #restart-button,
         #restart-game-btn,
         #resume-game-btn {
             padding: clamp(10px, 2vh, 12px) clamp(20px, 5vw, 24px);
@@ -459,32 +548,22 @@
             cursor: pointer;
             background-color: #4CAF50;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             color: white;
             width: 100%;
-            box-sizing: border-box;
         }
 
         #restart-game-btn {
             background-color: #d32f2f;
-            margin-bottom: 0;
         }
 
         #restart-game-btn:hover {
             background-color: #f44336;
         }
 
-        #resume-game-btn:hover {
-            background-color: #66BB6A;
-        }
-
         #restart-button:hover,
         #resume-game-btn:hover {
             background-color: #66BB6A;
-        }
-
-        #bottom-ui .button-group {
-            min-height: clamp(100px, 16vh, 120px);
         }
 
         .pause-section {
@@ -494,7 +573,6 @@
         }
 
         .pause-section:last-of-type {
-            /* Target the last stat section */
             border-bottom: none;
             margin-bottom: 0;
             padding-bottom: 0;
@@ -540,18 +618,13 @@
             align-items: center;
             flex: 1;
             min-width: 0;
-            /* Prevents items from overflowing */
-        }
-
-        .stat-row.images img {
-            width: clamp(28px, 20vw, 80px);
-            height: auto;
-            object-fit: contain;
-            margin-bottom: 3px;
         }
 
         .stat-row.images img {
             width: clamp(28px, 12vw, 64px);
+            height: auto;
+            object-fit: contain;
+            margin-bottom: 3px;
         }
 
         img.tint-bloater {
@@ -570,49 +643,70 @@
 </head>
 
 <body>
-    <div id="ui-container">
-        <div id="top-ui">
-            <span id="player-health-info">HP值</span>
-            <div>
-                <span id="wave-info">波次</span><br>
-                <span id="timer-info">下一波倒數</span>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud-top">
+        <div class="hud-pill" id="hp-pill">
+            <span>❤️</span>
+            <div class="hp-bar">
+                <div id="hp-fill"></div>
             </div>
-            <span id="souls-info">靈魂數量</span>
+            <span id="player-health-info"></span>
         </div>
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
-
-        <div id="pause-container">
+        <div class="hud-pill" id="wave-pill">
+            <span id="wave-info"></span>
+            <span id="timer-info"></span>
+        </div>
+        <div class="hud-right">
+            <div class="hud-pill"><span id="souls-info"></span></div>
             <button id="pause-resume-btn">⏸ 暫停</button>
-            <button id="nova-btn">💥 新星</button>
-            <button id="skip-wave-btn">⏩ 開戰</button>
         </div>
+    </div>
 
-        <div id="bottom-ui">
-            <div class="bottom-column">
-                <div class="button-group">
-                    <span class="unit-label">骷髏戰士</span>
-                    <span id="skel-level" class="stats-label">Lv 0</span>
-                    <span class="stats-label">數量: <span id="skel-count">0</span></span>
+    <div id="hud-bottom">
+        <div id="action-row">
+            <button id="skip-wave-btn">⏩ 開戰</button>
+            <button id="nova-btn">💥 新星</button>
+        </div>
+        <div id="unit-cards">
+            <div class="unit-card">
+                <div class="unit-head">
+                    <img src="skeleton_warrior.png" class="unit-icon" alt="">
+                    <div class="unit-info">
+                        <span class="unit-label">骷髏</span>
+                        <span id="skel-level" class="stats-label">Lv 0</span>
+                    </div>
+                    <span class="unit-count">×<span id="skel-count">0</span></span>
+                </div>
+                <div class="unit-btns">
                     <button id="summon-skeleton-btn">召喚</button>
                     <button id="upgrade-skeleton-btn">升級</button>
                 </div>
             </div>
-
-            <div class="bottom-column">
-                <div class="button-group">
-                    <span class="unit-label">怨靈</span>
-                    <span id="wraith-level" class="stats-label">Lv 0</span>
-                    <span class="stats-label">數量: <span id="wraith-count">0</span></span>
+            <div class="unit-card">
+                <div class="unit-head">
+                    <img src="wraith.png" class="unit-icon" alt="">
+                    <div class="unit-info">
+                        <span class="unit-label">怨靈</span>
+                        <span id="wraith-level" class="stats-label">Lv 0</span>
+                    </div>
+                    <span class="unit-count">×<span id="wraith-count">0</span></span>
+                </div>
+                <div class="unit-btns">
                     <button id="summon-wraith-btn">召喚</button>
                     <button id="upgrade-wraith-btn">升級</button>
                 </div>
             </div>
-
-            <div class="bottom-column">
-                <div class="button-group">
-                    <span class="unit-label">眼魔</span>
-                    <span id="eye-monster-level" class="stats-label">Lv 0</span>
-                    <span class="stats-label">數量: <span id="eye-monster-count">0</span></span>
+            <div class="unit-card">
+                <div class="unit-head">
+                    <img src="eye_monster.png" class="unit-icon" alt="">
+                    <div class="unit-info">
+                        <span class="unit-label">眼魔</span>
+                        <span id="eye-monster-level" class="stats-label">Lv 0</span>
+                    </div>
+                    <span class="unit-count">×<span id="eye-monster-count">0</span></span>
+                </div>
+                <div class="unit-btns">
                     <button id="summon-eye-monster-btn">召喚</button>
                     <button id="upgrade-eye-monster-btn">升級</button>
                 </div>

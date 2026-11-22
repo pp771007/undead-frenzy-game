@@ -1,13 +1,55 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = 600;
-canvas.height = 400;
+
+// ---------- 畫面與鏡頭：畫布鋪滿整個螢幕，鏡頭跟著法師，地圖無限延伸 ----------
+// 不管手機直拿還是電腦橫放，畫面裡看得到的世界面積都差不多是 VIEW_AREA（世界單位²），
+// 單位大小不會因為螢幕形狀忽大忽小
+const VIEW_AREA = 600 * 400 * 1.5;
+const MAX_DPR = 2;
+const CAMERA_FOLLOW = 6;
+const view = { cssW: 600, cssH: 400, dpr: 1, unitPx: 1, zoom: 1, w: 600, h: 400 };
+const camera = { x: -300, y: -200 };
+function resizeCanvas() {
+    const vv = window.visualViewport;
+    const cssW = Math.max(1, Math.round(vv ? vv.width : window.innerWidth));
+    const cssH = Math.max(1, Math.round(vv ? vv.height : window.innerHeight));
+    const dpr = Math.min(MAX_DPR, window.devicePixelRatio || 1);
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    const unitPx = Math.sqrt(cssW * cssH / VIEW_AREA);
+    Object.assign(view, { cssW, cssH, dpr, unitPx, zoom: unitPx * dpr, w: cssW / unitPx, h: cssH / unitPx });
+    auraLayer = null;
+    hudTop = uiElements.hudTop ? Math.round(uiElements.hudTop.getBoundingClientRect().bottom) - HUD_TOP_FADE_PX : hudTop;
+    if (gameState && gameState.player) snapCamera();
+}
+function snapCamera() {
+    const p = gameState.player;
+    if (!p) return;
+    camera.x = p.pos.x - view.w / 2;
+    camera.y = p.pos.y - view.h / 2;
+}
+function updateCamera(deltaTime) {
+    const p = gameState.player;
+    if (!p) return;
+    const k = Math.min(1, deltaTime * CAMERA_FOLLOW);
+    camera.x += (p.pos.x - view.w / 2 - camera.x) * k;
+    camera.y += (p.pos.y - view.h / 2 - camera.y) * k;
+}
+const CULL_MARGIN = 80;
+function inView(pos) {
+    return pos.x > camera.x - CULL_MARGIN && pos.x < camera.x + view.w + CULL_MARGIN &&
+        pos.y > camera.y - CULL_MARGIN && pos.y < camera.y + view.h + CULL_MARGIN;
+}
 
 const uiElements = {
     waveInfo: document.getElementById('wave-info'),
     timerInfo: document.getElementById('timer-info'),
     soulsInfo: document.getElementById('souls-info'),
     playerHealthInfo: document.getElementById('player-health-info'),
+    hpFill: document.getElementById('hp-fill'),
+    hudTop: document.getElementById('hud-top'),
     skelLevel: document.getElementById('skel-level'),
     skelCount: document.getElementById('skel-count'),
     summonSkeletonBtn: document.getElementById('summon-skeleton-btn'),
@@ -183,7 +225,7 @@ const CONFIG = {
         imageName: 'fast_melee', imgScaleMultiplier: 3, tint: '#FFC107', tintStrength: 0.55,
         attackRange: 0, attackSpeed: 1, moveSpeed: 85, color: '#FFC107',
         soulDrop: 20, soulPerWave: 2, waveSpeedIncreaseFactor: 0.005,
-        lifetime: 15, edgeMargin: 20,
+        lifetime: 15, leashRadius: 260,
     },
     waveEvents: {
         startWave: 6, chance: 0.3,
@@ -484,27 +526,25 @@ async function loadAllImages() {
 
 function distanceSq(pos1, pos2) { const dx = pos1.x - pos2.x; const dy = pos1.y - pos2.y; return dx * dx + dy * dy; }
 function normalizeVector(vec) { const mag = Math.sqrt(vec.x * vec.x + vec.y * vec.y); if (mag === 0) return { x: 0, y: 0 }; return { x: vec.x / mag, y: vec.y / mag }; }
-function getRandomPositionOutsideCanvas() {
+// 怪物從目前畫面外圍一圈生出來
+const SPAWN_MARGIN = 40;
+function getRandomPositionOutsideView() {
     const side = Math.floor(Math.random() * 4);
-    const margin = 30;
-    let x, y;
+    const left = camera.x - SPAWN_MARGIN, right = camera.x + view.w + SPAWN_MARGIN;
+    const top = camera.y - SPAWN_MARGIN, bottom = camera.y + view.h + SPAWN_MARGIN;
     switch (side) {
-        case 0: x = Math.random() * canvas.width; y = -margin; break;
-        case 1: x = canvas.width + margin; y = Math.random() * canvas.height; break;
-        case 2: x = Math.random() * canvas.width; y = canvas.height + margin; break;
-        case 3: x = -margin; y = Math.random() * canvas.height; break;
+        case 0: return { x: randomInRange(left, right), y: top };
+        case 1: return { x: right, y: randomInRange(top, bottom) };
+        case 2: return { x: randomInRange(left, right), y: bottom };
+        default: return { x: left, y: randomInRange(top, bottom) };
     }
-    return { x, y };
 }
 function randomInRange(min, max) { return Math.random() * (max - min) + min; }
-function getRandomSpawnPosNearCenter(radius = 30) {
+function getRandomSpawnPosNearPlayer(radius = 30) {
     const angle = Math.random() * Math.PI * 2;
     const distance = Math.random() * radius;
-    let x = canvas.width / 2 + Math.cos(angle) * distance;
-    let y = canvas.height / 2 + Math.sin(angle) * distance;
-    x = Math.max(10, Math.min(canvas.width - 10, x));
-    y = Math.max(10, Math.min(canvas.height - 10, y));
-    return { x, y };
+    const c = gameState.player ? gameState.player.pos : { x: 0, y: 0 };
+    return { x: c.x + Math.cos(angle) * distance, y: c.y + Math.sin(angle) * distance };
 }
 function formatNumberK(num) {
     if (num < 1000) {
@@ -576,48 +616,55 @@ function getAuraSprite(color, radius, innerRadius) {
 // 光環本來就是模糊漸層，先畫在 1/AURA_LAYER_DIVISOR 解析度的圖層，再一次放大貼上
 const AURA_LAYER_DIVISOR = 4;
 let auraLayer = null;
+// 圖層蓋住目前畫面範圍（世界座標），在世界座標下貼回去
 function drawAuraLayer() {
     const wraiths = gameState.summons.filter(s => s.isAlive && s.config.type === 'Wraith');
     if (wraiths.length === 0) return;
     if (!auraLayer) {
         auraLayer = document.createElement('canvas');
-        auraLayer.width = Math.ceil(canvas.width / AURA_LAYER_DIVISOR);
-        auraLayer.height = Math.ceil(canvas.height / AURA_LAYER_DIVISOR);
+        auraLayer.width = Math.ceil(view.w / AURA_LAYER_DIVISOR);
+        auraLayer.height = Math.ceil(view.h / AURA_LAYER_DIVISOR);
     }
     const g = auraLayer.getContext('2d');
     g.clearRect(0, 0, auraLayer.width, auraLayer.height);
     const scale = 1 / AURA_LAYER_DIVISOR;
-    for (let i = 0; i < wraiths.length; i++) wraiths[i].drawAura(g, scale);
-    ctx.drawImage(auraLayer, 0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < wraiths.length; i++) wraiths[i].drawAura(g, scale, camera.x, camera.y);
+    ctx.drawImage(auraLayer, camera.x, camera.y, auraLayer.width * AURA_LAYER_DIVISOR, auraLayer.height * AURA_LAYER_DIVISOR);
 }
 
 // ---------- 空間格子：「找附近的怪 / 召喚物」只查附近格子，不用每隻跟全部比 ----------
 // 召喚物上千隻時，每隻跟每隻比對是平方成長；每格開始時把單位分進格子，查詢只看半徑涵蓋的格子。
-// 畫布外（剛生出來的怪）會被夾進邊緣格子，距離仍用真實座標算，不影響結果。
+// 地圖無限延伸，所以格子用雜湊表存（只存有東西的格子）。
+const GRID_KEY_OFFSET = 32768;
+const GRID_KEY_STRIDE = 65536;
+// 找最近目標時最多往外找幾圈；超過就當作附近沒有
+const MAX_NEAREST_RINGS = 40;
 class SpatialGrid {
-    constructor(cell) { this.cell = cell; this.cols = 0; this.rows = 0; this.cells = []; }
+    constructor(cell) { this.cell = cell; this.map = new Map(); this.pool = []; }
+    key(cx, cy) { return (cx + GRID_KEY_OFFSET) * GRID_KEY_STRIDE + (cy + GRID_KEY_OFFSET); }
+    cellAt(cx, cy) { return this.map.get(this.key(cx, cy)); }
     rebuild(items) {
-        const cols = Math.ceil(canvas.width / this.cell) + 1;
-        const rows = Math.ceil(canvas.height / this.cell) + 1;
-        if (this.cols !== cols || this.rows !== rows) {
-            this.cols = cols; this.rows = rows;
-            this.cells = Array.from({ length: cols * rows }, () => []);
-        }
-        for (let i = 0; i < this.cells.length; i++) this.cells[i].length = 0;
+        for (const arr of this.map.values()) { arr.length = 0; this.pool.push(arr); }
+        this.map.clear();
         for (let i = 0; i < items.length; i++) {
             const it = items[i];
-            if (it.isAlive) this.cells[this.cy(it.pos.y) * this.cols + this.cx(it.pos.x)].push(it);
+            if (!it.isAlive) continue;
+            const k = this.key(this.cx(it.pos.x), this.cy(it.pos.y));
+            let arr = this.map.get(k);
+            if (!arr) { arr = this.pool.pop() || []; this.map.set(k, arr); }
+            arr.push(it);
         }
     }
-    cx(x) { return Math.max(0, Math.min(this.cols - 1, Math.floor(x / this.cell))); }
-    cy(y) { return Math.max(0, Math.min(this.rows - 1, Math.floor(y / this.cell))); }
+    cx(x) { return Math.floor(x / this.cell); }
+    cy(y) { return Math.floor(y / this.cell); }
     // fn 回傳 true 就提早結束；回傳值表示有沒有提早結束
     forEachInRadius(pos, r, fn) {
         const x0 = this.cx(pos.x - r), x1 = this.cx(pos.x + r);
         const y0 = this.cy(pos.y - r), y1 = this.cy(pos.y + r);
         for (let y = y0; y <= y1; y++) {
             for (let x = x0; x <= x1; x++) {
-                const cell = this.cells[y * this.cols + x];
+                const cell = this.cellAt(x, y);
+                if (!cell) continue;
                 for (let i = 0; i < cell.length; i++) if (fn(cell[i])) return true;
             }
         }
@@ -627,8 +674,8 @@ class SpatialGrid {
     forEachNearCenterFirst(pos, fn) {
         const cx = this.cx(pos.x), cy = this.cy(pos.y);
         const scan = (x, y) => {
-            if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return false;
-            const cell = this.cells[y * this.cols + x];
+            const cell = this.cellAt(x, y);
+            if (!cell) return false;
             for (let i = 0; i < cell.length; i++) if (fn(cell[i])) return true;
             return false;
         };
@@ -645,10 +692,10 @@ class SpatialGrid {
     nearest(pos, maxR = Infinity) {
         const cx = this.cx(pos.x), cy = this.cy(pos.y);
         let best = null, bestSq = maxR === Infinity ? Infinity : maxR * maxR;
-        const maxRing = Math.max(this.cols, this.rows);
+        const maxRing = maxR === Infinity ? MAX_NEAREST_RINGS : Math.ceil(maxR / this.cell) + 1;
         const visit = (x, y) => {
-            if (x < 0 || y < 0 || x >= this.cols || y >= this.rows) return;
-            const cell = this.cells[y * this.cols + x];
+            const cell = this.cellAt(x, y);
+            if (!cell) return;
             for (let i = 0; i < cell.length; i++) {
                 const it = cell[i];
                 if (!it.isAlive) continue;
@@ -898,8 +945,6 @@ class Player extends GameObject {
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
         this.pos.x += moveX;
         this.pos.y += moveY;
-        this.pos.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.pos.x));
-        this.pos.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.pos.y));
 
         this.updateFacingDirection(moveVec.x);
     }
@@ -935,8 +980,6 @@ class Player extends GameObject {
             spawnY = this.pos.y;
         }
 
-        spawnX = Math.max(this.radius + 5, Math.min(canvas.width - this.radius - 5, spawnX));
-        spawnY = Math.max(this.radius + 5, Math.min(canvas.height - this.radius - 5, spawnY));
         return { x: spawnX, y: spawnY };
     }
 }
@@ -1165,8 +1208,6 @@ class SummonUnit extends GameObject {
                 const distance = Math.random() * this.config.wanderRadius;
                 this.wanderTargetPos.x = this.pos.x + Math.cos(angle) * distance;
                 this.wanderTargetPos.y = this.pos.y + Math.sin(angle) * distance;
-                this.wanderTargetPos.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.wanderTargetPos.x));
-                this.wanderTargetPos.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.wanderTargetPos.y));
                 this.wanderTimer = randomInRange(this.config.wanderIntervalMin, this.config.wanderIntervalMax);
             }
             if (this.isWandering) {
@@ -1187,10 +1228,6 @@ class SummonUnit extends GameObject {
         } else {
             this.isWandering = false;
         }
-
-
-        this.pos.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.pos.x));
-        this.pos.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.pos.y));
 
         if (this.attackCooldown <= 0 && !this.isRetreatingFromMonster) {
             if (this.config.type === 'Wraith') {
@@ -1461,11 +1498,12 @@ class Wraith extends SummonUnit {
         super(x, y, CONFIG.wraith, level, playerTransform);
     }
 
-    drawAura(g, scale) {
+    drawAura(g, scale, offsetX, offsetY) {
         if (!this.isAlive || !this.config.auraColor) return;
         const r = this.slowRadius;
+        if (!inView(this.pos) && !inView({ x: this.pos.x + r, y: this.pos.y }) && !inView({ x: this.pos.x - r, y: this.pos.y })) return;
         const d = r * 2 * scale;
-        g.drawImage(getAuraSprite(this.config.auraColor, r * scale, this.radius * 0.5 * scale), (this.pos.x - r) * scale, (this.pos.y - r) * scale, d, d);
+        g.drawImage(getAuraSprite(this.config.auraColor, r * scale, this.radius * 0.5 * scale), (this.pos.x - r - offsetX) * scale, (this.pos.y - r - offsetY) * scale, d, d);
     }
 
     draw(ctx) {
@@ -1536,6 +1574,8 @@ class Wraith extends SummonUnit {
     }
 }
 
+const PROJECTILE_DESPAWN_MARGIN = 200;
+
 class Projectile {
     constructor(startX, startY, target, shooterConfig, damage) {
         this.init(startX, startY, target, shooterConfig, damage);
@@ -1583,9 +1623,8 @@ class Projectile {
             }
         }
 
-        const margin = 50;
-        if (this.pos.x < -margin || this.pos.x > canvas.width + margin ||
-            this.pos.y < -margin || this.pos.y > canvas.height + margin) {
+        if (this.pos.x < camera.x - PROJECTILE_DESPAWN_MARGIN || this.pos.x > camera.x + view.w + PROJECTILE_DESPAWN_MARGIN ||
+            this.pos.y < camera.y - PROJECTILE_DESPAWN_MARGIN || this.pos.y > camera.y + view.h + PROJECTILE_DESPAWN_MARGIN) {
             this.isAlive = false;
         }
     }
@@ -1776,8 +1815,8 @@ class SoulOrb {
             const f = Math.max(0, 1 - c.friction * deltaTime);
             this.vel.x *= f; this.vel.y *= f;
         }
-        this.pos.x = Math.max(4, Math.min(canvas.width - 4, this.pos.x + this.vel.x * deltaTime));
-        this.pos.y = Math.max(4, Math.min(canvas.height - 4, this.pos.y + this.vel.y * deltaTime));
+        this.pos.x += this.vel.x * deltaTime;
+        this.pos.y += this.vel.y * deltaTime;
         if (this.age > c.attractDelay && dist < player.radius + c.pickupPadding) {
             this.isAlive = false;
             if (!this.banked) {
@@ -2203,8 +2242,6 @@ class HunterBoss extends BossMonster {
             });
             if (player.isAlive && !this.dashHit.has(player) && distanceSq(this.pos, player.pos) <= wSq) { this.dashHit.add(player); player.takeDamage(dmg); }
             if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 2, 30, 0.35, 3);
-            const m = c.radius;
-            if (this.pos.x < m || this.pos.y < m || this.pos.x > canvas.width - m || this.pos.y > canvas.height - m) this.dashLeft = 0;
             return;
         }
         if (this.windup > 0) {
@@ -2276,23 +2313,26 @@ class ThiefMonster extends Monster {
         this.life -= deltaTime;
         const speed = this.baseMoveSpeed * this.speedMultiplier;
         let dir;
+        const toPlayer = { x: player.pos.x - this.pos.x, y: player.pos.y - this.pos.y };
+        const distToPlayer = Math.sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y) || 1;
         if (this.life <= 0) {
-            // 時間到就往最近的邊逃走，跑出畫面就消失（不算擊殺、不掉靈魂）
-            const toEdges = [[-1, 0, this.pos.x], [1, 0, canvas.width - this.pos.x], [0, -1, this.pos.y], [0, 1, canvas.height - this.pos.y]];
-            toEdges.sort((a, b) => a[2] - b[2]);
-            dir = { x: toEdges[0][0], y: toEdges[0][1] };
-            if (this.pos.x < -30 || this.pos.y < -30 || this.pos.x > canvas.width + 30 || this.pos.y > canvas.height + 30) { this.isAlive = false; return; }
+            // 時間到就頭也不回地逃走，跑出畫面外夠遠就消失（不算擊殺、不掉靈魂）
+            dir = { x: -toPlayer.x / distToPlayer, y: -toPlayer.y / distToPlayer };
+            if (!inView(this.pos) && distToPlayer > Math.max(view.w, view.h)) { this.isAlive = false; return; }
         } else {
-            const threat = summonGrid.nearest(this.pos);
+            const threat = summonGrid.nearest(this.pos, this.config.leashRadius);
             let tx = player.pos.x, ty = player.pos.y;
             if (threat && distanceSq(this.pos, threat.pos) < distanceSq(this.pos, player.pos)) { tx = threat.pos.x; ty = threat.pos.y; }
             dir = normalizeVector({ x: this.pos.x - tx, y: this.pos.y - ty });
-            // 貼牆時沿牆滑，不要卡死在角落外
-            const m = this.config.edgeMargin;
-            if ((this.pos.x < m && dir.x < 0) || (this.pos.x > canvas.width - m && dir.x > 0)) dir.x = 0;
-            if ((this.pos.y < m && dir.y < 0) || (this.pos.y > canvas.height - m && dir.y > 0)) dir.y = 0;
-            if (dir.x === 0 && dir.y === 0) dir = { x: 0, y: this.pos.y < canvas.height / 2 ? 1 : -1 };
-            dir = normalizeVector(dir);
+            // 地圖無限大，直線逃跑永遠追不到：離法師太遠就改成繞著法師兜圈子
+            if (distToPlayer > this.config.leashRadius) {
+                const tangent = { x: -toPlayer.y / distToPlayer, y: toPlayer.x / distToPlayer };
+                const pull = Math.min(1, (distToPlayer - this.config.leashRadius) / this.config.leashRadius);
+                dir = normalizeVector({
+                    x: dir.x * (1 - pull) + (tangent.x + toPlayer.x / distToPlayer * 0.6) * pull,
+                    y: dir.y * (1 - pull) + (tangent.y + toPlayer.y / distToPlayer * 0.6) * pull,
+                });
+            }
         }
         this.pos.x += dir.x * speed * deltaTime;
         this.pos.y += dir.y * speed * deltaTime;
@@ -2325,7 +2365,7 @@ function registerKill() {
     if (gameState.streak > gameState.bestStreak) gameState.bestStreak = gameState.streak;
     if (CONFIG.streak.milestones.includes(gameState.streak)) {
         const p = gameState.player;
-        if (p) spawnFloatText(canvas.width / 2, canvas.height * 0.25, `🔥 ${gameState.streak} 連殺！`, '#FFAB40', 22, 1.4);
+        if (p) spawnFloatText(p.pos.x, p.pos.y - 50, `🔥 ${gameState.streak} 連殺！`, '#FFAB40', 22, 1.4);
         addShake(3);
         Sfx.play('streak');
     }
@@ -2377,7 +2417,7 @@ function updateSpawner(deltaTime) {
     gameState.spawnTimer = getSpawnInterval(wave);
     const head = gameState.spawnQueue[0];
     const packSize = head.Cls.prototype instanceof BossMonster ? 1 : W.packMin + Math.floor(Math.random() * (W.packMax - W.packMin + 1));
-    const origin = getRandomPositionOutsideCanvas();
+    const origin = getRandomPositionOutsideView();
     for (let i = 0; i < packSize && gameState.spawnQueue.length > 0; i++) {
         const { Cls, elite } = gameState.spawnQueue.shift();
         const x = origin.x + randomInRange(-W.packSpread, W.packSpread);
@@ -2745,11 +2785,36 @@ function handleCanvasPointerMove(event) {
     inputState.pointerCurrentPos = pos;
     const deltaX = inputState.pointerCurrentPos.x - inputState.pointerStartPos.x;
     const deltaY = inputState.pointerCurrentPos.y - inputState.pointerStartPos.y;
-    if (deltaX * deltaX + deltaY * deltaY > 5 * 5) {
-        inputState.movementVector = normalizeVector({ x: deltaX, y: deltaY });
+    const len = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    if (len > JOYSTICK_DEADZONE) {
+        // 搖桿：拉越遠走越快，拉到半徑外就是全速
+        const mag = Math.min(1, len / JOYSTICK_RADIUS);
+        inputState.movementVector = { x: deltaX / len * mag, y: deltaY / len * mag };
     } else {
         inputState.movementVector = { x: 0, y: 0 };
     }
+}
+
+// 虛擬搖桿（CSS px）
+const JOYSTICK_RADIUS = 50;
+const JOYSTICK_DEADZONE = 6;
+function drawJoystick() {
+    if (!inputState.isPointerDown) return;
+    const s = inputState.pointerStartPos, c = inputState.pointerCurrentPos;
+    const dx = c.x - s.x, dy = c.y - s.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const k = len > JOYSTICK_RADIUS ? JOYSTICK_RADIUS / len : 1;
+    ctx.save();
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(s.x, s.y, JOYSTICK_RADIUS, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = '#E1BEE7';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.fillStyle = '#CE93D8';
+    ctx.beginPath(); ctx.arc(s.x + dx * k, s.y + dy * k, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
 }
 
 function handleCanvasPointerUp(event) {
@@ -2766,10 +2831,7 @@ function getPointerPosition(event) {
     const rect = canvas.getBoundingClientRect();
     const clientX = event.clientX;
     const clientY = event.clientY;
-    return {
-        x: (clientX - rect.left) * (canvas.width / rect.width),
-        y: (clientY - rect.top) * (canvas.height / rect.height)
-    };
+    return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
 
@@ -2843,9 +2905,13 @@ function updateUI() {
     const souls = gameState.souls;
 
     if (gameState.player) {
-        uiElements.playerHealthInfo.textContent = `HP: ${gameState.player.currentHealth}/${gameState.player.maxHealth}`;
+        const p = gameState.player;
+        uiElements.playerHealthInfo.textContent = `${p.currentHealth}/${p.maxHealth}`;
+        const ratio = p.maxHealth > 0 ? p.currentHealth / p.maxHealth : 0;
+        uiElements.hpFill.style.width = `${Math.round(ratio * 100)}%`;
+        uiElements.hpFill.className = ratio > 0.5 ? '' : (ratio > 0.2 ? 'mid' : 'low');
     } else {
-        uiElements.playerHealthInfo.textContent = `HP: -/-`;
+        uiElements.playerHealthInfo.textContent = '-/-';
     }
 
     uiElements.soulsInfo.textContent = `靈魂: ${formatNumberK(souls)}`;
@@ -2894,10 +2960,7 @@ function updateUI() {
         const nextLv = CONFIG.evolution.levels[tier];
         const levelHtml = `Lv ${level} <span class="stars">${'★'.repeat(tier)}</span>` +
             (nextLv ? `<br><span class="next-evo">${'★'.repeat(tier + 1)} Lv${nextLv}</span>` : '');
-        if (uiMap.level.dataset.html !== levelHtml) {
-            uiMap.level.innerHTML = levelHtml;
-            uiMap.level.dataset.html = levelHtml;
-        }
+        setHtmlIfChanged(uiMap.level, levelHtml);
         uiMap.count.textContent = count;
 
         uiMap.summonBtn.textContent = `召喚\n(${formatNumberK(summonCost)}魂)`;
@@ -2919,17 +2982,24 @@ function updateUI() {
     uiElements.restartGameBtn.disabled = gameState.gameOver;
 }
 
+// updateUI 每格都跑，innerHTML 只在內容真的變了才寫，避免每格重建 DOM
+function setHtmlIfChanged(el, html) {
+    if (el.dataset.html === html) return;
+    el.innerHTML = html;
+    el.dataset.html = html;
+}
+
 function updateNovaButton() {
     const btn = uiElements.novaBtn;
     const cd = gameState.novaCooldown;
     btn.disabled = gameState.gameOver || gameState.isPaused || gameState.draftOpen;
     if (cd > 0) {
         const done = (1 - cd / getNovaCooldown()) * 100;
-        btn.textContent = `💥 ${Math.ceil(cd)}`;
-        btn.style.background = `linear-gradient(to right, #4A148C ${done}%, #3a3a3a ${done}%)`;
+        setHtmlIfChanged(btn, `<span class="nova-icon">💥</span><span>${Math.ceil(cd)}</span>`);
+        btn.style.background = `conic-gradient(rgba(156, 39, 176, 0.85) ${done}%, rgba(20, 16, 30, 0.75) ${done}%)`;
         btn.classList.remove('nova-ready');
     } else {
-        btn.textContent = '💥 新星';
+        setHtmlIfChanged(btn, '<span class="nova-icon">💥</span><span>新星</span>');
         btn.style.background = '';
         btn.classList.add('nova-ready');
     }
@@ -3065,7 +3135,8 @@ function loadGameState() {
             queueDraft();
         }
 
-        gameState.player = new Player(canvas.width / 2, canvas.height / 2);
+        gameState.player = new Player(0, 0);
+        snapCamera();
         gameState.player.maxHealth = loadedState.playerMaxHealth ?? CONFIG.player.baseHealth;
         gameState.player.currentHealth = loadedState.playerCurrentHealth ?? gameState.player.maxHealth;
         gameState.player.maxHealth = Math.max(CONFIG.player.baseHealth, Math.round(gameState.player.maxHealth));
@@ -3086,17 +3157,17 @@ function restoreSummonsFromLoad() {
     gameState.summons = [];
 
     for (let i = 0; i < gameState.skeletonWarriorCount; i++) {
-        const spawnPos = getRandomSpawnPosNearCenter(40);
+        const spawnPos = getRandomSpawnPosNearPlayer(40);
         const summon = new SkeletonWarrior(spawnPos.x, spawnPos.y, gameState.skeletonWarriorLevel, gameState.player);
         gameState.summons.push(summon);
     }
     for (let i = 0; i < gameState.eyeMonsterCount; i++) {
-        const spawnPos = getRandomSpawnPosNearCenter(40);
+        const spawnPos = getRandomSpawnPosNearPlayer(40);
         const summon = new EyeMonster(spawnPos.x, spawnPos.y, gameState.eyeMonsterLevel, gameState.player);
         gameState.summons.push(summon);
     }
     for (let i = 0; i < gameState.wraithCount; i++) {
-        const spawnPos = getRandomSpawnPosNearCenter(40);
+        const spawnPos = getRandomSpawnPosNearPlayer(40);
         const summon = new Wraith(spawnPos.x, spawnPos.y, gameState.wraithLevel, gameState.player);
         gameState.summons.push(summon);
     }
@@ -3149,7 +3220,8 @@ function resetGameInternalState(resetAudio = true) {
 function resetGame() {
     localStorage.removeItem(SAVE_KEY);
     resetGameInternalState(true);
-    gameState.player = new Player(canvas.width / 2, canvas.height / 2);
+    gameState.player = new Player(0, 0);
+    snapCamera();
     uiElements.gameOverScreen.style.display = 'none';
     uiElements.pauseMenu.style.display = 'none';
     uiElements.draftScreen.style.display = 'none';
@@ -3234,6 +3306,7 @@ function updateGame(deltaTime) {
     rebuildEyeTargetCounts(gameState.summons);
 
     if (gameState.player) gameState.player.update(deltaTime, getMoveVector());
+    updateCamera(deltaTime);
 
     for (let i = 0; i < gameState.summons.length; i++) {
         if (gameState.summons[i].isAlive) gameState.summons[i].update(deltaTime, gameState.monsters, gameState.summons, gameState.player);
@@ -3300,14 +3373,88 @@ function updateParticlesAndTexts(deltaTime) {
     gameState.hurtFlash = Math.max(0, gameState.hurtFlash - deltaTime);
 }
 
-const SHAKE_BG_MARGIN = 16;
+// ---------- 地板：無縫重複的石板（有 ground_tile.png 就用它） ----------
+const GROUND_TILE_UNITS = 480;
+const GROUND_TILE_RES = 2;
+let groundPattern = null;
+function buildGroundTile() {
+    const S = GROUND_TILE_UNITS * GROUND_TILE_RES;
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d');
+    if (images.ground) {
+        g.drawImage(images.ground, 0, 0, S, S);
+        return c;
+    }
+    // 程式畫的備用地板：暗色、低對比、大小不一的石板，角色才跳得出來。
+    // 每塊石板也畫在上下左右錯開一整張的位置，跨邊界的石板接得起來，重複時看不出接縫
+    let seed = 11;
+    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    g.fillStyle = '#2a2622';
+    g.fillRect(0, 0, S, S);
+    const rows = 7;
+    const rowH = S / rows;
+    const gap = 4 * GROUND_TILE_RES;
+    const stones = [];
+    for (let r = 0; r < rows; r++) {
+        // 每一排的石板寬度不一；最後一塊補到剛好一整張寬，橫向才接得起來
+        let x = rnd() * rowH;
+        const startX = x;
+        while (x < startX + S - rowH * 0.6) {
+            const w = Math.min(rowH * (0.8 + rnd() * 1.0), startX + S - x);
+            stones.push({ x, y: r * rowH, w, h: rowH, shade: rnd() });
+            x += w;
+        }
+        stones.push({ x, y: r * rowH, w: startX + S - x, h: rowH, shade: rnd() });
+    }
+    const drawStone = (s, ox, oy) => {
+        const x0 = s.x + ox + gap / 2, y0 = s.y + oy + gap / 2, w = s.w - gap, h = s.h - gap;
+        if (w <= 0 || h <= 0) return;
+        const rad = Math.min(14 * GROUND_TILE_RES, w / 3, h / 3);
+        const base = 62 + Math.floor(s.shade * 14);
+        g.fillStyle = `rgb(${base}, ${base - 4}, ${base - 12})`;
+        g.beginPath();
+        g.moveTo(x0 + rad, y0); g.arcTo(x0 + w, y0, x0 + w, y0 + h, rad); g.arcTo(x0 + w, y0 + h, x0, y0 + h, rad);
+        g.arcTo(x0, y0 + h, x0, y0, rad); g.arcTo(x0, y0, x0 + w, y0, rad); g.closePath();
+        g.fill();
+        g.strokeStyle = 'rgba(255, 245, 220, 0.05)';
+        g.lineWidth = 2 * GROUND_TILE_RES;
+        g.stroke();
+    };
+    for (const s of stones) {
+        for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) drawStone(s, ox, oy);
+    }
+    // 零星的苔痕與碎石點，打散重複感
+    for (let i = 0; i < 140; i++) {
+        g.fillStyle = rnd() < 0.5 ? 'rgba(0, 0, 0, 0.12)' : 'rgba(120, 140, 90, 0.06)';
+        const r = (1 + rnd() * 4) * GROUND_TILE_RES;
+        g.beginPath(); g.arc(rnd() * S, rnd() * S, r, 0, Math.PI * 2); g.fill();
+    }
+    return c;
+}
+function drawGround() {
+    if (!groundPattern) {
+        groundPattern = ctx.createPattern(buildGroundTile(), 'repeat');
+        if (groundPattern.setTransform) groundPattern.setTransform(new DOMMatrix().scale(1 / GROUND_TILE_RES));
+    }
+    ctx.fillStyle = groundPattern;
+    ctx.fillRect(camera.x - CULL_MARGIN, camera.y - CULL_MARGIN, view.w + CULL_MARGIN * 2, view.h + CULL_MARGIN * 2);
+}
+
+// 畫在畫面上（不跟著鏡頭）的資訊，用 CSS px 座標；HUD_TOP 以下才畫，避開上方的狀態列
+let hudTop = 56;
+// 上方狀態列底部有一段漸層淡出，畫面上的資訊從漸層開始處就可以畫
+const HUD_TOP_FADE_PX = 0;
+function setScreenTransform() {
+    ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+}
 
 function drawEventOverlay() {
     const ev = getWaveEvent();
     if (!ev) return;
     if (ev.overlay) {
         ctx.fillStyle = ev.overlay;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, view.cssW, view.cssH);
     }
     ctx.save();
     ctx.textAlign = 'left';
@@ -3315,9 +3462,9 @@ function drawEventOverlay() {
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
     const label = `${ev.icon} ${ev.name}`;
-    ctx.strokeText(label, 8, 20);
+    ctx.strokeText(label, 10, hudTop + 18);
     ctx.fillStyle = ev.color;
-    ctx.fillText(label, 8, 20);
+    ctx.fillText(label, 10, hudTop + 18);
     ctx.restore();
 }
 
@@ -3332,16 +3479,16 @@ function drawStreak() {
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
     ctx.font = 'bold 18px sans-serif';
     const label = `🔥 ${gameState.streak}`;
-    ctx.strokeText(label, canvas.width - 8, 24);
+    ctx.strokeText(label, view.cssW - 10, hudTop + 20);
     ctx.fillStyle = '#FFAB40';
-    ctx.fillText(label, canvas.width - 8, 24);
+    ctx.fillText(label, view.cssW - 10, hudTop + 20);
     if (bonus > 0) {
         ctx.font = 'bold 12px sans-serif';
         ctx.lineWidth = 3;
         const b = `靈魂 +${pct(bonus)}`;
-        ctx.strokeText(b, canvas.width - 8, 40);
+        ctx.strokeText(b, view.cssW - 10, hudTop + 36);
         ctx.fillStyle = '#80DEEA';
-        ctx.fillText(b, canvas.width - 8, 40);
+        ctx.fillText(b, view.cssW - 10, hudTop + 36);
     }
     ctx.restore();
 }
@@ -3349,17 +3496,17 @@ function drawStreak() {
 function drawBossBar() {
     const boss = getAliveBoss();
     if (!boss) return;
-    const w = canvas.width * 0.6, h = 8;
-    const x = (canvas.width - w) / 2, y = 22;
+    const w = Math.min(view.cssW * 0.5, 320), h = 8;
+    const x = (view.cssW - w) / 2, y = hudTop + 22;
     ctx.save();
     ctx.textAlign = 'center';
     ctx.font = 'bold 13px sans-serif';
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,0.8)';
     const label = `${boss.config.name} Lv${boss.tier}`;
-    ctx.strokeText(label, canvas.width / 2, y - 5);
+    ctx.strokeText(label, view.cssW / 2, y - 5);
     ctx.fillStyle = '#E1BEE7';
-    ctx.fillText(label, canvas.width / 2, y - 5);
+    ctx.fillText(label, view.cssW / 2, y - 5);
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
     ctx.fillStyle = '#8E24AA';
@@ -3376,7 +3523,7 @@ function drawBanner() {
     const scale = 1 + Math.max(0, 0.25 - t) * 1.5;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(canvas.width / 2, canvas.height * 0.4);
+    ctx.translate(view.cssW / 2, view.cssH * 0.36);
     ctx.scale(scale, scale);
     ctx.textAlign = 'center';
     ctx.lineWidth = 5;
@@ -3402,25 +3549,24 @@ function drawGame() {
     } else {
         drawOffset.x = 0; drawOffset.y = 0;
     }
-    ctx.setTransform(1, 0, 0, 1, drawOffset.x, drawOffset.y);
-    if (images.background) {
-        ctx.drawImage(images.background, -SHAKE_BG_MARGIN, -SHAKE_BG_MARGIN, canvas.width + SHAKE_BG_MARGIN * 2, canvas.height + SHAKE_BG_MARGIN * 2);
-    } else {
-        ctx.fillStyle = '#333';
-        ctx.fillRect(-SHAKE_BG_MARGIN, -SHAKE_BG_MARGIN, canvas.width + SHAKE_BG_MARGIN * 2, canvas.height + SHAKE_BG_MARGIN * 2);
-    }
-    for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].draw(ctx);
+    const z = view.zoom;
+    ctx.setTransform(z, 0, 0, z, (-camera.x + drawOffset.x) * z, (-camera.y + drawOffset.y) * z);
+    drawGround();
+    for (let i = 0; i < gameState.orbs.length; i++) if (inView(gameState.orbs[i].pos)) gameState.orbs[i].draw(ctx);
 
     drawAuraLayer();
 
     for (let i = 0; i < gameState.monsters.length; i++) {
-        if (gameState.monsters[i].isAlive) gameState.monsters[i].draw(ctx);
+        const m = gameState.monsters[i];
+        if (m.isAlive && (inView(m.pos) || m instanceof BossMonster)) m.draw(ctx);
     }
     for (let i = 0; i < gameState.summons.length; i++) {
-        if (gameState.summons[i].isAlive) gameState.summons[i].draw(ctx);
+        const s = gameState.summons[i];
+        if (s.isAlive && inView(s.pos)) s.draw(ctx);
     }
     for (let i = 0; i < gameState.projectiles.length; i++) {
-        if (gameState.projectiles[i].isAlive) gameState.projectiles[i].draw(ctx);
+        const pr = gameState.projectiles[i];
+        if (pr.isAlive && inView(pr.pos)) pr.draw(ctx);
     }
     if (gameState.player && gameState.player.isAlive) gameState.player.draw(ctx);
 
@@ -3430,6 +3576,7 @@ function drawGame() {
     const ps = gameState.particles;
     for (let i = 0; i < ps.length; i++) {
         const p = ps[i];
+        if (!inView(p)) continue;
         ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
         ctx.fillStyle = p.color;
         ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
@@ -3448,25 +3595,30 @@ function drawGame() {
     ctx.globalAlpha = 1;
     ctx.restore();
 
+    setScreenTransform();
     drawEventOverlay();
     drawBossBar();
     drawStreak();
     drawBanner();
+    drawJoystick();
 
     if (gameState.hurtFlash > 0) {
         const a = gameState.hurtFlash / CONFIG.visuals.hurtFlashDuration;
-        const g = ctx.createRadialGradient(canvas.width / 2, canvas.height / 2, canvas.height * 0.35, canvas.width / 2, canvas.height / 2, canvas.width * 0.6);
+        const W = view.cssW, H = view.cssH;
+        const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.65);
         g.addColorStop(0, 'rgba(200,0,0,0)');
         g.addColorStop(1, `rgba(200,0,0,${(0.45 * a).toFixed(2)})`);
         ctx.fillStyle = g;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, W, H);
     }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 
 let animationFrameId = null;
 function gameLoop(currentTime) {
     if (!gameState.imagesLoaded) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.fillStyle = '#222';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'white';
@@ -3548,6 +3700,9 @@ function handleVisibilityChange() {
 }
 
 function init() {
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', resizeCanvas);
     setMusicVolume(gameState.bgmVolume);
     uiElements.volumeSlider.value = gameState.bgmVolume;
 
