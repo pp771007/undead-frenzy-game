@@ -814,19 +814,45 @@ function getAuraSprite(color, radius, innerRadius) {
 const AURA_LAYER_DIVISOR = 4;
 let auraLayer = null;
 // 圖層蓋住目前畫面範圍（世界座標），在世界座標下貼回去
+// 光環疊在一起看起來就是一整片：每 AURA_DEDUPE_CELL 見方只畫範圍最大的那一個，
+// 畫出來的聯集幾乎一樣，但上千隻怨靈擠在一起時要畫的數量有上限（750 隻時原本這一步要 24ms）
+const AURA_DEDUPE_CELL = 30;
+const auraCells = new Map();
+// 光環圖層每 AURA_REFRESH_FRAMES 格才重畫一次，中間照舊貼（圖層多蓋畫面外一圈，鏡頭移動幾格也還蓋得住）
+const AURA_REFRESH_FRAMES = 3;
+let auraLayerFrame = -Infinity;
+let auraLayerHasContent = false;
+const auraLayerOrigin = { x: 0, y: 0 };
 function drawAuraLayer() {
-    const wraiths = gameState.summons.filter(s => s.isAlive && s.config.type === 'Wraith');
-    if (wraiths.length === 0) return;
+    if (!auraLayer || frameNo - auraLayerFrame >= AURA_REFRESH_FRAMES || frameNo < auraLayerFrame) {
+        renderAuraLayer();
+        auraLayerFrame = frameNo;
+    }
+    if (!auraLayerHasContent) return;
+    ctx.drawImage(auraLayer, auraLayerOrigin.x, auraLayerOrigin.y, auraLayer.width * AURA_LAYER_DIVISOR, auraLayer.height * AURA_LAYER_DIVISOR);
+}
+function renderAuraLayer() {
+    auraCells.clear();
+    for (let i = 0; i < gameState.summons.length; i++) {
+        const s = gameState.summons[i];
+        if (!s.isAlive || s.config.type !== 'Wraith') continue;
+        const k = Math.floor(s.pos.x / AURA_DEDUPE_CELL) * GRID_KEY_STRIDE + Math.floor(s.pos.y / AURA_DEDUPE_CELL);
+        const cur = auraCells.get(k);
+        if (!cur || s.slowRadius > cur.slowRadius) auraCells.set(k, s);
+    }
     if (!auraLayer) {
         auraLayer = document.createElement('canvas');
-        auraLayer.width = Math.ceil(view.w / AURA_LAYER_DIVISOR);
-        auraLayer.height = Math.ceil(view.h / AURA_LAYER_DIVISOR);
+        auraLayer.width = Math.ceil((view.w + CULL_MARGIN * 2) / AURA_LAYER_DIVISOR);
+        auraLayer.height = Math.ceil((view.h + CULL_MARGIN * 2) / AURA_LAYER_DIVISOR);
     }
     const g = auraLayer.getContext('2d');
     g.clearRect(0, 0, auraLayer.width, auraLayer.height);
+    auraLayerHasContent = auraCells.size > 0;
+    if (!auraLayerHasContent) return;
+    auraLayerOrigin.x = camera.x - CULL_MARGIN;
+    auraLayerOrigin.y = camera.y - CULL_MARGIN;
     const scale = 1 / AURA_LAYER_DIVISOR;
-    for (let i = 0; i < wraiths.length; i++) wraiths[i].drawAura(g, scale, camera.x, camera.y);
-    ctx.drawImage(auraLayer, camera.x, camera.y, auraLayer.width * AURA_LAYER_DIVISOR, auraLayer.height * AURA_LAYER_DIVISOR);
+    for (const w of auraCells.values()) w.drawAura(g, scale, auraLayerOrigin.x, auraLayerOrigin.y);
 }
 
 // ---------- 空間格子：「找附近的怪 / 召喚物」只查附近格子，不用每隻跟全部比 ----------
@@ -837,12 +863,14 @@ const GRID_KEY_STRIDE = 65536;
 // 找最近目標時最多往外找幾圈；超過就當作附近沒有
 const MAX_NEAREST_RINGS = 40;
 class SpatialGrid {
-    constructor(cell) { this.cell = cell; this.map = new Map(); this.pool = []; }
+    constructor(cell) { this.cell = cell; this.map = new Map(); this.pool = []; this.sharedNearest = new Map(); this.sharedAny = new Map(); }
     key(cx, cy) { return (cx + GRID_KEY_OFFSET) * GRID_KEY_STRIDE + (cy + GRID_KEY_OFFSET); }
     cellAt(cx, cy) { return this.map.get(this.key(cx, cy)); }
     rebuild(items) {
         for (const arr of this.map.values()) { arr.length = 0; this.pool.push(arr); }
         this.map.clear();
+        this.sharedNearest.clear();
+        this.sharedAny.clear();
         for (let i = 0; i < items.length; i++) {
             const it = items[i];
             // 潛行中的單位不放進格子：召喚物找目標、範圍傷害都看不到它（新星直接掃全部怪物，照樣打得到）
@@ -886,6 +914,30 @@ class SpatialGrid {
         const rSq = r * r;
         return this.forEachInRadius(pos, r, it => it.isAlive && distanceSq(pos, it.pos) <= rSq);
     }
+    // 「附近有沒有」的共用版，規則同 nearestShared（怨靈的光環開關用：上百隻擠在同幾格，每隻每格都問一次）
+    anyWithinShared(pos, r) {
+        const cx = this.cx(pos.x), cy = this.cy(pos.y);
+        const k = this.key(cx, cy) * NEAREST_SHARED_RADIUS_SLOTS + (Math.round(r) % NEAREST_SHARED_RADIUS_SLOTS);
+        let v = this.sharedAny.get(k);
+        if (v === undefined) {
+            v = this.anyWithin({ x: (cx + 0.5) * this.cell, y: (cy + 0.5) * this.cell }, r);
+            this.sharedAny.set(k, v);
+        }
+        return v;
+    }
+    // 同一格裡的單位共用這一格（以格子中心為準）的搜尋結果，每次 rebuild 清空。
+    // 上千隻召喚物擠在一起時大家問的幾乎是同一個問題；誤差最多半格的對角線，對「往哪隻怪走」沒有影響
+    nearestShared(pos, maxR) {
+        const cx = this.cx(pos.x), cy = this.cy(pos.y);
+        const k = this.key(cx, cy) * NEAREST_SHARED_RADIUS_SLOTS + (Math.round(maxR) % NEAREST_SHARED_RADIUS_SLOTS);
+        if (this.sharedNearest.has(k)) {
+            const hit = this.sharedNearest.get(k);
+            if (!hit || hit.isAlive) return hit;
+        }
+        const r = this.nearest({ x: (cx + 0.5) * this.cell, y: (cy + 0.5) * this.cell }, maxR);
+        this.sharedNearest.set(k, r);
+        return r;
+    }
     // 由內往外一圈一圈找；某一圈的格子離 pos 至少 (k-1) 格，已經找到更近的就停
     nearest(pos, maxR = Infinity) {
         const cx = this.cx(pos.x), cy = this.cy(pos.y);
@@ -912,12 +964,19 @@ class SpatialGrid {
     }
 }
 const NEIGHBOR_OFFSETS = [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [1, 1], [-1, 1], [1, -1]];
+// 怪物找召喚物的搜尋半徑上限（法師死了、距離是無限大時用）
+const MONSTER_SEEK_MAX = 1000;
+// nearestShared 的快取鍵 = 格子鍵 × 這個數 + 搜尋半徑：同一格不同半徑的查詢分開存
+const NEAREST_SHARED_RADIUS_SLOTS = 1024;
 // 召喚物格子邊長要 ≥ 最大推開半徑（怨靈互推 25 × 1.5 = 37.5）
 const GRID_CELL = 40;
 // 擠成一團時推開力道早就頂到上限，參考最近這麼多個鄰居就夠；上千隻擠在一起時差別是平方 vs 線性
 const MAX_AVOID_NEIGHBORS = 12;
 const WRAITH_GRID_CELL = 75;
 const summonGrid = new SpatialGrid(GRID_CELL);
+// 怪物從遠處找召喚物用的粗格子：搜尋半徑動輒幾百，用 40 的細格子一次要查好幾百格（每格畫面兩萬多次查表）
+const SUMMON_COARSE_CELL = 160;
+const summonCoarseGrid = new SpatialGrid(SUMMON_COARSE_CELL);
 const monsterGrid = new SpatialGrid(GRID_CELL);
 const wraithGrid = new SpatialGrid(WRAITH_GRID_CELL);
 
@@ -927,6 +986,8 @@ const AVOID_RECALC_FRAMES = 3;
 let frameNo = 0;
 let avoidSlotCounter = 0;
 const MONSTER_RETARGET_FRAMES = 3;
+const MONSTER_FAR_RETARGET_FRAMES = 12;
+const MONSTER_FAR_DIST = 200;
 const TARGET_SEARCH_FRAMES = 3;
 
 // 眼魔分散火力用：每格開始時統計「每隻怪被幾隻眼魔瞄準」，選目標時查表，不用每隻眼魔掃全部召喚物
@@ -1106,7 +1167,7 @@ class GameObject {
             ctx.drawImage(this.getCachedSprite(flipped), x, y, w, h);
             if (this.hitFlash > 0) {
                 ctx.globalAlpha = Math.min(1, this.hitFlash / CONFIG.visuals.hitFlashDuration) * 0.85;
-                ctx.drawImage(getSprite(this.image, this.imageWidth, this.imageHeight, '#FFFFFF', 1, flipped), x, y, w, h);
+                ctx.drawImage(this.getFlashSprite(flipped), x, y, w, h);
                 ctx.globalAlpha = 1;
             }
         } else {
@@ -1140,16 +1201,28 @@ class GameObject {
 
     update(deltaTime) { }
 
+    // 上千隻每格都會呼叫：直接比對欄位，不要每次組字串當鍵
     getCachedSprite(flipped) {
-        const key = `${this.tint}|${this.tintStrength}`;
-        if (this._spriteKey !== key) {
+        if (this._spriteTint !== this.tint || this._spriteStrength !== this.tintStrength || this._spriteW !== this.imageWidth) {
             this._sprites = [
                 getSprite(this.image, this.imageWidth, this.imageHeight, this.tint, this.tintStrength || 0.45, false),
                 getSprite(this.image, this.imageWidth, this.imageHeight, this.tint, this.tintStrength || 0.45, true),
             ];
-            this._spriteKey = key;
+            this._spriteTint = this.tint;
+            this._spriteStrength = this.tintStrength;
+            this._spriteW = this.imageWidth;
+            this._flashSprites = null;
         }
         return this._sprites[flipped ? 1 : 0];
+    }
+    getFlashSprite(flipped) {
+        if (!this._flashSprites) {
+            this._flashSprites = [
+                getSprite(this.image, this.imageWidth, this.imageHeight, '#FFFFFF', 1, false),
+                getSprite(this.image, this.imageWidth, this.imageHeight, '#FFFFFF', 1, true),
+            ];
+        }
+        return this._flashSprites[flipped ? 1 : 0];
     }
 
     tickFlash(deltaTime) {
@@ -1368,7 +1441,7 @@ class SummonUnit extends GameObject {
         }
 
         if (this.config.type === 'Wraith') {
-            let monsterInRangeForAura = monsterGrid.anyWithin(this.pos, this.slowRadius);
+            let monsterInRangeForAura = monsterGrid.anyWithinShared(this.pos, this.slowRadius);
             this.isRetreatingToPlayer = monsterInRangeForAura;
             if (this.isRetreatingToPlayer) {
                 this.target = null;
@@ -1519,7 +1592,7 @@ class SummonUnit extends GameObject {
 
         if (this.attackCooldown <= 0 && !this.isRetreatingFromMonster) {
             if (this.config.type === 'Wraith') {
-                if (monsterGrid.anyWithin(this.pos, this.slowRadius)) {
+                if (monsterGrid.anyWithinShared(this.pos, this.slowRadius)) {
                     this.applySlowAura();
                     this.attackCooldown = 1.0 / this.attackSpeed;
                 }
@@ -1605,7 +1678,7 @@ class SummonUnit extends GameObject {
 
 
     findNearestMonster() {
-        return monsterGrid.nearest(this.pos, this.config.targetSearchRadius);
+        return monsterGrid.nearestShared(this.pos, this.config.targetSearchRadius);
     }
 
     // 怨靈附近的骷髏移速加倍、眼魔攻速加倍
@@ -1799,10 +1872,6 @@ class Wraith extends SummonUnit {
         if (!inView(this.pos) && !inView({ x: this.pos.x + r, y: this.pos.y }) && !inView({ x: this.pos.x - r, y: this.pos.y })) return;
         const d = r * 2 * scale;
         g.drawImage(getAuraSprite(this.config.auraColor, r * scale, this.radius * 0.5 * scale), (this.pos.x - r - offsetX) * scale, (this.pos.y - r - offsetY) * scale, d, d);
-    }
-
-    draw(ctx) {
-        super.draw(ctx);
     }
 
     attackTarget() { }
@@ -2346,9 +2415,11 @@ class Monster extends GameObject {
             if (Math.abs(this.knockVel.x) + Math.abs(this.knockVel.y) < 5) this.knockVel = null;
         }
 
-        // 每 MONSTER_RETARGET_FRAMES 格重找一次最近目標（各自錯開）；目標死了立刻重找
-        if (this.retargetSlot === undefined) this.retargetSlot = (avoidSlotCounter++) % MONSTER_RETARGET_FRAMES;
-        if (!this.target || !this.target.isAlive || (frameNo + this.retargetSlot) % MONSTER_RETARGET_FRAMES === 0) {
+        // 每 MONSTER_RETARGET_FRAMES 格重找一次最近目標（各自錯開）；離目標還很遠的話隔久一點再找（反正都是往大軍走）；目標死了立刻重找
+        if (this.retargetSlot === undefined) this.retargetSlot = (avoidSlotCounter++) % MONSTER_FAR_RETARGET_FRAMES;
+        const far = this.target && distanceSq(this.pos, this.target.pos) > MONSTER_FAR_DIST * MONSTER_FAR_DIST;
+        const every = far ? MONSTER_FAR_RETARGET_FRAMES : MONSTER_RETARGET_FRAMES;
+        if (!this.target || !this.target.isAlive || (frameNo + this.retargetSlot) % every === 0) {
             this.findTarget(player, summons);
         }
 
@@ -2393,7 +2464,8 @@ class Monster extends GameObject {
             minDistanceSq = distanceSq(this.pos, player.pos);
             closestTarget = player;
         }
-        const nearestSummon = summonGrid.nearest(this.pos);
+        // 只需要找比法師近的召喚物：搜尋半徑就是到法師的距離（沒有上限的話，離大軍很遠的怪要一圈圈查上千格）
+        const nearestSummon = summonCoarseGrid.nearest(this.pos, Math.min(Math.sqrt(minDistanceSq), MONSTER_SEEK_MAX));
         if (nearestSummon && distanceSq(this.pos, nearestSummon.pos) < minDistanceSq) closestTarget = nearestSummon;
         this.target = closestTarget;
     }
@@ -4676,6 +4748,7 @@ function updateGame(deltaTime) {
     gameState.wraithBuffRadius = wraithBuffRadius;
     wraithGrid.rebuild(wraiths);
     summonGrid.rebuild(gameState.summons);
+    summonCoarseGrid.rebuild(gameState.summons);
     monsterGrid.rebuild(gameState.monsters);
     rebuildEyeTargetCounts(gameState.summons);
     gameState.priests = gameState.monsters.filter(m => m.isAlive && m instanceof GravePriestMonster);
@@ -4988,6 +5061,60 @@ function drawBanner() {
     ctx.restore();
 }
 
+// 召喚物按貼圖分組畫：顯示卡畫同一張貼圖可以整批送出，骷髏／眼魔／怨靈交錯著畫、中間又夾血條的話，
+// 每換一次就斷一批（3000 隻時這一步卡 25ms，而且跟解析度無關）。召喚物彼此本來就沒有前後順序，分組畫看起來一樣。
+// 注意：召喚物不會呼叫自己的 draw()，要加召喚物專屬的畫法得加在這裡
+const summonBuckets = new Map();
+const summonBucketPool = [];
+const visibleSummons = [];
+// 大軍擠成一團時，底下被蓋住的召喚物看不到卻照樣要畫：畫面上超過 SUMMON_THIN_START 隻時，
+// 每 SUMMON_THIN_CELL 見方只畫一隻（擠成一團看起來還是一整團，小軍隊完全不受影響）
+const SUMMON_THIN_START = 400;
+const SUMMON_THIN_CELL = 14;
+const summonThinCells = new Set();
+function drawSummonsBatched() {
+    visibleSummons.length = 0;
+    summonThinCells.clear();
+    let onScreen = 0;
+    for (let i = 0; i < gameState.summons.length; i++) if (gameState.summons[i].isAlive && inView(gameState.summons[i].pos)) onScreen++;
+    const thin = onScreen > SUMMON_THIN_START;
+    for (let i = 0; i < gameState.summons.length; i++) {
+        const s = gameState.summons[i];
+        if (!s.isAlive || !inView(s.pos)) continue;
+        if (thin) {
+            const k = Math.floor(s.pos.x / SUMMON_THIN_CELL) * GRID_KEY_STRIDE + Math.floor(s.pos.y / SUMMON_THIN_CELL);
+            if (summonThinCells.has(k)) continue;
+            summonThinCells.add(k);
+        }
+        visibleSummons.push(s);
+        const spr = s.getCachedSprite(s.facingDirection < 0);
+        let arr = summonBuckets.get(spr);
+        if (!arr) { arr = summonBucketPool.pop() || []; summonBuckets.set(spr, arr); }
+        arr.push(s);
+    }
+    for (const [spr, arr] of summonBuckets) {
+        for (let i = 0; i < arr.length; i++) {
+            const s = arr[i];
+            const k = s.drawScale || 1;
+            const w = s.imageWidth * k, h = s.imageHeight * k;
+            ctx.drawImage(spr, s.pos.x - w / 2, s.pos.y - h / 2, w, h);
+        }
+        arr.length = 0;
+        summonBucketPool.push(arr);
+    }
+    summonBuckets.clear();
+    for (let i = 0; i < visibleSummons.length; i++) {
+        const s = visibleSummons[i];
+        if (s.hitFlash <= 0) continue;
+        const k = s.drawScale || 1;
+        const w = s.imageWidth * k, h = s.imageHeight * k;
+        ctx.globalAlpha = Math.min(1, s.hitFlash / CONFIG.visuals.hitFlashDuration) * 0.85;
+        ctx.drawImage(s.getFlashSprite(s.facingDirection < 0), s.pos.x - w / 2, s.pos.y - h / 2, w, h);
+    }
+    ctx.globalAlpha = 1;
+    for (let i = 0; i < visibleSummons.length; i++) visibleSummons[i].drawHealthBar(ctx);
+}
+
 function drawGame() {
     ctx.save();
     if (gameState.shake > 0) {
@@ -5008,10 +5135,7 @@ function drawGame() {
         const m = gameState.monsters[i];
         if (m.isAlive && (inView(m.pos) || m instanceof BossMonster)) m.draw(ctx);
     }
-    for (let i = 0; i < gameState.summons.length; i++) {
-        const s = gameState.summons[i];
-        if (s.isAlive && inView(s.pos)) s.draw(ctx);
-    }
+    drawSummonsBatched();
     for (let i = 0; i < gameState.projectiles.length; i++) {
         const pr = gameState.projectiles[i];
         if (pr.isAlive && inView(pr.pos)) pr.draw(ctx);
