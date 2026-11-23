@@ -2352,19 +2352,29 @@ function getWaveStatMultiplier(wave) {
         * Math.pow(W.endlessGrowth, Math.max(0, wave - W.finalWave));
 }
 
+// 怪物長什麼樣子：有專屬新圖就用新圖、不再上色；沒有就用舊圖上色代替。
+// 場上的怪物和新威脅橫幅都照這裡挑圖，兩邊才不會一個是新圖、一個是染色的舊圖
+function monsterLook(config) {
+    const art = config.art && images[config.art] ? config.art : null;
+    const keepTint = !art || config.keepTintOnArt;
+    return {
+        imageName: art || config.imageName,
+        // 新圖的留白和舊圖不同，各自有一個縮放
+        scale: art && config.artScale ? config.artScale : config.imgScaleMultiplier,
+        tint: keepTint ? config.tint : null,
+        tintStrength: keepTint ? config.tintStrength : 0,
+    };
+}
+
 class Monster extends GameObject {
     constructor(x, y, config, waveNumber, isElite = false) {
         const E = CONFIG.elite;
-        // 有專屬新圖就用新圖、不再上色；沒有就用舊圖上色代替
-        const art = config.art && images[config.art] ? config.art : null;
-        // 新圖的留白和舊圖不同，各自有一個縮放
-        const scale = art && config.artScale ? config.artScale : config.imgScaleMultiplier;
-        super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, art || config.imageName, scale);
+        const look = monsterLook(config);
+        super(x, y, config.radius * (isElite ? E.sizeMult : 1), config.color, look.imageName, look.scale);
         this.config = config;
         this.isElite = isElite;
-        const keepTint = !art || config.keepTintOnArt;
-        this.tint = isElite ? E.tint : (keepTint ? config.tint : null);
-        this.tintStrength = isElite ? E.tintStrength : (keepTint ? config.tintStrength : 0);
+        this.tint = isElite ? E.tint : look.tint;
+        this.tintStrength = isElite ? E.tintStrength : look.tintStrength;
         this.waveNumber = waveNumber;
         this.id = `m_${Date.now()}_${Math.random()}`;
         this.attackCooldown = 0;
@@ -3613,19 +3623,20 @@ function updateSpawner(deltaTime) {
 // 新威脅第一次出現的那一波，橫幅改成介紹它：一句「看到什麼就做什麼」
 function getNewcomer(wave) {
     const assassinWave = curseMods().assassinEarly ? ASSASSIN_EARLY_WAVE : CONFIG.assassin.minWave;
+    // 最後一欄是那隻怪的設定：橫幅上畫牠本人；精英詞綴不是一種怪，只用圖示
     const list = [
-        [assassinWave, '暗影刺客', '腳下出現紅圈就快走開', 'warning', '#EF9A9A'],
-        [CONFIG.slime.minWave, '瘟膿史萊姆', '打死會分裂', 'plague', '#E6EE9C'],
-        [CONFIG.witchDoctor.minWave, '腐骨巫醫', '會幫怪物補血，先殺牠', 'raiseDead', '#AED581'],
-        [CONFIG.bat.minWave, '吸血蝙蝠群', '直撲法師，邊走邊放新星', 'claws', '#BCAAA4'],
-        [CONFIG.shieldGuard.minWave, '骨盾衛兵', '盾牌擋飛彈，靠骷髏近戰', 'boneArmor', '#B0BEC5'],
-        [CONFIG.spitter.minWave, '瘟疫投手', '別站進綠色毒池', 'plague', POISON_LIGHT],
-        [CONFIG.eliteAffix.startWave, '精英詞綴', '「裂」會分裂、「狂」會暴走', 'crown', '#FFD54F'],
-        [CONFIG.corpseWorm.minWave, '屍蟲', '地面裂開就散開', 'warning', '#BCAAA4'],
-        [CONFIG.gravePriest.minWave, '墓地祭司', '會把陣亡的召喚物變成敵人，先殺牠', 'skull', '#69F0AE'],
+        [assassinWave, '暗影刺客', '腳下出現紅圈就快走開', 'warning', '#EF9A9A', CONFIG.assassin],
+        [CONFIG.slime.minWave, '瘟膿史萊姆', '打死會分裂', 'plague', '#E6EE9C', CONFIG.slime],
+        [CONFIG.witchDoctor.minWave, '腐骨巫醫', '會幫怪物補血，先殺牠', 'raiseDead', '#AED581', CONFIG.witchDoctor],
+        [CONFIG.bat.minWave, '吸血蝙蝠群', '直撲法師，邊走邊放新星', 'claws', '#BCAAA4', CONFIG.bat],
+        [CONFIG.shieldGuard.minWave, '骨盾衛兵', '盾牌擋飛彈，靠骷髏近戰', 'boneArmor', '#B0BEC5', CONFIG.shieldGuard],
+        [CONFIG.spitter.minWave, '瘟疫投手', '別站進綠色毒池', 'plague', POISON_LIGHT, CONFIG.spitter],
+        [CONFIG.eliteAffix.startWave, '精英詞綴', '「裂」會分裂、「狂」會暴走', 'crown', '#FFD54F', null],
+        [CONFIG.corpseWorm.minWave, '屍蟲', '地面裂開就散開', 'warning', '#BCAAA4', CONFIG.corpseWorm],
+        [CONFIG.gravePriest.minWave, '墓地祭司', '會把陣亡的召喚物變成敵人，先殺牠', 'skull', '#69F0AE', CONFIG.gravePriest],
     ];
     const hit = list.find(n => n[0] === wave);
-    return hit ? { name: hit[1], hint: hit[2], icon: hit[3], color: hit[4] } : null;
+    return hit ? { name: hit[1], hint: hit[2], icon: hit[3], color: hit[4], look: hit[5] ? monsterLook(hit[5]) : null } : null;
 }
 
 function isFinalWave(wave) {
@@ -3670,7 +3681,7 @@ function prepareNextWave() {
         }
     } else if (getNewcomer(waveNum)) {
         const n = getNewcomer(waveNum);
-        gameState.banner = { text: n.name, sub: `新威脅 · ${n.hint}`, color: n.color, life: CONFIG.wave.bannerDuration * 1.8, icon: n.icon };
+        gameState.banner = { text: n.name, sub: `新威脅 · ${n.hint}`, color: n.color, life: CONFIG.wave.bannerDuration * 1.8, icon: n.icon, look: n.look };
     } else if (ev) {
         gameState.banner = { text: ev.name, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3, icon: ev.icon };
     } else {
@@ -5070,13 +5081,41 @@ function drawCountdown() {
     const scale = 1 + Math.max(0, 0.2 - elapsed) * 3;
     ctx.save();
     ctx.globalAlpha = 1 - Math.max(0, elapsed - 0.75) * 2;
-    ctx.translate(view.cssW / 2, view.cssH * 0.36);
+    ctx.translate(view.cssW / 2, view.cssH * BANNER_Y);
     ctx.scale(scale, scale);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     drawOutlinedText(`第 ${gameState.currentWave + 1} 波`, 0, -64, 20, '#f4ecd8', 700);
     drawOutlinedText(String(n), 0, 0, 96, n === 1 ? '#ff8a65' : '#e9c46a');
     ctx.restore();
+}
+
+const BANNER_Y = 0.36;
+const BANNER_PORTRAIT_SIZE = 110;
+const BANNER_PORTRAIT_MIN = 48;
+const BANNER_PORTRAIT_BOTTOM = -40;
+const BANNER_PORTRAIT_GLOW = 0.35;
+function drawBannerPortrait(look, color) {
+    const img = images[look.imageName];
+    if (!img) return;
+    // 橫拿手機時橫幅上方沒多少空間：縮到不壓到上方的狀態列
+    const room = view.cssH * BANNER_Y + BANNER_PORTRAIT_BOTTOM - hudTop;
+    const box = Math.max(BANNER_PORTRAIT_MIN, Math.min(BANNER_PORTRAIT_SIZE, room));
+    const k = box / Math.max(img.width, img.height);
+    const w = img.width * k, h = img.height * k;
+    const cy = BANNER_PORTRAIT_BOTTOM - h / 2;
+    // 背後一圈牠的代表色光暈，亂軍裡也看得出這是主角
+    const glow = ctx.createRadialGradient(0, cy, 0, 0, cy, box * 0.6);
+    glow.addColorStop(0, color);
+    glow.addColorStop(1, `${color}00`);
+    const alpha = ctx.globalAlpha;
+    ctx.globalAlpha = alpha * BANNER_PORTRAIT_GLOW;
+    ctx.fillStyle = glow;
+    ctx.fillRect(-box * 0.6, cy - box * 0.6, box * 1.2, box * 1.2);
+    ctx.globalAlpha = alpha;
+    const px = view.dpr / SPRITE_RES;
+    const sprite = getSprite(img, w * px, h * px, look.tint, look.tintStrength || 0.45);
+    ctx.drawImage(sprite, -w / 2, cy - h / 2, w, h);
 }
 
 function drawBanner() {
@@ -5087,7 +5126,7 @@ function drawBanner() {
     const scale = 1 + Math.max(0, 0.25 - t) * 1.5;
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.translate(view.cssW / 2, view.cssH * 0.36);
+    ctx.translate(view.cssW / 2, view.cssH * BANNER_Y);
     ctx.scale(scale, scale);
     // 底下一條淡淡的暗色緞帶，讓大字在亂軍裡也看得清楚
     const ribbon = ctx.createLinearGradient(-view.cssW / 2, 0, view.cssW / 2, 0);
@@ -5101,7 +5140,9 @@ function drawBanner() {
         const s = 30;
         for (let i = 0; i < b.stars; i++) if (star) ctx.drawImage(star, (i - (b.stars - 1) / 2) * (s + 4) - s / 2, -78, s, s);
     }
-    drawIconLabel(b.icon || null, b.text, 0, 0, 40, b.color);
+    // 新威脅：名字上方站著那隻怪本人，名字旁就不再放圖示
+    if (b.look) drawBannerPortrait(b.look, b.color);
+    drawIconLabel(b.look ? null : (b.icon || null), b.text, 0, 0, 40, b.color);
     if (b.sub) {
         ctx.textAlign = 'center';
         drawOutlinedText(b.sub, 0, 32, 17, '#f4ecd8', 700);
