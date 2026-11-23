@@ -3859,7 +3859,13 @@ function renderDraftCards() {
         const card = document.createElement('button');
         card.className = 'draft-card panel';
         card.innerHTML = `${iconHtml(id, 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>`;
-        card.addEventListener('click', () => pickBlessing(id));
+        // 用 pointerup 不用 click：另一隻手指還按著搖桿時瀏覽器不會合成 click。
+        // 不用 pointerdown，是因為祝福選了收不回來，按下去還能滑開反悔
+        // 觸控的 pointerup 一定回到按下的那張卡（隱式捕捉），所以要自己看放開時手指還在不在卡上
+        card.addEventListener('pointerup', (e) => {
+            const r = card.getBoundingClientRect();
+            if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) pickBlessing(id);
+        });
         box.appendChild(card);
     });
     const cost = rerollCost();
@@ -5530,7 +5536,12 @@ function init() {
         const b = e.target.closest('[data-meta]');
         if (b && !b.disabled) buyMeta(b.dataset.meta);
     });
-    onTap(uiElements.pauseResumeBtn, togglePause);
+    // 戰鬥中的暫停鈕跟開戰鈕一樣在 pointerdown 觸發：移動中另一隻手按也要有效
+    uiElements.pauseResumeBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        Sfx.unlock(); Sfx.play('click');
+        togglePause();
+    });
     onTap(uiElements.resumeGameBtn, togglePause);
     onTap(uiElements.pauseTitleBtn, leaveToTitleFromPause);
     onTap(uiElements.restartGameBtn, endRunFromPause);
