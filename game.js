@@ -250,6 +250,20 @@ const CONFIG = {
         dashDamageMult: 1.5, dashTriggerRange: 300,
         slowResist: 0.5,
     },
+    dragonBoss: {
+        type: 'Boss', name: '腐朽骨龍', baseHealth: 650, baseAttack: 24, radius: 26,
+        // 專屬圖還沒來時借骸骨巨像的圖染綠
+        imageName: 'boss_colossus', art: 'boss_dragon', imgScaleMultiplier: 4.5, artScale: 5, tint: '#2E7D32', tintStrength: 0.55,
+        attackRange: 34, attackSpeed: 0.7, moveSpeed: 34, color: '#2E7D32',
+        soulDrop: 50, waveSpeedIncreaseFactor: 0.004, slowResist: 0.5,
+        // 吐息：朝法師畫一塊扇形預警，蓄力後整塊扇形噴下去（大軍擠在前面會被燒一大片，法師要閃出扇形）
+        breathInterval: 6, breathWindup: 1.0, breathRange: 240, breathAngle: Math.PI / 3.5, breathTriggerRange: 280,
+        breathDamageMult: 2.5, breathPlayerHpRatio: 0.25,
+        // 飛撲：飛上天（打不到）、地上紅圈標出法師起飛時站的位置，flightTime 秒後砸下來
+        flyInterval: 11, flightTime: 1.6, flyHeight: 120, landRadius: 100, landDamageMult: 2, landPlayerHpRatio: 0.3,
+        // 血量低於這個比例後兩招都變快
+        phase2Ratio: 0.5, phase2Speed: 1.4,
+    },
     thief: {
         type: 'Thief', name: '金魂竊賊', baseHealth: 60, baseAttack: 0, radius: 11,
         imageName: 'fast_melee', art: 'thief', imgScaleMultiplier: 3, artScale: 4.5, tint: '#FFC107', tintStrength: 0.55,
@@ -444,7 +458,7 @@ const CONFIG = {
         scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
         // 召喚物不設上限時，玩家收入隨怪物「數量」成長、戰力隨累積收入成長，線性變強的怪物永遠追不上
         // （舊版就是這樣撐到無限波）。從 expStartWave 起再乘上 expGrowth^(超過的波數)，保證終究會被淹沒
-        expStartWave: 20, expGrowth: 1.08,
+        expStartWave: 20, expGrowth: 1.09,
         // 一局的目標：第 finalWave 波最終首領墮落亡靈王出場，打贏算通關（約 25 分鐘）。
         // 之後可以選擇繼續無盡模式，每波再多乘 endlessGrowth，通常十幾波內結束，不會變成一小時的慢慢輸
         finalWave: 50, endlessGrowth: 1.05,
@@ -3156,8 +3170,145 @@ class HunterBoss extends BossMonster {
     }
 }
 
-// 首領輪替：第 10 / 20 / 30 波依序出場，之後重複（等級隨波數提高）
-const BOSS_ROTATION = [ColossusBoss, PlagueBoss, HunterBoss];
+const DRAGON_FIRE = '#76FF03';
+const DRAGON_SHADOW = 'rgba(0, 0, 0, 0.35)';
+class DragonBoss extends BossMonster {
+    constructor(x, y, waveNumber) {
+        super(x, y, waveNumber, CONFIG.dragonBoss);
+        const c = this.config;
+        this.breathT = c.breathInterval * 0.6;
+        this.flyT = c.flyInterval;
+        this.windup = 0;
+        this.breathDir = { x: 1, y: 0 };
+        this.flight = 0;
+        this.from = null; this.land = null;
+        this.enraged = false;
+    }
+    // 飛在天上時誰都打不到、也不會被當成目標（格子不收潛行中的單位）
+    get stealthed() { return this.flight > 0; }
+    takeDamage(amount) {
+        if (this.flight > 0) return;
+        super.takeDamage(amount);
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        if (!this.enraged && this.currentHealth < this.maxHealth * c.phase2Ratio) {
+            this.enraged = true;
+            spawnFloatText(this.pos.x, this.pos.y - 40, '狂怒', '#CCFF90', 20, 1.4);
+            spawnParticles(this.pos.x, this.pos.y, DRAGON_FIRE, 30, 160, 0.7, 4);
+            addShake(8);
+            Sfx.play('boss');
+        }
+        const sp = this.enraged ? c.phase2Speed : 1;
+        if (this.flight > 0) {
+            this.tickFlash(deltaTime);   // 起飛前剛被打到的閃白要繼續退，不然整段飛行都是白色剪影
+            this.flight -= deltaTime;
+            const k = 1 - Math.max(0, this.flight) / c.flightTime;
+            this.pos.x = this.from.x + (this.land.x - this.from.x) * k;
+            this.pos.y = this.from.y + (this.land.y - this.from.y) * k;
+            this.updateFacingDirection(this.land.x - this.from.x);
+            if (this.flight <= 0) this.slamDown(player, summons);
+            return;
+        }
+        if (this.windup > 0) {
+            this.tickFlash(deltaTime);
+            this.windup -= deltaTime;
+            if (this.windup <= 0) this.breathe(player, summons);
+            return;
+        }
+        this.breathT -= deltaTime * sp;
+        this.flyT -= deltaTime * sp;
+        if (this.flyT <= 0 && player.isAlive) {
+            this.flyT = c.flyInterval;
+            this.flight = c.flightTime;
+            this.from = { x: this.pos.x, y: this.pos.y };
+            this.land = { x: player.pos.x, y: player.pos.y };
+            spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 20, 120, 0.5, 3);
+            Sfx.play('dash');
+            return;
+        }
+        if (this.breathT <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.breathTriggerRange * c.breathTriggerRange) {
+            this.breathT = c.breathInterval;
+            this.windup = c.breathWindup;
+            this.breathDir = normalizeVector({ x: player.pos.x - this.pos.x, y: player.pos.y - this.pos.y });
+            this.updateFacingDirection(this.breathDir.x);
+            return;
+        }
+        super.update(deltaTime, player, summons);
+    }
+    inBreath(pos) {
+        const c = this.config;
+        const dx = pos.x - this.pos.x, dy = pos.y - this.pos.y;
+        const dSq = dx * dx + dy * dy;
+        if (dSq > c.breathRange * c.breathRange) return false;
+        const d = Math.sqrt(dSq) || 1;
+        return (dx * this.breathDir.x + dy * this.breathDir.y) / d >= Math.cos(c.breathAngle / 2);
+    }
+    breathe(player, summons) {
+        const c = this.config;
+        const dmg = this.attack * c.breathDamageMult;
+        summonGrid.forEachInRadius(this.pos, c.breathRange, s => { if (s.isAlive && this.inBreath(s.pos)) s.takeDamage(dmg); });
+        if (player.isAlive && this.inBreath(player.pos)) player.takeDamage(player.maxHealth * c.breathPlayerHpRatio, this);
+        const base = Math.atan2(this.breathDir.y, this.breathDir.x);
+        for (let i = 0; i < 40; i++) {
+            const a = base + (Math.random() - 0.5) * c.breathAngle, r = Math.random() * c.breathRange;
+            spawnParticles(this.pos.x + Math.cos(a) * r, this.pos.y + Math.sin(a) * r, DRAGON_FIRE, 1, 40, 0.5, 4);
+        }
+        addShake(8);
+        Sfx.play('nova');
+    }
+    slamDown(player, summons) {
+        const c = this.config;
+        const rSq = c.landRadius * c.landRadius;
+        const dmg = this.attack * c.landDamageMult;
+        summonGrid.forEachInRadius(this.pos, c.landRadius, s => { if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg); });
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.landPlayerHpRatio, this);
+        const effect = getVisualEffectFromPool(ExplosionEffect);
+        if (effect) { effect.init(this.pos, c.landRadius); gameState.visualEffects.push(effect); }
+        spawnParticles(this.pos.x, this.pos.y, '#BCAAA4', 34, 200, 0.6, 3);
+        addShake(12);
+        Sfx.play('slam');
+    }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        if (this.windup > 0) {
+            // 扇形預警：外框先畫滿，裡面的紅色隨蓄力往外長
+            const p = 1 - this.windup / c.breathWindup;
+            const base = Math.atan2(this.breathDir.y, this.breathDir.x);
+            ctx.save();
+            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.2 * p).toFixed(2)})`;
+            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y);
+            ctx.arc(this.pos.x, this.pos.y, c.breathRange * p, base - c.breathAngle / 2, base + c.breathAngle / 2); ctx.closePath(); ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 82, 82, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y);
+            ctx.arc(this.pos.x, this.pos.y, c.breathRange, base - c.breathAngle / 2, base + c.breathAngle / 2); ctx.closePath(); ctx.stroke();
+            ctx.restore();
+        }
+        if (this.flight > 0) {
+            // 落點紅圈越填越滿；影子在地上跟著移動，身體在空中劃一道弧
+            const k = 1 - this.flight / c.flightTime;
+            ctx.save();
+            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.2 * k).toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(this.land.x, this.land.y, c.landRadius * k, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 82, 82, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(this.land.x, this.land.y, c.landRadius, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = DRAGON_SHADOW;
+            ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.35, this.radius * 1.6, this.radius * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.translate(0, -Math.sin(k * Math.PI) * c.flyHeight);
+            super.draw(ctx);
+            ctx.restore();
+            return;
+        }
+        super.draw(ctx);
+    }
+}
+
+// 首領輪替：第 10 / 20 / 30 / 40 波依序出場，無盡模式之後重複（等級隨波數提高）
+const BOSS_ROTATION = [ColossusBoss, PlagueBoss, HunterBoss, DragonBoss];
 function getBossClass(wave) {
     const tier = Math.max(1, Math.floor(wave / CONFIG.wave.bossEvery));
     return BOSS_ROTATION[(tier - 1) % BOSS_ROTATION.length];
@@ -3255,7 +3406,7 @@ const CURSE_POOL_RADIUS = 46;
 const CURSE_POOL_LIFE = 4;
 const CURSE_POOL_DAMAGE_MULT = 0.5;
 
-const BOSS_CONFIG_OF = new Map([[ColossusBoss, () => CONFIG.boss], [PlagueBoss, () => CONFIG.plagueBoss], [HunterBoss, () => CONFIG.hunterBoss], [LichBoss, () => CONFIG.lichBoss]]);
+const BOSS_CONFIG_OF = new Map([[ColossusBoss, () => CONFIG.boss], [PlagueBoss, () => CONFIG.plagueBoss], [HunterBoss, () => CONFIG.hunterBoss], [DragonBoss, () => CONFIG.dragonBoss], [LichBoss, () => CONFIG.lichBoss]]);
 
 const THIEF_VANISH_PUFF = 20;
 class ThiefMonster extends Monster {
