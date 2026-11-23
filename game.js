@@ -299,6 +299,40 @@ const CONFIG = {
         // 傷害是法師最大生命的固定比例（同刺客、投手），不隨波數變大
         windup: 0.55, boltSpeed: 160, boltRange: 380, boltRadius: 7, boltPlayerHpRatio: 0.08,
     },
+    gargoyle: {
+        type: 'Gargoyle', name: '腐翼石像鬼', baseHealth: 30, baseAttack: 7, radius: 12,
+        // 專屬圖還沒來時借赤鷲的圖染成石頭灰
+        imageName: 'fast_melee', art: 'gargoyle', imgScaleMultiplier: 3.2, artScale: 4.5, tint: '#78909C', tintStrength: 0.65,
+        attackRange: 18, attackSpeed: 1.1, moveSpeed: 100, color: '#78909C',
+        soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
+        minWave: 12, waveInterval: 4,
+        // 會飛：骷髏（近戰）打不到、橫掃也掃不到（見 groundMonsterGrid），只有眼魔、法師的靈魂彈、怨靈與新星傷得到。
+        // 專撲眼魔：只出骷髏會被牠剋，跟「盾衛剋只出眼魔」互補，兵種搭配才有取捨
+        flying: true, preySearchRadius: 320, hoverHeight: 16, hoverBob: 3, hoverBobSpeed: 5,
+    },
+    soulDevourer: {
+        type: 'SoulDevourer', name: '吞魂者', baseHealth: 60, baseAttack: 6, radius: 14,
+        imageName: 'basic_melee', art: 'soul_devourer', imgScaleMultiplier: 5, artScale: 4, tint: '#6A1B9A', tintStrength: 0.6,
+        attackRange: 20, attackSpeed: 0.8, moveSpeed: 58, color: '#6A1B9A',
+        soulDrop: 4, waveSpeedIncreaseFactor: 0.006,
+        minWave: 9, waveInterval: 5,
+        // 去吃地上還沒被吸走的靈魂：每吃 1 靈魂，血量 +出生血量的 hpPerSoul、體型 +growPerSoul（封頂 +maxGrow）；
+        // 打死原數吐回吃掉的。跟玩家搶錢：牠吃得越多越硬、越難打回來，要嘛走過去撿、要嘛放新星一口氣吸走。
+        // 不多吐：吐 1.5 倍時牠變成收入放大器（大軍腳下滿地靈魂都被牠吃、殺掉多拿五成），一局多出上萬靈魂
+        orbSearchRadius: 260, hpPerSoul: 0.12, growPerSoul: 0.03, maxGrow: 1.0, refundMult: 1,
+    },
+    tombstone: {
+        type: 'Tombstone', name: '招魂墓碑', baseHealth: 260, baseAttack: 0, radius: 18,
+        // 專屬圖還沒來時用畫的（見 TombstoneMonster.drawPlaceholder）；imageName 只是讓載入流程有圖可用
+        imageName: 'armored_melee', art: 'tombstone', imgScaleMultiplier: 4, artScale: 4.5,
+        attackRange: 0, attackSpeed: 1, moveSpeed: 0, color: '#607D8B',
+        // 牠叫出來的血狼不掉靈魂（見 noSouls）：不然墓碑是一台刷錢機，大軍膨脹到什麼都一出場就死
+        soulDrop: 15, soulPerWave: 1, waveSpeedIncreaseFactor: 0,
+        minWave: 19, waveInterval: 10,
+        // 出現在畫面外不會動，每 spawnInterval 秒冒 spawnCount 隻血狼（牠叫出來的最多同時 maxSpawned 隻），lifetime 秒後自己崩塌、不掉靈魂。
+        // 帶大軍去拆才拿得到那一大筆靈魂；不理牠就是多吃一陣子小怪。畫面邊緣一直有箭頭指著牠
+        spawnInterval: 3.5, spawnCount: 2, maxSpawned: 8, lifetime: 30,
+    },
     slime: {
         type: 'Slime', name: '瘟膿史萊姆', baseHealth: 24, baseAttack: 4, radius: 13,
         imageName: 'basic_melee', art: 'slime', imgScaleMultiplier: 4, artScale: 3.2, tint: '#C0CA33', tintStrength: 0.6,
@@ -1088,6 +1122,8 @@ const summonGrid = new SpatialGrid(GRID_CELL);
 const SUMMON_COARSE_CELL = 160;
 const summonCoarseGrid = new SpatialGrid(SUMMON_COARSE_CELL);
 const monsterGrid = new SpatialGrid(GRID_CELL);
+// 只放地面上的怪：骷髏找目標、橫掃用這個，飛行怪（石像鬼）近戰打不到
+const groundMonsterGrid = new SpatialGrid(GRID_CELL);
 const wraithGrid = new SpatialGrid(WRAITH_GRID_CELL);
 
 // 上千隻召喚物擠在法師身邊時，就算只查附近格子，每隻附近還是有上百隻；
@@ -1849,7 +1885,8 @@ class SummonUnit extends GameObject {
 
 
     findNearestMonster() {
-        return monsterGrid.nearestShared(this.pos, summonSearchRadius(this.config));
+        const grid = this.config.type === 'SkeletonWarrior' ? groundMonsterGrid : monsterGrid;
+        return grid.nearestShared(this.pos, summonSearchRadius(this.config));
     }
 
     // 怨靈附近的骷髏移速加倍、眼魔攻速加倍
@@ -1943,7 +1980,7 @@ class SummonUnit extends GameObject {
             if (splash > 0) {
                 const splashDmg = Math.round(dmg * splash);
                 const rSq = CLEAVE_RADIUS * CLEAVE_RADIUS;
-                monsterGrid.forEachInRadius(mainTarget.pos, CLEAVE_RADIUS, m => {
+                groundMonsterGrid.forEachInRadius(mainTarget.pos, CLEAVE_RADIUS, m => {
                     if (m !== mainTarget && m.isAlive && distanceSq(mainTarget.pos, m.pos) <= rSq) m.takeDamage(splashDmg);
                 });
             }
@@ -2448,6 +2485,7 @@ class SoulOrb {
         this.isAlive = true;
     }
     update(deltaTime, player) {
+        if (!this.isAlive) return;   // 被吞魂者吃掉的那一格還在陣列裡，不能再被撿
         const c = CONFIG.orbs;
         this.age += deltaTime;
         if (this.z > 0 || this.vz > 0) {
@@ -2648,6 +2686,7 @@ class Monster extends GameObject {
     }
 
     soulValue() {
+        if (this.noSouls) return 0;
         return this.config.soulDrop * (this.isElite ? CONFIG.elite.soulMult : 1);
     }
 
@@ -3486,6 +3525,168 @@ function drawEnemyBolts() {
     }
 }
 
+const GARGOYLE_SHADOW = 'rgba(0, 0, 0, 0.28)';
+class GargoyleMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.gargoyle, waveNumber, isElite);
+        this.flying = true;
+        this.phase = Math.random() * Math.PI * 2;
+    }
+    // 先找附近的眼魔，沒有才照一般規則（法師或最近的召喚物）
+    findTarget(player, summons) {
+        const R = this.config.preySearchRadius;
+        let best = null, bestSq = R * R;
+        summonCoarseGrid.forEachInRadius(this.pos, R, s => {
+            if (!s.isAlive || s.config.type !== 'EyeMonster') return;
+            const d = distanceSq(this.pos, s.pos);
+            if (d < bestSq) { bestSq = d; best = s; }
+        });
+        if (best) this.target = best;
+        else super.findTarget(player, summons);
+    }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        // 地上的影子留在原位、身體浮在上面：一眼看得出「在天上」
+        ctx.fillStyle = GARGOYLE_SHADOW;
+        ctx.beginPath();
+        ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.35, this.radius * 1.1, this.radius * 0.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const lift = c.hoverHeight + Math.sin(worldTime * c.hoverBobSpeed + this.phase) * c.hoverBob;
+        ctx.save();
+        ctx.translate(0, -lift);
+        super.draw(ctx);
+        ctx.restore();
+    }
+}
+
+class SoulDevourerMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.soulDevourer, waveNumber, isElite);
+        this.eaten = 0;
+        this.birthHealth = this.maxHealth;
+        this.baseRadius = this.radius;
+    }
+    // 附近地上有還沒被吸走的靈魂就去吃，沒有才找人打；靈魂也有 pos / isAlive，直接當目標用
+    findTarget(player, summons) {
+        const R = this.config.orbSearchRadius;
+        let best = null, bestSq = R * R;
+        for (let i = 0; i < gameState.orbs.length; i++) {
+            const o = gameState.orbs[i];
+            if (!o.isAlive || o.attracted || o.inedible) continue;
+            const d = distanceSq(this.pos, o.pos);
+            if (d < bestSq) { bestSq = d; best = o; }
+        }
+        if (best) this.target = best;
+        else super.findTarget(player, summons);
+    }
+    attackTarget() {
+        const o = this.target;
+        if (o instanceof SoulOrb) {
+            if (o.isAlive && !o.attracted) this.eat(o);
+            this.target = null;
+            return;
+        }
+        super.attackTarget();
+    }
+    eat(o) {
+        const c = this.config;
+        o.isAlive = false;
+        this.eaten += o.value;
+        const gain = Math.round(this.birthHealth * c.hpPerSoul * o.value);
+        this.maxHealth += gain;
+        this.currentHealth += gain;
+        this.drawScale = 1 + Math.min(c.maxGrow, this.eaten * c.growPerSoul);
+        this.radius = this.baseRadius * this.drawScale;
+        spawnParticles(o.pos.x, o.pos.y, '#80DEEA', 6, 50, 0.35, 2.5);
+        Sfx.play('bloat');
+    }
+    // 吃掉的靈魂另外吐，不吃祝福／連殺加成，而且吐出來的別隻吞魂者不能吃：
+    // 實測放任的話「死了吐 1.5 倍 → 隔壁那隻吃掉 → 死了再吐 1.5 倍」一路滾，一局吐出三到九萬靈魂（其他怪全部加起來約五萬）
+    die() {
+        super.die();
+        const refund = Math.floor(this.eaten * this.config.refundMult);
+        if (refund <= 0) return;
+        const from = gameState.orbs.length;
+        dropSouls(this.pos.x, this.pos.y, refund);
+        for (let i = from; i < gameState.orbs.length; i++) gameState.orbs[i].inedible = true;
+    }
+}
+
+const TOMBSTONE_LIFE_RING = 'rgba(165, 214, 167, 0.85)';
+const TOMBSTONE_FIRE = '#69F0AE';
+class TombstoneMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.tombstone, waveNumber, isElite);
+        this.life = this.config.lifetime;
+        this.spawnT = this.config.spawnInterval * 0.5;
+        this.spawned = [];
+        this.phase = Math.random() * Math.PI * 2;
+    }
+    soulValue() {
+        return (this.config.soulDrop + this.config.soulPerWave * this.waveNumber) * (this.isElite ? CONFIG.elite.soulMult : 1);
+    }
+    // 不會動、不攻擊：只冒怪、倒數
+    update(deltaTime) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        this.tickFlash(deltaTime);
+        this.life -= deltaTime;
+        if (this.life <= 0) { this.crumble(); return; }
+        this.spawnT -= deltaTime;
+        if (this.spawnT > 0) return;
+        this.spawnT = c.spawnInterval;
+        this.spawned = this.spawned.filter(m => m.isAlive);
+        const n = Math.min(c.spawnCount, c.maxSpawned - this.spawned.length);
+        for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const m = new BasicMeleeMonster(this.pos.x + Math.cos(a) * 30, this.pos.y + Math.sin(a) * 30, this.waveNumber, false);
+            m.noSouls = true;
+            gameState.monsters.push(m);
+            this.spawned.push(m);
+            spawnParticles(m.pos.x, m.pos.y, TOMBSTONE_FIRE, 8, 60, 0.4, 2.5);
+        }
+        if (n > 0 && inView(this.pos)) Sfx.play('spawn');
+    }
+    // 時間到自己垮掉：不算擊殺、不掉靈魂
+    crumble() {
+        this.isAlive = false;
+        spawnParticles(this.pos.x, this.pos.y, '#90A4AE', 22, 90, 0.6, 3);
+        gameState.visualEffects.push(new DeathFadeEffect(this));
+    }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        if (images.tombstone) super.draw(ctx);
+        else { this.drawPlaceholder(ctx); this.drawHealthBar(ctx); }
+        // 腳下一圈倒數：剩多少時間會自己垮掉
+        const k = Math.max(0, this.life / this.config.lifetime);
+        ctx.strokeStyle = TOMBSTONE_LIFE_RING;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.4, this.radius * 1.6, this.radius * 0.6, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
+        ctx.stroke();
+    }
+    drawPlaceholder(ctx) {
+        const w = this.radius * 2, h = this.radius * 2.6;
+        const x = this.pos.x - w / 2, y = this.pos.y - h * 0.6;
+        ctx.fillStyle = this.hitFlash > 0 ? '#ECEFF1' : '#546E7A';
+        ctx.strokeStyle = TEXT_OUTLINE;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y + h);
+        ctx.lineTo(x, y + w / 2);
+        ctx.arc(this.pos.x, y + w / 2, w / 2, Math.PI, 0);
+        ctx.lineTo(x + w, y + h);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = TOMBSTONE_FIRE;
+        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(worldTime * 6 + this.phase);
+        ctx.fillRect(this.pos.x - 2, y + h * 0.25, 4, h * 0.45);
+        ctx.fillRect(this.pos.x - w * 0.25, y + h * 0.38, w * 0.5, 4);
+        ctx.globalAlpha = 1;
+    }
+}
+
 // 毒的顏色一律用綠色（大家一看就懂是毒），投手本體是紫色，兩者靠那條拋物線連在一起
 const POISON_DARK = '#33691E';
 const POISON_MID = '#7CB342';
@@ -3994,7 +4195,8 @@ function buildWaveQueue(wave) {
     const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
     add(BasicMeleeMonster, Math.round((W.basicBase + wave * W.basicPerWave) * factor));
     [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster],
-    [CONFIG.assassin, AssassinMonster], [CONFIG.spitter, SpitterMonster], [CONFIG.bloodEye, BloodEyeMonster], [CONFIG.slime, SlimeMonster], [CONFIG.bat, BatMonster],
+    [CONFIG.assassin, AssassinMonster], [CONFIG.spitter, SpitterMonster], [CONFIG.bloodEye, BloodEyeMonster],
+    [CONFIG.gargoyle, GargoyleMonster], [CONFIG.soulDevourer, SoulDevourerMonster], [CONFIG.tombstone, TombstoneMonster], [CONFIG.slime, SlimeMonster], [CONFIG.bat, BatMonster],
     [CONFIG.witchDoctor, WitchDoctorMonster], [CONFIG.shieldGuard, ShieldGuardMonster], [CONFIG.corpseWorm, CorpseWormMonster],
     [CONFIG.gravePriest, GravePriestMonster]]
         .forEach(([cfg, Cls]) => {
@@ -4011,7 +4213,8 @@ function buildWaveQueue(wave) {
     }
     let eliteChance = getEliteChance(wave) * cm.eliteMult;
     if (ev && ev.eliteMult) eliteChance = Math.min(ev.eliteMax, Math.max(CONFIG.elite.chanceBase, eliteChance) * ev.eliteMult);
-    const queue = classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Math.random() < eliteChance }));
+    // 墓碑不當精英：分裂詞綴會裂成三座墓碑
+    const queue = classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Cls !== TombstoneMonster && Math.random() < eliteChance }));
     if (isFinalWave(wave)) queue.unshift({ Cls: LichBoss, elite: false });
     else if (isBossWave) queue.unshift({ Cls: getBossClass(wave), elite: false });
     return queue;
@@ -4048,6 +4251,9 @@ function getNewcomer(wave) {
     const list = [
         { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', icon: 'warning', color: '#EF9A9A' },
         { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝法師射血彈，走動就躲得掉', icon: 'warning', color: '#FF8A80' },
+        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快撿或放新星吸走', icon: 'soul', color: '#CE93D8' },
+        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，骷髏打不到，靠眼魔與法師', icon: 'claws', color: '#B0BEC5' },
+        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒小怪，帶大軍去拆有大獎', icon: 'skull', color: '#A5D6A7' },
         { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', icon: 'plague', color: '#E6EE9C' },
         { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', icon: 'raiseDead', color: '#AED581' },
         { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲法師，邊走邊放新星', icon: 'claws', color: '#BCAAA4' },
@@ -5338,6 +5544,7 @@ function updateGame(deltaTime) {
     summonGrid.rebuild(gameState.summons);
     summonCoarseGrid.rebuild(gameState.summons);
     monsterGrid.rebuild(gameState.monsters);
+    groundMonsterGrid.rebuild(gameState.monsters.filter(m => !m.flying));
     rebuildEyeTargetCounts(gameState.summons);
     gameState.priests = gameState.monsters.filter(m => m.isAlive && m instanceof GravePriestMonster);
     gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;
@@ -5576,6 +5783,7 @@ const POINTER_EDGE_PAD = 30;
 const POINTER_TOP_EXTRA = 70;
 const POINTER_THIEF_COLOR = '#FFD54F';
 const POINTER_BOSS_COLOR = '#CE93D8';
+const POINTER_TOMB_COLOR = '#A5D6A7';
 const POINTER_NEAREST_COLOR = '#EF9A9A';
 const POINTER_PORTRAIT_BOX = 26;
 function drawOffscreenPointers() {
@@ -5590,10 +5798,11 @@ function drawOffscreenPointers() {
         const onScreen = sx > 0 && sx < view.cssW && sy > 0 && sy < view.cssH;
         if (onScreen) { anyVisible = true; continue; }
         const isThief = m instanceof ThiefMonster;
-        if (isThief || m instanceof BossMonster) {
+        const isTomb = m instanceof TombstoneMonster;
+        if (isThief || isTomb || m instanceof BossMonster) {
             bounds = bounds || pointerBounds();
             const icon = getIconImage(isThief ? 'sack' : 'skull');
-            drawEdgePointer(sx, sy, isThief ? POINTER_THIEF_COLOR : POINTER_BOSS_COLOR, bounds, icon, 24, 24);
+            drawEdgePointer(sx, sy, isThief ? POINTER_THIEF_COLOR : isTomb ? POINTER_TOMB_COLOR : POINTER_BOSS_COLOR, bounds, icon, 24, 24);
             continue;
         }
         const d = distanceSq(p, m.pos);
