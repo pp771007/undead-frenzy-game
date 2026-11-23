@@ -1,182 +1,146 @@
 <div align="center">
 
-<img src="favicon.png" alt="Undead Frenzy" width="96" height="96" />
+<img src="favicon.png" alt="" width="88" height="88" />
 
-# 💀🔥 亡靈狂潮 · Undead Frenzy
+# 亡靈狂潮 · Undead Frenzy
 
-**一款純前端 HTML5 波次生存遊戲。**<br/>
-扮演亡靈法師，召喚骷髏戰士、怨靈與眼魔，對抗無止盡的怪物浪潮。<br/>
-收集靈魂、強化召喚物，挑戰你的生存極限！
+**召喚沒有上限的骷髏大軍，撐過 50 波怪物浪潮。**
 
-<br/>
+打開瀏覽器就能玩，手機、電腦都可以，不用安裝。
 
 <a href="https://pp771007.github.io/undead-frenzy-game/">
-  <img src="https://img.shields.io/badge/▶_立即遊玩-PLAY_NOW-e63946?style=for-the-badge&logo=gamepad&logoColor=white" alt="Play Now" />
+  <img src="https://img.shields.io/badge/%E2%96%B6%20%E7%AB%8B%E5%8D%B3%E9%81%8A%E7%8E%A9-PLAY%20NOW-8e44ad?style=for-the-badge" alt="立即遊玩" />
 </a>
 
 <br/><br/>
 
-<img src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white" alt="HTML5" />
-<img src="https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white" alt="CSS3" />
-<img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black" alt="JavaScript" />
-<img src="https://img.shields.io/badge/無需安裝-Zero_Install-2a9d8f?style=flat-square" alt="Zero Install" />
+<img src="docs/title.jpg" width="23%" alt="標題畫面" />
+<img src="docs/battle.jpg" width="23%" alt="上百隻召喚物混戰" />
+<img src="docs/boss.jpg" width="23%" alt="最終首領墮落亡靈王" />
+<img src="docs/draft.jpg" width="23%" alt="祝福三選一" />
 
 </div>
 
 <br/>
 
-<div align="center">
+## 一局怎麼玩
 
-🎮 **遊戲網址** → <a href="https://pp771007.github.io/undead-frenzy-game/">https://pp771007.github.io/undead-frenzy-game/</a>
+1. **打怪撿靈魂**：怪物死掉會噴出靈魂，走過去就會吸過來
+2. **召喚與升級**：用靈魂召喚骷髏、怨靈、眼魔，或把同一種全部升一級
+3. **挑祝福**：每 3 波和每隻首領之後，從三張祝福裡挑一張，每局的打法都不一樣
+4. **撐到第 50 波**：每 10 波一隻首領，最後是墮落亡靈王。打贏可以收工，也可以繼續挑戰無盡模式
+5. **變強再來**：結束時依撐過的波數拿靈魂結晶，換成下一局也有效的永久強化
 
-</div>
+一局大約 30 分鐘，每波結束自動存檔，關掉下次再接著打。
 
 <br/>
 
----
-
-## ⚔️ 召喚單位
+## 你的亡靈大軍
 
 <table>
   <tr>
     <td align="center" width="33%">
-      <img src="skeleton_warrior.png" width="120" /><br/>
-      <b>骷髏戰士</b><br/>
-      <sub>近戰 · 衝鋒撕咬</sub>
+      <img src="skeleton_warrior.png" width="96" alt="" /><br/>
+      <b>骷髏</b><br/>
+      <sub>近戰主力，便宜又耐打</sub>
     </td>
     <td align="center" width="33%">
-      <img src="eye_monster.png" width="120" /><br/>
-      <b>眼魔</b><br/>
-      <sub>遠程 · 發射彈幕</sub>
-    </td>
-    <td align="center" width="33%">
-      <img src="wraith.png" width="120" /><br/>
+      <img src="wraith.png" width="96" alt="" /><br/>
       <b>怨靈</b><br/>
-      <sub>範圍緩速 · 死亡爆炸</sub>
+      <sub>光環讓周圍敵人變慢，死掉時爆炸</sub>
+    </td>
+    <td align="center" width="33%">
+      <img src="eye_monster.png" width="96" alt="" /><br/>
+      <b>眼魔</b><br/>
+      <sub>遠程射擊，躲在後排輸出</sub>
     </td>
   </tr>
 </table>
 
+升到 **Lv10／25／50** 會進化：體型變大、換顏色，還會學會爆擊、彈射、脈衝之類的新能力。
+
 <br/>
 
-## ✨ 主要特色
+## 會遇到的敵人
+
+越後面的波次出現越多新面孔，每種第一次登場時畫面上都會告訴你怎麼對付。
 
 <table>
   <tr>
-    <td>🧙‍♂️ <b>三種召喚單位</b></td>
-    <td>骷髏戰士、眼魔、怨靈，各有獨特戰術定位，召喚數量無上限</td>
+    <td align="center" width="33%"><img src="slime.png" width="72" alt="" /><br/><b>瘟膿史萊姆</b><br/><sub>打死會分裂</sub></td>
+    <td align="center" width="33%"><img src="assassin.png" width="72" alt="" /><br/><b>暗影刺客</b><br/><sub>隱身接近，腳下出現紅圈就快走開</sub></td>
+    <td align="center" width="33%"><img src="witch_doctor.png" width="72" alt="" /><br/><b>腐骨巫醫</b><br/><sub>會幫怪物補血，先殺牠</sub></td>
   </tr>
   <tr>
-    <td>⬆️ <b>升級與進化</b></td>
-    <td>各召喚物可分別升級；Lv10／25／50 進化，外型變大換色並獲得新能力（爆擊、彈射、脈衝……）</td>
+    <td align="center"><img src="bat.png" width="72" alt="" /><br/><b>吸血蝙蝠群</b><br/><sub>直撲法師</sub></td>
+    <td align="center"><img src="shield_guard.png" width="72" alt="" /><br/><b>骨盾衛兵</b><br/><sub>盾牌擋飛彈，要靠骷髏近戰</sub></td>
+    <td align="center"><img src="corpse_worm.png" width="72" alt="" /><br/><b>屍蟲</b><br/><sub>從地底竄出，地面裂開就散開</sub></td>
   </tr>
   <tr>
-    <td>👻 <b>靈魂光球</b></td>
-    <td>擊殺怪物掉落靈魂光球，靠近就會吸過來，用於召喚與升級</td>
-  </tr>
-  <tr>
-    <td>🌊 <b>波次挑戰</b></td>
-    <td>怪物成群湧入，每 10 波一輪：首領後兩波喘口氣，再一路加壓到下一隻首領。新威脅分散在整局，每種登場時都有介紹：瘟膿史萊姆（分裂）、暗影刺客（瞬移刺殺法師）、腐骨巫醫（幫怪補血）、吸血蝙蝠群（直撲法師）、骨盾衛兵（擋飛彈）、瘟疫投手（毒池）、屍蟲（地底竄出）、墓地祭司（把陣亡召喚物變成敵人），第 25 波起精英怪帶分裂／狂暴詞綴</td>
-  </tr>
-  <tr>
-    <td>👑 <b>最終決戰與無盡</b></td>
-    <td>一局約 30 分鐘：第 50 波最終首領墮落亡靈王降臨（召喚敵方骷髏、詛咒地面、亡靈新星），打贏即凱旋；之後可以選擇繼續挑戰無盡模式</td>
-  </tr>
-  <tr>
-    <td>💀 <b>詛咒</b></td>
-    <td>通關後解鎖自選難度，共 8 級，每級多一條規則，結晶獲得量跟著提高</td>
-  </tr>
-  <tr>
-    <td>🌕 <b>波次事件</b></td>
-    <td>不定期出現血月、精英潮、狂暴、腐屍狂潮、金魂竊賊等特殊波</td>
-  </tr>
-  <tr>
-    <td>👹 <b>首領戰</b></td>
-    <td>每 10 波輪流出現骸骨巨像、疫病母巢、暗影獵手，各有不同招式與預警；跑出畫面時邊緣有方向指示</td>
-  </tr>
-  <tr>
-    <td>🔥 <b>連殺</b></td>
-    <td>持續擊殺累積連殺數，連殺越高靈魂掉越多</td>
-  </tr>
-  <tr>
-    <td>✨ <b>祝福三選一</b></td>
-    <td>每 3 波與首領波後從 15 種可疊層祝福中挑一個，每局流派都不同</td>
-  </tr>
-  <tr>
-    <td>💥 <b>死亡新星</b></td>
-    <td>法師的主動技能：炸開周圍的敵人，被包圍時的救命招</td>
-  </tr>
-  <tr>
-    <td>🏆 <b>最高紀錄</b></td>
-    <td>結算時顯示最佳存活波數、最高連殺與本局祝福</td>
-  </tr>
-  <tr>
-    <td>💎 <b>永久強化</b></td>
-    <td>每局依撐過的波數與擊敗的首領獲得靈魂結晶，在標題畫面購買跨局保留的強化</td>
-  </tr>
-  <tr>
-    <td>💾 <b>自動存檔</b></td>
-    <td>每波結束自動儲存進度與設定，下次開啟自動讀取</td>
-  </tr>
-  <tr>
-    <td>⏸️ <b>暫停選單</b></td>
-    <td>可暫停、調整音量、查看召喚與擊殺統計</td>
-  </tr>
-  <tr>
-    <td>👆 <b>長按連續操作</b></td>
-    <td>召喚與升級按鈕支援長按快速連點</td>
-  </tr>
-  <tr>
-    <td>📱 <b>全螢幕＋無限地圖</b></td>
-    <td>整個螢幕都是戰場，鏡頭跟著法師走，地圖無限延伸；手機與電腦皆可流暢操作，上千隻召喚物也順</td>
-  </tr>
-  <tr>
-    <td>🎵 <b>音樂與音效</b></td>
-    <td>可於暫停選單分別調整音量</td>
+    <td align="center"><img src="grave_priest.png" width="72" alt="" /><br/><b>墓地祭司</b><br/><sub>把陣亡的召喚物變成敵人</sub></td>
+    <td align="center"><img src="bloater.png" width="72" alt="" /><br/><b>腐屍</b><br/><sub>貼近後膨脹自爆，趁膨脹時打掉</sub></td>
+    <td align="center"><img src="thief.png" width="72" alt="" /><br/><b>金魂竊賊</b><br/><sub>一直逃跑，追到能拿大量靈魂</sub></td>
   </tr>
 </table>
 
-<br/>
-
-## 🎮 遊玩方式
-
-| 操作 | 說明 |
-| :--- | :--- |
-| **移動** | 在畫面任意處按住拖曳出現虛擬搖桿，拉越遠走越快（鍵盤：WASD／方向鍵） |
-| **召喚** | 點擊或長按下方召喚按鈕，消耗靈魂召喚單位（鍵盤：1／2／3） |
-| **升級** | 點擊或長按升級按鈕，消耗靈魂提升該類召喚物等級（鍵盤：Shift+1／2／3） |
-| **死亡新星** | 點「💥 新星」（鍵盤：空白鍵），冷卻中按鈕會顯示秒數 |
-| **立即開戰** | 波次之間點「⏩ 開戰」跳過倒數 |
-| **暫停／繼續** | 點「⏸ 暫停」（鍵盤：Esc／P），暫停時可調整音量、查看祝福、重啟遊戲 |
-| **統計資料** | 暫停選單查看各召喚物召喚數與怪物擊殺數 |
-| **自動存檔** | 每波結束自動存檔，重新開啟會自動讀取 |
-| **重啟遊戲** | 暫停選單或結束畫面可重啟，會清除存檔 |
+還有往你腳下丟毒池的瘟疫投手，以及第 25 波起帶「裂」「狂」詞綴的精英怪。
 
 <br/>
 
-## 🔧 技術棧
+## 首領
+
+<table>
+  <tr>
+    <td align="center" width="25%"><img src="boss_colossus.png" width="88" alt="" /><br/><b>骸骨巨像</b></td>
+    <td align="center" width="25%"><img src="boss_plague.png" width="88" alt="" /><br/><b>疫病母巢</b></td>
+    <td align="center" width="25%"><img src="boss_hunter.png" width="88" alt="" /><br/><b>暗影獵手</b></td>
+    <td align="center" width="25%"><img src="lich_king.png" width="88" alt="" /><br/><b>墮落亡靈王</b><br/><sub>第 50 波</sub></td>
+  </tr>
+</table>
+
+大招出手前地上都會先亮出範圍；首領跑出畫面時，邊緣會有箭頭指出牠在哪。
+
+<br/>
+
+## 讓每一局都不一樣
+
+- **15 種祝福**：可以重複疊層，例如全押眼魔多重射擊，或讓擊殺的怪物復活成骷髏
+- **波次事件**：血月、精英潮、狂暴、腐屍狂潮、金魂竊賊，不定期出現
+- **連殺**：一直殺不停，靈魂掉得越多
+- **永久強化**：用靈魂結晶換開局靈魂、法師血量、免費重抽等 7 種強化
+- **詛咒**：通關後解鎖，共 8 級，每級多一條規則，結晶也拿得更多
+
+<br/>
+
+## 操作
+
+| | 手機 | 鍵盤 |
+| :--- | :--- | :--- |
+| 移動 | 在畫面任何地方按住拖曳，拉越遠走越快 | WASD／方向鍵 |
+| 召喚 | 點或長按「召喚」 | 1 骷髏・2 怨靈・3 眼魔 |
+| 升級 | 點或長按「升級」 | Shift + 1／2／3 |
+| 死亡新星（炸開身邊的敵人） | 點右下角「新星」 | 空白鍵 |
+| 選祝福 | 點卡片 | 1／2／3 |
+| 提早開戰 | 波次之間點「開戰」 | |
+| 暫停 | 點「暫停」或手機的返回鍵 | Esc／P |
+
+暫停時可以看本局已選的祝福、調音量，或按「結束這局」直接結算拿結晶。
+
+<br/>
+
+## 小技巧
+
+- **被包圍就放新星**，它是救命招，冷卻好時按鈕會發光
+- **骷髏擋前面、眼魔打後面**：骨盾衛兵擋得住飛彈，擋不住骷髏
+- **巫醫和祭司優先處理**，放著不管怪物會越打越多
+- 法師本身很脆，**邊走邊打**比站著不動安全
+
+<br/>
 
 <div align="center">
-
-純前端、零依賴、開箱即玩。
-
-`HTML5` &nbsp;·&nbsp; `CSS3` &nbsp;·&nbsp; `JavaScript（原生，無框架）`
-
-</div>
-
-<br/>
-
----
-
-<div align="center">
-
-> 遊戲完全在前端運作，無需安裝。<br/>
-> 直接開啟 <code>index.html</code>，或點擊上方按鈕線上遊玩 🎮
-
-<br/>
 
 <a href="https://pp771007.github.io/undead-frenzy-game/">
-  <img src="https://img.shields.io/badge/▶_開始你的亡靈狂潮-e63946?style=for-the-badge" alt="Start Playing" />
+  <img src="https://img.shields.io/badge/%E9%96%8B%E5%A7%8B%E4%BD%A0%E7%9A%84%E4%BA%A1%E9%9D%88%E7%8B%82%E6%BD%AE-8e44ad?style=for-the-badge" alt="開始你的亡靈狂潮" />
 </a>
 
 </div>
