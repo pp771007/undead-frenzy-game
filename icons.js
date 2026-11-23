@@ -98,6 +98,13 @@ const ICON_BODIES = {
         <path d="M20 21 L42 21 M20 28 L38 28 M20 35 L34 35" stroke="#a1887f" stroke-width="2.5"/><circle cx="40" cy="44" r="7" fill="#c62828" stroke-width="3"/>`,
     lifesteal: `<path d="M32 6 C40 20 50 30 50 40 C50 50 42 57 32 57 C22 57 14 50 14 40 C14 30 24 20 32 6 Z" fill="#c62828"/>${shine(24, 38, 3, 6, 15)}
         <path d="M23 30 L27 43 L31 30 Z" fill="#f1ead6" stroke-width="2.5"/><path d="M33 30 L37 43 L41 30 Z" fill="#f1ead6" stroke-width="2.5"/>`,
+    // 法師的靈魂彈：跟遊戲裡的彈同一個青色
+    soulBlade: `<path d="M46 6 L58 6 L58 18 L30 46 L18 34 Z" fill="#7ff0f0"/><path d="M52 10 L26 38" stroke="#d6fbfb" stroke-width="3"/>
+        <path d="M12 32 L32 52" stroke-width="10"/><path d="M12 32 L32 52" stroke="#5c6bc0" stroke-width="5"/>
+        <path d="M20 44 L9 55" stroke-width="9"/><path d="M20 44 L9 55" stroke="#9fa8da" stroke-width="5"/>${shine(50, 12, 3, 2, 45)}`,
+    soulVolley: duoStroke('M8 22 L26 22', '#7ff0f0', 4) + duoStroke('M8 34 L32 34', '#7ff0f0', 4) + duoStroke('M8 46 L26 46', '#7ff0f0', 4) +
+        `<circle cx="32" cy="22" r="7" fill="#7ff0f0"/><circle cx="40" cy="34" r="8" fill="#7ff0f0"/><circle cx="32" cy="46" r="7" fill="#7ff0f0"/>
+        <circle cx="40" cy="34" r="3.5" fill="#e8ffff" stroke="none"/>${shine(30, 20, 2, 1.5)}${shine(38, 31, 2.5, 1.5)}${shine(30, 44, 2, 1.5)}`,
 };
 
 const ICON_SVGS = Object.fromEntries(Object.entries(ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));

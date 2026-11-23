@@ -501,6 +501,8 @@ const BLESSINGS = {
     novaPower: { name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
     pact: { name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
     lifesteal: { name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
+    soulBlade: { name: '靈魂之刃', max: 4, per: 0.6, desc: b => `法師靈魂彈傷害 +${pct(b.per)}` },
+    soulVolley: { name: '靈魂連射', max: 2, per: 1, desc: b => `法師每次多射 ${b.per} 顆` },
 };
 
 function getTier(level) {
@@ -1332,6 +1334,7 @@ const PLAYER_MAX_HIT_RATIO = 0.4;
 const ABSORB_GLOW_PER_ORB = 0.35;
 const ABSORB_GLOW_DECAY = 2.5;
 
+const boltTargets = [];
 class Player extends GameObject {
     constructor(x, y) {
         const config = CONFIG.player;
@@ -1347,13 +1350,24 @@ class Player extends GameObject {
         this.boltT -= deltaTime;
         if (this.boltT > 0) return;
         const P = CONFIG.player;
-        const target = monsterGrid.nearest(this.pos, P.boltRange);
-        if (!target) return;
+        // 一次射幾顆就挑最近的幾隻，各打一隻（靈魂連射）
+        const shots = 1 + blessVal('soulVolley');
+        const rSq = P.boltRange * P.boltRange;
+        boltTargets.length = 0;
+        monsterGrid.forEachInRadius(this.pos, P.boltRange, m => {
+            if (!m.isAlive) return;
+            const d = distanceSq(this.pos, m.pos);
+            if (d <= rSq) boltTargets.push({ m, d });
+        });
+        if (!boltTargets.length) return;
+        if (boltTargets.length > shots) boltTargets.sort((a, b) => a.d - b.d);
         this.boltT = P.boltInterval;
-        const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave));
-        const pr = getProjectileFromPool();
-        pr.init(this.pos.x, this.pos.y - this.imageHeight * 0.15, target, P.bolt, dmg);
-        gameState.projectiles.push(pr);
+        const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade'));
+        for (let i = 0; i < Math.min(shots, boltTargets.length); i++) {
+            const pr = getProjectileFromPool();
+            pr.init(this.pos.x, this.pos.y - this.imageHeight * 0.15, boltTargets[i].m, P.bolt, dmg);
+            gameState.projectiles.push(pr);
+        }
         Sfx.play('mageBolt');
     }
     update(deltaTime, moveVec) {
