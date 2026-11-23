@@ -253,7 +253,7 @@ const CONFIG = {
     },
     dragonBoss: {
         type: 'Boss', name: '腐朽骨龍', baseHealth: 650, baseAttack: 24, radius: 26,
-        // 專屬圖還沒來時借骸骨巨像的圖染綠
+        // 專屬圖載不到時退回骸骨巨像的圖染綠
         imageName: 'boss_colossus', art: 'boss_dragon', imgScaleMultiplier: 4.5, artScale: 5, tint: '#2E7D32', tintStrength: 0.55,
         attackRange: 34, attackSpeed: 0.7, moveSpeed: 34, color: '#2E7D32',
         soulDrop: 50, waveSpeedIncreaseFactor: 0.004, slowResist: 0.5,
@@ -303,8 +303,8 @@ const CONFIG = {
     },
     bloodEye: {
         type: 'BloodEye', name: '血瞳', baseHealth: 22, baseAttack: 0, radius: 11,
-        // 沒有專屬圖：借眼魔的圖染成血紅（跟敵方骷髏同一套「我方兵種染紅＝敵人」的做法）
-        imageName: 'eye_monster', imgScaleMultiplier: 3, tint: '#D50000', tintStrength: 0.6,
+        // 專屬圖載不到時退回眼魔的圖染成血紅（跟敵方骷髏同一套「我方兵種染紅＝敵人」的做法）
+        imageName: 'eye_monster', art: 'blood_eye', imgScaleMultiplier: 3, artScale: 3.3, tint: '#D50000', tintStrength: 0.6,
         // attackRange = 停在離法師多遠的地方射，attackSpeed = 每秒射幾發
         attackRange: 190, attackSpeed: 0.4, moveSpeed: 48, color: '#D50000',
         soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
@@ -316,8 +316,8 @@ const CONFIG = {
     },
     gargoyle: {
         type: 'Gargoyle', name: '腐翼石像鬼', baseHealth: 30, baseAttack: 7, radius: 12,
-        // 專屬圖還沒來時借赤鷲的圖染成石頭灰
-        imageName: 'fast_melee', art: 'gargoyle', imgScaleMultiplier: 3.2, artScale: 4.5, tint: '#78909C', tintStrength: 0.65,
+        // 專屬圖載不到時退回赤鷲的圖染成石頭灰
+        imageName: 'fast_melee', art: 'gargoyle', imgScaleMultiplier: 3.2, artScale: 4.8, tint: '#78909C', tintStrength: 0.65,
         attackRange: 18, attackSpeed: 1.1, moveSpeed: 100, color: '#78909C',
         soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
         minWave: 12, waveInterval: 4,
@@ -327,8 +327,8 @@ const CONFIG = {
     },
     soulDevourer: {
         type: 'SoulDevourer', name: '吞魂者', baseHealth: 60, baseAttack: 6, radius: 14,
-        imageName: 'basic_melee', art: 'soul_devourer', imgScaleMultiplier: 5, artScale: 4, tint: '#6A1B9A', tintStrength: 0.6,
-        attackRange: 20, attackSpeed: 0.8, moveSpeed: 58, color: '#6A1B9A',
+        imageName: 'basic_melee', art: 'soul_devourer', imgScaleMultiplier: 5, artScale: 3.2, tint: '#33691E', tintStrength: 0.6,
+        attackRange: 20, attackSpeed: 0.8, moveSpeed: 58, color: '#33691E',
         soulDrop: 4, waveSpeedIncreaseFactor: 0.006,
         minWave: 9, waveInterval: 5,
         // 去吃地上還沒被吸走的靈魂：每吃 1 靈魂，血量 +出生血量的 hpPerSoul、體型 +growPerSoul（封頂 +maxGrow）；
@@ -338,8 +338,8 @@ const CONFIG = {
     },
     tombstone: {
         type: 'Tombstone', name: '招魂墓碑', baseHealth: 260, baseAttack: 0, radius: 18,
-        // 專屬圖還沒來時用畫的（見 TombstoneMonster.drawPlaceholder）；imageName 只是讓載入流程有圖可用
-        imageName: 'armored_melee', art: 'tombstone', imgScaleMultiplier: 4, artScale: 4.5,
+        // 專屬圖載不到時用畫的（見 TombstoneMonster.drawPlaceholder）；imageName 只是讓載入流程有圖可用
+        imageName: 'armored_melee', art: 'tombstone', imgScaleMultiplier: 4, artScale: 3.5,
         attackRange: 0, attackSpeed: 1, moveSpeed: 0, color: '#607D8B',
         // 牠叫出來的血狼不掉靈魂（見 noSouls）：不然墓碑是一台刷錢機，大軍膨脹到什麼都一出場就死
         soulDrop: 15, soulPerWave: 1, waveSpeedIncreaseFactor: 0,
@@ -839,6 +839,11 @@ const OPTIONAL_ART = {
     corpse_worm: 'corpse_worm.png',
     grave_priest: 'grave_priest.png',
     lich_king: 'lich_king.png',
+    blood_eye: 'blood_eye.png',
+    gargoyle: 'gargoyle.png',
+    soul_devourer: 'soul_devourer.png',
+    tombstone: 'tombstone.png',
+    boss_dragon: 'boss_dragon.png',
 };
 
 async function loadAllImages() {
@@ -4456,7 +4461,7 @@ function getNewcomer(wave) {
     const list = [
         { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', icon: 'warning', color: '#EF9A9A' },
         { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝法師射血彈，走動就躲得掉', icon: 'warning', color: '#FF8A80' },
-        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快撿或放新星吸走', icon: 'soul', color: '#CE93D8' },
+        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快撿或放新星吸走', icon: 'soul', color: '#80DEEA' },
         { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，骷髏打不到，靠眼魔與法師', icon: 'claws', color: '#B0BEC5' },
         { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒小怪，帶大軍去拆有大獎', icon: 'skull', color: '#A5D6A7' },
         { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', icon: 'plague', color: '#E6EE9C' },
