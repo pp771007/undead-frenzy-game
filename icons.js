@@ -111,6 +111,26 @@ const ICON_BODIES = {
         <circle cx="18" cy="29" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="26" cy="29" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/>`,
     soulfire: `<path d="${starPath(36, 30, 26, 12, 8)}" fill="#7ff0f0"/><circle cx="36" cy="30" r="9" fill="#e8ffff"/>
         ${duoStroke('M8 56 L26 38', '#7ff0f0', 4)}<circle cx="27" cy="37" r="5" fill="#7ff0f0" stroke-width="3"/>`,
+    giantBones: `<path d="M26 8 C14 8 7 17 7 28 C7 35 11 40 16 42 L16 52 L36 52 L36 42 C41 40 45 35 45 28 C45 17 38 8 26 8 Z" fill="#f1ead6"/>
+        <ellipse cx="18" cy="28" rx="5.5" ry="6.5" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="34" cy="28" rx="5.5" ry="6.5" fill="${ICON_OUTLINE}" stroke="none"/>
+        <path d="M21 52 L21 46 M26 52 L26 46 M31 52 L31 46" stroke-width="3"/>
+        <path d="M50 34 C44 34 41 38 41 43 C41 46 43 48 45 49 L45 54 L55 54 L55 49 C57 48 59 46 59 43 C59 38 56 34 50 34 Z" fill="#d7ccc8"/>
+        <circle cx="47" cy="43" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="53" cy="43" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/>${shine(18, 15, 4, 2.5)}`,
+    ricochet: duoStroke('M6 50 L24 22 L40 44 L58 14', '#f48fb1', 4) + `<path d="M58 14 L49 15 L56 23 Z" fill="#f48fb1"/>
+        <circle cx="24" cy="22" r="6" fill="#f06292"/><circle cx="40" cy="44" r="6" fill="#f06292"/>
+        <circle cx="24" cy="22" r="2.4" fill="#fce4ec" stroke="none"/><circle cx="40" cy="44" r="2.4" fill="#fce4ec" stroke="none"/>`,
+    frostNova: `<path d="${starPath(32, 32, 28, 16, 12)}" fill="#81d4fa"/>` + duoStroke('M32 14 L32 50 M16 23 L48 41 M16 41 L48 23', '#e1f5fe', 3.5) +
+        `<circle cx="32" cy="32" r="6" fill="#e1f5fe"/>`,
+    eliteHunter: `<path d="M12 40 L15 18 L24 28 L32 13 L40 28 L49 18 L52 40 Z" fill="#ffd54f"/><rect x="12" y="39" width="40" height="8" rx="2" fill="#e0a82e"/>` +
+        duoStroke('M32 49 L32 61 M23 55 L41 55', '#ce93d8', 3) + `<circle cx="32" cy="55" r="4" fill="#ce93d8" stroke-width="2.5"/>`,
+    midas: `<circle cx="24" cy="38" r="15" fill="#ffd54f"/><circle cx="24" cy="38" r="9" stroke="#e0a82e" stroke-width="3"/>
+        <circle cx="42" cy="26" r="15" fill="#ffe082"/><circle cx="42" cy="26" r="9" stroke="#e0a82e" stroke-width="3"/>${shine(37, 18, 4, 2.5)}
+        <path d="${starPath(52, 50, 8, 3, 4)}" fill="#fff8e1" stroke-width="2.5"/>`,
+    soulSiphon: `<path d="${HEART_PATH}" fill="#e5484d"/>
+        <path d="M32 44 C25 44 22 38 25 33 C27 30 28 27 27 22 C32 25 35 29 35 32 C37 30 38 28 38 25 C42 29 43 35 41 39 C39 42 36 44 32 44 Z" fill="#7ff0f0" stroke-width="3"/>${shine(18, 20, 4.5, 3)}`,
+    deathPact: `<path d="M26 8 C14 8 8 17 8 27 C8 33 11 37 16 39 L16 48 L36 48 L36 39 C41 37 44 33 44 27 C44 17 38 8 26 8 Z" fill="#b0bec5"/>
+        <ellipse cx="19" cy="27" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="33" cy="27" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/>
+        <path d="M50 60 C43 60 40 54 43 49 C45 46 46 43 45 37 C51 41 54 45 54 49 C56 47 57 45 57 42 C61 46 62 52 59 56 C57 59 54 60 50 60 Z" fill="#7ff0f0" stroke-width="3"/>`,
     soulVolley: duoStroke('M8 22 L26 22', '#7ff0f0', 4) + duoStroke('M8 34 L32 34', '#7ff0f0', 4) + duoStroke('M8 46 L26 46', '#7ff0f0', 4) +
         `<circle cx="32" cy="22" r="7" fill="#7ff0f0"/><circle cx="40" cy="34" r="8" fill="#7ff0f0"/><circle cx="32" cy="46" r="7" fill="#7ff0f0"/>
         <circle cx="40" cy="34" r="3.5" fill="#e8ffff" stroke="none"/>${shine(30, 20, 2, 1.5)}${shine(38, 31, 2.5, 1.5)}${shine(30, 44, 2, 1.5)}`,

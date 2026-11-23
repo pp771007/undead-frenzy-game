@@ -511,7 +511,22 @@ const BLESSINGS = {
     boneBurst: { name: '骸骨爆裂', legendary: true, max: 1, per: 3, desc: () => '骷髏陣亡時炸傷周圍的怪' },
     twinSummon: { name: '雙生召喚', legendary: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     soulfire: { name: '魂火', legendary: true, max: 1, per: 0.6, desc: () => '法師的靈魂彈命中時爆炸' },
+    giantBones: { name: '巨骨', legendary: true, max: 1, per: 8, desc: b => `每 ${b.per} 隻骷髏出一隻巨人` },
+    ricochet: { name: '跳彈魔眼', legendary: true, max: 1, per: 2, desc: b => `眼魔的彈多彈射 ${b.per} 次` },
+    frostNova: { name: '寒冰新星', legendary: true, max: 1, per: 3, desc: b => `新星範圍變大，凍住敵人 ${b.per} 秒` },
+    eliteHunter: { name: '精英獵手', legendary: true, max: 1, per: 1, desc: () => '擊殺精英怪時新星冷卻歸零' },
+    midas: { name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
+    soulSiphon: { name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
+    deathPact: { name: '殘魂回收', legendary: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
 };
+// 傳說的細部數值（說明文字只講會影響選擇的那一個數）
+const GIANT_STAT_MULT = 3;
+const GIANT_SCALE_MULT = 1.6;
+const FROST_NOVA_RADIUS_MULT = 1.4;
+const FROST_NOVA_SLOW = 0.92;
+const MIDAS_MULT = 3;
+// 一般波次的三選一也有這個機率出一張傳說（首領波則是保證一張）
+const LEGEND_CHANCE_NORMAL = 0.12;
 const BONE_BURST_RADIUS = 40;
 
 function getTier(level) {
@@ -1533,6 +1548,12 @@ class SummonUnit extends GameObject {
         this.tint = this.tier > 0 ? E.tints[this.tier - 1] : null;
         this.tintStrength = this.tier > 0 ? E.tintStrength[this.tier - 1] : 0;
         this.drawScale = 1 + E.sizeBonusPerTier * this.tier;
+        // 傳說「巨骨」召出來的巨人：算在數值裡，選別的祝福重算時才不會被洗掉
+        if (this.giant) {
+            this.maxHealth *= GIANT_STAT_MULT;
+            this.attack *= GIANT_STAT_MULT;
+            this.drawScale *= GIANT_SCALE_MULT;
+        }
 
         this.maxHealth = Math.round(this.maxHealth);
     }
@@ -1878,7 +1899,7 @@ class SummonUnit extends GameObject {
                 others.sort((a, b) => distanceSq(this.pos, a.pos) - distanceSq(this.pos, b.pos));
                 for (let i = 0; i < extra; i++) targets.push(others[i] || this.target);
             }
-            const bounces = this.tier >= 1 ? E.eyeBounces : 0;
+            const bounces = (this.tier >= 1 ? E.eyeBounces : 0) + (bl('ricochet') ? BLESSINGS.ricochet.per : 0);
             const blast = this.tier >= 3;
             targets.forEach(t => {
                 const projectile = getProjectileFromPool();
@@ -1959,6 +1980,7 @@ class SummonUnit extends GameObject {
         onSummonDeath(this);
         spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 10, 70, 0.45);
         if (this.config.type === 'SkeletonWarrior' && bl('boneBurst')) boneBurst(this);
+        if (bl('deathPact') && Math.random() < BLESSINGS.deathPact.per) dropSouls(this.pos.x, this.pos.y, 1);
         switch (this.config.type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount--; break;
             case 'EyeMonster': gameState.eyeMonsterCount--; break;
@@ -2430,6 +2452,9 @@ class SoulOrb {
                 updateUI();
             }
             player.absorbGlow = Math.min(1.5, player.absorbGlow + ABSORB_GLOW_PER_ORB);
+            if (bl('soulSiphon') && player.currentHealth < player.maxHealth) {
+                player.currentHealth = Math.min(player.maxHealth, player.currentHealth + BLESSINGS.soulSiphon.per);
+            }
             Sfx.play('orb');
         }
     }
@@ -2796,6 +2821,11 @@ class Monster extends GameObject {
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
         dropSouls(this.pos.x, this.pos.y, whole);
+        // 傳說「點金」：偶爾整隻變成金子
+        if (bl('midas') && Math.random() < BLESSINGS.midas.per) {
+            dropSouls(this.pos.x, this.pos.y, Math.max(1, whole) * (MIDAS_MULT - 1));
+            spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 14, 110, 0.6, 3);
+        }
         if (!(this instanceof BossMonster) && Math.random() < blessVal('raiseDead') && gameState.player) {
             gameState.summons.push(new SkeletonWarrior(this.pos.x, this.pos.y, gameState.skeletonWarriorLevel, gameState.player));
             gameState.skeletonWarriorCount++;
@@ -2808,6 +2838,11 @@ class Monster extends GameObject {
         if (this.isElite) {
             spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 16, 120, 0.7, 3);
             spawnFloatText(this.pos.x, this.pos.y - 18, '精英擊破', '#FFD54F', 13);
+            // 傳說「精英獵手」：新星馬上又能放
+            if (bl('eliteHunter') && gameState.novaCooldown > 0) {
+                gameState.novaCooldown = 0;
+                if (gameState.player) spawnParticles(gameState.player.pos.x, gameState.player.pos.y, '#CE93D8', 16, 90, 0.5, 3);
+            }
             Sfx.play('elite');
         }
         if (this.affix === 'split') {
@@ -4062,7 +4097,10 @@ function useNova() {
     if (!p || !p.isAlive || gameState.novaCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
     const c = CONFIG.nova;
     const dmg = getNovaDamage();
-    const rSq = c.radius * c.radius;
+    // 傳說「寒冰新星」：範圍變大、緩速加強到幾乎凍住
+    const frost = bl('frostNova') > 0;
+    const radius = c.radius * (frost ? FROST_NOVA_RADIUS_MULT : 1);
+    const rSq = radius * radius;
     gameState.monsters.forEach(m => {
         if (!m.isAlive) return;
         const dSq = distanceSq(m.pos, p.pos);
@@ -4070,11 +4108,11 @@ function useNova() {
         const dir = normalizeVector({ x: m.pos.x - p.pos.x, y: m.pos.y - p.pos.y });
         const kb = c.knockbackSpeed * (m instanceof BossMonster ? c.bossKnockbackMult : 1);
         m.knockVel = { x: dir.x * kb, y: dir.y * kb };
-        m.applySlow(c.slowAmount, c.slowDuration);
+        m.applySlow(frost ? FROST_NOVA_SLOW : c.slowAmount, frost ? BLESSINGS.frostNova.per : c.slowDuration);
         m.takeDamage(dmg);
     });
-    gameState.visualEffects.push(new NovaEffect(p.pos, c.radius));
-    spawnParticles(p.pos.x, p.pos.y, '#CE93D8', 36, 260, 0.5, 3);
+    gameState.visualEffects.push(new NovaEffect(p.pos, radius));
+    spawnParticles(p.pos.x, p.pos.y, frost ? '#B3E5FC' : '#CE93D8', 36, 260, 0.5, 3);
     addShake(7);
     Sfx.play('nova');
     gameState.novaCooldown = getNovaCooldown();
@@ -4096,11 +4134,12 @@ function shuffled(arr) {
     }
     return arr;
 }
-// 首領波：三張裡固定一張傳說（還有沒拿過的才給），放在隨機位置；其他波只有一般祝福
+// 首領波：三張裡固定一張傳說（還有沒拿過的才給），放在隨機位置；其他波有 LEGEND_CHANCE_NORMAL 機率也出一張
 function rollDraftOptions(boss) {
     const open = id => bl(id) < BLESSINGS[id].max;
     const regular = shuffled(Object.keys(BLESSINGS).filter(id => open(id) && !BLESSINGS[id].legendary));
-    const legend = boss ? shuffled(Object.keys(BLESSINGS).filter(id => open(id) && BLESSINGS[id].legendary))[0] : null;
+    const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
+    const legend = legendRoll ? shuffled(Object.keys(BLESSINGS).filter(id => open(id) && BLESSINGS[id].legendary))[0] : null;
     if (!legend) return regular.slice(0, CONFIG.draft.optionCount);
     const options = regular.slice(0, CONFIG.draft.optionCount - 1);
     options.splice(Math.floor(Math.random() * (options.length + 1)), 0, legend);
@@ -4498,7 +4537,13 @@ function trySummon(type, combo = 0) {
         const twin = bl('twinSummon') > 0 && Math.random() < BLESSINGS.twinSummon.per;
         for (let n = 0; n < (twin ? 2 : 1); n++) {
             const spawnPos = gameState.player.getSummonPosition();
-            gameState.summons.push(new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player));
+            const summon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
+            // 傳說「巨骨」：骷髏每第 N 隻是巨人
+            if (type === 'SkeletonWarrior' && bl('giantBones')) {
+                gameState.giantTick = (gameState.giantTick || 0) + 1;
+                if (gameState.giantTick % BLESSINGS.giantBones.per === 0) { summon.giant = true; summon.refreshStats(); }
+            }
+            gameState.summons.push(summon);
             spawnParticles(spawnPos.x, spawnPos.y, n ? '#FFD54F' : '#7E57C2', 12, 70, 0.5);
             if (gameState.totalSummons.hasOwnProperty(type)) {
                 gameState.totalSummons[type]++;
