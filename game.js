@@ -1148,6 +1148,8 @@ class GameObject {
         this.isAlive = true;
         this.id = `go_${Date.now()}_${Math.random()}`;
         this.facingDirection = 1;
+        // 一定要有初值：批次繪製用 `hitFlash <= 0` 跳過，undefined 會被當成「正在閃白」
+        this.hitFlash = 0;
         this.image = imageName && images[imageName] ? images[imageName] : null;
         this.imgScaleMultiplier = imgScaleMultiplier;
         this.imageWidth = this.image ? this.radius * this.imgScaleMultiplier : this.radius * 2;
