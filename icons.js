@@ -102,6 +102,15 @@ const ICON_BODIES = {
     soulBlade: `<path d="M46 6 L58 6 L58 18 L30 46 L18 34 Z" fill="#7ff0f0"/><path d="M52 10 L26 38" stroke="#d6fbfb" stroke-width="3"/>
         <path d="M12 32 L32 52" stroke-width="10"/><path d="M12 32 L32 52" stroke="#5c6bc0" stroke-width="5"/>
         <path d="M20 44 L9 55" stroke-width="9"/><path d="M20 44 L9 55" stroke="#9fa8da" stroke-width="5"/>${shine(50, 12, 3, 2, 45)}`,
+    // ---- 傳說祝福 ----
+    boneBurst: `<path d="${starPath(32, 34, 28, 14, 9)}" fill="#ffb74d"/><path d="${starPath(32, 34, 18, 10, 9)}" fill="#ffe0b2" stroke="none"/>
+        <path d="M32 18 C23 18 18 24 18 31 C18 36 21 39 24 40 L24 46 L40 46 L40 40 C43 39 46 36 46 31 C46 24 41 18 32 18 Z" fill="#f1ead6"/>
+        <ellipse cx="27" cy="31" rx="3.5" ry="4" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="37" cy="31" rx="3.5" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>`,
+    twinSummon: `<path d="${GHOST_PATH}" fill="#b39ddb" transform="translate(-4 6) scale(0.8)"/><path d="${GHOST_PATH}" fill="#ffe082" transform="translate(16 2) scale(0.8)"/>
+        <circle cx="38" cy="25" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="46" cy="25" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/>
+        <circle cx="18" cy="29" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="26" cy="29" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/>`,
+    soulfire: `<path d="${starPath(36, 30, 26, 12, 8)}" fill="#7ff0f0"/><circle cx="36" cy="30" r="9" fill="#e8ffff"/>
+        ${duoStroke('M8 56 L26 38', '#7ff0f0', 4)}<circle cx="27" cy="37" r="5" fill="#7ff0f0" stroke-width="3"/>`,
     soulVolley: duoStroke('M8 22 L26 22', '#7ff0f0', 4) + duoStroke('M8 34 L32 34', '#7ff0f0', 4) + duoStroke('M8 46 L26 46', '#7ff0f0', 4) +
         `<circle cx="32" cy="22" r="7" fill="#7ff0f0"/><circle cx="40" cy="34" r="8" fill="#7ff0f0"/><circle cx="32" cy="46" r="7" fill="#7ff0f0"/>
         <circle cx="40" cy="34" r="3.5" fill="#e8ffff" stroke="none"/>${shine(30, 20, 2, 1.5)}${shine(38, 31, 2.5, 1.5)}${shine(30, 44, 2, 1.5)}`,

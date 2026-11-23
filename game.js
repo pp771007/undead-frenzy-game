@@ -504,7 +504,12 @@ const BLESSINGS = {
     lifesteal: { name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
     soulBlade: { name: '靈魂之刃', max: 4, per: 0.6, desc: b => `法師靈魂彈傷害 +${pct(b.per)}` },
     soulVolley: { name: '靈魂連射', max: 2, per: 1, desc: b => `法師每次多射 ${b.per} 顆` },
+    // ---- 傳說：只在首領波的三選一出現（固定佔一張），每種一局只能拿一次；改變打法，不只是加數字 ----
+    boneBurst: { name: '骸骨爆裂', legendary: true, max: 1, per: 3, desc: () => '骷髏陣亡時炸傷周圍的怪' },
+    twinSummon: { name: '雙生召喚', legendary: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
+    soulfire: { name: '魂火', legendary: true, max: 1, per: 0.6, desc: () => '法師的靈魂彈命中時爆炸' },
 };
+const BONE_BURST_RADIUS = 40;
 
 function getTier(level) {
     const lv = CONFIG.evolution.levels;
@@ -1366,7 +1371,7 @@ class Player extends GameObject {
         const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade'));
         for (let i = 0; i < Math.min(shots, boltTargets.length); i++) {
             const pr = getProjectileFromPool();
-            pr.init(this.pos.x, this.pos.y - this.imageHeight * 0.15, boltTargets[i].m, P.bolt, dmg);
+            pr.init(this.pos.x, this.pos.y - this.imageHeight * 0.15, boltTargets[i].m, P.bolt, dmg, null, 0, bl('soulfire') > 0);
             gameState.projectiles.push(pr);
         }
         Sfx.play('mageBolt');
@@ -1950,6 +1955,7 @@ class SummonUnit extends GameObject {
         this.isAlive = false;
         onSummonDeath(this);
         spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 10, 70, 0.45);
+        if (this.config.type === 'SkeletonWarrior' && bl('boneBurst')) boneBurst(this);
         switch (this.config.type) {
             case 'SkeletonWarrior': gameState.skeletonWarriorCount--; break;
             case 'EyeMonster': gameState.eyeMonsterCount--; break;
@@ -2119,11 +2125,12 @@ class Projectile {
     explodeAt(hit) {
         const E = CONFIG.evolution;
         const rSq = E.eyeBlastRadius * E.eyeBlastRadius;
-        const dmg = Math.round(this.damage * E.eyeBlastMult);
+        // 法師的「魂火」與眼魔的爆裂魔眼共用同一套爆炸，只是倍率不同
+        const dmg = Math.round(this.damage * (this.style === 'soul' ? BLESSINGS.soulfire.per : E.eyeBlastMult));
         monsterGrid.forEachInRadius(hit.pos, E.eyeBlastRadius, m => {
             if (m !== hit && m.isAlive && distanceSq(hit.pos, m.pos) <= rSq) m.takeDamage(dmg);
         });
-        spawnParticles(hit.pos.x, hit.pos.y, '#F48FB1', 4, 70, 0.3, 2);
+        spawnParticles(hit.pos.x, hit.pos.y, this.color, 4, 70, 0.3, 2);
     }
 
     bounceFrom(hit) {
@@ -3591,6 +3598,17 @@ class RaisedSkeletonMonster extends Monster {
     constructor(x, y, waveNumber, isElite) { super(x, y, CONFIG.raisedSkeleton, waveNumber, isElite); }
 }
 
+// 傳說「骸骨爆裂」：骷髏陣亡時炸一圈
+function boneBurst(s) {
+    const dmg = s.attack * BLESSINGS.boneBurst.per;
+    const rSq = BONE_BURST_RADIUS * BONE_BURST_RADIUS;
+    monsterGrid.forEachInRadius(s.pos, BONE_BURST_RADIUS, m => {
+        if (m.isAlive && distanceSq(s.pos, m.pos) <= rSq) m.takeDamage(dmg);
+    });
+    spawnParticles(s.pos.x, s.pos.y, '#FFE0B2', 8, 140, 0.35, 3);
+    Sfx.play('explode');
+}
+
 // 召喚物陣亡時：附近的墓地祭司把它復活成敵方骷髏
 function onSummonDeath(summon) {
     const ps = gameState.priests;
@@ -4032,21 +4050,30 @@ function useNova() {
 function queueDraftIfDue() {
     const w = gameState.currentWave;
     if (w <= 0 || (w % CONFIG.draft.every !== 0 && w % CONFIG.wave.bossEvery !== 0)) return;
-    queueDraft();
+    queueDraft(w % CONFIG.wave.bossEvery === 0);
 }
 
-function rollDraftOptions() {
-    const eligible = Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max);
-    for (let i = eligible.length - 1; i > 0; i--) {
+function shuffled(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [eligible[i], eligible[j]] = [eligible[j], eligible[i]];
+        [arr[i], arr[j]] = [arr[j], arr[i]];
     }
-    return eligible.slice(0, CONFIG.draft.optionCount);
+    return arr;
+}
+// 首領波：三張裡固定一張傳說（還有沒拿過的才給），放在隨機位置；其他波只有一般祝福
+function rollDraftOptions(boss) {
+    const open = id => bl(id) < BLESSINGS[id].max;
+    const regular = shuffled(Object.keys(BLESSINGS).filter(id => open(id) && !BLESSINGS[id].legendary));
+    const legend = boss ? shuffled(Object.keys(BLESSINGS).filter(id => open(id) && BLESSINGS[id].legendary))[0] : null;
+    if (!legend) return regular.slice(0, CONFIG.draft.optionCount);
+    const options = regular.slice(0, CONFIG.draft.optionCount - 1);
+    options.splice(Math.floor(Math.random() * (options.length + 1)), 0, legend);
+    return options;
 }
 
-function queueDraft() {
-    const options = rollDraftOptions();
-    if (options.length > 0) gameState.pendingDraft = { options, rerolls: 0 };
+function queueDraft(boss = false) {
+    const options = rollDraftOptions(boss);
+    if (options.length > 0) gameState.pendingDraft = { options, rerolls: 0, boss };
 }
 
 // 重抽：永久強化給的免費次數用完後，每次比上一次貴
@@ -4073,7 +4100,7 @@ function renderDraftCards() {
     gameState.pendingDraft.options.forEach(id => {
         const b = BLESSINGS[id];
         const card = document.createElement('button');
-        card.className = 'draft-card panel';
+        card.className = `draft-card panel${b.legendary ? ' legendary' : ''}`;
         card.innerHTML = `${iconHtml(id, 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>`;
         // 用 pointerup 不用 click：另一隻手指還按著搖桿時瀏覽器不會合成 click。
         // 不用 pointerdown，是因為祝福選了收不回來，按下去還能滑開反悔
@@ -4107,7 +4134,7 @@ function rerollDraft() {
     if (gameState.souls < cost) return;
     gameState.souls -= cost;
     gameState.pendingDraft.rerolls = (gameState.pendingDraft.rerolls || 0) + 1;
-    gameState.pendingDraft.options = rollDraftOptions();
+    gameState.pendingDraft.options = rollDraftOptions(gameState.pendingDraft.boss);
     renderDraftCards();
     Sfx.play('draft');
     updateUI();
@@ -4431,19 +4458,22 @@ function trySummon(type, combo = 0) {
     if (gameState.draftOpen) return false;
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
-        const spawnPos = gameState.player.getSummonPosition();
-        const newSummon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
-        gameState.summons.push(newSummon);
-        spawnParticles(spawnPos.x, spawnPos.y, '#7E57C2', 12, 70, 0.5);
+        // 傳說「雙生召喚」：有機率多送一隻，多送的那隻冒金光
+        const twin = bl('twinSummon') > 0 && Math.random() < BLESSINGS.twinSummon.per;
+        for (let n = 0; n < (twin ? 2 : 1); n++) {
+            const spawnPos = gameState.player.getSummonPosition();
+            gameState.summons.push(new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player));
+            spawnParticles(spawnPos.x, spawnPos.y, n ? '#FFD54F' : '#7E57C2', 12, 70, 0.5);
+            if (gameState.totalSummons.hasOwnProperty(type)) {
+                gameState.totalSummons[type]++;
+            }
+            switch (type) {
+                case 'SkeletonWarrior': gameState.skeletonWarriorCount++; break;
+                case 'EyeMonster': gameState.eyeMonsterCount++; break;
+                case 'Wraith': gameState.wraithCount++; break;
+            }
+        }
         Sfx.play(combo ? 'summonCombo' : 'summon', combo);
-        if (gameState.totalSummons.hasOwnProperty(type)) {
-            gameState.totalSummons[type]++;
-        }
-        switch (type) {
-            case 'SkeletonWarrior': gameState.skeletonWarriorCount++; break;
-            case 'EyeMonster': gameState.eyeMonsterCount++; break;
-            case 'Wraith': gameState.wraithCount++; break;
-        }
         updateUI();
         ensureMusicPlaying();
         return true;
