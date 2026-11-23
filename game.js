@@ -98,11 +98,6 @@ const uiElements = {
     statSummonSkel: $id('stat-summon-skel'),
     statSummonEye: $id('stat-summon-eye'),
     statSummonWraith: $id('stat-summon-wraith'),
-    statKillBasic: $id('stat-kill-basic'),
-    statKillFast: $id('stat-kill-fast'),
-    statKillArmored: $id('stat-kill-armored'),
-    statKillBloater: $id('stat-kill-bloater'),
-    statKillBoss: $id('stat-kill-boss'),
     gameOverScreen: $id('game-over-screen'),
     finalWaveText: $id('final-wave-text'),
     bestWaveText: $id('best-wave-text'),
@@ -4755,11 +4750,6 @@ function updatePauseMenuStats() {
     uiElements.statSummonSkel.textContent = formatNumberK(gameState.totalSummons.SkeletonWarrior);
     uiElements.statSummonEye.textContent = formatNumberK(gameState.totalSummons.EyeMonster);
     uiElements.statSummonWraith.textContent = formatNumberK(gameState.totalSummons.Wraith);
-    uiElements.statKillBasic.textContent = formatNumberK(gameState.totalKills.BasicMelee);
-    uiElements.statKillFast.textContent = formatNumberK(gameState.totalKills.FastMelee);
-    uiElements.statKillArmored.textContent = formatNumberK(gameState.totalKills.ArmoredMelee);
-    uiElements.statKillBloater.textContent = formatNumberK(gameState.totalKills.Bloater);
-    uiElements.statKillBoss.textContent = formatNumberK(gameState.totalKills.Boss);
     renderBlessingDetail(uiElements.pauseBlessings);
     uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('crystal')}+${getRunReward()}`;
 }
