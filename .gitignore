@@ -1,0 +1,3 @@
+# tools/ 的自動遊玩輸出與它需要的 playwright（見 tools/README.md）
+logs/
+node_modules/
