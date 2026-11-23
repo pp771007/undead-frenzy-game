@@ -806,8 +806,16 @@
         }
 
         .title-row .btn {
-            flex: 1;
             font-size: 15px;
+        }
+
+        /* 並排的按鈕在窄螢幕上，一般按鈕的左右內距會把「圖示＋字」擠成兩行 */
+        .title-row .btn,
+        .btn-row .btn {
+            flex: 1;
+            padding-left: 8px;
+            padding-right: 8px;
+            white-space: nowrap;
         }
 
         .best-line {
@@ -1293,10 +1301,6 @@
             display: flex;
             gap: 10px;
             margin-top: 16px;
-        }
-
-        .btn-row .btn {
-            flex: 1;
         }
 
         /* ---------- 動畫 ---------- */
