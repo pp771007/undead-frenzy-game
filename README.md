@@ -81,9 +81,19 @@
     <td align="center"><img src="bloater.png" width="72" alt="" /><br/><b>腐屍</b><br/><sub>貼近後膨脹自爆，趁膨脹時打掉</sub></td>
     <td align="center"><img src="thief.png" width="72" alt="" /><br/><b>金魂竊賊</b><br/><sub>一直逃跑，追到能拿大量靈魂</sub></td>
   </tr>
+  <tr>
+    <td align="center"><img src="blood_eye.png" width="72" alt="" /><br/><b>血瞳</b><br/><sub>隔著大軍朝法師射血彈，走動就躲得掉</sub></td>
+    <td align="center"><img src="gargoyle.png" width="72" alt="" /><br/><b>腐翼石像鬼</b><br/><sub>會飛，骷髏打不到，專撲眼魔</sub></td>
+    <td align="center"><img src="soul_devourer.png" width="72" alt="" /><br/><b>吞魂者</b><br/><sub>搶吃地上的靈魂，越吃越大</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="tombstone.png" width="72" alt="" /><br/><b>招魂墓碑</b><br/><sub>在畫面外一直冒小怪，帶大軍去拆有大獎</sub></td>
+    <td></td>
+    <td></td>
+  </tr>
 </table>
 
-還有骷髏打不到、專撲眼魔的腐翼石像鬼，會搶吃地上靈魂越吃越大的吞魂者，在畫面外一直冒小怪、要帶大軍去拆的招魂墓碑，隔著大軍朝法師射血彈的血瞳（走動就躲得掉）、往你腳下丟毒池的瘟疫投手，以及第 21 波起帶詞綴的精英怪：綠光環繞的打死會分裂，腳下冒火的殘血會暴走。
+還有往你腳下丟毒池的瘟疫投手，以及第 21 波起帶詞綴的精英怪：綠光環繞的打死會分裂，腳下冒火的殘血會暴走。
 
 <br/>
 
@@ -91,10 +101,11 @@
 
 <table>
   <tr>
-    <td align="center" width="25%"><img src="boss_colossus.png" width="88" alt="" /><br/><b>骸骨巨像</b></td>
-    <td align="center" width="25%"><img src="boss_plague.png" width="88" alt="" /><br/><b>疫病母巢</b></td>
-    <td align="center" width="25%"><img src="boss_hunter.png" width="88" alt="" /><br/><b>暗影獵手</b></td>
-    <td align="center" width="25%"><img src="lich_king.png" width="88" alt="" /><br/><b>墮落亡靈王</b><br/><sub>第 50 波</sub></td>
+    <td align="center" width="20%"><img src="boss_colossus.png" width="88" alt="" /><br/><b>骸骨巨像</b></td>
+    <td align="center" width="20%"><img src="boss_plague.png" width="88" alt="" /><br/><b>疫病母巢</b></td>
+    <td align="center" width="20%"><img src="boss_hunter.png" width="88" alt="" /><br/><b>暗影獵手</b></td>
+    <td align="center" width="20%"><img src="boss_dragon.png" width="88" alt="" /><br/><b>腐朽骨龍</b></td>
+    <td align="center" width="20%"><img src="lich_king.png" width="88" alt="" /><br/><b>墮落亡靈王</b><br/><sub>第 50 波</sub></td>
   </tr>
 </table>
 
