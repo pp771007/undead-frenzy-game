@@ -391,7 +391,8 @@ const CONFIG = {
         tint: '#FFD54F', tintStrength: 0.35,
     },
     wave: {
-        betweenTime: 5,
+        // 等於開戰前的大字倒數（COUNTDOWN_SECONDS）：波間沒事做，5 秒 × 50 波 = 一局四分多鐘在等
+        betweenTime: 3,
         // 前 earlyWaves 波每波成長較多，讓前期就有壓力
         earlyWaves: 20, earlyScalePerWave: 0.035,
         scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
@@ -401,8 +402,9 @@ const CONFIG = {
         // 一局的目標：第 finalWave 波最終首領墮落亡靈王出場，打贏算通關（約 25 分鐘）。
         // 之後可以選擇繼續無盡模式，每波再多乘 endlessGrowth，通常十幾波內結束，不會變成一小時的慢慢輸
         finalWave: 50, endlessGrowth: 1.05,
-        // 狼群是「填充」用的；中後期的壓力主要交給各種新威脅，所以每波增加的數量不多
-        basicBase: 3, basicPerWave: 1.0,
+        // 狼群是「填充」用的；中後期的壓力主要交給各種新威脅，所以每波增加的數量不多。
+        // 底數給高一點是為了開場：第 1 波只有 2～4 隻時，前幾波畫面上幾乎沒東西可打
+        basicBase: 8, basicPerWave: 1.0,
         bossEvery: 10, bossWaveCountFactor: 0.5,
         // 每 10 波一輪的怪物數量（索引 = 波數 % 10，0 是首領波另外算）：
         // 首領剛打完的兩波明顯變少，讓大軍爽割一輪，再一路加壓到下一隻首領（鋸齒形難度）
@@ -3872,7 +3874,9 @@ function buildWaveQueue(wave) {
     const isBossWave = wave % W.bossEvery === 0;
     const ev = getWaveEvent();
     const cm = curseMods();
-    const cycle = isBossWave ? W.bossWaveCountFactor : W.cycleCountFactors[wave % W.bossEvery];
+    // 第一輪前面沒有首領，不打「首領後喘息」的折扣（不然第 1、2 波只剩一半）
+    const cycleFactor = W.cycleCountFactors[wave % W.bossEvery];
+    const cycle = isBossWave ? W.bossWaveCountFactor : (wave < W.bossEvery ? Math.max(1, cycleFactor) : cycleFactor);
     const factor = cycle * (ev && ev.countMult ? ev.countMult : 1);
     const classes = [];
     const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
