@@ -1602,7 +1602,8 @@ class SummonUnit extends GameObject {
             }
         }
 
-        if (this.target && (!this.target.isAlive || distanceSq(this.pos, this.target.pos) > this.config.targetSearchRadius * this.config.targetSearchRadius * 1.5)) {
+        const searchR = summonSearchRadius(this.config);
+        if (this.target && (!this.target.isAlive || distanceSq(this.pos, this.target.pos) > searchR * searchR * 1.5)) {
             this.target = null;
         }
 
@@ -1831,7 +1832,7 @@ class SummonUnit extends GameObject {
 
 
     findNearestMonster() {
-        return monsterGrid.nearestShared(this.pos, this.config.targetSearchRadius);
+        return monsterGrid.nearestShared(this.pos, summonSearchRadius(this.config));
     }
 
     // 怨靈附近的骷髏移速加倍、眼魔攻速加倍
@@ -2014,6 +2015,14 @@ class EyeMonster extends SummonUnit {
     constructor(x, y, level, playerTransform) {
         super(x, y, CONFIG.eyeMonster, level, playerTransform);
     }
+}
+// 這一波的怪出完、場上只剩最後幾隻時，整支大軍放大索敵範圍去追。
+// 不然最後一隻停在所有召喚物的索敵範圍外（實測：墓地祭司隔著一隻怨靈站在法師 270 外，骷髏 150、眼魔 180、法師 150 都搆不到），波次永遠打不完
+const STRAGGLER_MAX = 3;
+// 要小於 SUMMON_TELEPORT_DIST：追出去的召喚物不能被當成「落後太遠」傳送回法師身邊
+const STRAGGLER_SEARCH_RADIUS = 400;
+function summonSearchRadius(config) {
+    return gameState.straggling ? STRAGGLER_SEARCH_RADIUS : config.targetSearchRadius;
 }
 
 class Wraith extends SummonUnit {
@@ -5331,6 +5340,7 @@ function buildGroundTile() {
             x += w;
         }
         stones.push({ x, y: r * rowH, w: startX + S - x, h: rowH, shade: rnd() });
+    gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;
     }
     const drawStone = (s, ox, oy) => {
         const x0 = s.x + ox + gap / 2, y0 = s.y + oy + gap / 2, w = s.w - gap, h = s.h - gap;
