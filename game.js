@@ -3985,6 +3985,10 @@ function refreshTitle() {
 }
 
 function showTitle() {
+    // 標題背景畫的是 gameState：不清掉的話上一局的怪、連殺數會留在背景，
+    // 震動值也只在遊戲更新時才衰減，離開那一下在震的話背景會一直抖。
+    // 開新局（resetGame）與繼續（loadGameState）都會重建狀態，存檔不受影響
+    setupNewRun();
     appScreen = 'title';
     gameState.isPaused = false;
     uiElements.hud.classList.add('hidden');
