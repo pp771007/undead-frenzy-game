@@ -352,9 +352,9 @@ const CONFIG = {
         // 這一波起精英怪會帶一個詞綴，牠腳下的圈換顏色
         startWave: 25,
         list: {
-            // badge：頭上徽章的字，光看腳下圈的顏色分不出是哪種
-            split: { badge: '裂', color: '#9CCC65', count: 3, hpMult: 0.35 },
-            frenzy: { badge: '狂', color: '#FF7043', threshold: 0.5, speedMult: 1.6, atkSpeedMult: 1.5 },
+            // 外觀見 Monster.drawAffix：分裂是繞身的光球，狂暴是腳下的火
+            split: { color: '#9CCC65', count: 3, hpMult: 0.35 },
+            frenzy: { color: '#FF7043', threshold: 0.5, speedMult: 1.6, atkSpeedMult: 1.5 },
         },
     },
     waveEvents: {
@@ -807,6 +807,26 @@ function getAuraSprite(color, radius, innerRadius) {
     g.arc(r, r, r, 0, Math.PI * 2);
     g.fill();
     auraCache.set(key, c);
+    return c;
+}
+
+// 中間實心、往外淡掉的光暈（精英詞綴用）；跟怨靈的中空光環一樣按顏色畫一次存起來
+const GLOW_SPRITE_SIZE = 64;
+const glowCache = new Map();
+function getGlowSprite(color) {
+    let c = glowCache.get(color);
+    if (c) return c;
+    const S = GLOW_SPRITE_SIZE, r = S / 2;
+    c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d');
+    const gradient = g.createRadialGradient(r, r, 0, r, r, r);
+    gradient.addColorStop(0, color + 'CC');
+    gradient.addColorStop(0.45, color + '55');
+    gradient.addColorStop(1, color + '00');
+    g.fillStyle = gradient;
+    g.fillRect(0, 0, S, S);
+    glowCache.set(color, c);
     return c;
 }
 
@@ -2366,6 +2386,21 @@ function monsterLook(config) {
     };
 }
 
+// 精英詞綴特效（世界單位、每秒）
+const SPLIT_ORBIT_RADIUS = 0.6;   // × 圖寬
+const SPLIT_ORBIT_SPEED = 2.4;
+const SPLIT_ORBIT_TILT = 0.35;    // 軌道壓扁成橢圓，看起來是斜著的一圈
+const SPLIT_ORB_R = 4.5;
+const FRENZY_AURA_SCALE = 1.4;    // × 圖寬
+const FRENZY_PULSE_SPEED = 6;
+const FRENZY_ENRAGED_BOOST = 1.5; // 發狂後光暈變大、火星變快
+const FRENZY_EMBERS = 6;
+const FRENZY_EMBERS_ENRAGED = 11;
+const FRENZY_EMBER_SIZE = 4;
+const FRENZY_EMBER_RATE = 0.9;
+const FRENZY_EMBER_COLOR = '#FFF59D';
+const FRENZY_BURST_SPARKS = 24;
+
 class Monster extends GameObject {
     constructor(x, y, config, waveNumber, isElite = false) {
         const E = CONFIG.elite;
@@ -2394,6 +2429,8 @@ class Monster extends GameObject {
             if (waveNumber >= CONFIG.eliteAffix.startWave && !(this instanceof BossMonster)) {
                 const ids = Object.keys(CONFIG.eliteAffix.list);
                 this.affix = ids[Math.floor(Math.random() * ids.length)];
+                // 特效動畫的起始相位：好幾隻精英同時在場時不會整齊劃一地一起轉
+                this.fxSeed = Math.random() * 10;
             }
         }
         const cm = curseMods();
@@ -2418,21 +2455,63 @@ class Monster extends GameObject {
             ctx.stroke();
             ctx.restore();
         }
+        const fx = this.affix && this.isAlive;
+        if (fx) this.drawAffix(ctx, true);
         super.draw(ctx);
-        if (this.affix && this.isAlive) {
-            const A = CONFIG.eliteAffix.list[this.affix];
-            const bx = this.pos.x, by = this.pos.y - this.imageHeight * 0.5 - 12;
-            ctx.fillStyle = 'rgba(14, 10, 20, 0.9)';
-            ctx.beginPath(); ctx.arc(bx, by, 9, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = A.color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.font = canvasFont(11);
-            ctx.fillStyle = A.color;
-            ctx.fillText(A.badge, bx, by + 0.5);
+        if (fx) this.drawAffix(ctx, false);
+    }
+
+    // 詞綴用特效講，不寫字：分裂＝身邊繞著「之後會變成的那幾隻」小光球；狂暴＝腳下冒火，發狂後燒得更兇。
+    // behind = 畫在身體後面的那一半（光暈、繞到後方的光球）
+    drawAffix(ctx, behind) {
+        const A = CONFIG.eliteAffix.list[this.affix];
+        const t = worldTime + this.fxSeed;
+        const { x, y } = this.pos;
+        if (this.affix === 'split') {
+            // 照圖的寬度算：圖比碰撞半徑大很多，照半徑繞的話整圈都躲在身體後面
+            const R = this.imageWidth * SPLIT_ORBIT_RADIUS;
+            for (let i = 0; i < A.count; i++) {
+                const a = t * SPLIT_ORBIT_SPEED + i * Math.PI * 2 / A.count;
+                const depth = Math.sin(a);
+                if ((depth < 0) !== behind) continue;
+                const ox = x + Math.cos(a) * R, oy = y + depth * R * SPLIT_ORBIT_TILT;
+                // 繞到前面的大一點、後面的小一點，看起來是一圈在轉
+                const s = SPLIT_ORB_R * (1 + depth * 0.2);
+                ctx.drawImage(getGlowSprite(A.color), ox - s * 3, oy - s * 3, s * 6, s * 6);
+                ctx.fillStyle = A.color;
+                ctx.strokeStyle = TEXT_OUTLINE;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath(); ctx.arc(ox, oy, s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.beginPath(); ctx.arc(ox - s * 0.3, oy - s * 0.3, s * 0.35, 0, Math.PI * 2); ctx.fill();
+            }
+            return;
         }
+        // frenzy
+        const hot = this.enraged ? FRENZY_ENRAGED_BOOST : 1;
+        const feetY = y + this.imageHeight * 0.3;
+        if (behind) {
+            const pulse = 1 + 0.15 * Math.sin(t * FRENZY_PULSE_SPEED * hot);
+            const s = this.imageWidth * FRENZY_AURA_SCALE * hot * pulse;
+            ctx.drawImage(getGlowSprite(A.color), x - s / 2, feetY - s * 0.6, s, s);
+            return;
+        }
+        // 火星往上飄：位置直接由時間算，不存狀態
+        const n = this.enraged ? FRENZY_EMBERS_ENRAGED : FRENZY_EMBERS;
+        // 精英怪本身染成橘金色，火星要亮黃＋紅光才不會融進身體；飄到頭頂以上，在深色地面上最明顯
+        const rise = this.imageHeight * 1.2;
+        const glow = getGlowSprite(A.color);
+        ctx.fillStyle = FRENZY_EMBER_COLOR;
+        for (let i = 0; i < n; i++) {
+            const ph = (t * FRENZY_EMBER_RATE * hot + i / n) % 1;
+            ctx.globalAlpha = 1 - ph;
+            const ex = x + Math.sin(i * 7.31 + t * 2) * this.imageWidth * 0.35;
+            const ey = feetY - ph * rise;
+            const es = FRENZY_EMBER_SIZE * (1 - ph * 0.5);
+            ctx.drawImage(glow, ex - es * 2, ey - es * 2, es * 4, es * 4);
+            ctx.fillRect(ex - es / 2, ey - es / 2, es, es);
+        }
+        ctx.globalAlpha = 1;
     }
 
     applyWaveScaling(wave) {
@@ -2562,8 +2641,8 @@ class Monster extends GameObject {
                 this.enraged = true;
                 this.baseMoveSpeed *= F.speedMult;
                 this.attackSpeed *= F.atkSpeedMult;
-                spawnParticles(this.pos.x, this.pos.y, F.color, 14, 100, 0.5, 3);
-                spawnFloatText(this.pos.x, this.pos.y - 20, '狂暴', F.color, 13);
+                // 發狂那一下用一大團火花講，之後腳下的火也會變大
+                spawnParticles(this.pos.x, this.pos.y, F.color, FRENZY_BURST_SPARKS, 130, 0.6, 3);
             }
         }
     }
@@ -3631,7 +3710,7 @@ function getNewcomer(wave) {
         [CONFIG.bat.minWave, '吸血蝙蝠群', '直撲法師，邊走邊放新星', 'claws', '#BCAAA4', CONFIG.bat],
         [CONFIG.shieldGuard.minWave, '骨盾衛兵', '盾牌擋飛彈，靠骷髏近戰', 'boneArmor', '#B0BEC5', CONFIG.shieldGuard],
         [CONFIG.spitter.minWave, '瘟疫投手', '別站進綠色毒池', 'plague', POISON_LIGHT, CONFIG.spitter],
-        [CONFIG.eliteAffix.startWave, '精英詞綴', '「裂」會分裂、「狂」會暴走', 'crown', '#FFD54F', null],
+        [CONFIG.eliteAffix.startWave, '精英詞綴', '綠光環繞的會分裂、冒火的會暴走', 'crown', '#FFD54F', null],
         [CONFIG.corpseWorm.minWave, '屍蟲', '地面裂開就散開', 'warning', '#BCAAA4', CONFIG.corpseWorm],
         [CONFIG.gravePriest.minWave, '墓地祭司', '會把陣亡的召喚物變成敵人，先殺牠', 'skull', '#69F0AE', CONFIG.gravePriest],
     ];
