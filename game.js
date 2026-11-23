@@ -1986,6 +1986,7 @@ class Projectile {
                 const hit = this.target;
                 const block = hit.config && hit.config.projectileBlock;
                 if (block) spawnParticles(this.pos.x, this.pos.y, '#CFD8DC', 3, 50, 0.2, 2);
+                else spawnParticles(this.pos.x, this.pos.y, this.color, BOLT_HIT_SPARKS, 60, 0.25, 2);
                 hit.takeDamage(block ? this.damage * (1 - block) : this.damage);
                 if (this.owner) this.owner.healFromDamage(this.damage);
                 if (this.blast) this.explodeAt(hit);
@@ -2034,11 +2035,56 @@ class Projectile {
 
     draw(ctx) {
         if (!this.isAlive) return;
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2);
-        ctx.fill();
+        if (!boltSprite) buildBoltSprite();
+        const { x, y } = this.pos;
+        const dx = this.direction.x, dy = this.direction.y;
+        // 拖尾：往飛行反方向排一串越來越小、越來越淡的殘影
+        for (let i = BOLT_TRAIL_COUNT; i >= 1; i--) {
+            const k = i / (BOLT_TRAIL_COUNT + 1);
+            const s = BOLT_DRAW_SIZE * (1 - k * 0.7);
+            const back = BOLT_TAIL_LEN * k;
+            ctx.globalAlpha = 0.9 * (1 - k);
+            ctx.drawImage(boltTrailSprite, x - dx * back - s / 2, y - dy * back - s / 2, s, s);
+        }
+        ctx.globalAlpha = 1;
+        ctx.drawImage(boltSprite, x - BOLT_DRAW_SIZE / 2, y - BOLT_DRAW_SIZE / 2, BOLT_DRAW_SIZE, BOLT_DRAW_SIZE);
     }
+}
+
+// 眼魔飛彈的外觀（世界單位）。碰撞照舊用 projectileRadius，這裡只管畫多大
+const BOLT_DRAW_SIZE = 22;
+const BOLT_ORB_R = 4.5;
+const BOLT_TAIL_LEN = 20;
+const BOLT_TRAIL_COUNT = 4;
+const BOLT_HIT_SPARKS = 4;
+// 光暈＋彈體預先畫成圖，畫面上幾十顆同時飛也只是貼圖；殘影只用光暈那張，疊起來才不會一節一節
+let boltSprite = null, boltTrailSprite = null;
+function buildBoltSprite() {
+    const S = 64, c = S / 2, k = S / BOLT_DRAW_SIZE;
+    const makeGlow = () => {
+        const cv = document.createElement('canvas');
+        cv.width = cv.height = S;
+        const g = cv.getContext('2d');
+        const glow = g.createRadialGradient(c, c, 0, c, c, c);
+        glow.addColorStop(0, 'rgba(255, 179, 213, 0.85)');
+        glow.addColorStop(0.45, 'rgba(240, 98, 146, 0.35)');
+        glow.addColorStop(1, 'rgba(240, 98, 146, 0)');
+        g.fillStyle = glow;
+        g.fillRect(0, 0, S, S);
+        return cv;
+    };
+    boltTrailSprite = makeGlow();
+    boltSprite = makeGlow();
+    const g = boltSprite.getContext('2d');
+    const r = BOLT_ORB_R * k;
+    g.fillStyle = CONFIG.eyeMonster.projectileColor;
+    g.strokeStyle = TEXT_OUTLINE;
+    g.lineWidth = 1.2 * k;
+    g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = '#FCE4EC';
+    g.beginPath(); g.arc(c, c, r * 0.55, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#FFFFFF';
+    g.beginPath(); g.arc(c - r * 0.3, c - r * 0.3, r * 0.22, 0, Math.PI * 2); g.fill();
 }
 
 class TimedEffect {
