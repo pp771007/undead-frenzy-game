@@ -4657,6 +4657,14 @@ const UNIT_UI = [
     { type: 'Wraith', config: () => CONFIG.wraith, countKey: 'wraithCount', levelKey: 'wraithLevel', costKey: 'wraith', el: () => ({ level: uiElements.wraithLevel, stars: uiElements.wraithStars, count: uiElements.wraithCount, summon: uiElements.summonWraithBtn, upgrade: uiElements.upgradeWraithBtn }) },
 ];
 
+// 升級什麼時候划算，玩家用看的就知道（升級鈕發光），不用自己算：
+// 升一級 = 場上每隻同種兵都 +upgradeBonus，等於多出 upgradeBonus × 隻數 隻兵；
+// 拿同樣的錢去召喚只買得到 升級價 ÷ 召喚價 隻。前者比較多就是划算。下一級剛好進化（解鎖新能力）也算
+function isUpgradeGoodDeal(u, level, summonCost, upgradeCost) {
+    if (CONFIG.evolution.levels.includes(level + 1)) return true;
+    return u.config().upgradeBonus * gameState[u.countKey] * summonCost >= upgradeCost;
+}
+
 function starsHtml(tier) {
     const lv = CONFIG.evolution.levels;
     let html = '';
@@ -4709,6 +4717,7 @@ function updateUI() {
         el.upgrade.disabled = !canAct;
         el.summon.classList.toggle('cant-afford', souls < summonCost);
         el.upgrade.classList.toggle('cant-afford', souls < upgradeCost);
+        el.upgrade.classList.toggle('good-deal', souls >= upgradeCost && isUpgradeGoodDeal(u, level, summonCost, upgradeCost));
     }
 
     uiElements.skipWaveBtn.style.display = gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none';

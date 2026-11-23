@@ -674,6 +674,16 @@
             animation: hint 1s ease-in-out infinite;
         }
 
+        /* 升級划算：一直帶著金光、一明一暗地呼吸，任何時候瞄一眼都看得出來 */
+        .unit-btns .btn.good-deal {
+            animation: good-deal 0.9s ease-in-out infinite alternate;
+        }
+
+        @keyframes good-deal {
+            from { box-shadow: var(--btn-shadow), 0 0 0 2px #fff3b0, 0 0 8px 2px rgba(255, 213, 79, 0.55); filter: brightness(1); }
+            to { box-shadow: var(--btn-shadow), 0 0 0 2px #fff3b0, 0 0 18px 6px rgba(255, 213, 79, 0.95); filter: brightness(1.18); }
+        }
+
         /* ---------- 小提示 ---------- */
         #message-area {
             position: fixed;
