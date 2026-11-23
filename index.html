@@ -1030,6 +1030,100 @@
             animation: blink 0.8s infinite alternate;
         }
 
+        /* 多一張選項時排成 2×2，手機上四張並排會擠到每張只剩幾個字寬 */
+        #draft-cards.four {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            max-width: 360px;
+            justify-items: center;
+        }
+
+        #draft-cards.four .draft-card {
+            width: 100%;
+        }
+
+        /* 流派標籤：頭像＋名字＋共鳴進度；選下去剛好湊滿一段時整個亮起來 */
+        .school-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 7px 2px 3px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.35);
+            border: 2px solid var(--school, var(--bone-dim));
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--school, var(--bone));
+            white-space: nowrap;
+        }
+
+        .school-chip.resonates {
+            background: var(--gold);
+            border-color: var(--gold);
+            color: #3a2410;
+            box-shadow: 0 0 12px rgba(233, 196, 106, 0.8);
+            animation: blink 0.8s infinite alternate;
+        }
+
+        .school-img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            flex: none;
+        }
+
+        .res-pips .pip {
+            width: 6px;
+            height: 6px;
+            border-width: 1.5px;
+        }
+
+        /* 卡片上：進度點自成一排，緊貼在流派標籤下面 */
+        .draft-card .res-pips {
+            margin-top: -5px;
+        }
+
+        .res-gap {
+            width: 3px;
+        }
+
+        .card-banish {
+            margin-top: 2px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            border: 2px solid var(--ink);
+            background: #3a3046;
+            color: var(--bone-dim);
+            font-family: var(--font-ui);
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .card-banish .btn-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        #pause-resonance {
+            margin-bottom: 6px;
+        }
+
+        .bless-row.res-row {
+            border-color: var(--school);
+        }
+
+        .bless-row.res-row .school-img {
+            width: 32px;
+            height: 32px;
+        }
+
+        .bless-row.res-row .bless-effect b {
+            color: var(--school);
+        }
+
         #reroll-btn {
             margin-top: 18px;
             font-size: 15px;
@@ -1633,6 +1727,7 @@
             <h2 class="title-text">暫停</h2>
             <div class="reward-line" id="pause-reward"></div>
             <div class="section-title">本局祝福</div>
+            <div id="pause-resonance" class="bless-detail"></div>
             <div id="pause-blessings" class="bless-detail"></div>
             <div class="section-title">召喚</div>
             <div class="stat-grid cols-3">

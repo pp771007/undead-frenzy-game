@@ -134,6 +134,20 @@ const ICON_BODIES = {
     soulVolley: duoStroke('M8 22 L26 22', '#7ff0f0', 4) + duoStroke('M8 34 L32 34', '#7ff0f0', 4) + duoStroke('M8 46 L26 46', '#7ff0f0', 4) +
         `<circle cx="32" cy="22" r="7" fill="#7ff0f0"/><circle cx="40" cy="34" r="8" fill="#7ff0f0"/><circle cx="32" cy="46" r="7" fill="#7ff0f0"/>
         <circle cx="40" cy="34" r="3.5" fill="#e8ffff" stroke="none"/>${shine(30, 20, 2, 1.5)}${shine(38, 31, 2.5, 1.5)}${shine(30, 44, 2, 1.5)}`,
+    eagleEye: duoStroke('M32 3 L32 12 M32 52 L32 61', '#ffd54f', 3) +
+        `<path d="M5 32 C15 18 49 18 59 32 C49 46 15 46 5 32 Z" fill="#f1ead6"/><circle cx="32" cy="32" r="10" fill="#f06292"/>
+        <circle cx="32" cy="32" r="4" fill="${ICON_OUTLINE}" stroke="none"/>${shine(28, 28, 2.5, 1.5)}`,
+    auraMight: `<path d="${GHOST_PATH}" fill="#80cbc4"/><ellipse cx="26" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>
+        <ellipse cx="38" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>${shine(24, 17, 4, 2.5)}` +
+        duoStroke('M38 58 L58 38', '#cfd8dc', 4) + duoStroke('M46 42 L54 50', '#ffd54f', 3),
+    frenzyTime: `<path d="M18 8 L46 8 L46 14 C46 24 36 28 36 32 C36 36 46 40 46 50 L46 56 L18 56 L18 50 C18 40 28 36 28 32 C28 28 18 24 18 14 Z" fill="#e1bee7"/>
+        <path d="M24 50 L40 50 L32 41 Z" fill="#ab47bc" stroke-width="2.5"/><path d="M25 16 L39 16 L32 24 Z" fill="#ab47bc" stroke-width="2.5"/>${shine(23, 13, 2.5, 1.5)}`,
+    banish: `<circle cx="32" cy="32" r="22" fill="#3a3046" stroke-width="11"/><circle cx="32" cy="32" r="22" stroke="#e5484d" stroke-width="6"/>` +
+        duoStroke('M17 47 L47 17', '#e5484d', 6),
+    extraChoice: `<rect x="8" y="16" width="22" height="32" rx="3" fill="#b0bec5" transform="rotate(-15 19 32)"/>
+        <rect x="34" y="16" width="22" height="32" rx="3" fill="#f1ead6" transform="rotate(15 45 32)"/>
+        <rect x="21" y="12" width="22" height="32" rx="3" fill="#e9c46a"/>${shine(27, 18, 2.5, 1.5)}` +
+        duoStroke('M32 49 L32 61 M26 55 L38 55', '#81c784', 3),
 };
 
 const ICON_SVGS = Object.fromEntries(Object.entries(ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
