@@ -668,7 +668,7 @@ const META_UPGRADES = {
     novaMastery: { icon: 'burst', name: '新星精通', max: 5, per: 0.08, costBase: 40, desc: m => `新星冷卻 -${pct(m.per)}` },
     boneMarrow: { icon: 'boneArmor', name: '骨髓強化', max: 5, per: 0.06, costBase: 50, desc: m => `召喚物血量 +${pct(m.per)}` },
     soulAffinity: { icon: 'soulHarvest', name: '靈魂親和', max: 5, per: 0.06, costBase: 50, desc: m => `靈魂掉落 +${pct(m.per)}` },
-    freeReroll: { icon: 'reroll', name: '先知之眼', max: 2, per: 1, costBase: 80, desc: m => `每次祝福免費重抽 ${m.per} 次` },
+    freeReroll: { icon: 'reroll', name: '先知之眼', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}` },
     // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑
     banish: { icon: 'banish', name: '斷念', max: 3, per: 1, costBase: 60, desc: m => `每局可放逐 ${m.per} 張祝福（整局不再出現）` },
     extraChoice: { icon: 'extraChoice', name: '多一條路', max: 1, per: 1, costBase: 250, desc: () => '祝福多一張可選' },
@@ -781,7 +781,7 @@ let gameState = {
     blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
     hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
-    resonance: {}, banished: [], banishLeft: 0,
+    resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -3090,6 +3090,8 @@ class BossMonster extends Monster {
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
         spawnFloatText(this.pos.x, this.pos.y - 8, `+${CRYSTALS_PER_BOSS}`, '#CE93D8', 17, 1.6, 'crystal');
+        gameState.rerollsLeft += REROLLS_PER_BOSS;
+        spawnFloatText(this.pos.x, this.pos.y + 14, `+${REROLLS_PER_BOSS}`, '#90CAF9', 17, 1.6, 'reroll');
         addShake(14);
         Sfx.play('bossDie');
     }
@@ -4716,16 +4718,13 @@ function rollDraftOptions(boss) {
 
 function queueDraft(boss = false) {
     const options = rollDraftOptions(boss);
-    if (options.length > 0) gameState.pendingDraft = { options, rerolls: 0, boss };
+    if (options.length > 0) gameState.pendingDraft = { options, boss };
 }
 
-// 重抽：永久強化給的免費次數用完後，每次比上一次貴
-const REROLL_BASE_COST = 20;
-function rerollCost() {
-    const used = gameState.pendingDraft ? (gameState.pendingDraft.rerolls || 0) : 0;
-    const free = metaLv('freeReroll');
-    return used < free ? 0 : REROLL_BASE_COST * (used - free + 1);
-}
+// 重抽是整局共用的次數（同吸血鬼倖存者）：開局 REROLLS_PER_RUN 次＋永久強化「先知之眼」，每打倒一隻首領再補 REROLLS_PER_BOSS 次。
+// 不用靈魂買：原本每次 20、40、60 魂而且下一次抽卡又從 20 起算，後期一波收入上千，等於想刷幾次就刷幾次，選卡沒有重量
+const REROLLS_PER_RUN = 2;
+const REROLLS_PER_BOSS = 1;
 
 // 卡片上的流派標籤：頭像＋名字＋共鳴進度（每一段 RESONANCE_STEPS 一組點，這張選下去會亮的那一點閃爍）
 function schoolBadgeHtml(school) {
@@ -4779,11 +4778,8 @@ function renderDraftCards() {
         });
         box.appendChild(card);
     });
-    const cost = rerollCost();
-    uiElements.rerollBtn.innerHTML = cost === 0
-        ? `${iconHtml('reroll', 'icon btn-icon')}免費重抽`
-        : `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">${iconHtml('soul')}${cost}</span>`;
-    uiElements.rerollBtn.disabled = gameState.souls < cost;
+    uiElements.rerollBtn.innerHTML = `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">×${gameState.rerollsLeft}</span>`;
+    uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0;
 }
 
 function openDraft() {
@@ -4797,11 +4793,8 @@ function openDraft() {
 }
 
 function rerollDraft() {
-    if (!gameState.pendingDraft) return;
-    const cost = rerollCost();
-    if (gameState.souls < cost) return;
-    gameState.souls -= cost;
-    gameState.pendingDraft.rerolls = (gameState.pendingDraft.rerolls || 0) + 1;
+    if (!gameState.pendingDraft || gameState.rerollsLeft <= 0) return;
+    gameState.rerollsLeft--;
     gameState.pendingDraft.options = rollDraftOptions(gameState.pendingDraft.boss);
     renderDraftCards();
     Sfx.play('draft');
@@ -5646,6 +5639,7 @@ function saveGameState() {
         extraDrafts: gameState.extraDrafts,
         banished: gameState.banished,
         banishLeft: gameState.banishLeft,
+        rerollsLeft: gameState.rerollsLeft,
         curse: gameState.curse,
         endless: gameState.endless,
     };
@@ -5693,6 +5687,7 @@ function loadGameState() {
         refreshResonance();
         gameState.banished = loadedState.banished ?? [];
         gameState.banishLeft = loadedState.banishLeft ?? 0;
+        gameState.rerollsLeft = loadedState.rerollsLeft ?? REROLLS_PER_RUN + metaVal('freeReroll');
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
         gameState.curse = loadedState.curse ?? 0;
@@ -5777,7 +5772,7 @@ function resetGameInternalState() {
         blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
         hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
-        resonance: {}, banished: [], banishLeft: 0,
+        resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -5791,6 +5786,7 @@ function setupNewRun() {
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
     gameState.banishLeft = metaVal('banish');
+    gameState.rerollsLeft = REROLLS_PER_RUN + metaVal('freeReroll');
     snapCamera();
     [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
 }
