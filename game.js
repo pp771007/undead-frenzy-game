@@ -5028,52 +5028,78 @@ function roundRect(x, y, w, h, r) {
     ctx.closePath();
 }
 
-// 竊賊、首領跑出畫面時，在畫面邊緣畫一個指向牠的標記
+// 畫面邊緣的方位標記：竊賊、首領跑出畫面時一定標；畫面上一隻怪都看不到時，再標最近那隻怪
+// （不然一直走都遇不到，只能亂猜方向）
 const POINTER_EDGE_PAD = 30;
 const POINTER_TOP_EXTRA = 70;
+const POINTER_THIEF_COLOR = '#FFD54F';
+const POINTER_BOSS_COLOR = '#CE93D8';
+const POINTER_NEAREST_COLOR = '#EF9A9A';
+const POINTER_PORTRAIT_BOX = 26;
 function drawOffscreenPointers() {
     if (appScreen !== 'playing' || !gameState.player) return;
-    let bottom = 0;
+    let bounds = null;
+    let anyVisible = false, nearest = null, nearestD = Infinity;
+    const p = gameState.player.pos;
     for (let i = 0; i < gameState.monsters.length; i++) {
         const m = gameState.monsters[i];
-        const isThief = m instanceof ThiefMonster;
-        if (!m.isAlive || !(isThief || m instanceof BossMonster)) continue;
+        if (!m.isAlive || m.stealthed) continue;
         const sx = (m.pos.x - camera.x) * view.unitPx, sy = (m.pos.y - camera.y) * view.unitPx;
-        if (sx > 0 && sx < view.cssW && sy > 0 && sy < view.cssH) continue;
-        if (!bottom) {
-            const hb = uiElements.hudBottom.getBoundingClientRect();
-            bottom = (hb.height ? hb.top : view.cssH) - POINTER_EDGE_PAD;
+        const onScreen = sx > 0 && sx < view.cssW && sy > 0 && sy < view.cssH;
+        if (onScreen) { anyVisible = true; continue; }
+        const isThief = m instanceof ThiefMonster;
+        if (isThief || m instanceof BossMonster) {
+            bounds = bounds || pointerBounds();
+            const icon = getIconImage(isThief ? 'sack' : 'skull');
+            drawEdgePointer(sx, sy, isThief ? POINTER_THIEF_COLOR : POINTER_BOSS_COLOR, bounds, icon, 24, 24);
+            continue;
         }
-        const left = POINTER_EDGE_PAD, right = view.cssW - POINTER_EDGE_PAD;
-        const top = hudTop + POINTER_TOP_EXTRA;
-        const cx = view.cssW / 2, cy = (top + bottom) / 2;
-        const dx = sx - cx, dy = sy - cy;
-        const s = Math.min(Math.abs(dx) > 0.01 ? (dx > 0 ? right - cx : cx - left) / Math.abs(dx) : Infinity,
-            Math.abs(dy) > 0.01 ? (dy > 0 ? bottom - cy : cy - top) / Math.abs(dy) : Infinity);
-        const px = cx + dx * s, py = cy + dy * s;
-        const ang = Math.atan2(dy, dx);
-        const color = isThief ? '#FFD54F' : '#CE93D8';
-        const pulse = 1 + 0.08 * Math.sin(worldTime * 1000 / 150);
-        ctx.save();
-        ctx.translate(px, py);
-        ctx.scale(pulse, pulse);
-        ctx.save();
-        ctx.rotate(ang);
-        ctx.fillStyle = color;
-        ctx.strokeStyle = TEXT_OUTLINE;
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(29, 0); ctx.lineTo(17, -9); ctx.lineTo(17, 9); ctx.closePath();
-        ctx.stroke(); ctx.fill();
-        ctx.restore();
-        ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
-        ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = color;
-        ctx.stroke();
-        const icon = getIconImage(isThief ? 'sack' : 'skull');
-        if (icon) ctx.drawImage(icon, -12, -12, 24, 24);
-        ctx.restore();
+        const d = distanceSq(p, m.pos);
+        if (d < nearestD) { nearestD = d; nearest = m; }
     }
+    if (anyVisible || !nearest || gameState.betweenWaves) return;
+    // 圈裡畫那隻怪本人的小頭像：看得出那個方向來的是什麼
+    const sprite = nearest.getCachedSprite(false);
+    const k = POINTER_PORTRAIT_BOX / Math.max(nearest.imageWidth, nearest.imageHeight);
+    const sx = (nearest.pos.x - camera.x) * view.unitPx, sy = (nearest.pos.y - camera.y) * view.unitPx;
+    drawEdgePointer(sx, sy, POINTER_NEAREST_COLOR, bounds || pointerBounds(), sprite, nearest.imageWidth * k, nearest.imageHeight * k);
+}
+
+// 標記能放的範圍：避開上方狀態列與下方召喚面板
+function pointerBounds() {
+    const hb = uiElements.hudBottom.getBoundingClientRect();
+    return {
+        left: POINTER_EDGE_PAD, right: view.cssW - POINTER_EDGE_PAD,
+        top: hudTop + POINTER_TOP_EXTRA, bottom: (hb.height ? hb.top : view.cssH) - POINTER_EDGE_PAD,
+    };
+}
+
+function drawEdgePointer(sx, sy, color, b, img, iw, ih) {
+    const cx = view.cssW / 2, cy = (b.top + b.bottom) / 2;
+    const dx = sx - cx, dy = sy - cy;
+    const s = Math.min(Math.abs(dx) > 0.01 ? (dx > 0 ? b.right - cx : cx - b.left) / Math.abs(dx) : Infinity,
+        Math.abs(dy) > 0.01 ? (dy > 0 ? b.bottom - cy : cy - b.top) / Math.abs(dy) : Infinity);
+    const px = cx + dx * s, py = cy + dy * s;
+    const ang = Math.atan2(dy, dx);
+    const pulse = 1 + 0.08 * Math.sin(worldTime * 1000 / 150);
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.scale(pulse, pulse);
+    ctx.save();
+    ctx.rotate(ang);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = TEXT_OUTLINE;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(29, 0); ctx.lineTo(17, -9); ctx.lineTo(17, 9); ctx.closePath();
+    ctx.stroke(); ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
+    ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = color;
+    ctx.stroke();
+    if (img) ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+    ctx.restore();
 }
 
 // 開戰前最後幾秒在畫面中間跳大數字：只看角落的小字很容易錯過開戰
