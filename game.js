@@ -4141,6 +4141,8 @@ function updateTimers(deltaTime) {
     }
     if (gameState.banner) {
         gameState.banner.life -= deltaTime;
+        // 出場動畫照「出現了多久」算：橫幅長短不一，用 bannerDuration - life 推算的話長橫幅一開始會被放大好幾倍
+        gameState.banner.age = (gameState.banner.age || 0) + deltaTime;
         if (gameState.banner.life <= 0) gameState.banner = null;
     }
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
@@ -5080,8 +5082,7 @@ function drawCountdown() {
 function drawBanner() {
     const b = gameState.banner;
     if (!b) return;
-    const total = CONFIG.wave.bannerDuration;
-    const t = total - b.life;
+    const t = b.age || 0;
     const alpha = Math.min(1, t * 4, b.life * 2.5);
     const scale = 1 + Math.max(0, 0.25 - t) * 1.5;
     ctx.save();
