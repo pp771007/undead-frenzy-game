@@ -124,6 +124,11 @@ const CONFIG = {
         baseHealth: 50, baseMoveSpeed: 90, radius: 12, color: '#03A9F4',
         imageName: 'player', imgScaleMultiplier: 4,
         initialSouls: 20,
+        // 法師自己會打：每 boltInterval 秒對 boltRange 內最近的怪射一顆靈魂彈。
+        // 傷害乘上怪物的波數成長倍率，任何一波都是兩三發打死一隻血狼——前期兵少時能自保、清掉落單的，
+        // 但永遠只是補刀，主力還是召喚物
+        boltDamage: 5, boltInterval: 0.65, boltRange: 150,
+        bolt: { projectileRadius: 3, projectileColor: '#7FF0F0', projectileSpeed: 340, boltStyle: 'soul' },
         avoidanceRadius: 15,
         magnetRadius: 75,
     },
@@ -155,7 +160,7 @@ const CONFIG = {
         avoidanceRadius: 16, avoidanceForce: 120,
         playerAvoidanceForce: 50,
         wanderRadius: 15, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.8, wanderIntervalMax: 3.5,
-        projectileColor: '#F06292',
+        projectileColor: '#F06292', boltStyle: 'eye',
         projectileSpeed: 300,
         projectileRadius: 3,
         retreatCheckDistance: 40,
@@ -1156,6 +1161,7 @@ const SFX_DEFS = {
     summonCombo: { gap: 0.04, fn: (s, n) => { const f = SUMMON_COMBO_BASE_HZ * comboPitch(n); s.tone(f, 0.09, { type: 'triangle', vol: 0.14, slideTo: f * 1.5 }); s.noise(0.03, { vol: 0.05, filterFreq: 4000 }); } },
     upgradeCombo: { gap: 0.04, fn: (s, n) => { const f = UPGRADE_COMBO_BASE_HZ * comboPitch(n); s.tone(f, 0.1, { type: 'square', vol: 0.05 }); s.tone(f * 2, 0.14, { type: 'triangle', vol: 0.08 }); s.noise(0.025, { vol: 0.04, filterFreq: 6000 }); } },
     comboMilestone: { gap: 0.3, fn: s => { [1046, 1318, 1568, 2093].forEach((f, i) => s.tone(f, 0.18, { type: 'triangle', vol: 0.1, delay: i * 0.035 })); s.noise(0.15, { vol: 0.06, filterFreq: 8000 }); } },
+    mageBolt: { gap: 0.1, fn: s => s.tone(1200, 0.06, { type: 'triangle', vol: 0.035, slideTo: 1800 }) },
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
@@ -1335,6 +1341,20 @@ class Player extends GameObject {
         this.moveSpeed = config.baseMoveSpeed;
         this.hpTrail = 1;
         this.absorbGlow = 0;
+        this.boltT = 0;
+    }
+    shootBolt(deltaTime) {
+        this.boltT -= deltaTime;
+        if (this.boltT > 0) return;
+        const P = CONFIG.player;
+        const target = monsterGrid.nearest(this.pos, P.boltRange);
+        if (!target) return;
+        this.boltT = P.boltInterval;
+        const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave));
+        const pr = getProjectileFromPool();
+        pr.init(this.pos.x, this.pos.y - this.imageHeight * 0.15, target, P.bolt, dmg);
+        gameState.projectiles.push(pr);
+        Sfx.play('mageBolt');
     }
     update(deltaTime, moveVec) {
         if (!this.isAlive) return;
@@ -1348,6 +1368,7 @@ class Player extends GameObject {
         this.pos.y += moveY;
 
         this.updateFacingDirection(moveVec.x);
+        this.shootBolt(deltaTime);
     }
     // source：打這一下的怪（毒池則是丟毒的那隻），陣亡畫面要寫是誰殺的
     takeDamage(amount, source = null) {
@@ -2035,6 +2056,7 @@ class Projectile {
         this.pos = { x: startX, y: startY };
         this.radius = shooterConfig.projectileRadius;
         this.color = shooterConfig.projectileColor;
+        this.style = shooterConfig.boltStyle;
         this.isAlive = true;
         this.target = target;
         this.speed = shooterConfig.projectileSpeed;
@@ -2109,11 +2131,12 @@ class Projectile {
 // 彗星圖事先轉好 BOLT_DIRECTIONS 個方向，每張只裁到剛好包住彗星；畫的時候挑最近的方向直接貼。
 // 不在畫的時候旋轉：旋轉後貼圖每個像素都要重新取樣，實測 58 顆要 2ms，事先轉好只要 0.65ms 上下
 const BOLT_DIRECTIONS = 32;
-const boltDirSprites = [];
-function getBoltDirSprite(i) {
-    let c = boltDirSprites[i];
+const boltDirSprites = {};
+function getBoltDirSprite(style, i) {
+    const list = boltDirSprites[style] || (boltDirSprites[style] = []);
+    let c = list[i];
     if (c) return c;
-    if (!boltSprite) buildBoltSprite();
+    const base = getBoltSprite(style);
     const a = i / BOLT_DIRECTIONS * Math.PI * 2;
     const cos = Math.cos(a), sin = Math.sin(a);
     const W = BOLT_TAIL_LEN + BOLT_DRAW_SIZE, H = BOLT_DRAW_SIZE;
@@ -2124,8 +2147,8 @@ function getBoltDirSprite(i) {
     const g = c.getContext('2d');
     g.translate(c.width / 2, c.height / 2);
     g.rotate(a);
-    g.drawImage(boltSprite, -W * k / 2, -H * k / 2, W * k, H * k);
-    boltDirSprites[i] = c;
+    g.drawImage(base, -W * k / 2, -H * k / 2, W * k, H * k);
+    list[i] = c;
     return c;
 }
 function drawProjectilesBatched() {
@@ -2136,7 +2159,7 @@ function drawProjectilesBatched() {
         if (!pr.isAlive || !inView(pr.pos)) continue;
         const dx = pr.direction.x, dy = pr.direction.y;
         const idx = ((Math.round(Math.atan2(dy, dx) / (Math.PI * 2) * BOLT_DIRECTIONS) % BOLT_DIRECTIONS) + BOLT_DIRECTIONS) % BOLT_DIRECTIONS;
-        const sp = getBoltDirSprite(idx);
+        const sp = getBoltDirSprite(pr.style, idx);
         const w = sp.width / k, h = sp.height / k;
         // 圖的中心是整顆彗星的中心，在彈頭後方半條拖尾的位置
         const cx = pr.pos.x - dx * BOLT_TAIL_LEN / 2, cy = pr.pos.y - dy * BOLT_TAIL_LEN / 2;
@@ -2144,34 +2167,41 @@ function drawProjectilesBatched() {
     }
 }
 
-// 眼魔飛彈的外觀（世界單位）。碰撞照舊用 projectileRadius，這裡只管畫多大
+// 飛彈的外觀（世界單位）。碰撞照舊用 projectileRadius，這裡只管畫多大
 const BOLT_DRAW_SIZE = 22;
 const BOLT_ORB_R = 4.5;
 const BOLT_TAIL_LEN = 20;
 const BOLT_TRAIL_COUNT = 4;
 const BOLT_HIT_SPARKS = 4;
 const BOLT_SPRITE_PX_PER_UNIT = 3;
+// 誰射的就用誰的顏色：眼魔粉紅、法師靈魂青（跟靈魂光球同色）
+const BOLT_STYLES = {
+    eye: { glowIn: 'rgba(255, 179, 213, 0.85)', glowMid: 'rgba(240, 98, 146, 0.35)', glowOut: 'rgba(240, 98, 146, 0)', body: '#F06292', core: '#FCE4EC' },
+    soul: { glowIn: 'rgba(214, 251, 251, 0.9)', glowMid: 'rgba(127, 240, 240, 0.38)', glowOut: 'rgba(127, 240, 240, 0)', body: '#7FF0F0', core: '#E8FFFF' },
+};
 // 預先畫好一整顆朝右的彗星：拖尾是一串越來越小、越來越淡的光暈（只有光、不帶描邊，疊起來才不會一節一節），
 // 最前面是光暈＋描邊彈體。畫面上幾十顆同時飛，每顆每格只貼一張圖
-let boltSprite = null;
-function buildBoltSprite() {
+const boltSprites = {};
+function getBoltSprite(style) {
+    if (boltSprites[style]) return boltSprites[style];
+    const S = BOLT_STYLES[style];
     const k = BOLT_SPRITE_PX_PER_UNIT;
     const G = 64, gc = G / 2;
     const glow = document.createElement('canvas');
     glow.width = glow.height = G;
     const gg = glow.getContext('2d');
     const grad = gg.createRadialGradient(gc, gc, 0, gc, gc, gc);
-    grad.addColorStop(0, 'rgba(255, 179, 213, 0.85)');
-    grad.addColorStop(0.45, 'rgba(240, 98, 146, 0.35)');
-    grad.addColorStop(1, 'rgba(240, 98, 146, 0)');
+    grad.addColorStop(0, S.glowIn);
+    grad.addColorStop(0.45, S.glowMid);
+    grad.addColorStop(1, S.glowOut);
     gg.fillStyle = grad;
     gg.fillRect(0, 0, G, G);
 
-    boltSprite = document.createElement('canvas');
-    boltSprite.width = Math.ceil((BOLT_TAIL_LEN + BOLT_DRAW_SIZE) * k);
-    boltSprite.height = Math.ceil(BOLT_DRAW_SIZE * k);
-    const g = boltSprite.getContext('2d');
-    const hx = (BOLT_TAIL_LEN + BOLT_DRAW_SIZE / 2) * k, hy = boltSprite.height / 2;
+    const c = document.createElement('canvas');
+    c.width = Math.ceil((BOLT_TAIL_LEN + BOLT_DRAW_SIZE) * k);
+    c.height = Math.ceil(BOLT_DRAW_SIZE * k);
+    const g = c.getContext('2d');
+    const hx = (BOLT_TAIL_LEN + BOLT_DRAW_SIZE / 2) * k, hy = c.height / 2;
     for (let i = BOLT_TRAIL_COUNT; i >= 1; i--) {
         const t = i / (BOLT_TRAIL_COUNT + 1);
         const s = BOLT_DRAW_SIZE * (1 - t * 0.7) * k;
@@ -2182,14 +2212,16 @@ function buildBoltSprite() {
     const D = BOLT_DRAW_SIZE * k;
     g.drawImage(glow, hx - D / 2, hy - D / 2, D, D);
     const r = BOLT_ORB_R * k;
-    g.fillStyle = CONFIG.eyeMonster.projectileColor;
+    g.fillStyle = S.body;
     g.strokeStyle = TEXT_OUTLINE;
     g.lineWidth = 1.2 * k;
     g.beginPath(); g.arc(hx, hy, r, 0, Math.PI * 2); g.fill(); g.stroke();
-    g.fillStyle = '#FCE4EC';
+    g.fillStyle = S.core;
     g.beginPath(); g.arc(hx, hy, r * 0.55, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#FFFFFF';
     g.beginPath(); g.arc(hx - r * 0.3, hy - r * 0.3, r * 0.22, 0, Math.PI * 2); g.fill();
+    boltSprites[style] = c;
+    return c;
 }
 
 class TimedEffect {
