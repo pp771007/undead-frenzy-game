@@ -984,6 +984,8 @@ const wraithGrid = new SpatialGrid(WRAITH_GRID_CELL);
 // 推開方向每隻每 AVOID_RECALC_FRAMES 格才重算一次（各自錯開），其餘沿用，肉眼看不出差別
 const AVOID_RECALC_FRAMES = 3;
 let frameNo = 0;
+// 戰場動畫（閃爍、冒泡、脈動）用的時鐘：只在戰場更新時前進，暫停／選祝福時畫面才會整個停住
+let worldTime = 0;
 let avoidSlotCounter = 0;
 const MONSTER_RETARGET_FRAMES = 3;
 const MONSTER_FAR_RETARGET_FRAMES = 12;
@@ -1305,7 +1307,7 @@ class Player extends GameObject {
         if (this.hpTrail > ratio) ctx.fillRect(x, y, w * this.hpTrail, h);
         const low = ratio <= PLAYER_HP_LOW;
         ctx.fillStyle = ratio > 0.5 ? '#66BB6A' : (low ? '#EF5350' : '#FFCA28');
-        if (low) ctx.globalAlpha = 0.6 + 0.4 * Math.sin(performance.now() / 90);
+        if (low) ctx.globalAlpha = 0.6 + 0.4 * Math.sin(worldTime * 1000 / 90);
         ctx.fillRect(x, y, w * ratio, h);
         ctx.globalAlpha = 1;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
@@ -3251,7 +3253,7 @@ class CorpseWormMonster extends Monster {
         if (!this.isAlive) return;
         if (this.stealthed) {
             // 地底移動中只看得到一團隆起的土
-            const t = performance.now() / 1000;
+            const t = worldTime;
             ctx.fillStyle = '#4E342E';
             ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y, 16, 8, 0, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = '#6D4C41';
@@ -3366,7 +3368,7 @@ const LOB_PATH_DOTS = 12;
 
 function drawHazards() {
     if (!poisonGlowSprite) buildPoisonGlow();
-    const t = performance.now() / 1000;
+    const t = worldTime;
     const skull = getIconImage('skull');
     for (const h of gameState.hazards) {
         if (h.flight > 0 || !inView(h)) continue;
@@ -4734,6 +4736,7 @@ function leaveToTitleFromPause() {
 
 function updateGame(deltaTime) {
     frameNo++;
+    worldTime += deltaTime;
     updateTimers(deltaTime);
 
     const wraiths = [];
@@ -4987,7 +4990,7 @@ function drawOffscreenPointers() {
         const px = cx + dx * s, py = cy + dy * s;
         const ang = Math.atan2(dy, dx);
         const color = isThief ? '#FFD54F' : '#CE93D8';
-        const pulse = 1 + 0.08 * Math.sin(performance.now() / 150);
+        const pulse = 1 + 0.08 * Math.sin(worldTime * 1000 / 150);
         ctx.save();
         ctx.translate(px, py);
         ctx.scale(pulse, pulse);
@@ -5117,7 +5120,7 @@ function drawSummonsBatched() {
 
 function drawGame() {
     ctx.save();
-    if (gameState.shake > 0) {
+    if (gameState.shake > 0 && !isWorldFrozen()) {
         drawOffset.x = (Math.random() * 2 - 1) * gameState.shake;
         drawOffset.y = (Math.random() * 2 - 1) * gameState.shake;
     } else {
@@ -5210,12 +5213,18 @@ function gameLoop(currentTime) {
         drawGame();
         return;
     }
+    document.body.classList.toggle('world-frozen', appScreen === 'playing' && (isWorldFrozen() || gameState.isPaused || gameState.gameOver));
     if (appScreen !== 'playing' || gameState.isPaused || gameState.gameOver) return;
 
-    if (!gameState.draftOpen && !gameState.victoryOpen) updateGame(deltaTime);
+    if (!isWorldFrozen()) updateGame(deltaTime);
     updateTutorial();
     drawGame();
     updateUI();
+}
+
+// 選祝福、凱旋畫面打開時戰場停住但畫面照畫（背景要看得到）；暫停與結束則連畫都停
+function isWorldFrozen() {
+    return gameState.draftOpen || gameState.victoryOpen;
 }
 
 function startGameLoop() {

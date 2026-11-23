@@ -305,6 +305,12 @@
             color: #ffab91;
         }
 
+        /* 戰場停住時（暫停、選祝福、凱旋），疊在後面的 HUD 也跟著停 */
+        body.world-frozen #hud,
+        body.world-frozen #hud * {
+            animation-play-state: paused !important;
+        }
+
         @keyframes plate-urgent {
             from { box-shadow: inset 0 0 0 1.5px var(--gold-deep), 0 3px 8px rgba(0, 0, 0, 0.5); }
             to { box-shadow: inset 0 0 0 1.5px #ff7043, 0 0 14px rgba(255, 112, 67, 0.7); }
