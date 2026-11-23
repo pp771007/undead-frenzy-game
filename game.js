@@ -664,6 +664,12 @@ function getMoveVector() {
 }
 
 const images = {};
+// 載入畫面的進度條：每個要等的資源算一份
+const loadProgress = { done: 0, total: 0 };
+function trackLoad(promise) {
+    loadProgress.total++;
+    return promise.finally(() => { loadProgress.done++; });
+}
 function loadImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -704,11 +710,11 @@ async function loadAllImages() {
     };
 
     const promises = Object.entries(imageSources).map(([name, src]) =>
-        loadImage(src).then(img => { images[name] = img; })
+        trackLoad(loadImage(src)).then(img => { images[name] = img; })
     );
     // 新美術圖：有放檔案就用，沒有就沿用舊圖上色，不算載入失敗
     Object.entries(OPTIONAL_ART).forEach(([name, src]) => {
-        promises.push(loadImage(src).then(img => { images[name] = img; }).catch(() => { }));
+        promises.push(trackLoad(loadImage(src)).then(img => { images[name] = img; }).catch(() => { }));
     });
 
     try {
@@ -5208,7 +5214,8 @@ function gameLoop(currentTime) {
     const deltaTime = Math.min(0.1, Math.max(0, (currentTime - loopLastTime) / 1000));
     loopLastTime = currentTime;
 
-    if (!gameState.imagesLoaded) { drawLoading(); return; }
+    // 圖片載完後還在等字型時也要繼續畫，不然進度條會停在半途
+    if (appScreen === 'loading') { drawLoading(); return; }
     if (appScreen === 'title') {
         camera.x += TITLE_DRIFT_SPEED * deltaTime;
         camera.y += TITLE_DRIFT_SPEED * 0.4 * deltaTime;
@@ -5264,9 +5271,34 @@ function drawLoading() {
     ctx.fillStyle = '#140f1c';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     setScreenTransform();
-    drawOutlinedText('載入中…', view.cssW / 2, view.cssH / 2, 22, '#e9c46a');
+    const cx = view.cssW / 2, cy = view.cssH / 2;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    drawOutlinedText('載入中…', cx, cy - LOADING_BAR_GAP, 22, '#e9c46a');
+    // 外框跟 Boss 血條同一套：深色粗框 + 暗金細框
+    const w = Math.min(view.cssW * 0.6, LOADING_BAR_MAX_W), h = LOADING_BAR_H;
+    const x = cx - w / 2, y = cy;
+    ctx.fillStyle = TEXT_OUTLINE;
+    roundRect(x - 3, y - 3, w + 6, h + 6, 8); ctx.fill();
+    ctx.fillStyle = '#2a1636';
+    roundRect(x, y, w, h, 6); ctx.fill();
+    const ratio = loadProgress.total ? loadProgress.done / loadProgress.total : 0;
+    if (ratio > 0) {
+        const g = ctx.createLinearGradient(0, y, 0, y + h);
+        g.addColorStop(0, '#f4d58d'); g.addColorStop(1, '#c08a2e');
+        ctx.fillStyle = g;
+        roundRect(x, y, w * ratio, h, 6); ctx.fill();
+    }
+    ctx.strokeStyle = '#9c7a3c';
+    ctx.lineWidth = 1.5;
+    roundRect(x - 1, y - 1, w + 2, h + 2, 7); ctx.stroke();
+    ctx.restore();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
+const LOADING_BAR_MAX_W = 260;
+const LOADING_BAR_H = 12;
+const LOADING_BAR_GAP = 28;
 
 function ensureMusicPlaying() {
     Sfx.unlock();
@@ -5467,7 +5499,7 @@ function init() {
     });
 
     startGameLoop();
-    Promise.all([loadAllImages(), preloadIconImages(), waitForFonts()]).then(() => {
+    Promise.all([loadAllImages(), trackLoad(preloadIconImages()), trackLoad(waitForFonts())]).then(() => {
         setupNewRun();
         showTitle();
     });
