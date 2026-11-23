@@ -70,6 +70,7 @@ const uiElements = {
     pauseResumeBtn: $id('pause-resume-btn'),
     skipWaveBtn: $id('skip-wave-btn'),
     holdCombo: $id('hold-combo'),
+    finalKiller: $id('final-killer'),
     novaBtn: $id('nova-btn'),
     messageArea: $id('message-area'),
     titleScreen: $id('title-screen'),
@@ -189,20 +190,20 @@ const CONFIG = {
         explosionBaseDamage: 45,
     },
     basicMeleeMonster: {
-        type: 'BasicMelee', baseHealth: 12, baseAttack: 4, radius: 12,
+        type: 'BasicMelee', name: '血狼', baseHealth: 12, baseAttack: 4, radius: 12,
         imageName: 'basic_melee', imgScaleMultiplier: 5,
         attackRange: 20, attackSpeed: 1.0, moveSpeed: 50, color: '#EF5350',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
     },
     fastMeleeMonster: {
-        type: 'FastMelee', baseHealth: 20, baseAttack: 6, radius: 11,
+        type: 'FastMelee', name: '赤鷲', baseHealth: 20, baseAttack: 6, radius: 11,
         imageName: 'fast_melee', imgScaleMultiplier: 3,
         attackRange: 18, attackSpeed: 1.2, moveSpeed: 95, color: '#FF7043',
         soulDrop: 2, waveSpeedIncreaseFactor: 0.012,
         minWave: 4, waveInterval: 2,
     },
     bloaterMonster: {
-        type: 'Bloater', baseHealth: 18, baseAttack: 14, radius: 12,
+        type: 'Bloater', name: '腐屍', baseHealth: 18, baseAttack: 14, radius: 12,
         imageName: 'basic_melee', art: 'bloater', imgScaleMultiplier: 5.5, artScale: 4, tint: '#7CB342', tintStrength: 0.55,
         attackRange: 22, attackSpeed: 1.0, moveSpeed: 62, color: '#7CB342',
         soulDrop: 2, waveSpeedIncreaseFactor: 0.01,
@@ -211,7 +212,7 @@ const CONFIG = {
         fuseTime: 0.6, blastRadius: 42,
     },
     armoredMeleeMonster: {
-        type: 'ArmoredMelee', baseHealth: 90, baseAttack: 18, radius: 15,
+        type: 'ArmoredMelee', name: '血牙野豬', baseHealth: 90, baseAttack: 18, radius: 15,
         imageName: 'armored_melee', imgScaleMultiplier: 6,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 30, color: '#B71C1C',
         soulDrop: 5, waveSpeedIncreaseFactor: 0.008,
@@ -253,7 +254,7 @@ const CONFIG = {
         lifetime: 20, leashRadius: 260,
     },
     assassin: {
-        type: 'Assassin', baseHealth: 40, baseAttack: 0, radius: 11,
+        type: 'Assassin', name: '暗影刺客', baseHealth: 40, baseAttack: 0, radius: 11,
         imageName: 'fast_melee', art: 'assassin', imgScaleMultiplier: 3, artScale: 3.5, tint: '#5E35B1', tintStrength: 0.6,
         // attackRange 只用來決定她在法師身邊多遠停下來等瞬移，她本身不普攻
         attackRange: 90, attackSpeed: 1, moveSpeed: 68, color: '#5E35B1',
@@ -267,7 +268,7 @@ const CONFIG = {
         stealthAlpha: 0.5, revealTime: 1.5,
     },
     spitter: {
-        type: 'Spitter', baseHealth: 30, baseAttack: 5, radius: 12,
+        type: 'Spitter', name: '瘟疫投手', baseHealth: 30, baseAttack: 5, radius: 12,
         // 沒有專屬圖：借疫病母巢的圖縮小、染紫，跟首領分得開
         imageName: 'basic_melee', art: 'boss_plague', imgScaleMultiplier: 5, artScale: 3.6, tint: '#8E24AA', tintStrength: 0.5, keepTintOnArt: true,
         // attackRange = 站在多遠外丟毒（不貼身），attackSpeed = 每秒丟幾次
@@ -281,7 +282,7 @@ const CONFIG = {
         throwWindup: 0.45, lobTime: 1.0, puddleRadius: 40, puddleLife: 3, puddleTick: 0.5, puddleDamageMult: 0.4, puddlePlayerHpRatio: 0.06,
     },
     slime: {
-        type: 'Slime', baseHealth: 24, baseAttack: 4, radius: 13,
+        type: 'Slime', name: '瘟膿史萊姆', baseHealth: 24, baseAttack: 4, radius: 13,
         imageName: 'basic_melee', art: 'slime', imgScaleMultiplier: 4, artScale: 3.2, tint: '#C0CA33', tintStrength: 0.6,
         attackRange: 20, attackSpeed: 1, moveSpeed: 42, color: '#C0CA33',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.008,
@@ -290,7 +291,7 @@ const CONFIG = {
         splitCount: 2, generations: 2, childHpMult: 0.45, childScale: 0.72, childSpeedMult: 1.2,
     },
     bat: {
-        type: 'Bat', baseHealth: 7, baseAttack: 2, radius: 8,
+        type: 'Bat', name: '吸血蝙蝠群', baseHealth: 7, baseAttack: 2, radius: 8,
         imageName: 'fast_melee', art: 'bat', imgScaleMultiplier: 3, artScale: 4.2, tint: '#5D4037', tintStrength: 0.6,
         attackRange: 16, attackSpeed: 1.2, moveSpeed: 115, color: '#5D4037',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.004,
@@ -299,7 +300,7 @@ const CONFIG = {
         minWave: 16, waveInterval: 4, flockSize: 6, wobble: 0.6, playerHpRatio: 0.03,
     },
     witchDoctor: {
-        type: 'WitchDoctor', baseHealth: 35, baseAttack: 0, radius: 12,
+        type: 'WitchDoctor', name: '腐骨巫醫', baseHealth: 35, baseAttack: 0, radius: 12,
         imageName: 'basic_melee', art: 'witch_doctor', imgScaleMultiplier: 5, artScale: 3.8, tint: '#689F38', tintStrength: 0.5,
         // attackRange = 站在多遠外施法，attackSpeed = 每秒補幾次血
         attackRange: 150, attackSpeed: 0.25, moveSpeed: 40, color: '#689F38',
@@ -307,7 +308,7 @@ const CONFIG = {
         minWave: 15, waveInterval: 6, healRadius: 100, healRatio: 0.25,
     },
     shieldGuard: {
-        type: 'ShieldGuard', baseHealth: 60, baseAttack: 8, radius: 14,
+        type: 'ShieldGuard', name: '骨盾衛兵', baseHealth: 60, baseAttack: 8, radius: 14,
         imageName: 'armored_melee', art: 'shield_guard', imgScaleMultiplier: 6, artScale: 3.4, tint: '#607D8B', tintStrength: 0.5,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 34, color: '#607D8B',
         soulDrop: 4, waveSpeedIncreaseFactor: 0.006,
@@ -315,7 +316,7 @@ const CONFIG = {
         minWave: 18, waveInterval: 5, projectileBlock: 0.85,
     },
     corpseWorm: {
-        type: 'CorpseWorm', baseHealth: 70, baseAttack: 10, radius: 16,
+        type: 'CorpseWorm', name: '屍蟲', baseHealth: 70, baseAttack: 10, radius: 16,
         imageName: 'armored_melee', art: 'corpse_worm', imgScaleMultiplier: 6, artScale: 4.5, tint: '#9E9E9E', tintStrength: 0.5,
         attackRange: 0, attackSpeed: 1, moveSpeed: 75, color: '#9E9E9E',
         soulDrop: 6, waveSpeedIncreaseFactor: 0.004,
@@ -324,7 +325,7 @@ const CONFIG = {
         burrowTime: 3.5, warnTime: 0.9, eruptRadius: 55, eruptDamageMult: 2.5, eruptPlayerHpRatio: 0.25, surfaceTime: 3,
     },
     gravePriest: {
-        type: 'GravePriest', baseHealth: 45, baseAttack: 0, radius: 12,
+        type: 'GravePriest', name: '墓地祭司', baseHealth: 45, baseAttack: 0, radius: 12,
         imageName: 'wraith', art: 'grave_priest', imgScaleMultiplier: 3, artScale: 3.6, tint: '#1B5E20', tintStrength: 0.5,
         attackRange: 150, attackSpeed: 0.2, moveSpeed: 38, color: '#1B5E20',
         soulDrop: 5, waveSpeedIncreaseFactor: 0.006,
@@ -332,7 +333,7 @@ const CONFIG = {
         minWave: 33, waveInterval: 6, raiseRadius: 130, raiseCooldown: 1.2, maxRaised: 6,
     },
     raisedSkeleton: {
-        type: 'RaisedSkeleton', baseHealth: 18, baseAttack: 6, radius: 11,
+        type: 'RaisedSkeleton', name: '敵方骷髏', baseHealth: 18, baseAttack: 6, radius: 11,
         imageName: 'skeleton_warrior', imgScaleMultiplier: 2.8, tint: '#E53935', tintStrength: 0.55,
         attackRange: 22, attackSpeed: 1, moveSpeed: 70, color: '#E53935',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.006,
@@ -606,7 +607,7 @@ let gameState = {
     projectiles: [],
     visualEffects: [],
     orbs: [], particles: [], floatTexts: [],
-    shake: 0, hurtFlash: 0, soulCarry: 0,
+    shake: 0, hurtFlash: 0, soulCarry: 0, killedBy: null,
     sfxVolume: meta.sfxVolume,
     souls: CONFIG.player.initialSouls,
     currentWave: 0,
@@ -1295,7 +1296,8 @@ class Player extends GameObject {
 
         this.updateFacingDirection(moveVec.x);
     }
-    takeDamage(amount) {
+    // source：打這一下的怪（毒池則是丟毒的那隻），陣亡畫面要寫是誰殺的
+    takeDamage(amount, source = null) {
         if (!this.isAlive) return;
         // 單一下傷害封頂：滿血不會被一下秒掉（後期精英腐屍一爆就超過法師血量），死亡要來自看得到的壓力
         this.currentHealth -= Math.min(amount, this.maxHealth * PLAYER_MAX_HIT_RATIO);
@@ -1305,6 +1307,7 @@ class Player extends GameObject {
         addShake(4);
         Sfx.play('hurt');
         if (this.currentHealth <= 0) {
+            gameState.killedBy = source;
             this.die();
         }
         updateUI();
@@ -2614,7 +2617,7 @@ class Monster extends GameObject {
 
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
-        this.target.takeDamage(this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1));
+        this.target.takeDamage(this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1), this);
 
         if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
             const effect = getVisualEffectFromPool(SlashEffect);
@@ -2734,7 +2737,7 @@ class BloaterMonster extends Monster {
             const s = summons[i];
             if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(this.attack);
         }
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(this.attack);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(this.attack, this);
         const effect = getVisualEffectFromPool(ExplosionEffect);
         if (effect) { effect.init(this.pos, r); gameState.visualEffects.push(effect); }
         spawnParticles(this.pos.x, this.pos.y, '#9CCC65', 22, 140, 0.55, 3);
@@ -2796,7 +2799,7 @@ class ColossusBoss extends BossMonster {
             const s = summons[i];
             if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg);
         }
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(dmg);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(dmg, this);
         const effect = getVisualEffectFromPool(ExplosionEffect);
         if (effect) { effect.init(this.pos, c.slamRadius); gameState.visualEffects.push(effect); }
         spawnParticles(this.pos.x, this.pos.y, '#BA68C8', 30, 180, 0.6, 3);
@@ -2867,7 +2870,7 @@ class HunterBoss extends BossMonster {
             summonGrid.forEachInRadius(this.pos, c.dashWidth, s => {
                 if (s.isAlive && !this.dashHit.has(s) && distanceSq(this.pos, s.pos) <= wSq) { this.dashHit.add(s); s.takeDamage(dmg); }
             });
-            if (player.isAlive && !this.dashHit.has(player) && distanceSq(this.pos, player.pos) <= wSq) { this.dashHit.add(player); player.takeDamage(dmg); }
+            if (player.isAlive && !this.dashHit.has(player) && distanceSq(this.pos, player.pos) <= wSq) { this.dashHit.add(player); player.takeDamage(dmg, this); }
             if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 2, 30, 0.35, 3);
             return;
         }
@@ -2962,7 +2965,7 @@ class LichBoss extends BossMonster {
             for (let i = 0; i < c.curseCount; i++) {
                 const off = i === 0 ? 0 : c.curseSpread;
                 gameState.hazards.push({
-                    kind: 'curse', sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.3,
+                    kind: 'curse', source: this, sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.3,
                     x: player.pos.x + randomInRange(-off, off), y: player.pos.y + randomInRange(-off, off),
                     r: CURSE_POOL_RADIUS, flight: CONFIG.spitter.lobTime, life: CURSE_POOL_LIFE, tick: 0, dmg: this.attack * CURSE_POOL_DAMAGE_MULT,
                 });
@@ -2983,7 +2986,7 @@ class LichBoss extends BossMonster {
             const s = summons[i];
             if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg);
         }
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.novaPlayerHpRatio);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.novaPlayerHpRatio, this);
         const effect = getVisualEffectFromPool(ExplosionEffect);
         if (effect) { effect.init(this.pos, c.novaRadius); gameState.visualEffects.push(effect); }
         spawnParticles(this.pos.x, this.pos.y, '#E040FB', 36, 200, 0.6, 3);
@@ -3105,7 +3108,7 @@ class AssassinMonster extends Monster {
             this.updateFacingDirection(player.pos.x - this.pos.x);
             const effect = getVisualEffectFromPool(SlashEffect);
             if (effect) { effect.init(this.pos, player.pos); gameState.visualEffects.push(effect); }
-            player.takeDamage(player.maxHealth * c.strikeHpRatio);
+            player.takeDamage(player.maxHealth * c.strikeHpRatio, this);
         } else {
             spawnFloatText(this.mark.x, this.mark.y - 20, '閃過', '#B3E5FC', 13);
         }
@@ -3172,7 +3175,7 @@ class SpitterMonster extends Monster {
         const c = this.config;
         const spread = c.puddleRadius * 0.4;
         gameState.hazards.push({
-            sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.2,
+            source: this, sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.2,
             x: this.target.pos.x + randomInRange(-spread, spread), y: this.target.pos.y + randomInRange(-spread, spread),
             r: c.puddleRadius * (this.isElite ? CONFIG.elite.sizeMult : 1),
             flight: c.lobTime, life: c.puddleLife, tick: 0, dmg: this.attack * c.puddleDamageMult,
@@ -3244,7 +3247,7 @@ class BatMonster extends Monster {
     }
     attackTarget() {
         if (this.target !== gameState.player) { super.attackTarget(); return; }
-        this.target.takeDamage(this.target.maxHealth * this.config.playerHpRatio);
+        this.target.takeDamage(this.target.maxHealth * this.config.playerHpRatio, this);
         this.attackCooldown = 1.0 / this.attackSpeed;
     }
     update(deltaTime, player, summons) {
@@ -3359,7 +3362,7 @@ class CorpseWormMonster extends Monster {
         this.mark = null;
         const r = c.eruptRadius, rSq = r * r, dmg = this.attack * c.eruptDamageMult;
         summonGrid.forEachInRadius(this.pos, r, s => { if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg); });
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.eruptPlayerHpRatio);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.eruptPlayerHpRatio, this);
         spawnParticles(this.pos.x, this.pos.y, '#8D6E63', 26, 160, 0.6, 4);
         addShake(6);
         Sfx.play('slam');
@@ -3483,7 +3486,7 @@ function updateHazards(deltaTime) {
         const rSq = h.r * h.r;
         summonGrid.forEachInRadius(h, h.r, s => { if (s.isAlive && distanceSq(h, s.pos) <= rSq) s.takeDamage(h.dmg); });
         if (p && p.isAlive && distanceSq(h, p.pos) <= rSq) {
-            p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio);
+            p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio, h.source);
             spawnFloatText(p.pos.x, p.pos.y - 30, hazardStyle(h).hurtText, hazardStyle(h).light, 13, 0.6);
         }
     }
@@ -3703,20 +3706,21 @@ function updateSpawner(deltaTime) {
 // 新威脅第一次出現的那一波，橫幅改成介紹它：一句「看到什麼就做什麼」
 function getNewcomer(wave) {
     const assassinWave = curseMods().assassinEarly ? ASSASSIN_EARLY_WAVE : CONFIG.assassin.minWave;
-    // 最後一欄是那隻怪的設定：橫幅上畫牠本人；精英詞綴不是一種怪，只用圖示
+    // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
     const list = [
-        [assassinWave, '暗影刺客', '腳下出現紅圈就快走開', 'warning', '#EF9A9A', CONFIG.assassin],
-        [CONFIG.slime.minWave, '瘟膿史萊姆', '打死會分裂', 'plague', '#E6EE9C', CONFIG.slime],
-        [CONFIG.witchDoctor.minWave, '腐骨巫醫', '會幫怪物補血，先殺牠', 'raiseDead', '#AED581', CONFIG.witchDoctor],
-        [CONFIG.bat.minWave, '吸血蝙蝠群', '直撲法師，邊走邊放新星', 'claws', '#BCAAA4', CONFIG.bat],
-        [CONFIG.shieldGuard.minWave, '骨盾衛兵', '盾牌擋飛彈，靠骷髏近戰', 'boneArmor', '#B0BEC5', CONFIG.shieldGuard],
-        [CONFIG.spitter.minWave, '瘟疫投手', '別站進綠色毒池', 'plague', POISON_LIGHT, CONFIG.spitter],
-        [CONFIG.eliteAffix.startWave, '精英詞綴', '綠光環繞的會分裂、冒火的會暴走', 'crown', '#FFD54F', null],
-        [CONFIG.corpseWorm.minWave, '屍蟲', '地面裂開就散開', 'warning', '#BCAAA4', CONFIG.corpseWorm],
-        [CONFIG.gravePriest.minWave, '墓地祭司', '會把陣亡的召喚物變成敵人，先殺牠', 'skull', '#69F0AE', CONFIG.gravePriest],
+        { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', icon: 'warning', color: '#EF9A9A' },
+        { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', icon: 'plague', color: '#E6EE9C' },
+        { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', icon: 'raiseDead', color: '#AED581' },
+        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲法師，邊走邊放新星', icon: 'claws', color: '#BCAAA4' },
+        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，靠骷髏近戰', icon: 'boneArmor', color: '#B0BEC5' },
+        { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', icon: 'plague', color: POISON_LIGHT },
+        { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'crown', color: '#FFD54F' },
+        { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '地面裂開就散開', icon: 'warning', color: '#BCAAA4' },
+        { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的召喚物變成敵人，先殺牠', icon: 'skull', color: '#69F0AE' },
     ];
-    const hit = list.find(n => n[0] === wave);
-    return hit ? { name: hit[1], hint: hit[2], icon: hit[3], color: hit[4], look: hit[5] ? monsterLook(hit[5]) : null } : null;
+    const hit = list.find(n => n.wave === wave);
+    if (!hit) return null;
+    return { name: hit.cfg ? hit.cfg.name : hit.name, hint: hit.hint, icon: hit.icon, color: hit.color, look: hit.cfg ? monsterLook(hit.cfg) : null };
 }
 
 function isFinalWave(wave) {
@@ -4671,12 +4675,27 @@ function endRunFromPause() {
 }
 
 const GAMEOVER_TITLES = { died: '陣亡', quit: '本局結束', victory: '凱旋' };
+// 陣亡畫面上的兇手：頭像跟場上長得一樣（同一套 monsterLook，要染色的就染），精英怪名字前加「精英」
+const KILLER_PORTRAIT_PX = 96;
+function renderKiller(m) {
+    const box = uiElements.finalKiller;
+    box.classList.toggle('hidden', !m);
+    if (!m) return;
+    const look = monsterLook(m.config);
+    const img = images[look.imageName];
+    const k = KILLER_PORTRAIT_PX / Math.max(img.width, img.height);
+    const sprite = getSprite(img, img.width * k / SPRITE_RES, img.height * k / SPRITE_RES, look.tint, look.tintStrength || 0.45);
+    box.querySelector('img').src = sprite.toDataURL();
+    box.querySelector('b').textContent = `${m.isElite ? '精英' : ''}${m.config.name}`;
+}
+
 function showGameOver(reason = 'died') {
     if (!gameState.gameOver || uiElements.gameOverScreen.style.display === 'flex') return;
     // 通關後在無盡模式陣亡也算凱旋：這一局是贏的
     const title = reason === 'died' && gameState.endless ? 'victory' : reason;
     uiElements.gameoverTitle.textContent = GAMEOVER_TITLES[title];
     uiElements.gameoverTitle.classList.toggle('victory', title === 'victory');
+    renderKiller(reason === 'died' ? gameState.killedBy : null);
     const survived = getSurvivedWaves();
     const best = getBestWave();
     const isRecord = survived > best;
@@ -4839,7 +4858,7 @@ function resetGameInternalState() {
         player: null,
         summons: [], monsters: [], projectiles: [], visualEffects: [],
         orbs: [], particles: [], floatTexts: [],
-        shake: 0, hurtFlash: 0, soulCarry: 0,
+        shake: 0, hurtFlash: 0, soulCarry: 0, killedBy: null,
         sfxVolume: meta.sfxVolume,
         souls: CONFIG.player.initialSouls,
         currentWave: 0,

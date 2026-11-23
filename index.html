@@ -1111,6 +1111,38 @@
             text-shadow: 0 3px 0 var(--ink), 0 0 16px rgba(224, 72, 72, 0.5);
         }
 
+        /* 誰殺的：頭像框跟召喚卡的頭像同一套，紅框表示是敵人 */
+        #final-killer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 2px 0 12px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--bone-dim);
+        }
+
+        #final-killer img {
+            width: 52px;
+            height: 52px;
+            object-fit: contain;
+            padding: 3px;
+            border-radius: 12px;
+            background: radial-gradient(circle, rgba(224, 72, 72, 0.35), rgba(0, 0, 0, 0.35) 70%);
+            border: 2px solid var(--ink);
+            box-shadow: inset 0 0 0 1.5px #ff7a6a, 0 0 12px rgba(224, 72, 72, 0.45);
+        }
+
+        #final-killer b {
+            margin: 0 4px;
+            font-size: 19px;
+            font-weight: 900;
+            color: #ff8a80;
+            text-shadow: var(--text-outline);
+        }
+
         .result-wave {
             font-family: var(--font-display);
             font-weight: 900;
@@ -1589,6 +1621,7 @@
     <div id="game-over-screen" class="overlay-screen">
         <div id="game-over-content" class="overlay-content panel screen-in">
             <div class="title-text" id="gameover-title">陣亡</div>
+            <div id="final-killer" class="hidden"><img alt=""><span>被<b></b>擊倒</span></div>
             <div class="result-wave" id="final-wave-text">0</div>
             <div class="result-wave-label">撐過的波數</div>
             <div id="best-wave-text"></div>
