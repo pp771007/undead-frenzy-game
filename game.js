@@ -69,6 +69,7 @@ const uiElements = {
     summonWraithBtn: $id('summon-wraith-btn'), upgradeWraithBtn: $id('upgrade-wraith-btn'),
     pauseResumeBtn: $id('pause-resume-btn'),
     skipWaveBtn: $id('skip-wave-btn'),
+    holdCombo: $id('hold-combo'),
     novaBtn: $id('nova-btn'),
     messageArea: $id('message-area'),
     titleScreen: $id('title-screen'),
@@ -4471,21 +4472,55 @@ function startHoldAction(actionType, unitType) {
     holdActionState.pointerDownTime = performance.now();
 
     const actionFn = actionType === 'summon' ? trySummon : tryUpgrade;
+    const act = () => { if (actionFn(unitType)) bumpHoldCombo(actionType, unitType); };
+    holdCombo = 0;
 
     holdActionState.timeoutId = setTimeout(() => {
         if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) return;
 
-        actionFn(unitType);
+        act();
 
         holdActionState.intervalId = setInterval(() => {
             if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) {
                 stopHoldActionInternal();
                 return;
             }
-            actionFn(unitType);
+            act();
         }, CONFIG.holdingButton.repeatInterval);
 
     }, CONFIG.holdingButton.holdDelay);
+}
+
+// 長按的倍數標籤：這次按住成功了幾次，浮在按鈕正上方；單點一下不顯示
+const HOLD_COMBO_SHOW_FROM = 2;
+const HOLD_COMBO_GAP = 8;      // px：標籤底到按鈕頂
+const HOLD_COMBO_EDGE = 6;     // px：不貼出螢幕邊
+let holdCombo = 0;
+function bumpHoldCombo(actionType, unitType) {
+    holdCombo++;
+    if (holdCombo < HOLD_COMBO_SHOW_FROM) return;
+    const el = uiElements.holdCombo;
+    const n = el.querySelector('.hc-n');
+    n.textContent = holdCombo;
+    if (holdCombo === HOLD_COMBO_SHOW_FROM) {
+        const btn = UNIT_UI.find(u => u.type === unitType).el()[actionType];
+        // 召喚畫那個單位、升級畫向上箭頭：跟按鈕上的意思一樣，不用另外寫字
+        el.querySelector('.hc-art').innerHTML = actionType === 'summon'
+            ? `<img src="${btn.closest('.unit-card').querySelector('.portrait img').src}" alt="">`
+            : ICON_SVGS.arrowUp;
+        el.className = `${actionType} show`;
+        const r = btn.getBoundingClientRect();
+        const half = el.offsetWidth / 2;
+        el.style.left = `${Math.min(window.innerWidth - half - HOLD_COMBO_EDGE, Math.max(half + HOLD_COMBO_EDGE, r.left + r.width / 2))}px`;
+        el.style.top = `${r.top - HOLD_COMBO_GAP}px`;
+    }
+    n.classList.remove('bump');
+    void n.offsetWidth;
+    n.classList.add('bump');
+}
+function hideHoldCombo() {
+    holdCombo = 0;
+    uiElements.holdCombo.classList.remove('show');
 }
 
 // 靈魂不夠 / 冷卻中還按：不能沒反應，否則玩家以為沒按到
@@ -4510,12 +4545,14 @@ function stopHoldAction(actionType, unitType) {
         }
 
         stopHoldActionInternal();
+        hideHoldCombo();
         holdActionState.isHolding = false;
         holdActionState.actionType = null;
         holdActionState.unitType = null;
         holdActionState.pointerDownTime = 0;
     } else if (!actionType && !unitType && holdActionState.isHolding) {
         stopHoldActionInternal();
+        hideHoldCombo();
         holdActionState.isHolding = false;
         holdActionState.actionType = null;
         holdActionState.unitType = null;
