@@ -256,7 +256,8 @@ const CONFIG = {
         // 要比法師（90）和骷髏（80）慢，帶著大軍追得上才有意思
         attackRange: 0, attackSpeed: 1, moveSpeed: 60, color: '#FFC107',
         soulDrop: 20, soulPerWave: 2, waveSpeedIncreaseFactor: 0.005,
-        lifetime: 20, leashRadius: 260,
+        // lifetime 秒後掉頭逃跑；逃 escapeTime 秒還沒跑出畫面就原地化成煙（不掉靈魂）
+        lifetime: 20, escapeTime: 5, leashRadius: 260,
     },
     assassin: {
         type: 'Assassin', name: '暗影刺客', baseHealth: 40, baseAttack: 0, radius: 11,
@@ -3138,6 +3139,7 @@ const CURSE_POOL_DAMAGE_MULT = 0.5;
 
 const BOSS_CONFIG_OF = new Map([[ColossusBoss, () => CONFIG.boss], [PlagueBoss, () => CONFIG.plagueBoss], [HunterBoss, () => CONFIG.hunterBoss], [LichBoss, () => CONFIG.lichBoss]]);
 
+const THIEF_VANISH_PUFF = 20;
 class ThiefMonster extends Monster {
     constructor(x, y, waveNumber) {
         super(x, y, CONFIG.thief, waveNumber, false);
@@ -3166,6 +3168,12 @@ class ThiefMonster extends Monster {
             // 時間到就頭也不回地逃走，跑出畫面外夠遠就消失（不算擊殺、不掉靈魂）
             dir = { x: -toPlayer.x / distToPlayer, y: -toPlayer.y / distToPlayer };
             if (!inView(this.pos) && distToPlayer > Math.max(view.w, view.h)) { this.isAlive = false; return; }
+            // 玩家一路跟著的話牠永遠在畫面裡、永遠消失不了，而波次要等牠消失才結束：逃一陣子就直接化成煙
+            if (this.life <= -this.config.escapeTime) {
+                this.isAlive = false;
+                spawnParticles(this.pos.x, this.pos.y, this.config.color, THIEF_VANISH_PUFF, 90, 0.6, 3);
+                return;
+            }
         } else {
             const threat = summonGrid.nearest(this.pos, this.config.leashRadius);
             let tx = player.pos.x, ty = player.pos.y;
