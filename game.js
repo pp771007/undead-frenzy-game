@@ -832,6 +832,41 @@ function getGlowSprite(color) {
     return c;
 }
 
+// 分裂光球、狂暴火星：光暈＋本體事先合成一張，每顆每格只貼一次（精英潮時場上可能有上百隻精英）
+const AFFIX_SPRITE_PX = 48;
+const affixOrbCache = new Map();
+function getAffixOrbSprite(color) {
+    let c = affixOrbCache.get(color);
+    if (c) return c;
+    const S = AFFIX_SPRITE_PX, m = S / 2, r = S / 6;   // 貼的時候是 6 倍球半徑見方
+    c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d');
+    g.drawImage(getGlowSprite(color), 0, 0, S, S);
+    g.fillStyle = color;
+    g.strokeStyle = TEXT_OUTLINE;
+    g.lineWidth = r * 0.27;
+    g.beginPath(); g.arc(m, m, r, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.7)';
+    g.beginPath(); g.arc(m - r * 0.3, m - r * 0.3, r * 0.35, 0, Math.PI * 2); g.fill();
+    affixOrbCache.set(color, c);
+    return c;
+}
+const emberCache = new Map();
+function getEmberSprite(glowColor) {
+    let c = emberCache.get(glowColor);
+    if (c) return c;
+    const S = AFFIX_SPRITE_PX, q = S / 4;   // 貼的時候是 4 倍火星邊長見方，亮點佔中間 1/4
+    c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d');
+    g.drawImage(getGlowSprite(glowColor), 0, 0, S, S);
+    g.fillStyle = FRENZY_EMBER_COLOR;
+    g.fillRect((S - q) / 2, (S - q) / 2, q, q);
+    emberCache.set(glowColor, c);
+    return c;
+}
+
 // 幾百隻怨靈的光環疊在一起，全解析度混色的像素量會讓畫布卡死；
 // 光環本來就是模糊漸層，先畫在 1/AURA_LAYER_DIVISOR 解析度的圖層，再一次放大貼上
 const AURA_LAYER_DIVISOR = 4;
@@ -2051,22 +2086,43 @@ class Projectile {
         this.direction = normalizeVector({ x: next.pos.x - this.pos.x, y: next.pos.y - this.pos.y });
         return true;
     }
+}
 
-    draw(ctx) {
-        if (!this.isAlive) return;
-        if (!boltSprite) buildBoltSprite();
-        const { x, y } = this.pos;
-        const dx = this.direction.x, dy = this.direction.y;
-        // 拖尾：往飛行反方向排一串越來越小、越來越淡的殘影
-        for (let i = BOLT_TRAIL_COUNT; i >= 1; i--) {
-            const k = i / (BOLT_TRAIL_COUNT + 1);
-            const s = BOLT_DRAW_SIZE * (1 - k * 0.7);
-            const back = BOLT_TAIL_LEN * k;
-            ctx.globalAlpha = 0.9 * (1 - k);
-            ctx.drawImage(boltTrailSprite, x - dx * back - s / 2, y - dy * back - s / 2, s, s);
-        }
-        ctx.globalAlpha = 1;
-        ctx.drawImage(boltSprite, x - BOLT_DRAW_SIZE / 2, y - BOLT_DRAW_SIZE / 2, BOLT_DRAW_SIZE, BOLT_DRAW_SIZE);
+// 彗星圖事先轉好 BOLT_DIRECTIONS 個方向，每張只裁到剛好包住彗星；畫的時候挑最近的方向直接貼。
+// 不在畫的時候旋轉：旋轉後貼圖每個像素都要重新取樣，實測 58 顆要 2ms，事先轉好只要 0.65ms 上下
+const BOLT_DIRECTIONS = 32;
+const boltDirSprites = [];
+function getBoltDirSprite(i) {
+    let c = boltDirSprites[i];
+    if (c) return c;
+    if (!boltSprite) buildBoltSprite();
+    const a = i / BOLT_DIRECTIONS * Math.PI * 2;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    const W = BOLT_TAIL_LEN + BOLT_DRAW_SIZE, H = BOLT_DRAW_SIZE;
+    const k = BOLT_SPRITE_PX_PER_UNIT;
+    c = document.createElement('canvas');
+    c.width = Math.ceil((Math.abs(W * cos) + Math.abs(H * sin)) * k);
+    c.height = Math.ceil((Math.abs(W * sin) + Math.abs(H * cos)) * k);
+    const g = c.getContext('2d');
+    g.translate(c.width / 2, c.height / 2);
+    g.rotate(a);
+    g.drawImage(boltSprite, -W * k / 2, -H * k / 2, W * k, H * k);
+    boltDirSprites[i] = c;
+    return c;
+}
+function drawProjectilesBatched() {
+    const list = gameState.projectiles;
+    const k = BOLT_SPRITE_PX_PER_UNIT;
+    for (let i = 0; i < list.length; i++) {
+        const pr = list[i];
+        if (!pr.isAlive || !inView(pr.pos)) continue;
+        const dx = pr.direction.x, dy = pr.direction.y;
+        const idx = ((Math.round(Math.atan2(dy, dx) / (Math.PI * 2) * BOLT_DIRECTIONS) % BOLT_DIRECTIONS) + BOLT_DIRECTIONS) % BOLT_DIRECTIONS;
+        const sp = getBoltDirSprite(idx);
+        const w = sp.width / k, h = sp.height / k;
+        // 圖的中心是整顆彗星的中心，在彈頭後方半條拖尾的位置
+        const cx = pr.pos.x - dx * BOLT_TAIL_LEN / 2, cy = pr.pos.y - dy * BOLT_TAIL_LEN / 2;
+        ctx.drawImage(sp, cx - w / 2, cy - h / 2, w, h);
     }
 }
 
@@ -2076,34 +2132,46 @@ const BOLT_ORB_R = 4.5;
 const BOLT_TAIL_LEN = 20;
 const BOLT_TRAIL_COUNT = 4;
 const BOLT_HIT_SPARKS = 4;
-// 光暈＋彈體預先畫成圖，畫面上幾十顆同時飛也只是貼圖；殘影只用光暈那張，疊起來才不會一節一節
-let boltSprite = null, boltTrailSprite = null;
+const BOLT_SPRITE_PX_PER_UNIT = 3;
+// 預先畫好一整顆朝右的彗星：拖尾是一串越來越小、越來越淡的光暈（只有光、不帶描邊，疊起來才不會一節一節），
+// 最前面是光暈＋描邊彈體。畫面上幾十顆同時飛，每顆每格只貼一張圖
+let boltSprite = null;
 function buildBoltSprite() {
-    const S = 64, c = S / 2, k = S / BOLT_DRAW_SIZE;
-    const makeGlow = () => {
-        const cv = document.createElement('canvas');
-        cv.width = cv.height = S;
-        const g = cv.getContext('2d');
-        const glow = g.createRadialGradient(c, c, 0, c, c, c);
-        glow.addColorStop(0, 'rgba(255, 179, 213, 0.85)');
-        glow.addColorStop(0.45, 'rgba(240, 98, 146, 0.35)');
-        glow.addColorStop(1, 'rgba(240, 98, 146, 0)');
-        g.fillStyle = glow;
-        g.fillRect(0, 0, S, S);
-        return cv;
-    };
-    boltTrailSprite = makeGlow();
-    boltSprite = makeGlow();
+    const k = BOLT_SPRITE_PX_PER_UNIT;
+    const G = 64, gc = G / 2;
+    const glow = document.createElement('canvas');
+    glow.width = glow.height = G;
+    const gg = glow.getContext('2d');
+    const grad = gg.createRadialGradient(gc, gc, 0, gc, gc, gc);
+    grad.addColorStop(0, 'rgba(255, 179, 213, 0.85)');
+    grad.addColorStop(0.45, 'rgba(240, 98, 146, 0.35)');
+    grad.addColorStop(1, 'rgba(240, 98, 146, 0)');
+    gg.fillStyle = grad;
+    gg.fillRect(0, 0, G, G);
+
+    boltSprite = document.createElement('canvas');
+    boltSprite.width = Math.ceil((BOLT_TAIL_LEN + BOLT_DRAW_SIZE) * k);
+    boltSprite.height = Math.ceil(BOLT_DRAW_SIZE * k);
     const g = boltSprite.getContext('2d');
+    const hx = (BOLT_TAIL_LEN + BOLT_DRAW_SIZE / 2) * k, hy = boltSprite.height / 2;
+    for (let i = BOLT_TRAIL_COUNT; i >= 1; i--) {
+        const t = i / (BOLT_TRAIL_COUNT + 1);
+        const s = BOLT_DRAW_SIZE * (1 - t * 0.7) * k;
+        g.globalAlpha = 0.9 * (1 - t);
+        g.drawImage(glow, hx - BOLT_TAIL_LEN * t * k - s / 2, hy - s / 2, s, s);
+    }
+    g.globalAlpha = 1;
+    const D = BOLT_DRAW_SIZE * k;
+    g.drawImage(glow, hx - D / 2, hy - D / 2, D, D);
     const r = BOLT_ORB_R * k;
     g.fillStyle = CONFIG.eyeMonster.projectileColor;
     g.strokeStyle = TEXT_OUTLINE;
     g.lineWidth = 1.2 * k;
-    g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.arc(hx, hy, r, 0, Math.PI * 2); g.fill(); g.stroke();
     g.fillStyle = '#FCE4EC';
-    g.beginPath(); g.arc(c, c, r * 0.55, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(hx, hy, r * 0.55, 0, Math.PI * 2); g.fill();
     g.fillStyle = '#FFFFFF';
-    g.beginPath(); g.arc(c - r * 0.3, c - r * 0.3, r * 0.22, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(hx - r * 0.3, hy - r * 0.3, r * 0.22, 0, Math.PI * 2); g.fill();
 }
 
 class TimedEffect {
@@ -2481,13 +2549,7 @@ class Monster extends GameObject {
                 const ox = x + Math.cos(a) * R, oy = y + depth * R * SPLIT_ORBIT_TILT;
                 // 繞到前面的大一點、後面的小一點，看起來是一圈在轉
                 const s = SPLIT_ORB_R * (1 + depth * 0.2);
-                ctx.drawImage(getGlowSprite(A.color), ox - s * 3, oy - s * 3, s * 6, s * 6);
-                ctx.fillStyle = A.color;
-                ctx.strokeStyle = TEXT_OUTLINE;
-                ctx.lineWidth = 1.2;
-                ctx.beginPath(); ctx.arc(ox, oy, s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = 'rgba(255,255,255,0.7)';
-                ctx.beginPath(); ctx.arc(ox - s * 0.3, oy - s * 0.3, s * 0.35, 0, Math.PI * 2); ctx.fill();
+                ctx.drawImage(getAffixOrbSprite(A.color), ox - s * 3, oy - s * 3, s * 6, s * 6);
             }
             return;
         }
@@ -2504,16 +2566,14 @@ class Monster extends GameObject {
         const n = this.enraged ? FRENZY_EMBERS_ENRAGED : FRENZY_EMBERS;
         // 精英怪本身染成橘金色，火星要亮黃＋紅光才不會融進身體；飄到頭頂以上，在深色地面上最明顯
         const rise = this.imageHeight * 1.2;
-        const glow = getGlowSprite(A.color);
-        ctx.fillStyle = FRENZY_EMBER_COLOR;
+        const ember = getEmberSprite(A.color);
         for (let i = 0; i < n; i++) {
             const ph = (t * FRENZY_EMBER_RATE * hot + i / n) % 1;
             ctx.globalAlpha = 1 - ph;
             const ex = x + Math.sin(i * 7.31 + t * 2) * this.imageWidth * 0.35;
             const ey = feetY - ph * rise;
             const es = FRENZY_EMBER_SIZE * (1 - ph * 0.5);
-            ctx.drawImage(glow, ex - es * 2, ey - es * 2, es * 4, es * 4);
-            ctx.fillRect(ex - es / 2, ey - es / 2, es, es);
+            ctx.drawImage(ember, ex - es * 2, ey - es * 2, es * 4, es * 4);
         }
         ctx.globalAlpha = 1;
     }
@@ -5396,10 +5456,7 @@ function drawGame() {
         if (m.isAlive && (inView(m.pos) || m instanceof BossMonster)) m.draw(ctx);
     }
     drawSummonsBatched();
-    for (let i = 0; i < gameState.projectiles.length; i++) {
-        const pr = gameState.projectiles[i];
-        if (pr.isAlive && inView(pr.pos)) pr.draw(ctx);
-    }
+    drawProjectilesBatched();
     for (let i = 0; i < gameState.monsters.length; i++) {
         const m = gameState.monsters[i];
         if (m.isAlive && m.mark) m.drawMark(ctx);
