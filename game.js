@@ -5527,7 +5527,9 @@ function init() {
     window.addEventListener('keyup', (e) => keysDown.delete(e.code));
     window.addEventListener('blur', () => keysDown.clear());
 
-    uiElements.skipWaveBtn.addEventListener('click', () => {
+    // 用 pointerdown 不用 click：另一隻手指還按著搖桿時，瀏覽器不會把這一下算成 click
+    uiElements.skipWaveBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         if (gameState.betweenWaves && !gameState.isPaused && !gameState.gameOver) {
             gameState.timeToNextWave = 0;
             ensureMusicPlaying();
