@@ -5628,7 +5628,16 @@ function init() {
     setupHoldableButton(uiElements.upgradeEyeMonsterBtn, 'upgrade', 'EyeMonster');
     setupHoldableButton(uiElements.upgradeWraithBtn, 'upgrade', 'Wraith');
 
-    const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); Sfx.play('click'); fn(); });
+    // 按鍵音統一在這裡：任何按鈕一按下就響（按下不是放開，手感才即時；召喚、新星這些也有）。
+    // 按不了的鈕：停用的放「不行」；買不起的召喚鈕由 denyFeedback 放，這裡不再疊一聲
+    document.addEventListener('pointerdown', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn || btn.classList.contains('cant-afford')) return;
+        Sfx.unlock();
+        Sfx.play(btn.disabled ? 'deny' : 'click');
+    }, true);
+    // 觸控的 pointerdown 不算使用者手勢，第一次解鎖音效要等到 click
+    const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
     onTap(uiElements.titleStartBtn, startNewRun);
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
@@ -5648,7 +5657,6 @@ function init() {
     // 戰鬥中的暫停鈕跟開戰鈕一樣在 pointerdown 觸發：移動中另一隻手按也要有效
     uiElements.pauseResumeBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
-        Sfx.unlock(); Sfx.play('click');
         togglePause();
     });
     onTap(uiElements.resumeGameBtn, togglePause);
