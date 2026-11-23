@@ -55,8 +55,8 @@ const ICON_BODIES = {
         <rect x="27" y="40" width="10" height="8" fill="#e0a82e"/><rect x="18" y="48" width="28" height="8" rx="2" fill="#e0a82e"/>${shine(25, 18, 3, 6, 0)}`,
     crystal: `<path d="M32 6 L50 24 L32 58 L14 24 Z" fill="#b388ff"/><path d="M14 24 L50 24 M32 6 L26 24 L32 58 M32 6 L38 24 L32 58" stroke-width="2.5"/>${shine(24, 18, 3, 6, 30)}`,
     gear: `<path d="${starPath(32, 32, 26, 20, 8)}" fill="#b0bec5"/><circle cx="32" cy="32" r="8" fill="#37474f"/>`,
-    music: `<path d="M24 46 L24 14 L50 8 L50 40" stroke-width="5" stroke="${ICON_OUTLINE}"/><path d="M24 14 L50 8" stroke-width="7"/>
-        <ellipse cx="18" cy="47" rx="8" ry="6" fill="#f1ead6" transform="rotate(-20 18 47)"/><ellipse cx="44" cy="41" rx="8" ry="6" fill="#f1ead6" transform="rotate(-20 44 41)"/>`,
+    music: duoStroke('M25 46 L25 16 M51 40 L51 10', '#f1ead6', 4) + `<path d="M23 10 L53 3 L53 15 L23 22 Z" fill="#f1ead6"/>
+        <ellipse cx="17" cy="47" rx="10" ry="7.5" fill="#f1ead6" transform="rotate(-20 17 47)"/><ellipse cx="43" cy="41" rx="10" ry="7.5" fill="#f1ead6" transform="rotate(-20 43 41)"/>`,
     speaker: `<path d="M10 24 L22 24 L36 12 L36 52 L22 40 L10 40 Z" fill="#f1ead6"/>${duoStroke('M44 22 C49 27 49 37 44 42', '#f1ead6', 4)}${duoStroke('M50 15 C59 24 59 40 50 49', '#f1ead6', 4)}`,
     reroll: duoStroke('M48 26 C44 16 34 11 24 15 C17 18 13 24 13 31', '#8fd3ff') + `<path d="M50 12 L49 28 L36 23 Z" fill="#8fd3ff"/>` +
         duoStroke('M16 38 C20 48 30 53 40 49 C47 46 51 40 51 33', '#8fd3ff') + `<path d="M14 52 L15 36 L28 41 Z" fill="#8fd3ff"/>`,
