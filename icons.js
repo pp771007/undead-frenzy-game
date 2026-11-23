@@ -142,6 +142,9 @@ const ICON_BODIES = {
         duoStroke('M38 58 L58 38', '#cfd8dc', 4) + duoStroke('M46 42 L54 50', '#ffd54f', 3),
     frenzyTime: `<path d="M18 8 L46 8 L46 14 C46 24 36 28 36 32 C36 36 46 40 46 50 L46 56 L18 56 L18 50 C18 40 28 36 28 32 C28 28 18 24 18 14 Z" fill="#e1bee7"/>
         <path d="M24 50 L40 50 L32 41 Z" fill="#ab47bc" stroke-width="2.5"/><path d="M25 16 L39 16 L32 24 Z" fill="#ab47bc" stroke-width="2.5"/>${shine(23, 13, 2.5, 1.5)}`,
+    shadowStep: duoStroke('M6 40 L20 40 M4 48 L18 48', '#b39ddb', 3) +
+        `<path d="M24 50 L26 30 C26 22 32 18 38 20 L46 24 C50 26 50 30 46 32 L36 36 L36 44 L52 46 C56 47 56 52 52 53 L28 54 C25 54 24 52 24 50 Z" fill="#7e57c2"/>
+        <path d="M34 22 L40 10 L44 22 Z" fill="#b39ddb" stroke-width="3"/>${shine(31, 28, 3, 2)}`,
     banish: `<circle cx="32" cy="32" r="22" fill="#3a3046" stroke-width="11"/><circle cx="32" cy="32" r="22" stroke="#e5484d" stroke-width="6"/>` +
         duoStroke('M17 47 L47 17', '#e5484d', 6),
     extraChoice: `<rect x="8" y="16" width="22" height="32" rx="3" fill="#b0bec5" transform="rotate(-15 19 32)"/>

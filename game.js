@@ -7,6 +7,10 @@ const ctx = canvas.getContext('2d');
 const VIEW_AREA = 600 * 400 * 1.5;
 const MAX_DPR = 2;
 const CAMERA_FOLLOW = 6;
+// 鏡頭往移動方向多帶 CAMERA_LEAD 世界單位：只跟著法師的話，走起來法師反而偏到前進那一側，前面看得比後面少
+const CAMERA_LEAD = 70;
+const CAMERA_LEAD_FOLLOW = 2.5;
+const cameraLead = { x: 0, y: 0 };
 const view = { cssW: 600, cssH: 400, dpr: 1, unitPx: 1, zoom: 1, w: 600, h: 400 };
 const camera = { x: -300, y: -200 };
 function resizeCanvas() {
@@ -27,15 +31,19 @@ function resizeCanvas() {
 function snapCamera() {
     const p = gameState.player;
     if (!p) return;
+    cameraLead.x = 0; cameraLead.y = 0;
     camera.x = p.pos.x - view.w / 2;
     camera.y = p.pos.y - view.h / 2;
 }
-function updateCamera(deltaTime) {
+function updateCamera(deltaTime, moveVec) {
     const p = gameState.player;
     if (!p) return;
+    const lk = Math.min(1, deltaTime * CAMERA_LEAD_FOLLOW);
+    cameraLead.x += (moveVec.x * CAMERA_LEAD - cameraLead.x) * lk;
+    cameraLead.y += (moveVec.y * CAMERA_LEAD - cameraLead.y) * lk;
     const k = Math.min(1, deltaTime * CAMERA_FOLLOW);
-    camera.x += (p.pos.x - view.w / 2 - camera.x) * k;
-    camera.y += (p.pos.y - view.h / 2 - camera.y) * k;
+    camera.x += (p.pos.x + cameraLead.x - view.w / 2 - camera.x) * k;
+    camera.y += (p.pos.y + cameraLead.y - view.h / 2 - camera.y) * k;
 }
 const CULL_MARGIN = 80;
 function inView(pos) {
@@ -122,7 +130,8 @@ const uiElements = {
 
 const CONFIG = {
     player: {
-        baseHealth: 50, baseMoveSpeed: 90, radius: 12, color: '#03A9F4',
+        // 走速要比大部分雜兵快（血狼 50、赤鷲 95、石像鬼 100），走位才甩得開；直撲法師的蝙蝠（115）刻意比法師快
+        baseHealth: 50, baseMoveSpeed: 110, radius: 12, color: '#03A9F4',
         imageName: 'player', imgScaleMultiplier: 4,
         initialSouls: 20,
         // 法師自己會打：每 boltInterval 秒對 boltRange 內最近的怪射一顆靈魂彈。
@@ -268,7 +277,7 @@ const CONFIG = {
     thief: {
         type: 'Thief', name: '金魂竊賊', baseHealth: 60, baseAttack: 0, radius: 11,
         imageName: 'fast_melee', art: 'thief', imgScaleMultiplier: 3, artScale: 4.5, tint: '#FFC107', tintStrength: 0.55,
-        // 要比法師（90）和骷髏（80）慢，帶著大軍追得上才有意思
+        // 要比法師和骷髏慢，帶著大軍追得上才有意思
         attackRange: 0, attackSpeed: 1, moveSpeed: 60, color: '#FFC107',
         soulDrop: 20, soulPerWave: 2, waveSpeedIncreaseFactor: 0.005,
         // lifetime 秒後掉頭逃跑；逃 escapeTime 秒還沒跑出畫面就原地化成煙（不掉靈魂）
@@ -283,7 +292,7 @@ const CONFIG = {
         minWave: 11, waveInterval: 7,
         // 潛行時召喚物看不到她（見 SpatialGrid.rebuild），只在蓄力到刺完後現形的那段時間會被大軍圍毆，所以每隻幾乎都會出手一次。
         // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
-        // 傷害是法師最大生命的固定比例、不隨波數變大：站著不動才會中，一直走一定閃得掉（走速 90 × 蓄力 0.75 秒 ≫ 判定半徑）
+        // 傷害是法師最大生命的固定比例、不隨波數變大：站著不動才會中，一直走一定閃得掉（法師走速 × 蓄力 0.75 秒 ≫ 判定半徑）
         blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 0.75, strikeRadius: 34, strikeHpRatio: 0.3,
         // 平常半透明（潛行），蓄力到瞬移後這段時間現形
         stealthAlpha: 0.5, revealTime: 1.5,
@@ -310,7 +319,7 @@ const CONFIG = {
         soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
         minWave: 4, waveInterval: 3,
         // 大軍圍在法師身邊，其他怪幾乎碰不到法師，走位前中期沒有意義。血瞳只盯法師：蓄力 windup 秒後朝法師「當下的位置」射一顆慢速血彈，
-        // 飛過大軍頭上、只打法師。有在走就躲得掉（飛 190 要 1.2 秒，法師走得了 100 多），站著不動才會一直中。
+        // 飛過大軍頭上、只打法師。有在走就躲得掉（飛 190 要 1.2 秒，法師走得了一百多），站著不動才會一直中。
         // 傷害是法師最大生命的固定比例（同刺客、投手），不隨波數變大
         windup: 0.55, boltSpeed: 160, boltRange: 380, boltRadius: 7, boltPlayerHpRatio: 0.08,
     },
@@ -577,6 +586,7 @@ const BLESSINGS = {
     novaPower: { school: 'mage', name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
     soulBlade: { school: 'mage', name: '靈魂之刃', max: 4, per: 0.6, desc: b => `法師靈魂彈傷害 +${pct(b.per)}` },
     soulVolley: { school: 'mage', name: '靈魂連射', max: 2, per: 1, desc: b => `法師每次多射 ${b.per} 顆` },
+    shadowStep: { school: 'mage', name: '幽影步', max: 3, per: 0.12, desc: b => `法師移速 +${pct(b.per)}` },
     frenzyTime: { school: 'mage', name: '狂潮延長', max: 3, per: 1.5, desc: b => `新星的大軍狂暴多 ${b.per} 秒` },
     soulHarvest: { school: 'soul', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
     magnet: { school: 'soul', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
@@ -1524,6 +1534,7 @@ class Player extends GameObject {
         const ratio = this.currentHealth / this.maxHealth;
         this.hpTrail = ratio > this.hpTrail ? ratio : Math.max(ratio, this.hpTrail - PLAYER_HP_TRAIL_SPEED * deltaTime);
         this.absorbGlow = Math.max(0, this.absorbGlow - ABSORB_GLOW_DECAY * deltaTime);
+        this.moveSpeed = CONFIG.player.baseMoveSpeed * (1 + blessVal('shadowStep'));
         const moveX = moveVec.x * this.moveSpeed * deltaTime;
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
         this.pos.x += moveX;
@@ -5266,6 +5277,10 @@ function handleCanvasPointerMove(event) {
     const deltaX = inputState.pointerCurrentPos.x - inputState.pointerStartPos.x;
     const deltaY = inputState.pointerCurrentPos.y - inputState.pointerStartPos.y;
     const len = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    if (len > JOYSTICK_RADIUS) {
+        // 浮動搖桿：拉出半徑外時底座跟著手指拖過去。底座固定的話，手指拉遠之後要反方向走得先拉回原點，轉向慢半拍
+        inputState.pointerStartPos = { x: pos.x - deltaX / len * JOYSTICK_RADIUS, y: pos.y - deltaY / len * JOYSTICK_RADIUS };
+    }
     if (len > JOYSTICK_DEADZONE) {
         // 搖桿：拉越遠走越快，拉到半徑外就是全速
         const mag = Math.min(1, len / JOYSTICK_RADIUS);
@@ -5844,8 +5859,9 @@ function updateGame(deltaTime) {
     gameState.priests = gameState.monsters.filter(m => m.isAlive && m instanceof GravePriestMonster);
     gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;
 
-    if (gameState.player) gameState.player.update(deltaTime, getMoveVector());
-    updateCamera(deltaTime);
+    const moveVec = getMoveVector();
+    if (gameState.player) gameState.player.update(deltaTime, moveVec);
+    updateCamera(deltaTime, moveVec);
 
     for (let i = 0; i < gameState.summons.length; i++) {
         if (gameState.summons[i].isAlive) gameState.summons[i].update(deltaTime, gameState.monsters, gameState.summons, gameState.player);
