@@ -4423,7 +4423,7 @@ function updateUI() {
         const upgradeCost = gameState.currentCosts[u.costKey];
         if (el.level.textContent !== String(level)) el.level.textContent = level;
         setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
-        el.count.textContent = gameState[u.countKey];
+        el.count.textContent = formatNumberK(gameState[u.countKey]);
         setHtmlIfChanged(el.summon, priceButtonHtml('召喚', summonCost));
         setHtmlIfChanged(el.upgrade, priceButtonHtml('升級', upgradeCost));
         el.summon.disabled = !canAct;
