@@ -1062,6 +1062,19 @@ function rebuildEyeTargetCounts(summons) {
     }
 }
 
+// 連段音高：五聲音階（Do Re Mi Sol La）一格一格往上，爬 COMBO_PITCH_TOP 格（兩個八度）後在最上面那個八度循環，
+// 不會一路爬到刺耳；五聲音階任兩個音都不衝突，連起來像在彈旋律
+const PENTATONIC_STEPS = [0, 2, 4, 7, 9];
+const COMBO_PITCH_TOP = 10;
+const SUMMON_COMBO_BASE_HZ = 262;
+const UPGRADE_COMBO_BASE_HZ = 330;
+function comboPitch(n) {
+    let i = Math.max(0, n - 1);
+    if (i > COMBO_PITCH_TOP) i = COMBO_PITCH_TOP - PENTATONIC_STEPS.length + 1 + (i - COMBO_PITCH_TOP - 1) % PENTATONIC_STEPS.length;
+    const semis = PENTATONIC_STEPS[i % PENTATONIC_STEPS.length] + 12 * Math.floor(i / PENTATONIC_STEPS.length);
+    return Math.pow(2, semis / 12);
+}
+
 // ---------- 合成音效（不用音檔） ----------
 const Sfx = {
     ctx: null, master: null, noiseBuf: null, last: {},
@@ -1107,14 +1120,15 @@ const Sfx = {
         s.connect(f); f.connect(g); g.connect(this.master);
         s.start(t0, Math.random() * 0.5); s.stop(t0 + dur + 0.02);
     },
-    play(name) {
+    // arg 原樣交給音效定義（連段音效用它決定音高）
+    play(name, arg) {
         if (!this.ctx || this.ctx.state !== 'running' || gameState.sfxVolume <= 0) return;
         const def = SFX_DEFS[name];
         if (!def) return;
         const now = this.ctx.currentTime;
         if (this.last[name] && now - this.last[name] < def.gap) return;
         this.last[name] = now;
-        def.fn(this);
+        def.fn(this, arg);
     },
 };
 // gap = 同一種音效最短間隔（秒），一群怪同時被打時不會炸成一團噪音
@@ -1138,6 +1152,10 @@ const SFX_DEFS = {
     pick: { gap: 0.2, fn: s => { [523, 784, 1046].forEach((f, i) => s.tone(f, 0.15, { type: 'triangle', vol: 0.14, delay: i * 0.05 })); } },
     deny: { gap: 0.12, fn: s => { s.tone(200, 0.09, { type: 'square', vol: 0.06 }); s.tone(150, 0.12, { type: 'square', vol: 0.06, delay: 0.08 }); } },
     tick: { gap: 0.3, fn: s => { s.tone(880, 0.08, { type: 'square', vol: 0.07 }); s.tone(440, 0.12, { type: 'triangle', vol: 0.08 }); } },
+    // 長按連段：第 n 下沿五聲音階往上爬，每下短而有打擊感（比連發間隔 150ms 短，不會糊成一團）
+    summonCombo: { gap: 0.04, fn: (s, n) => { const f = SUMMON_COMBO_BASE_HZ * comboPitch(n); s.tone(f, 0.09, { type: 'triangle', vol: 0.14, slideTo: f * 1.5 }); s.noise(0.03, { vol: 0.05, filterFreq: 4000 }); } },
+    upgradeCombo: { gap: 0.04, fn: (s, n) => { const f = UPGRADE_COMBO_BASE_HZ * comboPitch(n); s.tone(f, 0.1, { type: 'square', vol: 0.05 }); s.tone(f * 2, 0.14, { type: 'triangle', vol: 0.08 }); s.noise(0.025, { vol: 0.04, filterFreq: 6000 }); } },
+    comboMilestone: { gap: 0.3, fn: s => { [1046, 1318, 1568, 2093].forEach((f, i) => s.tone(f, 0.18, { type: 'triangle', vol: 0.1, delay: i * 0.035 })); s.noise(0.15, { vol: 0.06, filterFreq: 8000 }); } },
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
@@ -4332,7 +4350,8 @@ function showMessage(msg, duration = 2000) {
     }, duration);
 }
 
-function trySummon(type) {
+// combo：長按連段的第幾下（0 = 單點），連段時換成會往上爬的音效
+function trySummon(type, combo = 0) {
     let config, cost, currentCount, level, SummonClass, unitName;
 
     switch (type) {
@@ -4362,7 +4381,7 @@ function trySummon(type) {
         const newSummon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
         gameState.summons.push(newSummon);
         spawnParticles(spawnPos.x, spawnPos.y, '#7E57C2', 12, 70, 0.5);
-        Sfx.play('summon');
+        Sfx.play(combo ? 'summonCombo' : 'summon', combo);
         if (gameState.totalSummons.hasOwnProperty(type)) {
             gameState.totalSummons[type]++;
         }
@@ -4396,7 +4415,7 @@ function announceEvolution(type, tier) {
     Sfx.play('evolve');
 }
 
-function tryUpgrade(type) {
+function tryUpgrade(type, combo = 0) {
     let cost, costIncrement, costKey, levelKey, unitName;
     switch (type) {
         case 'SkeletonWarrior':
@@ -4427,7 +4446,7 @@ function tryUpgrade(type) {
                 spawnParticles(s.pos.x, s.pos.y, '#FFD54F', 5, 50, 0.4);
             }
         });
-        Sfx.play('upgrade');
+        Sfx.play(combo ? 'upgradeCombo' : 'upgrade', combo);
         popLevelBadge(type);
         if (newTier > oldTier) announceEvolution(type, newTier);
         updateUI();
@@ -4536,7 +4555,7 @@ function startHoldAction(actionType, unitType) {
     holdActionState.pointerDownTime = performance.now();
 
     const actionFn = actionType === 'summon' ? trySummon : tryUpgrade;
-    const act = () => { if (actionFn(unitType)) bumpHoldCombo(actionType, unitType); };
+    const act = () => { if (actionFn(unitType, holdCombo + 1)) bumpHoldCombo(actionType, unitType); };
     holdCombo = 0;
 
     holdActionState.timeoutId = setTimeout(() => {
@@ -4559,6 +4578,7 @@ function startHoldAction(actionType, unitType) {
 const HOLD_COMBO_SHOW_FROM = 2;
 const HOLD_COMBO_GAP = 8;      // px：標籤底到按鈕頂
 const HOLD_COMBO_EDGE = 6;     // px：不貼出螢幕邊
+const HOLD_COMBO_MILESTONE = 10;
 let holdCombo = 0;
 function bumpHoldCombo(actionType, unitType) {
     holdCombo++;
@@ -4578,9 +4598,14 @@ function bumpHoldCombo(actionType, unitType) {
         el.style.left = `${Math.min(window.innerWidth - half - HOLD_COMBO_EDGE, Math.max(half + HOLD_COMBO_EDGE, r.left + r.width / 2))}px`;
         el.style.top = `${r.top - HOLD_COMBO_GAP}px`;
     }
-    n.classList.remove('bump');
-    void n.offsetWidth;
-    n.classList.add('bump');
+    // 每滿 HOLD_COMBO_MILESTONE 下：一聲亮晶晶的和弦，整個標籤大彈一下
+    const milestone = holdCombo % HOLD_COMBO_MILESTONE === 0;
+    if (milestone) Sfx.play('comboMilestone');
+    const target = milestone ? el : n;
+    const cls = milestone ? 'milestone' : 'bump';
+    target.classList.remove(cls);
+    void target.offsetWidth;
+    target.classList.add(cls);
 }
 function hideHoldCombo() {
     holdCombo = 0;

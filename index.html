@@ -659,6 +659,17 @@
             animation: bump 0.18s ease-out;
         }
 
+        /* 每滿 10 下整個標籤大彈一下；translate 要跟著寫，不然動畫期間標籤會跳離按鈕 */
+        #hold-combo.milestone {
+            animation: combo-milestone 0.35s ease-out;
+        }
+
+        @keyframes combo-milestone {
+            0% { transform: translate(-50%, -100%) scale(1); }
+            40% { transform: translate(-50%, -100%) scale(1.35); filter: brightness(1.6); }
+            100% { transform: translate(-50%, -100%) scale(1); }
+        }
+
         .hint-pulse {
             animation: hint 1s ease-in-out infinite;
         }
