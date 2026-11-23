@@ -318,8 +318,11 @@ const CONFIG = {
         imageName: 'armored_melee', art: 'shield_guard', imgScaleMultiplier: 6, artScale: 3.4, tint: '#607D8B', tintStrength: 0.5,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 34, color: '#607D8B',
         soulDrop: 4, waveSpeedIncreaseFactor: 0.006,
-        // 眼魔飛彈打在牠身上只剩 (1 - projectileBlock)：只出眼魔會被剋，要混骷髏近戰
-        minWave: 18, waveInterval: 5, projectileBlock: 0.85,
+        // 眼魔的飛彈（含爆炸波及）打在牠和牠盾陣裡的怪身上只剩 (1 - projectileBlock)：
+        // 只出眼魔清不掉這一群，要派骷髏衝進去先把盾衛打掉（見 projectileBlockAt）。
+        // 擋全部：用百分比的話，眼魔等級一高還是秒穿（實測擋 97% 時 Lv30 眼魔仍比骷髏快，時間卡在飛行與找目標、不在傷害）。
+        // 法師的靈魂彈穿盾，所以只出眼魔也不會卡死波次：法師慢慢磨得死，或派骷髏衝進去
+        minWave: 18, waveInterval: 5, projectileBlock: 1,
     },
     corpseWorm: {
         type: 'CorpseWorm', name: '屍蟲', baseHealth: 70, baseAttack: 10, radius: 16,
@@ -2099,11 +2102,12 @@ class Projectile {
 
             if (distToTargetSq <= hitRadiusSq) {
                 const hit = this.target;
-                const block = hit.config && hit.config.projectileBlock;
+                const block = this.style === 'soul' ? 0 : projectileBlockAt(hit);
                 if (block) spawnParticles(this.pos.x, this.pos.y, '#CFD8DC', 3, 50, 0.2, 2);
                 else spawnParticles(this.pos.x, this.pos.y, this.color, BOLT_HIT_SPARKS, 60, 0.25, 2);
-                hit.takeDamage(block ? this.damage * (1 - block) : this.damage);
-                if (this.owner) this.owner.healFromDamage(this.damage);
+                const dealt = this.damage * (1 - block);
+                hit.takeDamage(dealt);
+                if (this.owner) this.owner.healFromDamage(dealt);
                 if (this.blast) this.explodeAt(hit);
                 if (this.bounces > 0 && this.bounceFrom(hit)) return;
                 this.isAlive = false;
@@ -2128,7 +2132,7 @@ class Projectile {
         // 法師的「魂火」與眼魔的爆裂魔眼共用同一套爆炸，只是倍率不同
         const dmg = Math.round(this.damage * (this.style === 'soul' ? BLESSINGS.soulfire.per : E.eyeBlastMult));
         monsterGrid.forEachInRadius(hit.pos, E.eyeBlastRadius, m => {
-            if (m !== hit && m.isAlive && distanceSq(hit.pos, m.pos) <= rSq) m.takeDamage(dmg);
+            if (m !== hit && m.isAlive && distanceSq(hit.pos, m.pos) <= rSq) m.takeDamage(this.style === 'soul' ? dmg : dmg * (1 - projectileBlockAt(m)));
         });
         spawnParticles(hit.pos.x, hit.pos.y, this.color, 4, 70, 0.3, 2);
     }
@@ -3444,6 +3448,38 @@ const HEAL_PULSE_TIME = 0.5;
 
 class ShieldGuardMonster extends Monster {
     constructor(x, y, waveNumber, isElite) { super(x, y, CONFIG.shieldGuard, waveNumber, isElite); }
+    // 腳下畫出盾陣範圍：圈裡的怪也擋飛彈
+    draw(ctx) {
+        if (this.isAlive) {
+            ctx.fillStyle = SHIELD_WALL_FILL;
+            ctx.strokeStyle = SHIELD_WALL_STROKE;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.3, SHIELD_WALL_RADIUS, SHIELD_WALL_RADIUS * 0.55, 0, 0, Math.PI * 2);
+            ctx.fill(); ctx.stroke();
+        }
+        super.draw(ctx);
+    }
+}
+// 骨盾衛兵的盾陣：身邊這麼大一圈的怪，飛彈類傷害一樣被擋（只擋自己的話，眼魔把旁邊清光就好，等於沒有天敵）
+const SHIELD_WALL_RADIUS = 55;
+const SHIELD_WALL_FILL = 'rgba(144, 164, 174, 0.12)';
+const SHIELD_WALL_STROKE = 'rgba(176, 190, 197, 0.55)';
+let shieldCheckFrame = -1, anyShieldGuard = false;
+function projectileBlockAt(m) {
+    if (m.config.projectileBlock) return m.config.projectileBlock;
+    // 場上沒有盾衛時（大部分時間）直接略過，不用每一發都查格子
+    if (shieldCheckFrame !== frameNo) {
+        shieldCheckFrame = frameNo;
+        anyShieldGuard = gameState.monsters.some(g => g.isAlive && g.config.projectileBlock);
+    }
+    if (!anyShieldGuard) return 0;
+    let block = 0;
+    const rSq = SHIELD_WALL_RADIUS * SHIELD_WALL_RADIUS;
+    monsterGrid.forEachInRadius(m.pos, SHIELD_WALL_RADIUS, g => {
+        if (g.isAlive && g.config.projectileBlock && distanceSq(g.pos, m.pos) <= rSq) block = g.config.projectileBlock;
+    });
+    return block;
 }
 
 class CorpseWormMonster extends Monster {
