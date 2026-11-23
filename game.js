@@ -447,6 +447,10 @@ const CONFIG = {
         knockbackSpeed: 280, knockbackFriction: 8, bossKnockbackMult: 0.2,
         slowAmount: 0.5, slowDuration: 1.5,
         effectDuration: 0.4,
+        // 新星同時讓整支大軍狂暴 frenzyDuration 秒（攻擊冷卻走 frenzyAttackRate 倍快），並把場上的靈魂全吸過來：
+        // 只有「炸身邊」時，大軍擋在前面的局面法師根本不會被貼身，整局按不到幾次。有了這一半，它變成抓時機爆發的按鈕
+        frenzyDuration: 4, frenzyAttackRate: 1.6,
+        frenzyVignette: 'rgba(186, 104, 200, 0.7)',
     },
     draft: {
         every: 3, optionCount: 3,
@@ -656,7 +660,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
     hazards: [], curse: 0, endless: false, victoryOpen: false,
 };
@@ -1581,7 +1585,7 @@ class SummonUnit extends GameObject {
 
         this.applyWraithBuff();
 
-        if (this.attackCooldown > 0) { this.attackCooldown -= deltaTime; }
+        if (this.attackCooldown > 0) { this.attackCooldown -= deltaTime * (gameState.frenzyTimer > 0 ? CONFIG.nova.frenzyAttackRate : 1); }
 
         if (this.config.type === 'EyeMonster') {
             this.isRetreatingFromMonster = monsterGrid.anyWithin(this.pos, this.config.retreatCheckDistance);
@@ -4115,6 +4119,9 @@ function useNova() {
         m.applySlow(frost ? FROST_NOVA_SLOW : c.slowAmount, frost ? BLESSINGS.frostNova.per : c.slowDuration);
         m.takeDamage(dmg);
     });
+    gameState.frenzyTimer = c.frenzyDuration;
+    for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].attracted = true;
+    spawnFloatText(p.pos.x, p.pos.y - 34, '狂潮！', '#E1BEE7', 18, 1.1, 'burst');
     gameState.visualEffects.push(new NovaEffect(p.pos, radius));
     spawnParticles(p.pos.x, p.pos.y, frost ? '#B3E5FC' : '#CE93D8', 36, 260, 0.5, 3);
     addShake(7);
@@ -4478,6 +4485,7 @@ function updateTimers(deltaTime) {
     if (tutorial && gameState.currentWave === 0) return;
     updateSpawner(deltaTime);
     gameState.novaCooldown = Math.max(0, gameState.novaCooldown - deltaTime);
+    gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
     if (gameState.streakTimer > 0) {
         gameState.streakTimer -= deltaTime;
         if (gameState.streakTimer <= 0) gameState.streak = 0;
@@ -5141,7 +5149,7 @@ function resetGameInternalState() {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, extraDrafts: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
         hazards: [], curse: 0, endless: false, victoryOpen: false,
     };
@@ -5375,6 +5383,24 @@ function drawEventOverlay() {
     }
     ctx.save();
     drawIconLabel(ev.icon, ev.name, 10, hudTop + 20, 15, ev.color, 'left');
+    ctx.restore();
+}
+
+// 大軍狂暴中：畫面四周一圈紫光，隨剩餘時間淡出、帶一點脈動
+const FRENZY_PULSE_HZ = 4;
+function drawFrenzyOverlay() {
+    const t = gameState.frenzyTimer;
+    if (t <= 0) return;
+    const C = CONFIG.nova;
+    const a = Math.min(1, t / C.frenzyDuration * 2) * (0.75 + 0.25 * Math.sin(worldTime * Math.PI * 2 * FRENZY_PULSE_HZ));
+    const W = view.cssW, H = view.cssH;
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.6);
+    g.addColorStop(0, 'rgba(186, 104, 200, 0)');
+    g.addColorStop(1, C.frenzyVignette);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
     ctx.restore();
 }
 
@@ -5692,6 +5718,7 @@ function drawGame() {
 
     setScreenTransform();
     drawEventOverlay();
+    drawFrenzyOverlay();
     drawBossBar();
     drawStreak();
     drawOffscreenPointers();
