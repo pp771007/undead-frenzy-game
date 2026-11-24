@@ -41,6 +41,19 @@
             overflow: hidden;
             overscroll-behavior: none;
             -webkit-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+        }
+
+        /* 字級固定 100px、行高 1 的隱形探針：實際畫出來的高度 ÷ 100 = 這支手機把字放大的倍率 */
+        #tz-probe {
+            position: absolute;
+            left: -9999px;
+            top: 0;
+            display: inline-block;
+            visibility: hidden;
+            font-size: 100px;
+            line-height: 1;
+            pointer-events: none;
         }
 
         body {
@@ -1630,6 +1643,8 @@
 </head>
 
 <body>
+    <!-- 量手機「字型大小」放大了幾倍用（見 game.js 的 cancelTextZoom） -->
+    <span id="tz-probe" aria-hidden="true">字</span>
     <canvas id="gameCanvas"></canvas>
 
     <div id="hud" class="hidden">

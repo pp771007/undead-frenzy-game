@@ -19,6 +19,17 @@ node tools/summarize.mjs logs
 - 單局隨機性很大，至少跑 6 局再下結論
 - `STUCK` 代表某一波打了超過 240 秒，會列出場上剩下的怪，通常是 bug
 
+## 介面檢查（改了任何畫面都要跑）
+
+用一支實際玩家手機的條件截出所有畫面：**可用畫面約 408×673**（LINE 內建瀏覽器，比一般測試的 390×780 矮很多），**系統字型放大 1.8 倍**。
+
+```sh
+node tools/ui-check.mjs http://localhost:8765/ logs/ui           # 預設就是上面那支手機的條件
+FIX=0 node tools/ui-check.mjs http://localhost:8765/ logs/ui-raw # 看不補償字型放大時的樣子
+```
+
+那個瀏覽器會把字放大、框不變，而且不理會 `text-size-adjust`；遊戲啟動時用 `cancelTextZoom()`（`game.js`）量出倍率、把字級除回去。所以介面裡的字級請一律寫在 CSS 樣式表、用 px —— 寫在 JS 的行內樣式裡就不會被補償到。
+
 ## 洋紅去背（加新圖用）
 
 Gemini 生圖不支援透明背景，請它畫在純洋紅（#FF00FF）背景上，再用這支去背：

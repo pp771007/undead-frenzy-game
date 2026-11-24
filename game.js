@@ -6727,7 +6727,31 @@ function waitForFonts() {
     return Promise.race([load, new Promise(r => setTimeout(r, FONT_LOAD_TIMEOUT_MS))]);
 }
 
+// 手機系統的「字型大小」：LINE 這類 App 的內建瀏覽器會把字整體放大、框維持原尺寸，而且不理會 text-size-adjust
+// （實機截圖：字放大約 1.5～1.8 倍，血量數字超出血條、「召喚」被擠成直排，桌機與一般瀏覽器完全看不到）。
+// 量探針實際畫多高得到倍率，把樣式表裡每一條 px 字級除回去：畫出來就是設計的大小，以後新增的介面也自動適用。
+// 畫布上的字不受影響（ctx.font 不會被放大），不用處理
+const TZ_PROBE_PX = 100;
+const TZ_MIN_ZOOM = 1.05;   // 小於這個當成沒放大（量測誤差）
+function cancelTextZoom() {
+    const probe = document.getElementById('tz-probe');
+    if (!probe) return 1;
+    const k = probe.getBoundingClientRect().height / TZ_PROBE_PX;
+    if (!(k > TZ_MIN_ZOOM)) return 1;
+    for (const sheet of document.styleSheets) {
+        let rules;
+        try { rules = sheet.cssRules; } catch (e) { continue; }   // 跨網域的樣式表（Google Fonts）讀不到，也沒有字級
+        for (const rule of rules) {
+            if (!rule.style || rule.selectorText === '#tz-probe') continue;
+            const m = /^([\d.]+)px$/.exec(rule.style.fontSize);
+            if (m) rule.style.fontSize = `${(parseFloat(m[1]) / k).toFixed(2)}px`;
+        }
+    }
+    return k;
+}
+
 function init() {
+    cancelTextZoom();
     hydrateIcons();
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
