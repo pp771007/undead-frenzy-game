@@ -67,6 +67,7 @@ const uiElements = {
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
     soulsInfo: $id('souls-info'),
+    crystalsInfo: $id('crystals-info'),
     playerHealthInfo: $id('player-health-info'),
     hpFill: $id('hp-fill'),
     skelLevel: $id('skel-level'), skelStars: $id('skel-stars'), skelCount: $id('skel-count'),
@@ -91,6 +92,8 @@ const uiElements = {
     metaList: $id('meta-list'),
     metaCrystals: $id('meta-crystals'),
     metaCloseBtn: $id('meta-close-btn'),
+    metaRefundBtn: $id('meta-refund-btn'),
+    metaEarn: $id('meta-earn'),
     settingsScreen: $id('settings-screen'),
     settingsCloseBtn: $id('settings-close-btn'),
     volumeSlider: $id('volume-slider'),
@@ -116,6 +119,7 @@ const uiElements = {
     finalSummons: $id('final-summons'),
     finalStreak: $id('final-streak'),
     finalReward: $id('final-reward'),
+    finalRewardDetail: $id('final-reward-detail'),
     finalBlessings: $id('final-blessings'),
     restartButton: $id('restart-button'),
     gameoverTitleBtn: $id('gameover-title-btn'),
@@ -4784,7 +4788,10 @@ function useNova() {
     });
     gameState.frenzyTimer = c.frenzyDuration + blessVal('frenzyTime');
     for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].attracted = true;
-    spawnFloatText(p.pos.x, p.pos.y - 34, '狂潮！', '#E1BEE7', 18, 1.1, 'burst');
+    // 寫效果不寫招式名：「狂潮」沒人知道是什麼，「大軍狂暴」一看就懂是自己的兵變強；兵身上同時冒紫火花（挑一部分，上千隻全冒會塞爆粒子上限）
+    spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'burst');
+    const live = gameState.summons, step = Math.max(1, Math.floor(live.length / FRENZY_SPARK_SUMMONS));
+    for (let i = 0; i < live.length; i += step) if (live[i].isAlive) spawnParticles(live[i].pos.x, live[i].pos.y, FRENZY_SPARK_COLOR, 3, 60, 0.5, 3);
     gameState.visualEffects.push(new NovaEffect(p.pos, radius));
     spawnParticles(p.pos.x, p.pos.y, frost ? '#B3E5FC' : '#CE93D8', 36, 260, 0.5, 3);
     addShake(7);
@@ -5042,6 +5049,7 @@ function refreshTitle() {
     uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
         (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         `<span class="crystal-count">${iconHtml('crystal')}${meta.crystals}</span>`;
+    uiElements.titleMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
 }
 
 function showTitle() {
@@ -5107,9 +5115,32 @@ function openMeta(returnTo) {
 function closeMeta() {
     showScreen(uiElements.metaScreen, false);
     if (metaReturnTo === 'title') refreshTitle();
+    uiElements.gameoverMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
 }
+function canBuyAnyMeta() {
+    return Object.keys(META_UPGRADES).some(id => metaLv(id) < META_UPGRADES[id].max && meta.crystals >= metaCost(id));
+}
+// 已經花在某一項上的結晶（第 n 級花 costBase × n）
+function metaSpent(id) {
+    const lv = metaLv(id);
+    return META_UPGRADES[id].costBase * lv * (lv + 1) / 2;
+}
+// 全部退還（同吸血鬼倖存者）：結晶全數退回，可以換一套搭配再試
+function refundMeta() {
+    let back = 0;
+    for (const id of Object.keys(META_UPGRADES)) back += metaSpent(id);
+    if (back <= 0) return;
+    meta.crystals += back;
+    meta.upgrades = {};
+    saveMeta();
+    Sfx.play('pick');
+    renderMeta();
+}
+
 function renderMeta() {
     uiElements.metaCrystals.innerHTML = `${iconHtml('crystal')}${meta.crystals}`;
+    uiElements.metaEarn.innerHTML = `<span>${iconHtml('skull')}每撐過 1 波 +${CRYSTALS_PER_WAVE}</span><span>${iconHtml('crown')}首領 +${CRYSTALS_PER_BOSS}</span><span>${iconHtml('trophy')}通關 +${VICTORY_CRYSTALS}</span>`;
+    uiElements.metaRefundBtn.disabled = !Object.keys(META_UPGRADES).some(id => metaLv(id) > 0);
     uiElements.metaList.innerHTML = Object.entries(META_UPGRADES).map(([id, m]) => {
         const lv = metaLv(id), maxed = lv >= m.max, cost = metaCost(id);
         const pips = Array.from({ length: m.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
@@ -5563,6 +5594,7 @@ function stopHoldAction(actionType, unitType) {
 
 
 let lastShownSouls = 0;
+let lastShownCrystals = 0;
 const UNIT_UI = [
     { type: 'SkeletonWarrior', config: () => CONFIG.skeletonWarrior, countKey: 'skeletonWarriorCount', levelKey: 'skeletonWarriorLevel', costKey: 'skeletonWarrior', el: () => ({ level: uiElements.skelLevel, stars: uiElements.skelStars, count: uiElements.skelCount, summon: uiElements.summonSkeletonBtn, upgrade: uiElements.upgradeSkeletonBtn }) },
     { type: 'EyeMonster', config: () => CONFIG.eyeMonster, countKey: 'eyeMonsterCount', levelKey: 'eyeMonsterLevel', costKey: 'eyeMonster', el: () => ({ level: uiElements.eyeMonsterLevel, stars: uiElements.eyeMonsterStars, count: uiElements.eyeMonsterCount, summon: uiElements.summonEyeMonsterBtn, upgrade: uiElements.upgradeEyeMonsterBtn }) },
@@ -5601,6 +5633,13 @@ function updateUI() {
     uiElements.soulsInfo.textContent = formatNumberK(souls);
     if (souls > lastShownSouls && !uiElements.soulsInfo.classList.contains('bump')) uiElements.soulsInfo.classList.add('bump');
     lastShownSouls = souls;
+    // 這一局到目前為止賺到的結晶（結束時入帳）：局外貨幣要在局內看得到，才知道是怎麼賺來的
+    const crystals = getRunReward();
+    if (uiElements.crystalsInfo.textContent !== String(crystals)) {
+        if (crystals > lastShownCrystals) uiElements.crystalsInfo.classList.add('bump');
+        uiElements.crystalsInfo.textContent = String(crystals);
+    }
+    lastShownCrystals = crystals;
 
     // 波次之間顯示「即將來的那一波」，不是剛打完的那一波
     const holding = tutorial && gameState.currentWave === 0;
@@ -5663,6 +5702,15 @@ function updateNovaButton() {
 function getSurvivedWaves() {
     return Math.max(0, gameState.betweenWaves ? gameState.currentWave : gameState.currentWave - 1);
 }
+// 結算明細：結晶是怎麼算出來的（跟 getRunReward 同一套數字）
+function renderRewardDetail(survived) {
+    const bosses = gameState.totalKills.Boss || 0, mult = curseCrystalMult();
+    let html = `<span>${iconHtml('skull')}${survived} 波 ×${CRYSTALS_PER_WAVE}<b>+${survived * CRYSTALS_PER_WAVE}</b></span>`;
+    if (bosses > 0) html += `<span>${iconHtml('crown')}首領 ${bosses} 隻 ×${CRYSTALS_PER_BOSS}<b>+${bosses * CRYSTALS_PER_BOSS}</b></span>`;
+    if (mult > 1) html += `<span>${iconHtml('flame')}詛咒<b>×${mult.toFixed(1)}</b></span>`;
+    uiElements.finalRewardDetail.innerHTML = html;
+}
+
 function getRunReward() {
     return Math.round((getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS) * curseCrystalMult());
 }
@@ -5719,7 +5767,9 @@ function showGameOver(reason = 'died') {
     const reward = getRunReward();
     meta.crystals += reward;
     saveMeta();
+    renderRewardDetail(survived);
     uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward}`;
+    uiElements.gameoverMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
     renderBlessingList(uiElements.finalBlessings);
     uiElements.hud.classList.add('hidden');
     showScreen(uiElements.gameOverScreen, true);
@@ -6136,6 +6186,8 @@ function drawEventOverlay() {
     ctx.restore();
 }
 
+const FRENZY_SPARK_SUMMONS = 40;
+const FRENZY_SPARK_COLOR = '#E040FB';
 // 大軍狂暴中：畫面四周一圈紫光，隨剩餘時間淡出、帶一點脈動
 const FRENZY_PULSE_HZ = 4;
 function drawFrenzyOverlay() {
@@ -6740,6 +6792,7 @@ function init() {
     onTap(uiElements.titleSettingsBtn, () => { syncVolumeSliders(); showScreen(uiElements.settingsScreen, true); });
     onTap(uiElements.settingsCloseBtn, () => { saveMeta(); showScreen(uiElements.settingsScreen, false); });
     onTap(uiElements.metaCloseBtn, closeMeta);
+    onTap(uiElements.metaRefundBtn, () => showConfirm('全部退還？', '結晶全數退回，可以重新分配', '退還', refundMeta));
     onTap(uiElements.titleCurseBtn, () => { renderCurse(); showScreen(uiElements.curseScreen, true); });
     onTap(uiElements.curseCloseBtn, () => { showScreen(uiElements.curseScreen, false); refreshTitle(); });
     onTap(uiElements.curseMinus, () => stepCurse(-1));
@@ -6770,6 +6823,7 @@ function init() {
         if (action) action();
     });
     uiElements.soulsInfo.addEventListener('animationend', () => uiElements.soulsInfo.classList.remove('bump'));
+    uiElements.crystalsInfo.addEventListener('animationend', () => uiElements.crystalsInfo.classList.remove('bump'));
 
     uiElements.novaBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();

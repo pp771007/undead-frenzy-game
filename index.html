@@ -349,8 +349,66 @@
             color: var(--soul);
         }
 
-        #souls-info.bump {
+        #souls-info.bump,
+        #crystals-info.bump {
             animation: bump 0.25s;
+        }
+
+        .crystal-chip {
+            color: #e1d0ff;
+        }
+
+        /* 結算：結晶是怎麼算出來的，一項一行 */
+        .reward-detail {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px 12px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--bone-dim);
+        }
+
+        .reward-detail span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .reward-detail .icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        .reward-detail b {
+            color: #e1d0ff;
+        }
+
+        /* 強化畫面頂端：結晶從哪來 */
+        .meta-earn {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px 14px;
+            margin: -4px 0 10px;
+            font-size: 13px;
+            color: var(--bone-dim);
+        }
+
+        .meta-earn span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .meta-earn .icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        /* 有結晶夠買東西時，進強化畫面的按鈕亮起來 */
+        .btn.can-upgrade {
+            animation: good-deal 0.9s ease-in-out infinite alternate;
         }
 
         #pause-resume-btn {
@@ -1592,6 +1650,7 @@
             </div>
             <div class="hud-right">
                 <div class="hud-chip"><span class="chip-icon" data-icon="soul"></span><span id="souls-info">0</span></div>
+                <div class="hud-chip crystal-chip"><span class="chip-icon" data-icon="crystal"></span><span id="crystals-info">0</span></div>
                 <button id="pause-resume-btn" class="btn btn-dark"><span class="btn-icon" data-icon="pause"></span>暫停</button>
             </div>
         </div>
@@ -1662,8 +1721,10 @@
                 <h2 class="title-text">永久強化</h2>
                 <span class="crystal-count" id="meta-crystals"></span>
             </div>
+            <div class="meta-earn" id="meta-earn"></div>
             <div id="meta-list"></div>
-            <div class="stack">
+            <div class="btn-row">
+                <button id="meta-refund-btn" class="btn btn-dark"><span class="btn-icon" data-icon="reroll"></span>全部退還</button>
                 <button id="meta-close-btn" class="btn btn-dark">返回</button>
             </div>
         </div>
@@ -1761,6 +1822,7 @@
                 <div class="result-stat"><b id="final-summons">0</b><span>召喚</span></div>
                 <div class="result-stat"><b id="final-streak">0</b><span>最高連殺</span></div>
             </div>
+            <div class="reward-detail" id="final-reward-detail"></div>
             <div class="reward-line" id="final-reward"></div>
             <div id="final-blessings" class="bless-list" style="margin-top:12px"></div>
             <div class="stack">
