@@ -136,9 +136,11 @@ const CONFIG = {
         initialSouls: 20,
         // 法師自己會打：每 boltInterval 秒對 boltRange 內最近的怪射一顆靈魂彈。
         // 傷害乘上怪物的波數成長倍率，任何一波都是兩三發打死一隻血狼——前期兵少時能自保、清掉落單的，
-        // 但永遠只是補刀，主力還是召喚物
-        boltDamage: 5, boltInterval: 0.65, boltRange: 150,
-        bolt: { projectileRadius: 3, projectileColor: '#7FF0F0', projectileSpeed: 340, boltStyle: 'soul' },
+        // 但永遠只是補刀，主力還是召喚物。
+        // 會追蹤之後幾乎發發命中（直線飛時常打歪），單發傷害從 5 降下來抵銷：不然站著不動的玩家也撐得到最後一波
+        boltDamage: 3.5, boltInterval: 0.65, boltRange: 150,
+        // 魂火骷髏：從法杖頂端扇形射出、彎過去追目標（見 Projectile 的 homing），飛行中加速
+        bolt: { projectileRadius: 5, projectileColor: '#7FF0F0', projectileSpeed: 240, boltStyle: 'soul' },
         avoidanceRadius: 15,
         magnetRadius: 75,
     },
@@ -1321,7 +1323,8 @@ const SFX_DEFS = {
     comboMilestone: { gap: 0.3, fn: s => { [1046, 1318, 1568, 2093].forEach((f, i) => s.tone(f, 0.18, { type: 'triangle', vol: 0.1, delay: i * 0.035 })); s.noise(0.15, { vol: 0.06, filterFreq: 8000 }); } },
     // 敵人射向法師：低沉下滑，跟法師自己高音上揚的靈魂彈分得開
     bloodShot: { gap: 0.15, fn: s => s.tone(420, 0.18, { type: 'sawtooth', vol: 0.07, slideTo: 160 }) },
-    mageBolt: { gap: 0.1, fn: s => s.tone(1200, 0.06, { type: 'triangle', vol: 0.035, slideTo: 1800 }) },
+    // 鬼魂般的「咻」：一段往上滑的柔和音加一點氣音
+    mageBolt: { gap: 0.1, fn: s => { s.tone(420, 0.16, { type: 'sine', vol: 0.05, slideTo: 900 }); s.noise(0.1, { vol: 0.03, filterFreq: 2200 }); } },
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
@@ -1503,6 +1506,11 @@ class Player extends GameObject {
         this.hpTrail = 1;
         this.absorbGlow = 0;
         this.boltT = 0;
+        this.castGlow = 0;
+    }
+    // 法杖頂端（世界座標）：靈魂彈從這裡射出、施法時這裡閃光。圖朝右時杖在右手邊，朝左就鏡像
+    staffTip() {
+        return { x: this.pos.x + this.facingDirection * this.imageWidth * MAGE_STAFF_TIP_X, y: this.pos.y - this.imageHeight * MAGE_STAFF_TIP_Y };
     }
     shootBolt(deltaTime) {
         this.boltT -= deltaTime;
@@ -1521,11 +1529,20 @@ class Player extends GameObject {
         if (boltTargets.length > shots) boltTargets.sort((a, b) => a.d - b.d);
         this.boltT = P.boltInterval / (res('mage') >= 1 ? RES_MAGE_RATE : 1);
         const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade'));
-        for (let i = 0; i < Math.min(shots, boltTargets.length); i++) {
+        const tip = this.staffTip();
+        const n = Math.min(shots, boltTargets.length);
+        for (let i = 0; i < n; i++) {
             const pr = getProjectileFromPool();
-            pr.init(this.pos.x, this.pos.y - this.imageHeight * 0.15, boltTargets[i].m, P.bolt, dmg, null, 0, bl('soulfire') > 0);
+            pr.init(tip.x, tip.y, boltTargets[i].m, P.bolt, dmg, null, 0, bl('soulfire') > 0);
+            // 多發時扇形散開、一發時隨機偏一點，再由追蹤彎回目標：看起來是「放出去的魂」而不是直線射擊
+            const spread = n > 1 ? (i / (n - 1) - 0.5) * SOUL_BOLT_FAN * 2 : randomInRange(-SOUL_BOLT_WOBBLE, SOUL_BOLT_WOBBLE);
+            const c = Math.cos(spread), s = Math.sin(spread), d = pr.direction;
+            pr.direction = { x: d.x * c - d.y * s, y: d.x * s + d.y * c };
+            pr.homing = true;
             gameState.projectiles.push(pr);
         }
+        this.castGlow = 1;
+        spawnParticles(tip.x, tip.y, SOUL_BOLT_GLOW, 5, 70, 0.3, 2.5);
         Sfx.play('mageBolt');
     }
     update(deltaTime, moveVec) {
@@ -1535,6 +1552,7 @@ class Player extends GameObject {
         this.hpTrail = ratio > this.hpTrail ? ratio : Math.max(ratio, this.hpTrail - PLAYER_HP_TRAIL_SPEED * deltaTime);
         this.absorbGlow = Math.max(0, this.absorbGlow - ABSORB_GLOW_DECAY * deltaTime);
         this.moveSpeed = CONFIG.player.baseMoveSpeed * (1 + blessVal('shadowStep'));
+        this.castGlow = Math.max(0, this.castGlow - CAST_GLOW_DECAY * deltaTime);
         const moveX = moveVec.x * this.moveSpeed * deltaTime;
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
         this.pos.x += moveX;
@@ -1567,6 +1585,13 @@ class Player extends GameObject {
             ctx.globalAlpha = 1;
         }
         super.draw(ctx);
+        // 施法瞬間杖頭亮一下
+        if (this.isAlive && this.castGlow > 0) {
+            const tip = this.staffTip(), g = CAST_GLOW_SIZE * (0.6 + 0.4 * this.castGlow);
+            ctx.globalAlpha = this.castGlow;
+            ctx.drawImage(getGlowSprite(SOUL_BOLT_GLOW), tip.x - g / 2, tip.y - g / 2, g, g);
+            ctx.globalAlpha = 1;
+        }
     }
     // 法師的血條一直貼在腳下：眼睛本來就盯著法師，不用另外去看角落
     drawHealthBar(ctx) {
@@ -2249,6 +2274,9 @@ class Projectile {
     }
 
     init(startX, startY, target, shooterConfig, damage, owner = null, bounces = 0, blast = false) {
+        this.homing = false;
+        this.age = 0;
+        this.trailT = 0;
         this.owner = owner;
         this.bounces = bounces;
         this.blast = blast;
@@ -2267,6 +2295,7 @@ class Projectile {
 
     update(deltaTime) {
         if (!this.isAlive) return;
+        if (this.homing) this.steer(deltaTime);
 
         this.pos.x += this.direction.x * this.speed * deltaTime;
         this.pos.y += this.direction.y * this.speed * deltaTime;
@@ -2279,6 +2308,7 @@ class Projectile {
                 const hit = this.target;
                 const block = this.style === 'soul' ? 0 : projectileBlockAt(hit);
                 if (block) spawnParticles(this.pos.x, this.pos.y, '#CFD8DC', 3, 50, 0.2, 2);
+                else if (this.homing) soulBoltBurst(this.pos);
                 else spawnParticles(this.pos.x, this.pos.y, this.color, BOLT_HIT_SPARKS, 60, 0.25, 2);
                 const dealt = this.damage * (1 - block);
                 hit.takeDamage(dealt);
@@ -2298,6 +2328,27 @@ class Projectile {
         if (this.pos.x < camera.x - PROJECTILE_DESPAWN_MARGIN || this.pos.x > camera.x + view.w + PROJECTILE_DESPAWN_MARGIN ||
             this.pos.y < camera.y - PROJECTILE_DESPAWN_MARGIN || this.pos.y > camera.y + view.h + PROJECTILE_DESPAWN_MARGIN) {
             this.isAlive = false;
+        }
+    }
+
+    // 魂火骷髏：轉向目標（每秒最多轉 SOUL_BOLT_TURN 弧度）、加速、沿路留鬼火殘影
+    steer(deltaTime) {
+        this.age += deltaTime;
+        this.speed = Math.min(SOUL_BOLT_MAX_SPEED, this.speed + SOUL_BOLT_ACCEL * deltaTime);
+        if (this.target && this.target.isAlive) {
+            const want = Math.atan2(this.target.pos.y - this.pos.y, this.target.pos.x - this.pos.x);
+            const cur = Math.atan2(this.direction.y, this.direction.x);
+            let diff = want - cur;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            const turn = Math.sign(diff) * Math.min(Math.abs(diff), SOUL_BOLT_TURN * deltaTime);
+            this.direction = { x: Math.cos(cur + turn), y: Math.sin(cur + turn) };
+            this.targetPos.x = this.target.pos.x; this.targetPos.y = this.target.pos.y;
+        }
+        this.trailT -= deltaTime;
+        if (this.trailT <= 0 && gameState.particles.length < CONFIG.visuals.maxParticles) {
+            this.trailT = SOUL_BOLT_TRAIL_EVERY;
+            spawnParticles(this.pos.x - this.direction.x * 6, this.pos.y - this.direction.y * 6, SOUL_BOLT_GLOW, 1, 15, 0.35, 3);
         }
     }
 
@@ -2361,11 +2412,82 @@ function drawProjectilesBatched() {
         const dx = pr.direction.x, dy = pr.direction.y;
         const idx = ((Math.round(Math.atan2(dy, dx) / (Math.PI * 2) * BOLT_DIRECTIONS) % BOLT_DIRECTIONS) + BOLT_DIRECTIONS) % BOLT_DIRECTIONS;
         const sp = getBoltDirSprite(pr.style, idx);
-        const w = sp.width / k, h = sp.height / k;
+        const scale = pr.homing ? SOUL_BOLT_TAIL_SCALE : 1;
+        const w = sp.width / k * scale, h = sp.height / k * scale;
         // 圖的中心是整顆彗星的中心，在彈頭後方半條拖尾的位置
-        const cx = pr.pos.x - dx * BOLT_TAIL_LEN / 2, cy = pr.pos.y - dy * BOLT_TAIL_LEN / 2;
+        const cx = pr.pos.x - dx * BOLT_TAIL_LEN * scale / 2, cy = pr.pos.y - dy * BOLT_TAIL_LEN * scale / 2;
         ctx.drawImage(sp, cx - w / 2, cy - h / 2, w, h);
+        if (pr.homing) {
+            // 彈頭是一顆不跟著轉的骷髏（頭上腳下），往左飛時鏡像
+            const sk = getSoulSkullSprite(dx < 0);
+            const s = SOUL_SKULL_SIZE;
+            ctx.drawImage(sk, pr.pos.x - s / 2, pr.pos.y - s / 2, s, s);
+        }
     }
+}
+
+// ---------- 法師的魂火骷髏 ----------
+const SOUL_BOLT_GLOW = '#7FF0F0';
+const SOUL_BOLT_FAN = 0.55;          // 多發時最外側偏多少弧度
+const SOUL_BOLT_WOBBLE = 0.35;       // 單發時隨機偏多少弧度
+const SOUL_BOLT_TURN = 7;            // 每秒最多轉幾弧度
+const SOUL_BOLT_ACCEL = 520;
+const SOUL_BOLT_MAX_SPEED = 420;
+const SOUL_BOLT_TRAIL_EVERY = 0.03;
+const SOUL_BOLT_TAIL_SCALE = 1.35;
+const SOUL_SKULL_SIZE = 24;          // 世界單位
+const SOUL_SKULL_PX = 72;            // 預先畫好的圖的像素
+const SOUL_BURST_RADIUS = 20;
+const SOUL_BURST_SPARKS = 10;
+const SOUL_HIT_COLORS = { fill: '127, 240, 240', stroke: '224, 255, 255' };
+const MAGE_STAFF_TIP_X = 0.3;        // × 圖寬，往面向那一側
+const MAGE_STAFF_TIP_Y = 0.12;       // × 圖高，往上
+const CAST_GLOW_DECAY = 6;
+const CAST_GLOW_SIZE = 34;
+const soulSkullSprites = [];
+function getSoulSkullSprite(flipped) {
+    const key = flipped ? 1 : 0;
+    if (soulSkullSprites[key]) return soulSkullSprites[key];
+    const P = SOUL_SKULL_PX, c = document.createElement('canvas');
+    c.width = c.height = P;
+    const g = c.getContext('2d');
+    if (flipped) { g.translate(P, 0); g.scale(-1, 1); }
+    g.drawImage(getGlowSprite(SOUL_BOLT_GLOW), 0, 0, P, P);
+    const u = P / 72;
+    g.lineWidth = 3 * u;
+    g.strokeStyle = TEXT_OUTLINE;
+    g.fillStyle = '#E0FFFF';
+    // 頭蓋＋下顎（面朝右：臉偏右邊）
+    g.beginPath();
+    g.moveTo(22 * u, 40 * u);
+    g.bezierCurveTo(14 * u, 22 * u, 26 * u, 12 * u, 38 * u, 13 * u);
+    g.bezierCurveTo(52 * u, 14 * u, 58 * u, 26 * u, 54 * u, 38 * u);
+    g.lineTo(54 * u, 46 * u);
+    g.lineTo(46 * u, 50 * u);
+    g.lineTo(46 * u, 56 * u);
+    g.lineTo(32 * u, 56 * u);
+    g.lineTo(31 * u, 50 * u);
+    g.closePath();
+    g.fill(); g.stroke();
+    // 發光的眼窩與鼻孔
+    g.fillStyle = '#00838F';
+    g.beginPath(); g.ellipse(36 * u, 34 * u, 5 * u, 6 * u, 0, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.ellipse(48 * u, 34 * u, 4 * u, 5.5 * u, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#7FF0F0';
+    g.beginPath(); g.arc(37 * u, 34 * u, 2 * u, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(48.5 * u, 34 * u, 1.8 * u, 0, Math.PI * 2); g.fill();
+    g.fillStyle = TEXT_OUTLINE;
+    g.beginPath(); g.moveTo(43 * u, 40 * u); g.lineTo(41 * u, 45 * u); g.lineTo(45 * u, 45 * u); g.closePath(); g.fill();
+    // 牙縫
+    g.lineWidth = 2 * u;
+    g.beginPath(); g.moveTo(37 * u, 50 * u); g.lineTo(37 * u, 56 * u); g.moveTo(42 * u, 50 * u); g.lineTo(42 * u, 56 * u); g.stroke();
+    soulSkullSprites[key] = c;
+    return c;
+}
+// 命中：一圈青色波紋＋往外噴的碎光
+function soulBoltBurst(pos) {
+    spawnParticles(pos.x, pos.y, SOUL_BOLT_GLOW, SOUL_BURST_SPARKS, 110, 0.35, 2.5);
+    if (gameState.visualEffects.length < MAX_AMBIENT_EFFECTS) gameState.visualEffects.push(new NovaEffect(pos, SOUL_BURST_RADIUS, SOUL_HIT_COLORS));
 }
 
 // 飛彈的外觀（世界單位）。碰撞照舊用 projectileRadius，這裡只管畫多大
