@@ -573,13 +573,16 @@ const CONFIG = {
 // ---------- 祝福（每 3 波 / 首領波三選一，可疊層）；圖示名稱 = 祝福 id（icons.js） ----------
 const CLEAVE_RADIUS = 35;
 const pct = (v) => `${Math.round(v * 100)}%`;
-// school：所屬流派（見 SCHOOLS），同流派累積層數觸發共鳴
+// 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
+// 骨甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
+const ARMY_SCHOOL = 'army';
+// school：所屬流派（見 SCHOOLS），同流派累積層數觸發共鳴；全軍都吃的寫 ARMY_SCHOOL，不算進任何流派
 const BLESSINGS = {
     boneBlade: { school: 'skel', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
     cleave: { school: 'skel', name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
-    boneArmor: { school: 'skel', name: '骨甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
+    boneArmor: { school: ARMY_SCHOOL, name: '骨甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
     raiseDead: { school: 'skel', name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
-    lifesteal: { school: 'skel', name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
+    lifesteal: { school: ARMY_SCHOOL, name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
     splitGaze: { school: 'eye', name: '分裂凝視', max: 3, per: 1, desc: b => `眼魔每次多射 ${b.per} 發` },
     frenzyEye: { school: 'eye', name: '狂熱之眼', max: 4, per: 0.3, desc: b => `眼魔攻速 +${pct(b.per)}` },
     eagleEye: { school: 'eye', name: '鷹眼', max: 3, per: 0.2, desc: b => `眼魔射程 +${pct(b.per)}` },
@@ -630,6 +633,7 @@ const RES_NOVA_CD = 0.35;
 const RES_MAGNET = 0.6;
 const RES_SOULS = 0.3;
 function schoolPoints(school) {
+    if (school === ARMY_SCHOOL) return 0;
     let n = 0;
     for (const id in BLESSINGS) if (BLESSINGS[id].school === school) n += bl(id);
     return n;
@@ -4871,7 +4875,9 @@ function resonancePipsHtml(school, preview) {
     return `<span class="pips res-pips">${html}</span>`;
 }
 function schoolChipHtml(id) {
-    const school = BLESSINGS[id].school, S = SCHOOLS[school];
+    const school = BLESSINGS[id].school;
+    if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
+    const S = SCHOOLS[school];
     // 這張選下去剛好湊滿一段：整個標籤亮起來
     const willResonate = RESONANCE_STEPS.includes(schoolPoints(school) + 1);
     return `<span class="school-chip${willResonate ? ' resonates' : ''}" style="--school:${S.color}">${schoolBadgeHtml(school)}<span>${willResonate ? '共鳴' : S.name}</span></span>${resonancePipsHtml(school, true)}`;
