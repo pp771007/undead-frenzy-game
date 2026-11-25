@@ -111,7 +111,7 @@ const uiElements = {
     pauseSaverToggle: $id('pause-saver-toggle'),
     draftScreen: $id('draft-screen'),
     draftCards: $id('draft-cards'),
-    rerollBtn: $id('reroll-btn'),
+    rerollBtn: $id('reroll-btn'), skipBtn: $id('skip-btn'),
     pauseMenu: $id('pause-menu'),
     pauseResonance: $id('pause-resonance'),
     pauseBlessings: $id('pause-blessings'),
@@ -585,6 +585,37 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 // 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
 // 骨甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
 const ARMY_SCHOOL = 'army';
+// 契約不屬於任何流派：不算共鳴、卡片標「契約」
+const PACT_SCHOOL = 'pact';
+// 整局的乘數（詛咒、契約、每日變異共用，見 runMods）：每個鍵的中文說法，以及「大於 1 是好事嗎」
+// 契約與每日變異的說明文字都從數字產生，數字改了說明跟著變
+const RUN_MOD_LABELS = {
+    summonDmgMult: { label: '召喚物傷害', good: true },
+    summonAtkSpeedMult: { label: '召喚物攻速', good: true },
+    boltDmgMult: { label: '法師靈魂彈傷害', good: true },
+    soulMult: { label: '靈魂掉落', good: true },
+    costMult: { label: '召喚費用', good: false },
+    novaCdMult: { label: '新星冷卻', good: false },
+    mageHpMult: { label: '法師血量', good: true },
+    hpMult: { label: '怪物血量', good: false },
+    atkMult: { label: '怪物攻擊', good: false },
+    speedMult: { label: '怪物移速', good: false },
+    eliteMult: { label: '精英怪', good: false },
+    bossHpMult: { label: '首領血量', good: false },
+};
+const RUN_MOD_TIMES_FROM = 2;   // 兩倍以上寫「×2.5」，比「+150%」好懂
+function runModText(key, v) {
+    const L = RUN_MOD_LABELS[key].label;
+    if (v >= RUN_MOD_TIMES_FROM) return `${L} ×${v}`;
+    return v >= 1 ? `${L} +${pct(v - 1)}` : `${L} -${pct(1 - v)}`;
+}
+function isGoodMod(key, v) { return (v > 1) === RUN_MOD_LABELS[key].good; }
+// 好處一行綠、壞處一行紅（卡片、每日變異共用）
+function runModsHtml(mods) {
+    const keys = Object.keys(mods);
+    return keys.filter(k => isGoodMod(k, mods[k])).concat(keys.filter(k => !isGoodMod(k, mods[k])))
+        .map(k => `<span class="${isGoodMod(k, mods[k]) ? 'boon' : 'bane'}">${runModText(k, mods[k])}</span>`).join('');
+}
 // school：所屬流派（見 SCHOOLS），同流派累積層數觸發共鳴；全軍都吃的寫 ARMY_SCHOOL，不算進任何流派
 const BLESSINGS = {
     boneBlade: { school: 'skel', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
@@ -620,7 +651,17 @@ const BLESSINGS = {
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
     deathPact: { school: 'soul', name: '殘魂回收', legendary: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
+    // ---- 契約（同 PokeBonk 生存模式的 pact）：好處很大、壞處跟著整局。一般波次偶爾出一張（PACT_CHANCE），每種一局只能立一次。
+    // 效果寫在 mods，跟詛咒共用 runMods() 的乘數；icon 借用意思相近的祝福圖示
+    bloodPact: { school: PACT_SCHOOL, pact: true, icon: 'lifesteal', name: '血祭契約', max: 1, mods: { summonDmgMult: 1.5, mageHpMult: 0.7 }, desc: b => runModsHtml(b.mods) },
+    greedPact: { school: PACT_SCHOOL, pact: true, icon: 'midas', name: '貪婪契約', max: 1, mods: { soulMult: 1.5, hpMult: 1.25 }, desc: b => runModsHtml(b.mods) },
+    furyPact: { school: PACT_SCHOOL, pact: true, icon: 'frenzyEye', name: '戰狂契約', max: 1, mods: { summonAtkSpeedMult: 1.3, atkMult: 1.3 }, desc: b => runModsHtml(b.mods) },
+    flamePact: { school: PACT_SCHOOL, pact: true, icon: 'soulfire', name: '魂焰契約', max: 1, mods: { boltDmgMult: 2.5, speedMult: 1.15 }, desc: b => runModsHtml(b.mods) },
+    swarmPact: { school: PACT_SCHOOL, pact: true, icon: 'twinSummon', name: '群聚契約', max: 1, mods: { costMult: 0.7, eliteMult: 2 }, desc: b => runModsHtml(b.mods) },
+    stormPact: { school: PACT_SCHOOL, pact: true, icon: 'novaPower', name: '雷鳴契約', max: 1, mods: { novaCdMult: 0.6, bossHpMult: 1.4 }, desc: b => runModsHtml(b.mods) },
 };
+// 卡片、暫停選單、飄字的圖示：契約借用別張祝福的圖示，其他就是祝福自己的 id
+function blessIcon(id) { return BLESSINGS[id].icon || id; }
 
 // ---------- 流派共鳴：同一流派的祝福累積到 RESONANCE_STEPS 的層數，各觸發一次共鳴 ----------
 // 同 Hades 的雙神祝福、吸血鬼倖存者的武器進化：專精一條路要有爆發點，不然 27 張各加一點數字，選哪張都差不多
@@ -642,7 +683,7 @@ const RES_NOVA_CD = 0.35;
 const RES_MAGNET = 0.6;
 const RES_SOULS = 0.3;
 function schoolPoints(school) {
-    if (school === ARMY_SCHOOL) return 0;
+    if (school === ARMY_SCHOOL || school === PACT_SCHOOL) return 0;
     let n = 0;
     for (const id in BLESSINGS) if (BLESSINGS[id].school === school) n += bl(id);
     return n;
@@ -667,6 +708,9 @@ const FROST_NOVA_SLOW = 0.92;
 const MIDAS_MULT = 3;
 // 一般波次的三選一也有這個機率出一張傳說（首領波則是保證一張）
 const LEGEND_CHANCE_NORMAL = 0.12;
+// 這一波起，一般波次的三選一有 PACT_CHANCE 機率把其中一張換成契約（首領波不出：那一輪留給傳說）
+const PACT_START_WAVE = 6;
+const PACT_CHANCE = 0.18;
 const BONE_BURST_RADIUS = 40;
 
 function getTier(level) {
@@ -721,6 +765,7 @@ const ACHV_SCHOOL_ICON = { skel: 'boneBlade', eye: 'splitGaze', wraith: 'wraithB
 const ACHV_ARMY_SMALL = 500, ACHV_ARMY_BIG = 2000;
 const ACHV_STREAK_SMALL = 500, ACHV_STREAK_BIG = 2000;
 const ACHV_LEGENDS = 3;
+const ACHV_PACTS = 3;
 const ACHV_COFFINS = 10;
 const ACHV_ENDLESS_WAVE = 60;
 const ACHV_CURSE_MID = 4;
@@ -748,6 +793,7 @@ const ACHIEVEMENTS = [
     { id: 'evolve', icon: 'arrowUp', name: '至高進化', desc: `任一兵種升到 Lv${CONFIG.evolution.levels[2]}`, reward: 40, test: () => bestUnitLevel() >= CONFIG.evolution.levels[2] },
     { id: 'streak1', icon: 'flame', name: '殺戮狂潮', desc: `連殺 ${ACHV_STREAK_SMALL}`, reward: 30, test: () => gameState.bestStreak >= ACHV_STREAK_SMALL },
     { id: 'streak2', icon: 'flame', name: '屠戮之王', desc: `連殺 ${ACHV_STREAK_BIG}`, reward: 60, test: () => gameState.bestStreak >= ACHV_STREAK_BIG },
+    { id: 'pacts', icon: 'flame', name: '魔鬼交易', desc: `一局立下 ${ACHV_PACTS} 份契約`, reward: 40, test: () => Object.keys(gameState.blessings).filter(id => BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0).length >= ACHV_PACTS },
     { id: 'legends', icon: 'star', name: '傳說加身', desc: `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, reward: 40, test: () => legendCount() >= ACHV_LEGENDS },
     { id: 'coffins', icon: 'lock', name: '盜墓者', desc: `累計打開 ${ACHV_COFFINS} 座封印寶棺`, reward: 30, test: () => (meta.stats.coffins || 0) >= ACHV_COFFINS },
 ];
@@ -793,13 +839,13 @@ function renderAchievements() {
 }
 
 function getSummonCost(config) {
-    return Math.max(1, Math.round(config.summonCost * (1 - blessVal('pact'))));
+    return Math.max(1, Math.round(config.summonCost * (1 - blessVal('pact')) * runMods().costMult));
 }
 function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
 }
 function getNovaCooldown() {
-    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (1 - metaVal('novaMastery')) * (res('mage') >= 2 ? 1 - RES_NOVA_CD : 1);
+    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (1 - metaVal('novaMastery')) * (res('mage') >= 2 ? 1 - RES_NOVA_CD : 1) * runMods().novaCdMult;
 }
 function getNovaDamage() {
     return Math.round(CONFIG.nova.baseDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('novaPower')));
@@ -1626,7 +1672,7 @@ class Player extends GameObject {
         if (!boltTargets.length) return;
         if (boltTargets.length > shots) boltTargets.sort((a, b) => a.d - b.d);
         this.boltT = P.boltInterval / (res('mage') >= 1 ? RES_MAGE_RATE : 1);
-        const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade'));
+        const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade')) * runMods().boltDmgMult;
         const tip = this.staffTip();
         const n = Math.min(shots, boltTargets.length);
         for (let i = 0; i < n; i++) {
@@ -1776,9 +1822,10 @@ class SummonUnit extends GameObject {
         this.maxHealth = Math.round(this.config.baseHealth * multiplier * (1 + blessVal('boneArmor')) * (1 + metaVal('boneMarrow')));
         let attack = (this.config.baseAttack > 0) ? (this.config.baseAttack * multiplier) : 0;
         if (type === 'SkeletonWarrior') attack *= 1 + blessVal('boneBlade');
-        this.attack = attack;
+        const rm = runMods();
+        this.attack = attack * rm.summonDmgMult;
         this.attackSpeed = this.config.attackSpeed * (type === 'EyeMonster' ? 1 + blessVal('frenzyEye') : 1)
-            * (type === 'SkeletonWarrior' && res('skel') >= 1 ? 1 + RES_SKEL_ATK_SPEED : 1);
+            * (type === 'SkeletonWarrior' && res('skel') >= 1 ? 1 + RES_SKEL_ATK_SPEED : 1) * rm.summonAtkSpeedMult;
         this.moveSpeed = this.config.moveSpeed;
 
         if (this.config.type === 'EyeMonster') {
@@ -2982,7 +3029,7 @@ class Monster extends GameObject {
                 this.fxSeed = Math.random() * 10;
             }
         }
-        const cm = curseMods();
+        const cm = runMods();
         this.maxHealth = Math.round(this.maxHealth * cm.hpMult);
         this.attack *= cm.atkMult;
         this.baseMoveSpeed *= cm.speedMult;
@@ -3193,7 +3240,7 @@ class Monster extends GameObject {
         this.isAlive = false;
         registerKill();
         const ev = getWaveEvent();
-        const souls = this.soulValue() * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus()) * curseMods().soulMult
+        const souls = this.soulValue() * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus()) * runMods().soulMult
             + gameState.soulCarry;
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
@@ -3300,7 +3347,7 @@ class BossMonster extends Monster {
     constructor(x, y, waveNumber, config) {
         super(x, y, config, waveNumber, false);
         this.tier = Math.max(1, Math.floor(waveNumber / CONFIG.wave.bossEvery));
-        this.maxHealth = this.currentHealth = Math.round(this.maxHealth * curseMods().bossHpMult);
+        this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult);
     }
     applySlow(amount, duration) {
         super.applySlow(amount * (1 - this.config.slowResist), duration);
@@ -4773,14 +4820,22 @@ const CURSES = [
 const CURSE_CRYSTAL_STEP = 0.3;
 const ASSASSIN_EARLY_WAVE = 6;
 const VICTORY_CRYSTALS = 100;
-function curseMods() {
-    const m = { hpMult: 1, atkMult: 1, speedMult: 1, soulMult: 1, eliteMult: 1, bossHpMult: 1, mageHpMult: 1, assassinEarly: false };
-    const lv = (gameState && gameState.curse) || 0;
+// 整局的乘數：詛咒、已立的契約、每日變異疊在一起（鍵見 RUN_MOD_LABELS）。
+// 生怪、算靈魂每次都要查，所以快取在 gameState.runModsCache；詛咒、契約、每日變異變動時呼叫 invalidateRunMods()
+function runMods() {
+    return gameState.runModsCache || (gameState.runModsCache = computeRunMods());
+}
+function invalidateRunMods() { gameState.runModsCache = null; }
+function computeRunMods() {
+    const m = { assassinEarly: false };
+    for (const k in RUN_MOD_LABELS) m[k] = 1;
+    const apply = (src) => { for (const k in RUN_MOD_LABELS) if (src[k]) m[k] *= src[k]; };
+    const lv = gameState.curse || 0;
     for (let i = 0; i < lv && i < CURSES.length; i++) {
-        const c = CURSES[i];
-        for (const k of ['hpMult', 'atkMult', 'speedMult', 'soulMult', 'eliteMult', 'bossHpMult', 'mageHpMult']) if (c[k]) m[k] *= c[k];
-        if (c.assassinEarly) m.assassinEarly = true;
+        apply(CURSES[i]);
+        if (CURSES[i].assassinEarly) m.assassinEarly = true;
     }
+    for (const id in gameState.blessings) if (BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0) apply(BLESSINGS[id].mods);
     return m;
 }
 function curseCrystalMult(lv = gameState.curse || 0) {
@@ -4827,7 +4882,7 @@ function buildWaveQueue(wave) {
     const W = CONFIG.wave;
     const isBossWave = wave % W.bossEvery === 0;
     const ev = getWaveEvent();
-    const cm = curseMods();
+    const cm = runMods();
     // 第一輪前面沒有首領，不打「首領後喘息」的折扣（不然第 1、2 波只剩一半）
     const cycleFactor = W.cycleCountFactors[wave % W.bossEvery];
     const cycle = isBossWave ? W.bossWaveCountFactor : (wave < W.bossEvery ? Math.max(1, cycleFactor) : cycleFactor);
@@ -4887,7 +4942,7 @@ function updateSpawner(deltaTime) {
 
 // 新威脅第一次出現的那一波，橫幅改成介紹它：一句「看到什麼就做什麼」
 function getNewcomer(wave) {
-    const assassinWave = curseMods().assassinEarly ? ASSASSIN_EARLY_WAVE : CONFIG.assassin.minWave;
+    const assassinWave = runMods().assassinEarly ? ASSASSIN_EARLY_WAVE : CONFIG.assassin.minWave;
     // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
     const list = [
         { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', icon: 'warning', color: '#EF9A9A' },
@@ -5131,15 +5186,20 @@ function draftOptionCount() {
 // exclude：這次不能出的（放逐換卡時，畫面上已有的那幾張）
 function draftPool(legendary, exclude = []) {
     return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && !BLESSINGS[id].legendary === !legendary
-        && !gameState.banished.includes(id) && !exclude.includes(id));
+        && !BLESSINGS[id].pact && !gameState.banished.includes(id) && !exclude.includes(id));
+}
+function pactPool(exclude = []) {
+    return Object.keys(BLESSINGS).filter(id => BLESSINGS[id].pact && bl(id) < BLESSINGS[id].max && !gameState.banished.includes(id) && !exclude.includes(id));
 }
 function rollDraftOptions(boss) {
     const count = draftOptionCount();
     const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
     const legend = legendRoll ? weightedPick(draftPool(true), 1)[0] : null;
-    if (!legend) return weightedPick(draftPool(false), count);
-    const options = weightedPick(draftPool(false), count - 1);
-    options.splice(Math.floor(Math.random() * (options.length + 1)), 0, legend);
+    const pactRoll = !boss && gameState.currentWave >= PACT_START_WAVE && Math.random() < PACT_CHANCE;
+    const pact = pactRoll ? weightedPick(pactPool(), 1)[0] : null;
+    const special = [legend, pact].filter(Boolean);
+    const options = weightedPick(draftPool(false), count - special.length);
+    for (const id of special) options.splice(Math.floor(Math.random() * (options.length + 1)), 0, id);
     return options;
 }
 
@@ -5171,6 +5231,7 @@ function resonancePipsHtml(school, preview) {
 function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
+    if (school === PACT_SCHOOL) return `<span class="school-chip pact-chip">${iconHtml('flame', 'icon school-img')}<span>契約</span></span>`;
     const S = SCHOOLS[school];
     // 這張選下去剛好湊滿一段：整個標籤亮起來
     const willResonate = RESONANCE_STEPS.includes(schoolPoints(school) + 1);
@@ -5194,9 +5255,9 @@ function renderDraftCards() {
     gameState.pendingDraft.options.forEach(id => {
         const b = BLESSINGS[id];
         const card = document.createElement('button');
-        card.className = `draft-card panel${b.legendary ? ' legendary' : ''}`;
+        card.className = `draft-card panel${b.legendary ? ' legendary' : ''}${b.pact ? ' pact' : ''}`;
         const banish = gameState.banishLeft > 0 ? `<button class="card-banish" data-banish="${id}">${iconHtml('banish', 'icon btn-icon')}放逐</button>` : '';
-        card.innerHTML = `${schoolChipHtml(id)}${iconHtml(id, 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>${banish}`;
+        card.innerHTML = `${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>${banish}`;
         // 用 pointerup 不用 click：另一隻手指還按著搖桿時瀏覽器不會合成 click。
         // 不用 pointerdown，是因為祝福選了收不回來，按下去還能滑開反悔
         // 觸控的 pointerup 一定回到按下的那張卡（隱式捕捉），所以要自己看放開時手指還在不在卡上
@@ -5209,6 +5270,21 @@ function renderDraftCards() {
     });
     uiElements.rerollBtn.innerHTML = `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">×${gameState.rerollsLeft}</span>`;
     uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0;
+    uiElements.skipBtn.innerHTML = `跳過<span class="price">${iconHtml('soul')}+${formatNumberK(draftSkipSouls())}</span>`;
+}
+
+// 跳過（同 PokeBonk 的 Skip）：三張都不合這一局的路線時，不拿祝福、換一筆靈魂（剛打完那一波掉落的 DRAFT_SKIP_SHARE 倍）
+const DRAFT_SKIP_SHARE = 0.5;
+const DRAFT_SKIP_MIN = 20;
+function draftSkipSouls() {
+    return Math.max(DRAFT_SKIP_MIN, Math.round(gameState.waveSouls * DRAFT_SKIP_SHARE));
+}
+function skipDraft() {
+    if (!gameState.pendingDraft) return;
+    const souls = draftSkipSouls();
+    gameState.souls += souls;
+    if (gameState.player) spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, `+${formatNumberK(souls)}`, '#80DEEA', 16, 1.4, 'soul');
+    closeDraft();
 }
 
 function openDraft() {
@@ -5236,7 +5312,7 @@ function banishBlessing(id) {
     if (!d || gameState.banishLeft <= 0 || !d.options.includes(id)) return;
     gameState.banished.push(id);
     gameState.banishLeft--;
-    const replacement = weightedPick(draftPool(BLESSINGS[id].legendary, d.options), 1)[0];
+    const replacement = weightedPick(BLESSINGS[id].pact ? pactPool(d.options) : draftPool(BLESSINGS[id].legendary, d.options), 1)[0];
     if (replacement) d.options[d.options.indexOf(id)] = replacement;
     else d.options = d.options.filter(o => o !== id);
     renderDraftCards();
@@ -5260,17 +5336,30 @@ function pickBlessing(id) {
         gameState.player.maxHealth += BLESSINGS.vitality.per;
         gameState.player.currentHealth = gameState.player.maxHealth;
     }
+    if (BLESSINGS[id].pact) {
+        invalidateRunMods();
+        const hpMult = BLESSINGS[id].mods.mageHpMult;
+        if (hpMult && gameState.player) {
+            const p = gameState.player;
+            p.maxHealth = Math.max(1, Math.round(p.maxHealth * hpMult));
+            p.currentHealth = Math.min(p.currentHealth, p.maxHealth);
+        }
+    }
     gameState.summons.forEach(s => { if (s.isAlive) s.refreshStats(); });
+    if (gameState.player) {
+        spawnParticles(gameState.player.pos.x, gameState.player.pos.y, '#FFD54F', 24, 120, 0.7, 3);
+        spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, BLESSINGS[id].name, '#FFD54F', 16, 1.4, blessIcon(id));
+    }
+    closeDraft();
+}
+// 選了或跳過之後：收起畫面，還有排隊的祝福就接著開
+function closeDraft() {
     gameState.pendingDraft = null;
     gameState.draftOpen = false;
     showScreen(uiElements.draftScreen, false);
     if (gameState.extraDrafts > 0) {
         gameState.extraDrafts--;
         queueDraft();
-    }
-    if (gameState.player) {
-        spawnParticles(gameState.player.pos.x, gameState.player.pos.y, '#FFD54F', 24, 120, 0.7, 3);
-        spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, BLESSINGS[id].name, '#FFD54F', 16, 1.4, id);
     }
     Sfx.play('pick');
     saveGameState();
@@ -5299,14 +5388,14 @@ function renderBlessingDetail(container) {
     container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id => {
         const B = BLESSINGS[id], lv = bl(id);
         const pips = Array.from({ length: B.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
-        return `<div class="bless-row">${iconHtml(id)}<div class="bless-text"><div class="bless-name"><span class="nm">${B.name}</span><span class="pips">${pips}</span></div><div class="bless-effect">${blessTotalDesc(id)}</div></div></div>`;
+        return `<div class="bless-row">${iconHtml(blessIcon(id))}<div class="bless-text"><div class="bless-name"><span class="nm">${B.name}</span><span class="pips">${pips}</span></div><div class="bless-effect">${blessTotalDesc(id)}</div></div></div>`;
     }).join('');
 }
 
 function renderBlessingList(container) {
     const ids = Object.keys(BLESSINGS).filter(id => bl(id) > 0);
     container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id =>
-        `<span class="bless-chip">${iconHtml(id)}${BLESSINGS[id].name}${bl(id) > 1 ? `<b>${bl(id)}</b>` : ''}</span>`).join('');
+        `<span class="bless-chip">${iconHtml(blessIcon(id))}${BLESSINGS[id].name}${bl(id) > 1 ? `<b>${bl(id)}</b>` : ''}</span>`).join('');
 }
 
 // ---------- 畫面切換：標題 / 遊玩中，以及疊在上面的視窗 ----------
@@ -6235,6 +6324,7 @@ function loadGameState() {
         gameState.achvCrystals = loadedState.achvCrystals ?? 0;
         gameState.achvCount = loadedState.achvCount ?? 0;
         gameState.curse = loadedState.curse ?? 0;
+        invalidateRunMods();
         // 已經過了最終波的舊存檔直接算進無盡模式，不會再跳一次通關
         gameState.endless = loadedState.endless ?? (gameState.currentWave >= CONFIG.wave.finalWave);
         // 祝福系統之前的存檔：照已經打過的波數補發當初該拿到的祝福選擇
@@ -6327,8 +6417,9 @@ function resetGameInternalState() {
 function setupNewRun() {
     resetGameInternalState();
     gameState.curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
+    invalidateRunMods();
     gameState.player = new Player(0, 0);
-    gameState.player.maxHealth = Math.round((CONFIG.player.baseHealth + metaVal('mageHp')) * curseMods().mageHpMult);
+    gameState.player.maxHealth = Math.round((CONFIG.player.baseHealth + metaVal('mageHp')) * runMods().mageHpMult);
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
     gameState.banishLeft = metaVal('banish');
@@ -7315,6 +7406,7 @@ function init() {
     onTap(uiElements.gameoverTitleBtn, showTitle);
     onTap(uiElements.gameoverMetaBtn, () => openMeta('gameover'));
     onTap(uiElements.rerollBtn, rerollDraft);
+    onTap(uiElements.skipBtn, skipDraft);
     onTap(uiElements.confirmNo, () => showScreen(uiElements.confirmDialog, false));
     onTap(uiElements.confirmYes, () => {
         showScreen(uiElements.confirmDialog, false);
