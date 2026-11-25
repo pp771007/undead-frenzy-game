@@ -101,7 +101,18 @@ for (;;) {
             B.maxArmy = Math.max(B.maxArmy || 0, gameState.summons.length);
             // 一波打超過 STUCK_SECONDS 秒當成卡關：記下場上剩什麼、離法師多遠、在打誰
             if (B.cur && !gameState.betweenWaves && B.t - B.cur.start > STUCK_SECONDS) {
-                B.stuck = { wave: gameState.currentWave, summons: gameState.summons.length, mons: gameState.monsters.filter(m => m.isAlive).slice(0, 10).map(m => ({ type: m.config.type, d: Math.round(Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y)), tgt: m.target ? (m.target === p ? 'player' : (m.target.config?.type || 'orb')) : null })) };
+                // queue：還沒出場的怪（countRemainingMonsters 也算它們）；tgtD：牠跟牠的目標隔多遠；near：離牠最近的召喚物多遠、那隻在幹嘛
+                B.stuck = {
+                    wave: gameState.currentWave, summons: gameState.summons.length, queue: gameState.spawnQueue.length, straggling: gameState.straggling,
+                    mons: gameState.monsters.filter(m => m.isAlive).slice(0, 10).map(m => {
+                        const s = summonGrid.nearest(m.pos, 2000);
+                        return {
+                            type: m.config.type, d: Math.round(Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y)), stealthed: !!m.stealthed, flying: !!m.flying,
+                            tgt: m.target ? (m.target === p ? 'player' : (m.target.config?.type || 'orb')) : null, tgtD: m.target ? Math.round(Math.hypot(m.pos.x - m.target.pos.x, m.pos.y - m.target.pos.y)) : null,
+                            near: s ? { type: s.config.type, d: Math.round(Math.hypot(m.pos.x - s.pos.x, m.pos.y - s.pos.y)), hasTarget: !!s.target, returning: !!s.isReturning, retreat: !!(s.isRetreatingFromMonster || s.isRetreatingToPlayer) } : null,
+                        };
+                    }),
+                };
                 return { over: true };
             }
             if (B.t > MAX_SECONDS) return { over: true };
