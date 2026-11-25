@@ -263,6 +263,73 @@ const ICON_BODIES = {
         <path d="M18 34 C12 46 18 58 32 58 C46 58 52 46 46 34 Z" fill="#c62828"/><path d="M22 40 C24 50 40 50 42 40" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 40, 3, 5, 20)}`,
     garlic: `<path d="M32 12 C22 14 10 24 12 40 C14 54 26 60 32 60 C38 60 50 54 52 40 C54 24 42 14 32 12 Z" fill="#fff8e1"/><path d="M32 14 C26 26 26 48 32 60 M32 14 C38 26 38 48 32 60 M20 22 C16 34 18 50 26 58 M44 22 C48 34 46 50 38 58" stroke="#d7ccc8" stroke-width="2.5"/>
         <path d="M32 12 C30 6 34 2 38 4" stroke="#9ccc65" stroke-width="4"/>${duoStroke('M8 8 L56 56', '#e53935', 3)}`,
+    // ---- 精靈弓箭手（elf.js）----
+    // 大招「箭雨」
+    arrowrain: `<path d="M10 20 C2 20 2 8 12 8 C14 0 30 0 32 6 C38 0 52 2 52 10 C62 10 62 20 54 20 Z" fill="#90a4ae"/>
+        ${[[14, 26], [28, 32], [42, 26], [21, 44], [36, 46], [50, 40]].map(([x, y]) => `<path d="M${x} ${y - 10} L${x} ${y + 6}" stroke-width="5"/><path d="M${x} ${y - 10} L${x} ${y + 6}" stroke="#a1887f" stroke-width="2.5"/><path d="M${x} ${y + 12} L${x - 4} ${y + 4} L${x + 4} ${y + 4} Z" fill="#eceff1" stroke-width="2"/>`).join('')}`,
+    // 流派
+    parthian: `<path d="M44 14 C56 26 56 42 44 54" stroke-width="6"/><path d="M44 14 C56 26 56 42 44 54" stroke="#8d6e63" stroke-width="3"/><path d="M44 14 L44 54" stroke="#eceff1" stroke-width="1.8"/>
+        <path d="M44 34 L8 34" stroke-width="4.5"/><path d="M44 34 L8 34" stroke="#a1887f" stroke-width="2"/><path d="M4 34 L12 29 L12 39 Z" fill="#eceff1" stroke-width="2"/>
+        ${duoStroke('M30 50 L54 50 M48 45 L54 50 L48 55', '#80cbc4', 2.5)}`,
+    longbow: `<path d="M20 4 C44 16 44 48 20 60" stroke-width="6"/><path d="M20 4 C44 16 44 48 20 60" stroke="#6d4c41" stroke-width="3"/><path d="M20 4 L20 60" stroke="#eceff1" stroke-width="1.8"/>
+        <path d="M20 32 L58 32" stroke-width="4.5"/><path d="M20 32 L58 32" stroke="#a1887f" stroke-width="2"/><path d="M62 32 L54 27 L54 37 Z" fill="#eceff1" stroke-width="2"/>`,
+    elemental: `${[['#ff7043', 14, 52], ['#4fc3f7', 32, 52], ['#fff176', 50, 52]].map(([c, x, y]) => `<path d="M${x} ${y} L${x} ${y - 34}" stroke-width="4.5"/><path d="M${x} ${y} L${x} ${y - 34}" stroke="${c}" stroke-width="2.2"/><path d="M${x} ${y - 40} L${x - 5} ${y - 30} L${x + 5} ${y - 30} Z" fill="${c}" stroke-width="2"/>`).join('')}`,
+    // 張開的捕獸夾
+    trapper: `<ellipse cx="32" cy="50" rx="26" ry="8" fill="#5d4037"/><path d="M8 48 C8 24 24 14 32 14 C40 14 56 24 56 48" fill="none" stroke-width="8"/><path d="M8 48 C8 24 24 14 32 14 C40 14 56 24 56 48" fill="none" stroke="#90a4ae" stroke-width="4"/>
+        ${[16, 24, 32, 40, 48].map(x => `<path d="M${x - 4} ${x === 32 ? 18 : x === 24 || x === 40 ? 21 : 28} L${x} ${x === 32 ? 28 : x === 24 || x === 40 ? 31 : 38} L${x + 4} ${x === 32 ? 18 : x === 24 || x === 40 ? 21 : 28}" fill="#eceff1" stroke-width="2"/>`).join('')}
+        <circle cx="32" cy="50" r="6" fill="#ffcc80" stroke-width="2.5"/>`,
+    // 回馬射
+    backPower: `<path d="M50 12 C60 24 60 40 50 52" stroke-width="5"/><path d="M50 12 C60 24 60 40 50 52" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 32 L10 32" stroke-width="4.5"/><path d="M50 32 L10 32" stroke="#80cbc4" stroke-width="2"/>
+        <path d="M4 32 L13 26 L13 38 Z" fill="#eceff1" stroke-width="2"/>${boltAt(26, 50)}`,
+    moveRate: `${[18, 30, 42].map(y => `<path d="M48 ${y} L14 ${y}" stroke-width="4"/><path d="M48 ${y} L14 ${y}" stroke="#a1887f" stroke-width="1.8"/><path d="M8 ${y} L16 ${y - 4} L16 ${y + 4} Z" fill="#eceff1" stroke-width="1.8"/>`).join('')}
+        <path d="M54 14 L60 14 M52 30 L60 30 M54 46 L60 46" stroke="#8fd3ff" stroke-width="3"/><path d="M14 56 L50 56" stroke="#80cbc4" stroke-width="3" stroke-dasharray="4 4"/>`,
+    stride: `<path d="M18 12 L30 12 L30 38 L46 44 C52 46 52 54 46 54 L18 54 Z" fill="#a5d6a7"/><path d="M18 44 L50 44" stroke-width="3"/>
+        <path d="M30 12 C40 4 52 6 58 14 C50 12 42 14 36 20" fill="#c5e1a5"/><path d="M4 30 L12 30 M2 40 L12 40" stroke="#8fd3ff" stroke-width="3"/>`,
+    backSlow: `<path d="M8 50 C20 42 44 42 56 50" stroke="#4fc3f7" stroke-width="4" stroke-dasharray="5 4"/><ellipse cx="38" cy="30" rx="12" ry="14" fill="#ef9a9a"/><path d="M34 28 L36 30 M42 28 L40 30" stroke-width="2"/>
+        <path d="M6 22 L26 30" stroke-width="4"/><path d="M6 22 L26 30" stroke="#80cbc4" stroke-width="2"/>${[[24, 56], [40, 58]].map(([x, y]) => `<path d="M${x} ${y} l-4 -6 M${x} ${y} l4 -6" stroke="#b3e5fc" stroke-width="2.5"/>`).join('')}`,
+    // 長弓
+    bowRangeUp: `<path d="M10 54 C14 40 26 40 30 54" stroke-width="4"/><path d="M10 54 C14 40 26 40 30 54" stroke="#6d4c41" stroke-width="2"/>
+        <path d="M22 44 L52 14" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 4"/><circle cx="54" cy="12" r="7" fill="#e5484d"/><circle cx="54" cy="12" r="3" fill="#fff8e1" stroke-width="2"/>`,
+    bowPowerUp: `<path d="M14 4 C40 18 40 46 14 60" stroke-width="8"/><path d="M14 4 C40 18 40 46 14 60" stroke="#4e342e" stroke-width="4.5"/><path d="M14 4 L14 60" stroke="#eceff1" stroke-width="2"/>
+        <path d="M36 10 C40 14 44 14 48 10 M42 10 L42 24" stroke="#7cb342" stroke-width="3"/>${duoStroke('M52 40 L52 28 M47 33 L52 28 L57 33', '#ffd54f', 2.5)}`,
+    farShot: `<path d="M6 32 L40 32" stroke-width="4"/><path d="M6 32 L40 32" stroke="#a1887f" stroke-width="2"/><path d="M44 32 L36 27 L36 37 Z" fill="#eceff1" stroke-width="2"/>
+        ${[48, 54, 60].map((x, i) => `<path d="M${x} ${24 - i * 4} L${x} ${40 + i * 4}" stroke="#ffd54f" stroke-width="${2 + i}"/>`).join('')}`,
+    volley: `${[-14, 0, 14].map(o => `<path d="M10 ${32 + o * 0.4} L50 ${32 + o}" stroke-width="4"/><path d="M10 ${32 + o * 0.4} L50 ${32 + o}" stroke="#a1887f" stroke-width="2"/><path d="M56 ${32 + o * 1.1} L48 ${27 + o} L48 ${37 + o} Z" fill="#eceff1" stroke-width="2"/>`).join('')}`,
+    // 元素箭
+    fireArrow: `<path d="M6 54 L42 18" stroke-width="5"/><path d="M6 54 L42 18" stroke="#a1887f" stroke-width="2.5"/><path d="M48 12 L36 18 L42 24 Z" fill="#eceff1" stroke-width="2"/>
+        <path d="M46 34 C38 34 36 26 40 20 C42 16 42 12 40 6 C48 10 52 16 52 22 C56 26 54 34 46 34 Z" fill="#ff7043" stroke-width="2.5"/>`,
+    iceArrow: `<path d="M6 54 L42 18" stroke-width="5"/><path d="M6 54 L42 18" stroke="#a1887f" stroke-width="2.5"/><path d="M48 12 L36 18 L42 24 Z" fill="#b3e5fc" stroke-width="2"/>
+        ${duoStroke('M48 28 L48 52 M38 34 L58 46 M38 46 L58 34', '#81d4fa', 2.5)}`,
+    thunderArrow: `<path d="M6 54 L42 18" stroke-width="5"/><path d="M6 54 L42 18" stroke="#a1887f" stroke-width="2.5"/><path d="M48 12 L36 18 L42 24 Z" fill="#fff59d" stroke-width="2"/>${boltAt(48, 42)}`,
+    elemSurge: `${[['#ff7043', 0], ['#4fc3f7', 120], ['#fff176', 240]].map(([c, a]) => { const r = a * Math.PI / 180; return `<circle cx="${(32 + Math.cos(r) * 14).toFixed(1)}" cy="${(34 + Math.sin(r) * 14).toFixed(1)}" r="11" fill="${c}" stroke-width="2.5"/>`; }).join('')}
+        <circle cx="32" cy="34" r="6" fill="#ffffff" stroke-width="2.5"/>${duoStroke('M32 4 L32 14 M27 9 L32 4 L37 9', '#ffd54f', 2.5)}`,
+    // 陷阱
+    trapCount: `${[[18, 22], [44, 22], [18, 46], [44, 46]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8" fill="#78909c"/><circle cx="${x}" cy="${y}" r="3" fill="${['#ff7043', '#4fc3f7', '#9ccc65', '#ff7043'][(x + y) % 4]}" stroke="none"/>`).join('')}`,
+    trapPower: `<path d="M18 22 L46 22 L52 54 L12 54 Z" fill="#5d4037"/><path d="M14 30 L50 30" stroke="#ffd54f" stroke-width="3"/><path d="M32 22 C32 14 38 10 44 8" stroke-width="3"/>
+        <path d="${starPath(46, 8, 7, 3, 6)}" fill="#ff7043" stroke-width="2"/>`,
+    // 一路腳印，每隔幾步一個陷阱
+    trapRate: `${[[10, 54], [20, 44], [30, 36], [40, 26], [50, 18]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="3.5" ry="5" transform="rotate(40 ${x} ${y})" fill="#a5d6a7" stroke-width="2"/>${i % 2 ? `<circle cx="${x + 9}" cy="${y + 8}" r="6" fill="#78909c" stroke-width="2.5"/><circle cx="${x + 9}" cy="${y + 8}" r="2.5" fill="#ff7043" stroke="none"/>` : ''}`).join('')}`,
+    // 夾子上放一塊肉，兩邊的怪被吸過來
+    trapLure: `<ellipse cx="32" cy="50" rx="18" ry="6" fill="#78909c"/><path d="M22 44 C22 32 42 32 42 44" fill="#e57373"/><path d="M26 40 L38 40" stroke="#ffcdd2" stroke-width="2.5"/>
+        <path d="M34 34 C36 28 40 26 44 28" stroke="#eceff1" stroke-width="3"/>${[[6, 24], [58, 24]].map(([x, y]) => duoStroke(`M${x} ${y} L${x < 32 ? x + 12 : x - 12} ${y + 10} M${x < 32 ? x + 12 : x - 12} ${y + 10} l${x < 32 ? -7 : 7} 0 M${x < 32 ? x + 12 : x - 12} ${y + 10} l0 -7`, '#ffd54f', 2.5)).join('')}`,
+    // 森林之友
+    // 狐狸與鷹，加一隻
+    compCap: `<path d="M8 56 L8 40 L4 26 L14 34 L24 34 L34 26 L30 40 L30 56 C24 60 14 60 8 56 Z" fill="#ffcc80"/><circle cx="14" cy="44" r="2" fill="#1b1424" stroke="none"/><circle cx="24" cy="44" r="2" fill="#1b1424" stroke="none"/>
+        <path d="M36 20 C40 10 52 8 60 14 C54 14 50 18 50 24 L44 30 Z" fill="#a1887f"/><path d="M36 20 C30 16 24 16 22 20 C28 20 32 22 36 26 Z" fill="#8d6e63"/><circle cx="52" cy="16" r="1.8" fill="#1b1424" stroke="none"/>
+        ${duoStroke('M48 42 L48 58 M40 50 L56 50', '#ffd54f', 3)}`,
+    compPower: `<ellipse cx="30" cy="38" rx="20" ry="14" fill="#ffcc80"/><path d="M16 30 L12 12 L26 26 M44 28 L48 10 L36 24" fill="#ffcc80"/><circle cx="24" cy="36" r="2.5" fill="#1b1424" stroke="none"/><circle cx="36" cy="36" r="2.5" fill="#1b1424" stroke="none"/>
+        <path d="M26 44 L30 46 L34 44" stroke-width="2"/>${duoStroke('M54 50 L54 36 M49 41 L54 36 L59 41', '#ffd54f', 2.5)}`,
+    compSync: `<circle cx="22" cy="34" r="14" fill="#a5d6a7"/><circle cx="42" cy="34" r="14" fill="#ffcc80" opacity="0.9"/><path d="M14 54 C24 60 40 60 50 54" stroke="#80cbc4" stroke-width="3"/>
+        <path d="M24 28 L28 34 L22 40 M40 28 L36 34 L42 40" stroke-width="2.5"/>`,
+    compHeal: `<ellipse cx="28" cy="40" rx="18" ry="12" fill="#ffcc80"/><path d="M14 34 L12 20 L22 30 M40 32 L42 18 L34 28" fill="#ffcc80"/>
+        <path d="M44 44 C48 48 52 46 52 42" stroke="#f48fb1" stroke-width="4"/>${duoStroke('M52 12 L52 26 M45 19 L59 19', '#81c784', 3)}`,
+    // 傳說
+    windBow: `<path d="M18 4 C42 16 42 48 18 60" stroke-width="7"/><path d="M18 4 C42 16 42 48 18 60" stroke="#b2ebf2" stroke-width="3.5"/><path d="M18 4 L18 60" stroke="#ffffff" stroke-width="1.8"/>
+        <path d="M36 22 C48 16 58 22 54 30 C50 36 42 30 46 26 M36 42 C50 38 60 46 54 52" stroke="#b2ebf2" stroke-width="3"/>`,
+    moonArrow: `<path d="M38 4 C24 6 14 16 14 28 C14 40 24 48 36 48 C28 44 22 36 22 28 C22 18 30 10 38 4 Z" fill="#fff3c4"/>
+        <path d="M4 60 L60 8" stroke="#e3f2fd" stroke-width="5"/><path d="M4 60 L60 8" stroke="#ffffff" stroke-width="2"/>`,
+    noReturn: `<path d="M6 50 L22 34" stroke-width="4"/><path d="M6 50 L22 34" stroke="#a1887f" stroke-width="2"/><circle cx="26" cy="30" r="6" fill="#ef9a9a"/>
+        <path d="M30 26 C38 18 46 22 44 30 C42 38 50 40 56 32" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/><circle cx="56" cy="32" r="5" fill="#ef9a9a"/><circle cx="44" cy="52" r="5" fill="#ef9a9a"/><path d="M56 36 C56 44 52 50 46 52" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/>`,
     // 戰士的大招：兩支交叉擲出的標槍
     javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
         <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>

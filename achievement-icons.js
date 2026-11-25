@@ -388,4 +388,24 @@ Object.assign(ACHV_ICON_BODIES, {
     vampire_dayBoss: `${at(32, 28, 0.9, `<circle r="16" fill="#ffca28"/>`)}${rays(32, 28, 20, 28, 8, '#ffca28', 3)}${at(32, 50, 0.5, P.crown())}`,
     vampire_reborn: `<path d="M18 8 L46 8 L56 22 L48 62 L16 62 L8 22 Z" fill="#4e342e"/><path d="M24 30 C24 18 40 18 40 30 L40 62 L24 62 Z" fill="#1b1424"/><path d="M32 36 L32 54 M26 42 L38 42" stroke="#ef9a9a" stroke-width="3"/>${sparks([[56, 6, 5], [6, 10, 4]], '#d1c4e9')}`,
 });
+// ---- 職業：精靈弓箭手（elf.js）。母題是弓與風：長弓、回頭的箭、風紋 ----
+const BOW = (wood = '#6d4c41') => `<path d="M-8 -26 C14 -14 14 14 -8 26" stroke-width="6"/><path d="M-8 -26 C14 -14 14 14 -8 26" stroke="${wood}" stroke-width="3"/><path d="M-8 -26 L-8 26" stroke="${C.white}" stroke-width="1.8"/>`;
+const ARROW = (len = 44, color = C.wood) => `<path d="M${-len / 2} 0 L${len / 2 - 8} 0" stroke-width="7"/><path d="M${-len / 2} 0 L${len / 2 - 8} 0" stroke="${color}" stroke-width="3.5"/>
+    <path d="M${len / 2} 0 L${len / 2 - 12} -7 L${len / 2 - 12} 7 Z" fill="${C.white}" stroke-width="2.5"/><path d="M${-len / 2} 0 L${-len / 2 - 4} -6 M${-len / 2} 0 L${-len / 2 - 4} 6" stroke="${color}" stroke-width="3"/>`;
+Object.assign(ACHV_ICON_BODIES, {
+    elf_win: `${at(32, 36, 1, P.laurel(C.gold))}${at(32, 30, 0.7, BOW())}${at(32, 30, 0.7, ARROW(40))}`,
+    elf_speed28: `${at(24, 32, 0.9, ARROW(40, '#80cbc4'), 180)}<path d="M44 22 L58 22 M46 32 L60 32 M44 42 L58 42" stroke="${C.sky}" stroke-width="3.5"/>`,
+    elf_speed24: `${at(30, 24, 0.8, ARROW(44, '#80cbc4'), 180)}${at(30, 42, 0.8, ARROW(44, '#80cbc4'), 180)}${at(54, 50, 0.5, P.bolt())}`,
+    elf_speed20: `<path d="M8 32 C20 10 44 10 56 32 C44 54 20 54 8 32 Z" fill="#b2ebf2"/>${at(32, 32, 0.9, ARROW(48, '#00897b'), 180)}${sparks([[54, 8, 5], [10, 54, 4]], C.white)}`,
+    elf_res_parthian: `${at(40, 32, 1, BOW('#8d6e63'))}${at(24, 32, 0.9, ARROW(40, '#80cbc4'), 180)}<path d="M40 56 C48 52 54 44 56 36" stroke="#80cbc4" stroke-width="3" stroke-dasharray="4 3"/>`,
+    elf_res_longbow: `${at(20, 32, 1.15, BOW())}${at(42, 32, 0.9, ARROW(36))}<circle cx="56" cy="32" r="6" fill="${C.red}" stroke-width="2.5"/>`,
+    elf_res_elemental: `${[['#ff7043', -18], ['#4fc3f7', 0], ['#fff176', 18]].map(([c, o]) => at(32, 32 + o, 0.85, ARROW(46, c))).join('')}`,
+    elf_res_trapper: `<ellipse cx="32" cy="48" rx="26" ry="8" fill="#5d4037"/><path d="M8 46 C8 22 56 22 56 46" stroke-width="8"/><path d="M8 46 C8 22 56 22 56 46" stroke="#90a4ae" stroke-width="4"/>${sparks([[32, 12, 6]], '#ff7043')}`,
+    elf_res_wildfriends: `<path d="M4 50 L60 50" stroke="#8d6e63" stroke-width="4"/>${[[14, 40], [32, 34], [50, 40]].map(([x, y]) => `<path d="M${x - 8} ${y + 8} L${x - 8} ${y} C${x - 8} ${y - 8} ${x + 8} ${y - 8} ${x + 8} ${y} L${x + 8} ${y + 8} Z" fill="#bcaaa4"/><path d="M${x - 5} ${y - 6} L${x - 9} ${y - 16} M${x + 5} ${y - 6} L${x + 9} ${y - 16}" stroke="#8d6e63" stroke-width="3"/>`).join('')}`,
+    elf_backKills: `${at(30, 32, 1, ARROW(50, '#80cbc4'), 180)}${at(54, 22, 0.3, P.skull())}${at(54, 44, 0.3, P.skull())}${at(10, 50, 0.3, P.skull())}`,
+    elf_moving: `${[[12, 52], [22, 42], [32, 34], [42, 26], [52, 18]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="3.5" ry="5" transform="rotate(40 ${x} ${y})" fill="#a5d6a7" stroke-width="2"/>`).join('')}<path d="M6 30 C18 24 28 22 40 12" stroke="#b2ebf2" stroke-width="3" stroke-dasharray="4 4"/>`,
+    elf_rain: `<path d="M10 20 C2 20 2 8 12 8 C14 0 30 0 32 6 C38 0 52 2 52 10 C62 10 62 20 54 20 Z" fill="#90a4ae"/>${[14, 26, 38, 50].map((x, i) => at(x, 42 + (i % 2) * 6, 0.62, ARROW(30), 90)).join('')}`,
+    elf_snipe: `<circle cx="32" cy="32" r="24" stroke="${C.red}" stroke-width="3"/><circle cx="32" cy="32" r="14" stroke="${C.red}" stroke-width="2.5"/><path d="M32 2 L32 14 M32 50 L32 62 M2 32 L14 32 M50 32 L62 32" stroke="${C.red}" stroke-width="3"/>${at(32, 32, 0.4, P.crown())}`,
+    elf_lone: `${at(32, 34, 0.95, BOW())}${at(54, 12, 0.4, P.moon())}<path d="M6 58 L58 58" stroke="#8d6e63" stroke-width="3"/>`,
+});
 const ACHV_ICON_SVGS = Object.fromEntries(Object.entries(ACHV_ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));

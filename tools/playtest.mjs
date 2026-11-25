@@ -46,7 +46,9 @@ for (;;) {
     r = await page.evaluate((steps) => {
         const B = window.__bot, DT = 1 / 30, REACT = 0.4, DECIDE = 0.15, STUCK_SECONDS = 240, MAX_SECONDS = 3600;
         // 各職業三張卡的召喚比例
-        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0] };
+        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0], elf: [0, 0, 1] };
+        // 精靈：怪近到這麼近就往反方向退
+        const BOT_ELF_KITE = 170;
         // 吸血鬼可以拿自己的血付錢；機器人血量 BOT_VAMP_SPEND_HP 以上才拿血付（真人也不會一路把自己放到剩四分之一血）
         const BOT_VAMP_SPEND_HP = 0.7;
         // 收尾時走到離最後幾隻怪這麼近；只能修練的卡等級跟著波數走（BOT_TRAIN_PER_WAVE 級／波），不要一開局就把錢全砸進去
@@ -107,6 +109,16 @@ for (;;) {
                         // 守著最老那棵（林地中心）：種樹也只種在它旁邊
                         oak = eldestOak(); od = oak ? distanceSq(oak.pos, p.pos) : Infinity;
                         if (oak && od > BOT_GROVE_RETURN * BOT_GROVE_RETURN) { hx = oak.pos.x - p.pos.x; hy = oak.pos.y - p.pos.y; }
+                    }
+                    // 精靈：一直在動（停下來射速掉回原本）。怪靠近就往反方向退（回頭射傷害加倍），夠遠就繞著怪群側移
+                    if (runClass() === 'elf' && !gameState.straggling && Math.hypot(hx, hy) < 0.1) {
+                        let nm = null, nd = Infinity;
+                        for (const m of gameState.monsters) { if (!m.isAlive || m.stealthed) continue; const d = distanceSq(m.pos, p.pos); if (d < nd) { nd = d; nm = m; } }
+                        if (nm) {
+                            const d = Math.sqrt(nd) || 1, ax = (p.pos.x - nm.pos.x) / d, ay = (p.pos.y - nm.pos.y) / d;
+                            if (d < BOT_ELF_KITE) { hx = ax; hy = ay; }
+                            else { B.strafe = B.strafe || 1; if (Math.random() < 0.01) B.strafe *= -1; hx = -ay * B.strafe + (d > bowRange() * 0.8 ? -ax * 0.5 : 0); hy = ax * B.strafe + (d > bowRange() * 0.8 ? -ay * 0.5 : 0); }
+                        }
                     }
                     // 只剩最後幾隻、而且沒有要閃的東西：走過去收尾。站在原地的話，停在射程外的遠程怪（血瞳 190）永遠打不到，這一波收不掉
                     if (gameState.straggling && Math.hypot(hx, hy) < 0.1) {
