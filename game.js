@@ -500,7 +500,6 @@ const CONFIG = {
         // 每 packGrowEvery 波，每一撮最多再多 1 隻：後期一波上百隻，一小撮一小撮慢慢走進上千隻的大軍裡，
         // 畫面上同時只有二三十隻、一波拖到一分鐘。成撮湧進來才有大群對撞的場面
         packGrowEvery: 6,
-        healRatio: 0.2,
         bannerDuration: 1.8,
     },
     visuals: {
@@ -5139,12 +5138,8 @@ function checkWaveEndCondition() {
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
         gameState.waveEvent = null;
         bankAllOrbs();
-        const p = gameState.player;
-        if (p && p.isAlive && p.currentHealth < p.maxHealth) {
-            const heal = Math.min(p.maxHealth - p.currentHealth, Math.ceil(p.maxHealth * CONFIG.wave.healRatio));
-            p.currentHealth += heal;
-            spawnFloatText(p.pos.x, p.pos.y - 24, `+${heal} HP`, '#81C784', 14, 1.2);
-        }
+        // 法師的血波與波之間不回：一波被咬掉的會一路帶到下一波，回血只靠靈泉、不死之軀、吸魂之軀。
+        // 召喚物照樣回滿：兵是消耗品，殘血兵帶著走只會讓大軍一波比一波薄，不會比較刺激
         gameState.summons.forEach(s => { if (s.isAlive) s.currentHealth = s.maxHealth; });
         spawnCrystalText(CRYSTALS_PER_WAVE);
         queueDraftIfDue();
