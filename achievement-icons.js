@@ -149,14 +149,14 @@ const ACHV_ICON_BODIES = {
     elite5000: `${at(20, 50, 0.45, P.crown())}${at(44, 50, 0.45, P.crown())}${at(32, 36, 0.5, P.crown())}${at(32, 22, 0.8, P.sword('#e0e0e0'))}`,
 
     // ---- 大軍：骷髏越聚越多，最後變成天災 ----
-    army100: `<path d="M36 6 L36 58" stroke-width="4"/><path d="M36 8 L60 12 L54 22 L60 32 L36 30 Z" fill="${C.violetDark}"/>${at(47, 19, 0.28, P.skull())}
+    army50: `<path d="M36 6 L36 58" stroke-width="4"/><path d="M36 8 L60 12 L54 22 L60 32 L36 30 Z" fill="${C.violetDark}"/>${at(47, 19, 0.28, P.skull())}
         ${at(16, 46, 0.42, P.skull())}${at(26, 52, 0.36, P.skull())}`,
-    army1: `<path d="M2 50 C10 44 16 44 22 50 C28 44 36 44 42 50 C48 44 56 44 62 50 L62 62 L2 62 Z" fill="${C.violetDark}"/>
+    army150: `<path d="M2 50 C10 44 16 44 22 50 C28 44 36 44 42 50 C48 44 56 44 62 50 L62 62 L2 62 Z" fill="${C.violetDark}"/>
         ${at(14, 38, 0.34, P.skull())}${at(32, 34, 0.38, P.skull())}${at(50, 38, 0.34, P.skull())}${at(23, 22, 0.3, P.skull())}${at(41, 22, 0.3, P.skull())}`,
-    army1000: (() => { let s = ''; for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) s += at(12 + c * 13.5 + (r % 2) * 6, 18 + r * 15, 0.24, P.skull()); return s + `<path d="M6 4 L6 60 M58 4 L58 60" stroke-width="3"/><path d="M6 4 L2 12 L10 12 Z M58 4 L54 12 L62 12 Z" fill="${C.steel}" stroke-width="2.5"/>`; })(),
-    army2: `<path d="M8 6 L8 60" stroke-width="4"/><path d="M8 8 L56 8 L48 22 L56 36 L8 36 Z" fill="#4a148c"/>${at(30, 22, 0.42, P.skull('#e1bee7'))}
+    army300: (() => { let s = ''; for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) s += at(12 + c * 13.5 + (r % 2) * 6, 18 + r * 15, 0.24, P.skull()); return s + `<path d="M6 4 L6 60 M58 4 L58 60" stroke-width="3"/><path d="M6 4 L2 12 L10 12 Z M58 4 L54 12 L62 12 Z" fill="${C.steel}" stroke-width="2.5"/>`; })(),
+    army450: `<path d="M8 6 L8 60" stroke-width="4"/><path d="M8 8 L56 8 L48 22 L56 36 L8 36 Z" fill="#4a148c"/>${at(30, 22, 0.42, P.skull('#e1bee7'))}
         ${at(20, 50, 0.3, P.skull())}${at(34, 52, 0.3, P.skull())}${at(48, 50, 0.3, P.skull())}`,
-    army5000: `<path d="M10 30 C2 30 2 18 12 16 C12 6 26 2 32 10 C38 2 54 6 52 16 C62 18 62 30 54 30 Z" fill="#37474f"/>
+    army600: `<path d="M10 30 C2 30 2 18 12 16 C12 6 26 2 32 10 C38 2 54 6 52 16 C62 18 62 30 54 30 Z" fill="#37474f"/>
         ${at(32, 20, 0.34, P.skull('#cfd8dc', C.red))}${at(14, 44, 0.22, P.skull())}${at(30, 54, 0.22, P.skull())}${at(48, 44, 0.22, P.skull())}
         <path d="M20 34 L18 40 M40 34 L42 42 M26 34 L24 46" stroke="${C.boneDark}" stroke-width="2.5"/>`,
 

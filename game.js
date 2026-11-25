@@ -784,7 +784,8 @@ const ACHV_BESTIARY = [
     ['BloodEye', 'bloodEye', 1500], ['Gargoyle', 'gargoyle', 800], ['SoulDevourer', 'soulDevourer', 700], ['WitchDoctor', 'witchDoctor', 500],
     ['ShieldGuard', 'shieldGuard', 500], ['CorpseWorm', 'corpseWorm', 300], ['GravePriest', 'gravePriest', 250], ['Tombstone', 'tombstone', 100], ['Thief', 'thief', 15],
 ];
-const ACHV_ARMY = [[100, 'army100', '一支軍隊', 10], [500, 'army1', '亡者之海', 30], [1000, 'army1000', '千軍萬馬', 50], [2000, 'army2', '萬骨大軍', 80], [5000, 'army5000', '死亡天災', 150]];
+// 召喚費用隨數量變貴（SUMMON_COST_STEP）之後，自動遊玩一局的大軍最多 150～480 隻
+const ACHV_ARMY = [[50, 'army50', '一支軍隊', 10], [150, 'army150', '亡者之海', 30], [300, 'army300', '千軍萬馬', 50], [450, 'army450', '萬骨大軍', 80], [600, 'army600', '死亡天災', 150]];
 const ACHV_UNITS = [['SkeletonWarrior', 'skeletonWarriorLevel'], ['EyeMonster', 'eyeMonsterLevel'], ['Wraith', 'wraithLevel']];
 const ACHV_STREAK = [[100, 'streak100', '開葷', 10], [250, 'streak250', '殺紅了眼', 20], [500, 'streak1', '殺戮狂潮', 30], [1000, 'streak1000', '千人斬', 45], [2000, 'streak2', '屠戮之王', 60], [5000, 'streak5000', '死神親臨', 120]];
 const ACHV_CAREER = [
