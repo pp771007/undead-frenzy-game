@@ -1114,6 +1114,9 @@ const OPTIONAL_ART = {
     soul_devourer: 'soul_devourer.png',
     tombstone: 'tombstone.png',
     boss_dragon: 'boss_dragon.png',
+    relic_altar: 'relic_altar.png',
+    relic_spring: 'relic_spring.png',
+    relic_coffin: 'relic_coffin.png',
 };
 
 async function loadAllImages() {
@@ -4754,13 +4757,23 @@ const RELIC_DRAIN_PER_SEC = 0.35;
 const RELIC_HEAL_TEXT_EVERY = 0.6;
 // 靈泉的權重 = 這個數 × 法師缺血比例：滿血時不出，越殘越容易出
 const RELIC_SPRING_NEED_WEIGHT = 2.5;
+// art／artW：立繪與畫出來的寬（世界單位，法師約 48），高照圖的比例
 const RELIC_TYPES = {
-    altar: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'burst', color: '#E1BEE7', glow: '186, 104, 200', channel: 2, frenzy: 8, weight: 1 },
+    altar: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'burst', art: 'relic_altar', artW: 62, color: '#E1BEE7', glow: '186, 104, 200', channel: 2, frenzy: 8, weight: 1 },
     // pool：一座泉總共回多少（× 法師血量上限），回完就乾
-    spring: { name: '靈泉', hint: '站在裡面回血', icon: 'heart', color: '#A5D6A7', glow: '67, 160, 71', healPerSec: 0.15, pool: 0.6 },
+    spring: { name: '靈泉', hint: '站在裡面回血', icon: 'heart', art: 'relic_spring', artW: 72, color: '#A5D6A7', glow: '67, 160, 71', healPerSec: 0.15, pool: 0.6 },
     // 靈魂 = 上一波全部掉落的 soulShare 倍：跟著當下的經濟成長，不用另外調每一波的數字
-    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'lock', color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, draftChance: 0.35, weight: 1 },
+    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'lock', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, draftChance: 0.35, weight: 1 },
 };
+// 物件的底邊落在範圍圈中心往下這麼多：看起來是「放在圈裡」，法師走進圈時站在物件前面
+const RELIC_ART_BASE = 16;
+// 喝乾的靈泉、還沒拿完的泉：立繪的不透明度從這個值（快乾了）到 1（滿的）
+const RELIC_SPRING_DRY_ALPHA = 0.45;
+function relicArtSize(T) {
+    const img = images[T.art];
+    if (!img) return null;
+    return { img, w: T.artW, h: T.artW * img.height / img.width };
+}
 
 function scheduleRelic(wave) {
     gameState.relics = [];
@@ -4877,13 +4890,13 @@ function settleRelicsAtWaveEnd() {
     gameState.relicDrafts = 0;
 }
 
-// 地上那一圈：畫在召喚物底下（站上去的範圍）
+// 地上那一圈（站上去的範圍）和物件本身：畫在召喚物底下，大軍走過去會擋在前面
 function drawRelicsGround() {
     const t = worldTime;
     for (const r of gameState.relics) {
         if (!inView(r)) continue;
         const T = RELIC_TYPES[r.kind];
-        const fill = r.kind === 'spring' ? 0.15 + 0.3 * (r.pool / T.pool) : 0.16 + 0.06 * Math.sin(t * 3);
+        const fill = 0.1 + 0.05 * Math.sin(t * 3);
         ctx.globalAlpha = Math.max(0, r.fade);
         ctx.fillStyle = `rgba(${T.glow}, ${fill.toFixed(2)})`;
         ctx.beginPath(); ctx.arc(r.x, r.y, RELIC_RADIUS, 0, Math.PI * 2); ctx.fill();
@@ -4903,19 +4916,28 @@ function drawRelicsGround() {
         ctx.beginPath(); ctx.arc(0, 0, RELIC_RADIUS - 7, 0, Math.PI * 2); ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
+        const art = relicArtSize(T);
+        if (art) {
+            const full = r.kind === 'spring' ? r.pool / T.pool : 1;
+            ctx.globalAlpha = Math.max(0, r.fade) * (RELIC_SPRING_DRY_ALPHA + (1 - RELIC_SPRING_DRY_ALPHA) * full);
+            ctx.drawImage(getSprite(art.img, art.w, art.h), r.x - art.w / 2, r.y + RELIC_ART_BASE - art.h, art.w, art.h);
+        }
     }
     ctx.globalAlpha = 1;
 }
 
-// 浮在上面的圖示與讀條：畫在法師與召喚物之上、高過法師的頭，站上去讀條時才看得到進度
+// 浮在上面的圖示與讀條：畫在法師與召喚物之上、浮在物件頂上（至少高過法師的頭），站上去讀條時才看得到進度
 const RELIC_BADGE_R = 15;
 const RELIC_BADGE_LIFT = 58;
+const RELIC_BADGE_GAP = 14;
 function drawRelicsTop() {
     const t = worldTime;
     for (const r of gameState.relics) {
         if (!inView(r)) continue;
         const T = RELIC_TYPES[r.kind];
-        const bx = r.x, by = r.y - RELIC_BADGE_LIFT - Math.sin(t * 2.5) * 3;
+        const art = relicArtSize(T);
+        const lift = Math.max(RELIC_BADGE_LIFT, art ? art.h - RELIC_ART_BASE + RELIC_BADGE_GAP : 0);
+        const bx = r.x, by = r.y - lift - Math.sin(t * 2.5) * 3;
         ctx.globalAlpha = Math.max(0, r.fade);
         ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
         ctx.beginPath(); ctx.arc(bx, by, RELIC_BADGE_R, 0, Math.PI * 2); ctx.fill();
