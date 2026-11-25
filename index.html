@@ -1301,6 +1301,29 @@
 
         #draft-cards.four .draft-card {
             width: 100%;
+            gap: 5px;
+            padding: 10px 8px;
+        }
+
+        /* 兩排卡片加上三顆按鈕，矮螢幕（約 670px 高）要剛好放得下 */
+        #draft-cards.four .card-icon {
+            width: 46px;
+            height: 46px;
+            padding: 4px;
+        }
+
+        /* 真的放不下時可以捲動，而且捲得到最上面（justify-content: center 溢出時上半截會捲不到） */
+        #draft-screen {
+            overflow-y: auto;
+            justify-content: flex-start;
+        }
+
+        #draft-screen > :first-child {
+            margin-top: auto;
+        }
+
+        #draft-screen > :last-child {
+            margin-bottom: auto;
         }
 
         /* 流派標籤：頭像＋名字＋共鳴進度；選下去剛好湊滿一段時整個亮起來 */
