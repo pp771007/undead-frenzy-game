@@ -15,9 +15,9 @@ const DRUID = {
     growEvery: 20, maxStage: 3, stageBonus: 0.3,
     // 每棵橡樹養幾隻野獸
     beastsPerOak: 3,
-    // 野獸守的是「家」：德魯伊身邊 homeRadius 內最近的那棵橡樹（沒有就跟著德魯伊）。
-    // 跟著德魯伊跑的話，怪去啃留在後面的橡樹時沒有野獸會回去救
-    homeRadius: 300,
+    // 野獸守的是「家」：德魯伊身邊 homeRadius 內正在挨打的那棵橡樹，沒有就是最近的那棵（都沒有就跟著德魯伊）。
+    // 跟著德魯伊跑的話，怪去啃留在後面的橡樹時沒有野獸會回去救；只守最近那棵的話，林地另一頭的樹被圍著啃、那一波遲遲打不完
+    homeRadius: 300, attackedTime: 2,
     // 離德魯伊超過 dormantRadius 的橡樹（不是樹人）沉睡：怪不把它當目標。
     // 不然怪會圍著一棵遠在畫面外、沒有野獸守的老橡樹啃好幾分鐘，那一波遲遲打不完
     dormantRadius: 380,
@@ -315,8 +315,15 @@ function druidWaveStart() {
 function druidUpdate(dt) {
     const d = druidState(), p = gameState.player;
     if (!p) return;
-    let homeOak = null, hd = DRUID.homeRadius * DRUID.homeRadius;
-    for (const s of gameState.summons) if (s.isAlive && s instanceof SacredOak) { const dd = distanceSq(s.pos, p.pos); if (dd < hd) { hd = dd; homeOak = s; } }
+    let homeOak = null, hd = DRUID.homeRadius * DRUID.homeRadius, hit = false;
+    for (const s of gameState.summons) {
+        if (!s.isAlive || !(s instanceof SacredOak)) continue;
+        s.attackedT = Math.max(0, (s.attackedT || 0) - dt);
+        const dd = distanceSq(s.pos, p.pos);
+        if (dd > DRUID.homeRadius * DRUID.homeRadius) continue;
+        const underAttack = s.attackedT > 0;
+        if ((underAttack && !hit) || (underAttack === hit && dd < hd)) { hd = dd; homeOak = s; hit = underAttack; }
+    }
     d.home.pos.x = homeOak ? homeOak.pos.x : p.pos.x;
     d.home.pos.y = homeOak ? homeOak.pos.y : p.pos.y;
     if (d.bearT > 0) {
@@ -601,6 +608,7 @@ class SacredOak extends SummonUnit {
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
         const k = res('grove') >= 1 ? RES_ROOTS_TAKEN : 1;
+        this.attackedT = DRUID.attackedTime;
         if (this.tier >= 3 && source instanceof Monster && source.isAlive) source.takeDamage(amount * OAK_TIER3_THORNS);
         // 世界樹：最老的那棵不會死，在德魯伊腳邊重新長成樹苗（原地不死的話，怪會圍著它啃到這一波永遠打不完）
         if (bl('yggdrasil') && this.currentHealth - amount * k <= 0 && this === eldestOak() && gameState.player) {
