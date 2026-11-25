@@ -1327,14 +1327,19 @@
             color: var(--school);
         }
 
+        /* 重抽、跳過、補滿血：窄螢幕放不下三顆就換行 */
         .draft-actions {
             display: flex;
-            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px 10px;
             margin-top: 18px;
+            padding: 0 12px;
         }
 
         #reroll-btn,
-        #skip-btn {
+        #skip-btn,
+        #heal-btn {
             font-size: 15px;
         }
 
@@ -2059,6 +2064,7 @@
         <div class="draft-actions">
             <button id="reroll-btn" class="btn btn-blue"></button>
             <button id="skip-btn" class="btn btn-dark"></button>
+            <button id="heal-btn" class="btn btn-green"></button>
         </div>
     </div>
 

@@ -111,7 +111,7 @@ const uiElements = {
     pauseSaverToggle: $id('pause-saver-toggle'),
     draftScreen: $id('draft-screen'),
     draftCards: $id('draft-cards'),
-    rerollBtn: $id('reroll-btn'), skipBtn: $id('skip-btn'),
+    rerollBtn: $id('reroll-btn'), skipBtn: $id('skip-btn'), healBtn: $id('heal-btn'),
     pauseMenu: $id('pause-menu'),
     pauseResonance: $id('pause-resonance'),
     pauseBlessings: $id('pause-blessings'),
@@ -483,7 +483,7 @@ const CONFIG = {
         scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
         // 召喚物不設上限時，玩家收入隨怪物「數量」成長、戰力隨累積收入成長，線性變強的怪物永遠追不上
         // （舊版就是這樣撐到無限波）。從 expStartWave 起再乘上 expGrowth^(超過的波數)，保證終究會被淹沒
-        expStartWave: 20, expGrowth: 1.09,
+        expStartWave: 20, expGrowth: 1.11,
         // 一局的目標：第 finalWave 波最終首領墮落亡靈王出場，打贏算通關（約 25 分鐘）。
         // 之後可以選擇繼續無盡模式，每波再多乘 endlessGrowth，通常十幾波內結束，不會變成一小時的慢慢輸
         finalWave: 50, endlessGrowth: 1.05,
@@ -955,8 +955,14 @@ function renderAchievements() {
     }).join('');
 }
 
+// 召喚費用隨場上同種兵的數量變貴：每多 SUMMON_COST_STEP 隻，費用多一倍底價。
+// 費用固定的話一局 5～10 萬靈魂能堆出兩三千隻兵，怪物再強也碰不到法師；變貴之後大軍停在幾百隻，
+// 「多召喚」與「升級」要取捨，壓力也才漏得到法師身上
+const SUMMON_COST_STEP = 25;
+const UNIT_COUNT_KEY = { SkeletonWarrior: 'skeletonWarriorCount', EyeMonster: 'eyeMonsterCount', Wraith: 'wraithCount' };
 function getSummonCost(config) {
-    return Math.max(1, Math.round(config.summonCost * (1 - blessVal('pact')) * runMods().costMult));
+    const n = gameState[UNIT_COUNT_KEY[config.type]] || 0;
+    return Math.max(1, Math.round(config.summonCost * (1 + n / SUMMON_COST_STEP) * (1 - blessVal('pact')) * runMods().costMult));
 }
 function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
@@ -5233,9 +5239,8 @@ function checkWaveEndCondition() {
         gameState.waveEvent = null;
         bankAllOrbs();
         const p = gameState.player;
-        // 法師的血波與波之間不回：一波被咬掉的會一路帶到下一波，回血只靠靈泉、不死之軀、吸魂之軀。
-        // 召喚物照樣回滿：兵是消耗品，殘血兵帶著走只會讓大軍一波比一波薄，不會比較刺激
-        gameState.summons.forEach(s => { if (s.isAlive) s.currentHealth = s.maxHealth; });
+        // 波與波之間誰都不回血：法師被咬掉的一路帶到下一波（回血靠靈泉、選祝福時的「補滿血」、不死之軀、吸魂之軀），
+        // 召喚物的殘血也帶著走（靠嗜魂、升級時多出來的血），打得越吃力的局越要拿資源去補
         const run = gameState.run;
         if (p && p.isAlive && p.currentHealth < p.maxHealth * ACHV_LAST_STAND) run.flags.lastStand = true;
         if (gameState.currentWave >= ACHV_SPEED_WAVE && worldTime - gameState.waveStartAt <= ACHV_SPEED_SECONDS) run.flags.speedClear = true;
@@ -5499,6 +5504,26 @@ function renderDraftCards() {
     uiElements.rerollBtn.innerHTML = `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">×${gameState.rerollsLeft}</span>`;
     uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0;
     uiElements.skipBtn.innerHTML = `跳過<span class="price">${iconHtml('soul')}+${formatNumberK(draftSkipSouls())}</span>`;
+    const missing = draftHealAmount();
+    uiElements.healBtn.innerHTML = `${iconHtml('heart', 'icon btn-icon')}補滿血<span class="price">+${missing}</span>`;
+    uiElements.healBtn.disabled = missing <= 0;
+}
+
+// 補滿血：不拿祝福，換法師血量回滿。波與波之間不回血，所以每次選祝福都是「變強還是保命」
+function draftHealAmount() {
+    const p = gameState.player;
+    return p && p.isAlive ? p.maxHealth - p.currentHealth : 0;
+}
+function healDraft() {
+    if (!gameState.pendingDraft) return;
+    const p = gameState.player, heal = draftHealAmount();
+    if (heal <= 0) return;
+    p.currentHealth = p.maxHealth;
+    gameState.run.heals = (gameState.run.heals || 0) + 1;
+    spawnFloatText(p.pos.x, p.pos.y - 26, `+${heal} HP`, '#81C784', 16, 1.4, 'heart');
+    spawnParticles(p.pos.x, p.pos.y, '#81C784', 24, 110, 0.7, 3);
+    Sfx.play('heal');
+    closeDraft();
 }
 
 // 跳過（同 PokeBonk 的 Skip）：三張都不合這一局的路線時，不拿祝福、換一筆靈魂（剛打完那一波掉落的 DRAFT_SKIP_SHARE 倍）
@@ -7678,6 +7703,7 @@ function init() {
     onTap(uiElements.gameoverMetaBtn, () => openMeta('gameover'));
     onTap(uiElements.rerollBtn, rerollDraft);
     onTap(uiElements.skipBtn, skipDraft);
+    onTap(uiElements.healBtn, healDraft);
     onTap(uiElements.confirmNo, () => showScreen(uiElements.confirmDialog, false));
     onTap(uiElements.confirmYes, () => {
         showScreen(uiElements.confirmDialog, false);

@@ -3,7 +3,8 @@
 //   human：像真人 —— 地上的預警圈、首領蓄力、血彈要 REACT 秒後才反應，每 DECIDE 秒重新決定往哪走，打得正熱就放新星；
 //          沒有要閃的東西時走去拿戰場遺跡（祭壇／靈泉／寶棺），再來才是撿靈魂
 //   still：站著不動，只有被包圍才放新星（量「不會走位的玩家」撐到哪）
-// 兩種都每 0.5 秒把錢花光（升級鈕發光就升級，否則隨機召喚），祝福隨機挑、有傳說先拿傳說 —— 花錢和選卡比真人有效率，勝率會偏高。
+// 兩種都每 0.5 秒把錢花光（升級鈕發光就升級，否則隨機召喚），祝福隨機挑、有傳說先拿傳說、血量低於 BOT_HEAL_BELOW 就選「補滿血」
+// —— 花錢和選卡比真人有效率，勝率會偏高。
 // 需要 playwright（npm i playwright）；遊戲要先用任何靜態伺服器跑起來，例如 python -m http.server 8765。
 // 直接讀寫遊戲的全域變數與函式（gameState、updateGame、trySummon…），遊戲裡改名的話這裡要跟著改。
 import { chromium } from 'playwright';
@@ -45,6 +46,8 @@ for (;;) {
             if (gameState.gameOver) return { over: true };
             if (gameState.victoryOpen) { endRunFromVictory(); return { over: true, won: true }; }
             if (gameState.draftOpen && gameState.pendingDraft) {
+                const BOT_HEAL_BELOW = 0.5;
+                if (gameState.player.currentHealth < gameState.player.maxHealth * BOT_HEAL_BELOW) { healDraft(); continue; }
                 const opts = gameState.pendingDraft.options; const leg = opts.find(id => BLESSINGS[id].legendary);
                 pickBlessing(leg || opts[Math.floor(Math.random() * opts.length)]); continue;
             }
