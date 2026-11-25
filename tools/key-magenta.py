@@ -22,7 +22,10 @@ SEARCH_STEPS = 14
 # 發光（金色的氣、白色的光、青色的光暈）綠色都很高，背景的綠接近 0：混出來的綠幾乎全是光貢獻的。
 # 綠色到這麼多的偏洋紅像素，透明度用「綠 ÷ 光的綠（當成滿的 255）」推，比上面那套準 ——
 # 上面那套只扣到「不再偏洋紅」就停，對亮色光會扣太少，金色的氣會剩一圈粉紅。暗的描邊邊緣綠色低，照舊用上面那套
-GLOW_GREEN = 60
+# 設 30：光暈最外圈很淡，綠只有 30～60（設 60 時羅漢的金色光環外圈留一圈粉紅）；描邊跟洋紅混出來的綠都在 20 以下，不受影響
+GLOW_GREEN = 30
+# 光疊在洋紅上，紅、藍都還很亮；暗紅色（戰士的戰袍、吸血鬼的背心）的藍只有 60 上下，綠卻也有 30，不加這條會被當成光吃掉變綠
+GLOW_BRIGHT = 150
 # 裁切時判定「有東西」的透明度門檻，以及四周留白
 TRIM_ALPHA = 24
 PAD = 4
@@ -69,7 +72,7 @@ def key(src, dst, flip=False):
         if min(r, b) - g <= SPILL_FLOOR:
             out[j:j + 4] = bytes((r, g, b, 255))
             continue
-        if g >= GLOW_GREEN:
+        if g >= GLOW_GREEN and min(r, b) >= GLOW_BRIGHT:
             a = min(1.0, (g - mg) / (255 - mg))
             fr, fg, fb = ((c - (1 - a) * m) / a for c, m in ((r, mr), (g, mg), (b, mb)))
         else:
