@@ -25,6 +25,7 @@ function resizeCanvas() {
     const unitPx = Math.sqrt(cssW * cssH / VIEW_AREA);
     Object.assign(view, { cssW, cssH, dpr, unitPx, zoom: unitPx * dpr, w: cssW / unitPx, h: cssH / unitPx });
     auraLayer = null;
+    frozenFrameDrawn = false;
     hudTop = uiElements.hudTop ? Math.round(uiElements.hudTop.getBoundingClientRect().bottom) - HUD_TOP_FADE_PX : hudTop;
     if (gameState && gameState.player) snapCamera();
 }
@@ -6556,8 +6557,18 @@ function drawGame() {
 let animationFrameId = null;
 let loopLastTime = 0;
 const TITLE_DRIFT_SPEED = 14;
+// 120Hz 螢幕上 rAF 一秒叫 120 次；畫面 60 fps 就夠順，多出來那一半只是讓手機發燙
+const TARGET_FRAME_MS = 1000 / 60;
+// rAF 的時間戳會抖，60Hz 螢幕偶爾 16.4ms 就來；不留餘裕的話會被當成太早而整格跳掉
+const FRAME_EARLY_TOLERANCE_MS = 2;
+let nextFrameAt = 0;
+// 停住的那一格已經畫在畫布上了；改變畫布大小會清空畫布，要重畫
+let frozenFrameDrawn = false;
 function gameLoop(currentTime) {
     animationFrameId = requestAnimationFrame(gameLoop);
+    if (currentTime < nextFrameAt - FRAME_EARLY_TOLERANCE_MS) return;
+    // 落後（慢手機跑不到 60）就從現在重新對齊，不連續補畫
+    nextFrameAt = Math.max(nextFrameAt + TARGET_FRAME_MS, currentTime);
     const deltaTime = Math.min(0.1, Math.max(0, (currentTime - loopLastTime) / 1000));
     loopLastTime = currentTime;
 
@@ -6572,13 +6583,16 @@ function gameLoop(currentTime) {
     document.body.classList.toggle('world-frozen', appScreen === 'playing' && (isWorldFrozen() || gameState.isPaused || gameState.gameOver));
     if (appScreen !== 'playing' || gameState.isPaused || gameState.gameOver) return;
 
-    if (!isWorldFrozen()) updateGame(deltaTime);
+    const frozen = isWorldFrozen();
+    if (!frozen) updateGame(deltaTime);
     updateTutorial();
-    drawGame();
+    // 戰場停住時畫面一格都不會變（教學提示會動，所以有教學時照畫），畫一次留在畫布上就好
+    if (!frozen || tutorial || !frozenFrameDrawn) drawGame();
+    frozenFrameDrawn = frozen;
     updateUI();
 }
 
-// 選祝福、凱旋畫面打開時戰場停住但畫面照畫（背景要看得到）；暫停與結束則連畫都停
+// 選祝福、凱旋畫面打開時戰場停住，背景要看得到，但只畫停住的那一格；暫停與結束則連畫都停
 function isWorldFrozen() {
     return gameState.draftOpen || gameState.victoryOpen;
 }
