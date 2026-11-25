@@ -1586,6 +1586,18 @@
             color: var(--bone-dim);
         }
 
+        /* 通關時間：破紀錄時後面亮一個金色「新紀錄」，沒破就小字寫目前最快 */
+        #victory-time .new-record {
+            margin-left: 4px;
+            color: var(--gold);
+        }
+
+        #victory-time .best-time {
+            margin-left: 4px;
+            font-size: 13px;
+            color: var(--bone-dim);
+        }
+
         .reward-line {
             display: inline-flex;
             align-items: center;
@@ -2017,6 +2029,7 @@
         <div class="overlay-content panel screen-in">
             <div class="title-text victory">凱旋</div>
             <div class="victory-sub">擊敗最終首領</div>
+            <div class="reward-line" id="victory-time"></div>
             <div class="reward-line" id="victory-reward"></div>
             <div class="reward-line curse-unlock hidden" id="victory-unlock"></div>
             <div class="stack">

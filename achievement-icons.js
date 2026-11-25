@@ -87,6 +87,14 @@ const ACHV_ICON_BODIES = {
         <path d="M24 50 L28 46 L32 50 L36 46 L40 50" stroke-width="2.5"/>`,
     wave45: `${at(22, 24, 0.75, P.moon())}<rect x="38" y="34" width="12" height="24" rx="2" fill="${C.bone}"/>${at(44, 25, 0.32, P.flame())}
         ${sparks([[50, 10, 4], [10, 48, 3]], '#fff3c4')}`,
+    // 速通：越快越隆重——疾行的靴子、帶翅膀的沙漏、劃破天空的彗星
+    speed28: `<path d="M18 10 L34 10 L34 40 L52 46 C56 48 56 56 50 56 L18 56 Z" fill="${C.wood}"/><path d="M18 46 L52 46" stroke-width="3"/>
+        <path d="M34 12 C44 6 54 10 58 18 C50 16 44 18 36 22 Z" fill="${C.bone}"/><path d="M2 24 L14 24 M4 34 L14 34 M2 44 L14 44" stroke="${C.sky}" stroke-width="3.5"/>`,
+    speed24: `<path d="M24 10 L40 10 M24 54 L40 54" stroke-width="4"/><path d="M26 12 C26 24 31 27 31 32 C31 37 26 40 26 52 L38 52 C38 40 33 37 33 32 C33 27 38 24 38 12 Z" fill="${C.ice}"/>
+        <path d="M28 46 C30 42 34 42 36 46 L36 50 L28 50 Z" fill="${C.gold}" stroke="none"/>
+        <path d="M24 26 C12 18 4 22 2 30 C8 30 12 32 14 36 C16 32 20 30 24 32 Z M40 26 C52 18 60 22 62 30 C56 30 52 32 50 36 C48 32 44 30 40 32 Z" fill="${C.white}"/>`,
+    speed20: `<path d="M6 58 C20 44 34 30 46 18" stroke="${C.sky}" stroke-width="10"/><path d="M6 58 C20 44 34 30 46 18" stroke="${C.white}" stroke-width="4"/>
+        <circle cx="48" cy="16" r="11" fill="${C.gold}"/><circle cx="48" cy="16" r="5" fill="#fff8e1" stroke="none"/>${sparks([[20, 12, 4], [58, 40, 4], [30, 30, 3]], C.white)}`,
     win: `${at(32, 34, 1, P.laurel(C.gold))}${at(32, 30, 0.62, P.crown('#ef9a9a'))}<path d="M22 22 L30 34 L26 40" stroke="${C.ink}" stroke-width="2.5"/>`,
 
     // ---- 無盡：漩渦與虛空，越深越暗、越華麗 ----

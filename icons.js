@@ -50,6 +50,8 @@ const ICON_BODIES = {
         <circle cx="45" cy="48" r="10" fill="#ffd54f"/><circle cx="45" cy="48" r="5.5" stroke="#e0a82e" stroke-width="2.5"/>`,
     flame: `<path d="M32 58 C17 58 11 46 15 35 C18 27 24 24 25 14 C34 20 37 26 37 32 C41 28 42 23 41 17 C51 26 54 38 50 47 C47 54 40 58 32 58 Z" fill="#ff8a3d"/>
         <path d="M32 53 C25 53 22 47 25 41 C27 37 31 35 32 30 C37 35 40 40 39 46 C38 50 36 53 32 53 Z" fill="#ffd54f" stroke="none"/>`,
+    clock: `<circle cx="32" cy="35" r="23" fill="#f1ead6"/><rect x="26" y="4" width="12" height="7" rx="2" fill="#b0bec5"/><path d="M32 11 L32 12" stroke-width="3"/>
+        <path d="M32 35 L32 20 M32 35 L42 40" stroke-width="4"/><circle cx="32" cy="35" r="2.5" fill="#1b1424" stroke="none"/>${shine(21, 24, 4, 2.5)}`,
     trophy: `<path d="M18 10 L46 10 L46 24 C46 34 40 40 32 40 C24 40 18 34 18 24 Z" fill="#ffd54f"/>
         <path d="M18 15 C8 15 8 29 19 30 M46 15 C56 15 56 29 45 30" stroke-width="4"/>
         <rect x="27" y="40" width="10" height="8" fill="#e0a82e"/><rect x="18" y="48" width="28" height="8" rx="2" fill="#e0a82e"/>${shine(25, 18, 3, 6, 0)}`,

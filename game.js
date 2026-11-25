@@ -64,7 +64,7 @@ const uiElements = {
     timerInfo: $id('timer-info'),
     wavePlate: $id('wave-plate'),
     hudBottom: $id('hud-bottom'),
-    victoryScreen: $id('victory-screen'), victoryReward: $id('victory-reward'), victoryUnlock: $id('victory-unlock'),
+    victoryScreen: $id('victory-screen'), victoryReward: $id('victory-reward'), victoryUnlock: $id('victory-unlock'), victoryTime: $id('victory-time'),
     victoryContinueBtn: $id('victory-continue-btn'), victoryEndBtn: $id('victory-end-btn'),
     titleCurseBtn: $id('title-curse-btn'), curseScreen: $id('curse-screen'), curseList: $id('curse-list'),
     curseLevel: $id('curse-level'), curseMult: $id('curse-mult'), curseMinus: $id('curse-minus'), cursePlus: $id('curse-plus'),
@@ -739,7 +739,7 @@ const META_UPGRADES = {
 const CRYSTALS_PER_WAVE = 2;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: defaultStats(), tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
+    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
 }
 function loadMeta() {
     try {
@@ -768,6 +768,8 @@ const ACHV_CATEGORIES = [
 ];
 const ACHV_JOURNEY = [[5, 'wave5', '破曉', 10], [10, 'wave10', '初陣', 15], [15, 'wave15', '老兵', 20], [20, 'wave20', '百戰', 25], [25, 'wave25', '過半', 30],
     [30, 'wave30', '屍山', 35], [35, 'wave35', '血海', 40], [40, 'wave40', '龍門', 45], [45, 'wave45', '最後的長夜', 50]];
+// 通關時間：自動遊玩（一路搶開戰、不停下來）約 25 分鐘，真人多半更久
+const ACHV_SPEED = [[28, 'speed28', '急行軍', 40], [24, 'speed24', '閃擊戰', 80], [20, 'speed20', '神速', 150]];
 const ACHV_ENDLESS = [[55, 'endless55', '無盡伊始', 60], [60, 'endless', '無盡深淵', 80], [70, 'endless70', '深淵凝視', 100], [80, 'endless80', '虛空行者', 140], [100, 'endless100', '永恆', 250]];
 // 詛咒幾級以上通關：沿用舊的 id（curseMid = 4 級、curseMax = 全開），其他級補上
 const ACHV_CURSE_IDS = ['curse1', 'curse2', 'curse3', 'curseMid', 'curse5', 'curse6', 'curse7', 'curseMax'];
@@ -848,6 +850,7 @@ function buildAchievements() {
     const S = stats;
     for (const [w, id, name, r] of ACHV_JOURNEY) add('journey', id, name, `撐過第 ${w} 波`, r, () => getSurvivedWaves() >= w);
     add('journey', 'win', '凱旋', '打倒墮落亡靈王', 60, () => gameState.endless);
+    for (const [min, id, name, r] of ACHV_SPEED) add('journey', id, name, `${min} 分鐘內通關`, r, () => gameState.endless && gameState.run.clearTime > 0 && gameState.run.clearTime <= min * 60);
     for (const [w, id, name, r] of ACHV_ENDLESS) add('endless', id, name, `無盡模式撐到第 ${w} 波`, r, () => gameState.endless && getSurvivedWaves() >= w);
     ACHV_CURSE_IDS.forEach((id, i) => add('curse', id, ACHV_CURSE_NAMES[i], `詛咒 ${i + 1} 以上通關（${CURSES[i].name}）`, 40 + i * 25, () => gameState.endless && gameState.curse >= i + 1));
     for (const [cls, cfgKey] of ACHV_BOSSES) add('boss', `boss_${cls}`, `討伐${CONFIG[cfgKey].name}`, `打倒${CONFIG[cfgKey].name}`, cls === 'LichBoss' ? 60 : 20, () => !!gameState.bossKills[cls]);
@@ -1041,7 +1044,7 @@ let gameState = {
     hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
-    bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(),
+    bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -5258,7 +5261,27 @@ function checkWaveEndCondition() {
 }
 
 // ---------- 通關 ----------
+// ---------- 通關時間：每個職業各自的最快紀錄（同 PokeBonk 的計時獎牌）：有紀錄可破，打贏的局才有再打一次的理由 ----------
+// 計的是遊戲裡實際經過的時間（暫停、選祝福時不算），開戰前的倒數也算：提早開戰就是在搶時間
+const DEFAULT_CLASS = 'necro';
+function runClass() { return gameState.classId || DEFAULT_CLASS; }
+function formatClock(sec) {
+    const s = Math.floor(sec);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+function bestClearOf(cls) { return (meta.bestClear || {})[cls] || null; }
+// 回傳這一局是不是新紀錄（第一次通關也算）
+function recordClear() {
+    const cls = runClass(), t = gameState.runTime, prev = bestClearOf(cls);
+    gameState.run.clearTime = t;
+    if (prev && prev.time <= t) return false;
+    meta.bestClear = { ...(meta.bestClear || {}), [cls]: { time: t, curse: gameState.curse || 0 } };
+    return true;
+}
+
 function showVictory() {
+    const isRecord = recordClear();
+    const prevBest = bestClearOf(runClass());
     checkAchievements();
     const lv = gameState.curse || 0;
     const bonus = Math.round(VICTORY_CRYSTALS * curseCrystalMult(lv));
@@ -5270,6 +5293,8 @@ function showVictory() {
     gameState.victoryOpen = true;
     stopHoldAction();
     uiElements.victoryReward.innerHTML = `${iconHtml('crystal')}+${bonus}`;
+    uiElements.victoryTime.innerHTML = `${iconHtml('clock')}${formatClock(gameState.run.clearTime)}` +
+        (isRecord ? '<b class="new-record">新紀錄</b>' : `<span class="best-time">最快 ${formatClock(prevBest.time)}</span>`);
     const newCurse = (meta.curseUnlocked || 0) > unlockedBefore;
     uiElements.victoryUnlock.classList.toggle('hidden', !newCurse);
     if (newCurse) uiElements.victoryUnlock.innerHTML = `${iconHtml(CURSES[meta.curseUnlocked - 1].icon)}解鎖詛咒 ${meta.curseUnlocked}`;
@@ -5645,8 +5670,10 @@ function refreshTitle() {
         (claimed ? `<span class="price">${iconHtml('trophy')}</span>` : `<span class="price">${iconHtml('crystal')}×${DAILY_CRYSTAL_MULT}</span>`);
     const best = getBestWave();
     const wins = meta.wins || 0;
+    const fastest = bestClearOf(DEFAULT_CLASS);
     uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
         (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
+        (fastest ? `${iconHtml('clock')}最快 ${formatClock(fastest.time)}　` : '') +
         `<span class="crystal-count">${iconHtml('crystal')}${meta.crystals}</span>`;
     uiElements.titleMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
 }
@@ -6499,6 +6526,7 @@ function saveGameState() {
         achvCrystals: gameState.achvCrystals,
         run: gameState.run,
         achvCount: gameState.achvCount,
+        runTime: gameState.runTime,
         curse: gameState.curse,
         endless: gameState.endless,
         daily: gameState.daily,
@@ -6554,6 +6582,7 @@ function loadGameState() {
         gameState.waveSouls = loadedState.waveSouls ?? 0;
         gameState.achvCrystals = loadedState.achvCrystals ?? 0;
         gameState.achvCount = loadedState.achvCount ?? 0;
+        gameState.runTime = loadedState.runTime ?? 0;
         gameState.run = { ...emptyRunStats(), ...(loadedState.run || {}) };
         gameState.curse = loadedState.curse ?? 0;
         gameState.daily = loadedState.daily ?? null;
@@ -6642,7 +6671,7 @@ function resetGameInternalState() {
         hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
-        bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(),
+        bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -6710,6 +6739,7 @@ function leaveToTitleFromPause() {
 function updateGame(deltaTime) {
     frameNo++;
     worldTime += deltaTime;
+    if (appScreen === 'playing' && !gameState.endless) gameState.runTime += deltaTime;
     updateTimers(deltaTime);
 
     const wraiths = [];
