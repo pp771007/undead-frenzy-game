@@ -50,6 +50,14 @@ const ICON_BODIES = {
         <circle cx="45" cy="48" r="10" fill="#ffd54f"/><circle cx="45" cy="48" r="5.5" stroke="#e0a82e" stroke-width="2.5"/>`,
     flame: `<path d="M32 58 C17 58 11 46 15 35 C18 27 24 24 25 14 C34 20 37 26 37 32 C41 28 42 23 41 17 C51 26 54 38 50 47 C47 54 40 58 32 58 Z" fill="#ff8a3d"/>
         <path d="M32 53 C25 53 22 47 25 41 C27 37 31 35 32 30 C37 35 40 40 39 46 C38 50 36 53 32 53 Z" fill="#ffd54f" stroke="none"/>`,
+    // 戰士的大招：兩支交叉擲出的標槍
+    javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
+        <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>
+        <path d="M4 40 L14 40 M2 48 L10 48" stroke="#ffcc80" stroke-width="3"/>`,
+    // 戰士的狂怒：怒吼的紅色獸頭盔
+    rage: `<path d="M12 22 C6 12 8 4 14 2 C14 10 18 16 22 20 Z M52 22 C58 12 56 4 50 2 C50 10 46 16 42 20 Z" fill="#f1ead6"/>
+        <path d="M32 12 C18 12 12 22 12 34 C12 46 20 56 32 58 C44 56 52 46 52 34 C52 22 46 12 32 12 Z" fill="#e53935"/>
+        <path d="M18 30 L28 34 M46 30 L36 34" stroke-width="4"/><path d="M22 44 C26 52 38 52 42 44 L38 48 L32 44 L26 48 Z" fill="#1b1424"/>${shine(22, 20, 4, 2.5)}`,
     clock: `<circle cx="32" cy="35" r="23" fill="#f1ead6"/><rect x="26" y="4" width="12" height="7" rx="2" fill="#b0bec5"/><path d="M32 11 L32 12" stroke-width="3"/>
         <path d="M32 35 L32 20 M32 35 L42 40" stroke-width="4"/><circle cx="32" cy="35" r="2.5" fill="#1b1424" stroke="none"/>${shine(21, 24, 4, 2.5)}`,
     trophy: `<path d="M18 10 L46 10 L46 24 C46 34 40 40 32 40 C24 40 18 34 18 24 Z" fill="#ffd54f"/>

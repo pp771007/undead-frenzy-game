@@ -87,6 +87,7 @@ const uiElements = {
     titleScreen: $id('title-screen'),
     titleContinueBtn: $id('title-continue-btn'),
     titleStartBtn: $id('title-start-btn'), titleDailyBtn: $id('title-daily-btn'),
+    titleHero: $id('title-hero'), classPicker: $id('class-picker'), classInfo: $id('class-info'),
     titleMetaBtn: $id('title-meta-btn'),
     titleSettingsBtn: $id('title-settings-btn'),
     titleBest: $id('title-best'),
@@ -979,9 +980,20 @@ const UNIT_TYPES = {
 //   attack(player, dt)：主角每格的普攻
 //   ultimate：右下大招按鈕。use() 成功回傳 true；cooldown() 是滿的冷卻秒數；hint 是第一次教玩家時的那句話，
 //             hintRadius() 內有好幾隻怪時才教（這時候按下去最有感）
+// 以下選填（其他職業在自己的檔案裡定義，例如 warrior.js）：
+//   name／title／portrait／tagline：標題畫面選職業時顯示；unlock：解鎖它的成就 id（沒有就是一開始就能玩）
+//   troopCap()：底部三種兵加起來的人數上限
+//   update(dt)：每格在主角與召喚物之前跑一次；reset()：開新局、讀檔時清掉職業自己的狀態
+//   heroSpeedMult()／heroDamageTakenMult()：主角移速、受到的傷害倍率；onHeroHurt(lostFrac)：主角掉了幾成血
+//   drawHero(ctx, player)：畫在主角血條之後（怒氣條之類）
+//   saveExtra()／loadExtra(data)：存檔時多存、讀檔重建召喚物後還原的東西
+//   onRunStart()：開新局（不是讀檔）時跑一次，例如開局就帶的兵
+//   blockBolt(bolt)：射向主角的血彈飛行途中每格問一次，回傳 true 就被擋下（戰士的盾兵）
+//   onUpgrade(type)：底部卡片升級成功之後
 const CLASSES = {
     necro: {
-        name: '亡靈法師', cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'soul'],
+        name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
+        cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'soul'],
         hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
         attack: (p, dt) => p.shootBolt(dt),
         ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', hintRadius: () => CONFIG.nova.radius, cooldown: () => getNovaCooldown(), use: () => useNova() },
@@ -990,6 +1002,14 @@ const CLASSES = {
 const DEFAULT_CLASS = 'necro';
 function runClass() { return gameState.classId || DEFAULT_CLASS; }
 function classDef() { return CLASSES[runClass()]; }
+function classUnlocked(id) { const c = CLASSES[id]; return !!c && (!c.unlock || !!meta.achv[c.unlock]); }
+// 標題畫面選的職業（沒解鎖或不存在就退回亡靈法師）
+function selectedClass() { return classUnlocked(meta.classSel) ? meta.classSel : DEFAULT_CLASS; }
+// 底部三種兵加起來到上限了沒（有上限的職業才有）
+function troopCapped() {
+    const c = classDef();
+    return !!c.troopCap && c.cards.reduce((n, t) => n + gameState.units[t].count, 0) >= c.troopCap();
+}
 // 每種兵在場上幾隻、幾級、下一級升級多少錢。所有兵種都有一格（祝福可能叫出不在卡片上的兵），新局歸零
 function emptyUnits() {
     const u = {};
@@ -1831,7 +1851,8 @@ class Player extends GameObject {
         const ratio = this.currentHealth / this.maxHealth;
         this.hpTrail = ratio > this.hpTrail ? ratio : Math.max(ratio, this.hpTrail - PLAYER_HP_TRAIL_SPEED * deltaTime);
         this.absorbGlow = Math.max(0, this.absorbGlow - ABSORB_GLOW_DECAY * deltaTime);
-        this.moveSpeed = classDef().hero.moveSpeed * (1 + blessVal('shadowStep'));
+        const cls = classDef();
+        this.moveSpeed = cls.hero.moveSpeed * (1 + blessVal('shadowStep')) * (cls.heroSpeedMult ? cls.heroSpeedMult() : 1);
         this.castGlow = Math.max(0, this.castGlow - CAST_GLOW_DECAY * deltaTime);
         const moveX = moveVec.x * this.moveSpeed * deltaTime;
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
@@ -1845,7 +1866,11 @@ class Player extends GameObject {
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
         // 單一下傷害封頂：滿血不會被一下秒掉（後期精英腐屍一爆就超過法師血量），死亡要來自看得到的壓力
-        this.currentHealth -= Math.min(amount, this.maxHealth * PLAYER_MAX_HIT_RATIO);
+        const cls = classDef();
+        if (cls.heroDamageTakenMult) amount *= cls.heroDamageTakenMult();
+        const lost = Math.min(amount, this.maxHealth * PLAYER_MAX_HIT_RATIO, this.currentHealth);
+        this.currentHealth -= lost;
+        if (cls.onHeroHurt && lost > 0) cls.onHeroHurt(lost / this.maxHealth);
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
         const run = gameState.run;
         run.hits++;
@@ -1895,6 +1920,8 @@ class Player extends GameObject {
         ctx.globalAlpha = 1;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
         ctx.fillRect(x, y, w * ratio, h * 0.4);
+        const cls = classDef();
+        if (cls.drawHero) cls.drawHero(ctx, this);
     }
     die() {
         this.isAlive = false;
@@ -2600,6 +2627,7 @@ class Projectile {
                 const dealt = this.damage * (1 - block);
                 hit.takeDamage(dealt);
                 if (this.owner) this.owner.healFromDamage(dealt);
+                if (this.owner && this.owner.onHit) this.owner.onHit(hit);
                 if (this.blast) this.explodeAt(hit);
                 if (this.bounces > 0 && this.bounceFrom(hit)) return;
                 this.isAlive = false;
@@ -3265,6 +3293,7 @@ class Monster extends GameObject {
         this.tickFlash(deltaTime);
 
         if (this.weakenTimer > 0) this.weakenTimer -= deltaTime;
+        if (this.tauntT > 0) this.tauntT -= deltaTime;
         if (this.slowTimer > 0) {
             this.slowTimer -= deltaTime;
             if (this.slowTimer <= 0) {
@@ -3326,6 +3355,8 @@ class Monster extends GameObject {
     }
 
     findTarget(player, summons) {
+        // 被嘲諷（戰士的重盾兵）：這段時間只打那一隻
+        if (this.tauntT > 0 && this.tauntBy && this.tauntBy.isAlive) { this.target = this.tauntBy; return; }
         let closestTarget = null;
         let minDistanceSq = Infinity;
 
@@ -4139,10 +4170,16 @@ function updateEnemyBolts(deltaTime) {
     const c = CONFIG.bloodEye;
     const p = gameState.player;
     const step = c.boltSpeed * deltaTime;
+    const cls = classDef();
     for (const b of gameState.enemyBolts) {
         b.pos.x += b.dir.x * step;
         b.pos.y += b.dir.y * step;
         b.travel += step;
+        if (cls.blockBolt && cls.blockBolt(b)) {
+            b.travel = Infinity;
+            spawnParticles(b.pos.x, b.pos.y, '#CFD8DC', BLOOD_BOLT_HIT_SPARKS / 2, 90, 0.3, 3);
+            continue;
+        }
         if (p && p.isAlive) {
             const hit = p.radius + c.boltRadius;
             if (distanceSq(b.pos, p.pos) <= hit * hit) {
@@ -5715,7 +5752,8 @@ function refreshTitle() {
         (claimed ? `<span class="price">${iconHtml('trophy')}</span>` : `<span class="price">${iconHtml('crystal')}×${DAILY_CRYSTAL_MULT}</span>`);
     const best = getBestWave();
     const wins = meta.wins || 0;
-    const fastest = bestClearOf(DEFAULT_CLASS);
+    renderClassPicker();
+    const fastest = bestClearOf(selectedClass());
     uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
         (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         (fastest ? `${iconHtml('clock')}最快 ${formatClock(fastest.time)}　` : '') +
@@ -5777,6 +5815,34 @@ function startDailyRun() {
     const overwrite = save && save.currentWave > 0 ? `\n第 ${save.currentWave} 波的進度會被覆蓋` : '';
     const bonus = meta.dailyClaimed === todayKey() ? '' : `\n今天第一場結晶 ×${DAILY_CRYSTAL_MULT}`;
     showConfirm(`每日變異 · ${d.name}`, `${dailyRulesText(d)}${bonus}${overwrite}`, '出發', () => { resetGame(d); enterPlaying(); });
+}
+
+// ---------- 標題畫面選職業：一排頭像，選中的金框；還沒解鎖的暗下來壓一個鎖，點了說怎麼解鎖 ----------
+function renderClassPicker() {
+    const sel = selectedClass();
+    uiElements.titleHero.src = CLASSES[sel].portrait;
+    const ids = Object.keys(CLASSES);
+    uiElements.classPicker.classList.toggle('hidden', ids.length < 2);
+    uiElements.classPicker.innerHTML = ids.map(id => {
+        const ok = classUnlocked(id);
+        return `<button class="class-pick${id === sel ? ' on' : ''}${ok ? '' : ' locked'}" data-class="${id}" aria-label="${CLASSES[id].name}"><img src="${CLASSES[id].portrait}" alt="">${ok ? '' : iconHtml('lock')}</button>`;
+    }).join('');
+    uiElements.classInfo.innerHTML = `<b>${CLASSES[sel].title}</b> · ${CLASSES[sel].tagline}`;
+}
+function pickClass(id) {
+    if (!CLASSES[id]) return;
+    if (!classUnlocked(id)) {
+        const a = achievements().find(x => x.id === CLASSES[id].unlock);
+        uiElements.classInfo.innerHTML = `${iconHtml('lock')}<b>${CLASSES[id].title}</b> · 解鎖：${a ? a.desc : ''}`;
+        Sfx.play('deny');
+        return;
+    }
+    meta.classSel = id;
+    saveMeta();
+    Sfx.play('click');
+    // 標題背景也是一局：換成新職業的樣子
+    setupNewRun();
+    refreshTitle();
 }
 
 function continueRun() {
@@ -6016,7 +6082,7 @@ function showMessage(msg, duration = 2000) {
 
 // combo：長按連段的第幾下（0 = 單點），連段時換成會往上爬的音效
 function trySummon(type, combo = 0) {
-    if (!UNIT_TYPES[type] || !unitAllowed(type)) return false;
+    if (!UNIT_TYPES[type] || !unitAllowed(type) || troopCapped()) return false;
     const config = UNIT_TYPES[type].cfg(), SummonClass = UNIT_TYPES[type].Cls(), unit = gameState.units[type];
     const level = unit.level;
     const cost = getSummonCost(config);
@@ -6077,6 +6143,7 @@ function tryUpgrade(type, combo = 0) {
         unit.level++;
         const newTier = getTier(unit.level);
         unit.upgradeCost += UNIT_TYPES[type].cfg().upgradeCostInc;
+        if (classDef().onUpgrade) classDef().onUpgrade(type);
         gameState.run.upgrades++;
         gameState.summons.forEach(s => {
             if (s.isAlive && s.config.type === type) {
@@ -6355,7 +6422,7 @@ function setupHoldableButton(button, actionType, unitType) {
 // 升一級 = 場上每隻同種兵都 +upgradeBonus，等於多出 upgradeBonus × 隻數 隻兵；
 // 拿同樣的錢去召喚只買得到 升級價 ÷ 召喚價 隻。前者比較多就是划算。下一級剛好進化（解鎖新能力）也算
 function isUpgradeGoodDeal(type, level, summonCost, upgradeCost) {
-    if (CONFIG.evolution.levels.includes(level + 1)) return true;
+    if (CONFIG.evolution.levels.includes(level + 1) || troopCapped()) return true;
     return UNIT_TYPES[type].cfg().upgradeBonus * gameState.units[type].count * summonCost >= upgradeCost;
 }
 
@@ -6412,10 +6479,11 @@ function updateUI() {
         setTextIfChanged(el.level, String(level));
         setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
         setTextIfChanged(el.count, formatNumberK(unit.count));
-        setHtmlIfChanged(el.summon, priceButtonHtml('召喚', summonCost));
+        const capped = troopCapped();
+        setHtmlIfChanged(el.summon, capped ? '<span>滿編</span>' : priceButtonHtml('召喚', summonCost));
         setHtmlIfChanged(el.upgrade, priceButtonHtml('升級', upgradeCost));
         const allowed = unitAllowed(u.type);
-        if (el.summon.disabled !== !(canAct && allowed)) el.summon.disabled = !(canAct && allowed);
+        if (el.summon.disabled !== !(canAct && allowed && !capped)) el.summon.disabled = !(canAct && allowed && !capped);
         if (el.upgrade.disabled !== !(canAct && allowed)) el.upgrade.disabled = !(canAct && allowed);
         el.summon.closest('.unit-card').classList.toggle('daily-locked', !allowed);
         el.summon.classList.toggle('cant-afford', souls < summonCost);
@@ -6578,6 +6646,7 @@ function saveGameState() {
         banished: gameState.banished,
         banishLeft: gameState.banishLeft,
         rerollsLeft: gameState.rerollsLeft,
+        classExtra: classDef().saveExtra ? classDef().saveExtra() : null,
         waveSouls: gameState.waveSouls,
         achvCrystals: gameState.achvCrystals,
         run: gameState.run,
@@ -6617,6 +6686,9 @@ function loadGameState() {
         gameState.timeToNextWave = loadedState.timeToNextWave ?? CONFIG.wave.betweenTime;
         gameState.betweenWaves = loadedState.betweenWaves ?? true;
         gameState.classId = CLASSES[loadedState.classId] ? loadedState.classId : DEFAULT_CLASS;
+        if (classDef().reset) classDef().reset();
+        gameState.pendingClassExtra = loadedState.classExtra ?? null;
+        buildUnitCards();
         gameState.units = emptyUnits();
         if (loadedState.units) {
             for (const type in loadedState.units) if (gameState.units[type]) Object.assign(gameState.units[type], loadedState.units[type]);
@@ -6682,6 +6754,8 @@ function restoreSummonsFromLoad() {
             gameState.summons.push(new Cls(spawnPos.x, spawnPos.y, unit.level, gameState.player));
         }
     }
+    if (classDef().loadExtra && gameState.pendingClassExtra) classDef().loadExtra(gameState.pendingClassExtra);
+    gameState.pendingClassExtra = null;
 }
 
 function resetGameInternalState() {
@@ -6727,6 +6801,9 @@ function resetGameInternalState() {
 // 新的一局（不碰存檔）：永久強化在這裡套用
 function setupNewRun(daily = null) {
     resetGameInternalState();
+    gameState.classId = selectedClass();
+    if (classDef().reset) classDef().reset();
+    buildUnitCards();
     gameState.daily = daily ? daily.id : null;
     gameState.dailyDate = daily ? todayKey() : null;
     gameState.curse = daily ? 0 : Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
@@ -6744,6 +6821,7 @@ function setupNewRun(daily = null) {
 function resetGame(daily = null) {
     localStorage.removeItem(SAVE_KEY);
     setupNewRun(daily);
+    if (classDef().onRunStart) classDef().onRunStart();
     stats().runs++;
     if (daily) stats().dailyDays[todayKey()] = true;
     saveMeta();
@@ -6808,6 +6886,8 @@ function updateGame(deltaTime) {
     gameState.priests = gameState.monsters.filter(m => m.isAlive && m instanceof GravePriestMonster);
     gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;
 
+    const cls = classDef();
+    if (cls.update && gameState.player) cls.update(deltaTime);
     const moveVec = getMoveVector();
     if (gameState.player) gameState.player.update(deltaTime, moveVec);
     updateCamera(deltaTime, moveVec);
@@ -7613,10 +7693,14 @@ function waitForFonts() {
 // 畫布上的字不受影響（ctx.font 不會被放大），不用處理
 const TZ_PROBE_PX = 100;
 const TZ_MIN_ZOOM = 1.05;   // 小於這個當成沒放大（量測誤差）
+// 只能補一次：量的是不受補償的 #tz-probe，第二次呼叫會量到同樣的倍率、把字級再除一次（介面檢查工具也會呼叫它）
+let textZoomCancelled = null;
 function cancelTextZoom() {
+    if (textZoomCancelled !== null) return textZoomCancelled;
     const probe = document.getElementById('tz-probe');
     if (!probe) return 1;
     const k = probe.getBoundingClientRect().height / TZ_PROBE_PX;
+    textZoomCancelled = k > TZ_MIN_ZOOM ? k : 1;
     if (!(k > TZ_MIN_ZOOM)) return 1;
     for (const sheet of document.styleSheets) {
         let rules;
@@ -7665,6 +7749,7 @@ function init() {
     const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
     onTap(uiElements.titleStartBtn, startNewRun);
     onTap(uiElements.titleDailyBtn, startDailyRun);
+    uiElements.classPicker.addEventListener('click', (e) => { const b = e.target.closest('[data-class]'); if (b) pickClass(b.dataset.class); });
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
     onTap(uiElements.titleSettingsBtn, () => { syncSettingControls(); showScreen(uiElements.settingsScreen, true); });
@@ -7746,4 +7831,5 @@ function init() {
     });
 }
 
-init();
+// 等所有腳本（各職業的 warrior.js…）都載完、登記好自己，才開始
+window.addEventListener('DOMContentLoaded', init);

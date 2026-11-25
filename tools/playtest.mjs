@@ -1,5 +1,5 @@
 // 自動遊玩：在無頭瀏覽器裡快轉打完整局（手動呼叫 updateGame，不等畫面），印出每一波的數據。
-// 用法：node tools/playtest.mjs <遊戲網址> [human|still] [標籤] > logs/xxx.log
+// 用法：node tools/playtest.mjs <遊戲網址> [human|still] [標籤] [職業 id，預設 necro] > logs/xxx.log
 //   human：像真人 —— 地上的預警圈、首領蓄力、血彈要 REACT 秒後才反應，每 DECIDE 秒重新決定往哪走，打得正熱就放新星；
 //          沒有要閃的東西時走去拿戰場遺跡（祭壇／靈泉／寶棺），再來才是撿靈魂
 //   still：站著不動，只有被包圍才放新星（量「不會走位的玩家」撐到哪）
@@ -12,6 +12,7 @@ import { chromium } from 'playwright';
 const URL = process.argv[2];
 const POLICY = process.argv[3] || 'human';
 const TAG = process.argv[4] || '-';
+const CLASS = process.argv[5] || 'necro';
 if (!URL) { console.error('usage: node tools/playtest.mjs <url> [human|still] [tag]'); process.exit(1); }
 
 const browser = await chromium.launch({ headless: true });
@@ -20,9 +21,12 @@ page.on('pageerror', e => console.log('PAGEERROR', e.message));
 await page.goto(URL);
 await page.waitForFunction(() => typeof appScreen !== 'undefined' && appScreen === 'title', null, { timeout: 30000 });
 
-await page.evaluate((policy) => {
+await page.evaluate(([policy, cls]) => {
     cancelAnimationFrame(animationFrameId); animationFrameId = -1;
     meta.tutorialDone = true; Sfx.play = () => {};
+    // 直接把那個職業的解鎖條件打開
+    if (CLASSES[cls].unlock) meta.achv[CLASSES[cls].unlock] = true;
+    meta.classSel = cls;
     resetGame(); enterPlaying(); tutorial = null;
     window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, seen: new WeakMap(), decide: 0, src: {} };
     // 記每種怪一共掉了多少靈魂：經濟有沒有被哪隻怪放大（吞魂者第一版就是這樣抓到的）
@@ -34,7 +38,7 @@ await page.evaluate((policy) => {
     Monster.prototype.die = function () { window.__dying = this.config.type; try { origDie.call(this); } finally { window.__dying = null; } };
     const origDrop = window.dropSouls;
     window.dropSouls = function (x, y, a) { const k = window.__dying || 'other'; B.src[k] = (B.src[k] || 0) + a; return origDrop(x, y, a); };
-}, POLICY);
+}, [POLICY, CLASS]);
 
 const SIM_SECONDS_PER_CALL = 30;
 let r;
@@ -64,7 +68,8 @@ for (;;) {
                     for (const m of gameState.monsters) {
                         if (!m.isAlive) continue;
                         const dx = p.pos.x - m.pos.x, dy = p.pos.y - m.pos.y, d = Math.hypot(dx, dy) || 1;
-                        if (d < 70) { hx += dx / d; hy += dy / d; }
+                        // 被貼身就退開（戰士不退：他要站在怪堆前砍）
+                        if (d < 70 && runClass() !== 'warrior') { hx += dx / d; hy += dy / d; }
                         if (m.mark && noticed(m.mark)) { const ex = p.pos.x - m.mark.x, ey = p.pos.y - m.mark.y, e = Math.hypot(ex, ey) || 1; if (e < 60) { hx += ex / e * 3; hy += ey / e * 3; } }
                         if (m instanceof DragonBoss) {
                             if (m.windup > 0 && noticed(m) && m.inBreath(p.pos)) { const s = (dx * -m.breathDir.y + dy * m.breathDir.x) >= 0 ? 1 : -1; hx += -m.breathDir.y * s * 4; hy += m.breathDir.x * s * 4; }
@@ -75,6 +80,17 @@ for (;;) {
                     }
                     for (const h of gameState.hazards) { if (!noticed(h)) continue; const dx = p.pos.x - h.x, dy = p.pos.y - h.y, d = Math.hypot(dx, dy) || 1; if (d < h.r + 12) { hx += dx / d * 3; hy += dy / d * 3; } }
                     for (const bo of gameState.enemyBolts) { if (!noticed(bo)) continue; const tx = p.pos.x - bo.pos.x, ty = p.pos.y - bo.pos.y, along = tx * bo.dir.x + ty * bo.dir.y; if (along < 0) continue; const perp = tx * -bo.dir.y + ty * bo.dir.x; if (Math.abs(perp) < 30 && along < 200) { const s = perp >= 0 ? 1 : -1; hx += -bo.dir.y * s * 3; hy += bo.dir.x * s * 3; } }
+                    // 戰士：沒有要閃的東西時迎上去打（陣型面向走的方向，逃跑等於把背後讓給怪），走到 BOT_WAR_HOLD 內就站定讓陣型接戰。
+                    // 殘血也不撤：撤退會一路逃、整波拖到卡關，真人也不會這樣打
+                    const BOT_WAR_HOLD = 55, BOT_WAR_SEEK = 400;
+                    if (runClass() === 'warrior' && Math.hypot(hx, hy) < 0.1) {
+                        let nm = null, nd = BOT_WAR_SEEK;
+                        for (const m of gameState.monsters) { if (!m.isAlive || m.stealthed) continue; const d = Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y); if (d < nd) { nd = d; nm = m; } }
+                        if (nm) {
+                            const ux = (nm.pos.x - p.pos.x) / (nd || 1), uy = (nm.pos.y - p.pos.y) / (nd || 1);
+                            if (nd > BOT_WAR_HOLD) { hx = ux; hy = uy; } else { hx = ux * 0.05; hy = uy * 0.05; }
+                        }
+                    }
                     const relic = Math.hypot(hx, hy) < 0.1 && gameState.relics.find(x => !x.done && noticed(x));
                     if (relic) { hx = relic.x - p.pos.x; hy = relic.y - p.pos.y; }
                     else if (Math.hypot(hx, hy) < 0.1) { let best = null, bd = 1e9; for (const o of gameState.orbs) { const d = distanceSq(o.pos, p.pos); if (d < bd) { bd = d; best = o; } } if (best && bd < 250 * 250) { hx = (best.pos.x - p.pos.x) * 0.01; hy = (best.pos.y - p.pos.y) * 0.01; } }
@@ -92,8 +108,9 @@ for (;;) {
                 for (let g = 0; g < 50; g++) {
                     let did = false;
                     for (const u of UNIT_UI) { const unit = gameState.units[u.type], uc = unit.upgradeCost; if (unit.count > 0 && gameState.souls >= uc && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(UNIT_TYPES[u.type].cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
-                    // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%）
-                    if (!did) { const x = Math.random(); did = trySummon(UNIT_UI[x < 0.55 ? 0 : x < 0.7 ? 1 : 2].type); }
+                    // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%；戰士：盾兵 40%、長槍 30%、弩手 30%）
+                    const MIX = { necro: [0.55, 0.15], warrior: [0.4, 0.3] }[runClass()] || [0.34, 0.33];
+                    if (!did) { const x = Math.random(); did = trySummon(UNIT_UI[x < MIX[0] ? 0 : x < MIX[0] + MIX[1] ? 1 : 2].type); }
                     if (!did) break;
                 }
             }

@@ -1072,6 +1072,64 @@
             animation: float 3s ease-in-out infinite;
         }
 
+        /* 選職業：一排小頭像，選中的金框；還沒解鎖的暗下來、壓一個鎖 */
+        #class-picker {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .class-pick {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            padding: 2px;
+            border-radius: 50%;
+            border: 2px solid var(--ink);
+            background: rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+        }
+
+        .class-pick img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .class-pick.on {
+            border-color: var(--gold);
+            box-shadow: 0 0 10px rgba(233, 196, 106, 0.7);
+        }
+
+        .class-pick.locked img {
+            opacity: 0.3;
+            filter: grayscale(1);
+        }
+
+        .class-pick .icon {
+            position: absolute;
+            inset: 11px;
+        }
+
+        #class-info {
+            min-height: 20px;
+            margin-top: 4px;
+            font-size: 13px;
+            color: var(--bone-dim);
+        }
+
+        #class-info b {
+            color: var(--bone);
+            font-family: var(--font-display);
+        }
+
+        #class-info .icon {
+            width: 14px;
+            height: 14px;
+            vertical-align: -2px;
+        }
+
         .title-menu {
             width: 100%;
             max-width: 300px;
@@ -1934,7 +1992,9 @@
     <div id="title-screen" class="overlay-screen">
         <h1 class="logo">亡靈狂潮</h1>
         <div class="logo-sub">UNDEAD FRENZY</div>
-        <img class="title-hero" src="player.png" alt="">
+        <img class="title-hero" id="title-hero" src="player.png" alt="">
+        <div id="class-picker"></div>
+        <div id="class-info"></div>
         <div class="title-menu">
             <button id="title-continue-btn" class="btn btn-gold btn-big hidden"></button>
             <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
@@ -2108,6 +2168,7 @@
     <script src="icons.js"></script>
     <script src="achievement-icons.js"></script>
     <script src="game.js"></script>
+    <script src="warrior.js"></script>
 </body>
 
 </html>
