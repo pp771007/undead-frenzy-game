@@ -2532,7 +2532,9 @@ class Wraith extends SummonUnit {
     }
 }
 
-const PROJECTILE_DESPAWN_MARGIN = 200;
+// 飛彈飛這麼久還沒打中就消失（打空、目標先死了）。不能用「出了畫面多遠」判斷：最後幾隻怪落單時大軍會追到畫面外很遠
+// （見 STRAGGLER_SEARCH_RADIUS），眼魔在那裡射的每一發都會在命中前被刪掉，波次永遠打不完（實測卡在離法師 650 的巫醫）
+const PROJECTILE_MAX_AGE = 3;
 
 class Projectile {
     constructor(startX, startY, target, shooterConfig, damage) {
@@ -2591,10 +2593,7 @@ class Projectile {
             }
         }
 
-        if (this.pos.x < camera.x - PROJECTILE_DESPAWN_MARGIN || this.pos.x > camera.x + view.w + PROJECTILE_DESPAWN_MARGIN ||
-            this.pos.y < camera.y - PROJECTILE_DESPAWN_MARGIN || this.pos.y > camera.y + view.h + PROJECTILE_DESPAWN_MARGIN) {
-            this.isAlive = false;
-        }
+        if (this.age > PROJECTILE_MAX_AGE) this.isAlive = false;
     }
 
     // 魂火骷髏：轉向目標（每秒最多轉 SOUL_BOLT_TURN 弧度）、加速、沿路留鬼火殘影
