@@ -460,6 +460,7 @@ const ICON_BODIES = {
         <rect x="10" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/><rect x="25" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/>`,
     fullscreen: duoStroke('M9 23 L9 9 L23 9 M41 9 L55 9 L55 23 M55 41 L55 55 L41 55 M23 55 L9 55 L9 41', '#f1ead6', 5),
     install: duoStroke('M10 40 L10 54 L54 54 L54 40', '#ffd54f', 5) + duoStroke('M32 8 L32 38 M20 27 L32 39 L44 27', '#f1ead6', 5),
+    fork: duoStroke('M32 58 L32 34 L14 12 M32 34 L50 12 M14 24 L14 12 L26 12 M50 24 L50 12 L38 12', '#FFE082', 5),
     share: duoStroke('M24 26 L16 26 L16 56 L48 56 L48 26 L40 26', '#f1ead6', 4) + duoStroke('M32 40 L32 8 M22 18 L32 8 L42 18', '#4fc3f7', 4),
     addHome: `<rect x="9" y="9" width="46" height="46" rx="11" fill="#f1ead6"/><path d="M32 20 L32 44 M20 32 L44 32" stroke="#37474f" stroke-width="6"/>`,
     menuDots: `<circle cx="32" cy="13" r="6" fill="#f1ead6"/><circle cx="32" cy="32" r="6" fill="#f1ead6"/><circle cx="32" cy="51" r="6" fill="#f1ead6"/>`,

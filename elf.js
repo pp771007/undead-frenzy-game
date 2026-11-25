@@ -119,6 +119,7 @@ CLASSES.elf = {
     onBossKill: (b) => { if (b.lastArrowHit && !inView(b.pos)) gameState.run.flags.elfSnipe = true; },
     heroSpeedMult: () => (1 + blessVal('stride')) * (elfState().galeT > 0 ? GALE_MULT : 1),
     // 戰鼓祭壇變成「疾風」：一陣子移速、射速 ×1.5
+    buffs: () => elfState().galeT > 0 ? [{ icon: 'parthian', t: elfState().galeT, color: '#B2EBF2' }] : [],
     onRelic: (r) => {
         if (r.kind !== 'altar') return false;
         const p = gameState.player;

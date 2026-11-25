@@ -181,6 +181,8 @@ CLASSES.druid = {
     drawHero: (ctx, p) => drawDruidHud(ctx, p),
     drawWorld: (ctx) => drawDruidWorld(ctx),
     // 戰場遺跡：戰鼓祭壇讓所有橡樹與野獸長大一階（加上原本的全軍狂暴）；靈泉旁的橡樹直接長到第 3 階（見 druidUpdate）
+    // 德魯伊守在林地裡，遺跡冒在林地範圍內，不用丟下野獸跑去拿
+    relicDist: [150, 240],
     onRelic: (r) => {
         if (r.kind !== 'altar') return false;
         gameState.frenzyTimer = Math.max(gameState.frenzyTimer, RELIC_TYPES.altar.frenzy);

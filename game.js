@@ -1031,6 +1031,8 @@ const UNIT_TYPES = {
 //   onSpring(relic, dt)：站在靈泉裡時取代回血（吸血鬼的聖水會燙）
 //   preventDeath()：主角血量歸零時問一次，回傳 true 就不死（職業自己把血補回來）
 //   relicChannelMult()：站在遺跡上讀條的速度倍率（刺客隱身時快三倍）
+//   relicDist：[最近, 最遠]，遺跡離主角多遠冒出來（德魯伊守林地，冒在林地裡）
+//   buffs()：[{ icon, t, color }]，職業自己的限時效果，跟狂暴一起排在狀態列底下顯示倒數
 const CLASSES = {
     necro: {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
@@ -4900,9 +4902,20 @@ function drawLobs() {
 // 同類遊戲（PokéSurvivor 的力量祭壇、泉水、上鎖寶箱；PokeBonk 的神殿與寶球）都靠地圖物件讓走位有目的：
 // 空地圖上移動只為了閃招和吸靈魂。大軍跟著法師走，「要把整支軍隊拉去哪裡打」本身就是一個決定
 const RELIC_START_WAVE = 2;
-const RELIC_CHANCE = 0.6;
-// 開戰後幾秒才出現：避開開戰橫幅，也讓大軍先接上戰線，走過去才有「離開陣地」的代價
-const RELIC_DELAY_MIN = 4, RELIC_DELAY_MAX = 9;
+// 遺跡不跟著波次走：在場上待 RELIC_LIFE 秒「戰鬥時間」（波與波之間不算），跨波也還在。
+// 綁在波次上時一波常只剩十幾秒，走過去剛啟動就收掉了（實測每 5 座有 1 座是在那波剩不到 5 秒時才啟動）
+const RELIC_LIFE = 40;
+// 剩這麼多秒時倒數圈開始閃
+const RELIC_BLINK_AT = 6;
+// 第一座在第 RELIC_START_WAVE 波開戰後幾秒出現：避開開戰橫幅，也讓大軍先接上戰線，走過去才有「離開陣地」的代價
+const RELIC_FIRST_DELAY_MIN = 4, RELIC_FIRST_DELAY_MAX = 9;
+// 場上的遺跡都處理掉（拿了、崩了、散了）之後，再隔這麼久的戰鬥時間冒下一座
+const RELIC_GAP_MIN = 24, RELIC_GAP_MAX = 38;
+// 二選一：從這一波起，一部分遺跡成對冒在相反方向，走進其中一座、另一座就崩塌（要血還是要錢）
+const RELIC_FORK_WAVE = 8;
+const RELIC_FORK_CHANCE = 0.4;
+// 成對的第二座偏離正對面最多這麼多弧度：不會永遠剛好在正後方
+const RELIC_FORK_SPREAD = 0.5;
 const RELIC_DIST_MIN = 260, RELIC_DIST_MAX = 360;
 const RELIC_RADIUS = 42;
 // 讀條中途離開：每秒退回這個比例（被怪逼走一下不會全部重來）
@@ -4912,7 +4925,7 @@ const RELIC_HEAL_TEXT_EVERY = 0.6;
 const RELIC_SPRING_NEED_WEIGHT = 2.5;
 // art／artW：立繪與畫出來的寬（世界單位，法師約 48），高照圖的比例
 const RELIC_TYPES = {
-    altar: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'burst', art: 'relic_altar', artW: 62, color: '#E1BEE7', glow: '186, 104, 200', channel: 2, frenzy: 8, weight: 1 },
+    altar: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'burst', art: 'relic_altar', artW: 62, color: '#E1BEE7', glow: '186, 104, 200', channel: 2, frenzy: 12, weight: 1 },
     // pool：一座泉總共回多少（× 法師血量上限），回完就乾
     spring: { name: '靈泉', hint: '站在裡面回血', icon: 'heart', art: 'relic_spring', artW: 72, color: '#A5D6A7', glow: '67, 160, 71', healPerSec: 0.15, pool: 0.6 },
     // 靈魂 = 上一波全部掉落的 soulShare 倍：跟著當下的經濟成長，不用另外調每一波的數字
@@ -4929,38 +4942,70 @@ function relicArtSize(T) {
 }
 
 function scheduleRelic(wave) {
-    gameState.relics = [];
-    const roll = wave >= RELIC_START_WAVE && !isFinalWave(wave) && Math.random() < RELIC_CHANCE;
-    gameState.relicTimer = roll ? randomInRange(RELIC_DELAY_MIN, RELIC_DELAY_MAX) : 0;
+    if (wave === RELIC_START_WAVE) gameState.relicTimer = randomInRange(RELIC_FIRST_DELAY_MIN, RELIC_FIRST_DELAY_MAX);
 }
 
-function pickRelicKind() {
+function pickRelicKind(exclude) {
     const p = gameState.player;
     const w = {};
     for (const k in RELIC_TYPES) w[k] = RELIC_TYPES[k].weight || 0;
     w.spring = RELIC_SPRING_NEED_WEIGHT * (1 - p.currentHealth / p.maxHealth);
+    if (exclude) w[exclude] = 0;
     let total = 0;
     for (const k in w) total += w[k];
     let r = Math.random() * total;
     for (const k in w) { r -= w[k]; if (r < 0) return k; }
-    return 'coffin';
+    return exclude === 'coffin' ? 'altar' : 'coffin';
+}
+
+function placeRelic(kind, angle, pair) {
+    const p = gameState.player, T = RELIC_TYPES[kind];
+    const [dMin, dMax] = classDef().relicDist || [RELIC_DIST_MIN, RELIC_DIST_MAX];
+    const d = randomInRange(dMin, dMax);
+    gameState.relics.push({ kind, x: p.pos.x + Math.cos(angle) * d, y: p.pos.y + Math.sin(angle) * d, progress: 0, pool: T.pool || 0, healFrac: 0, healShown: 0, healTextTimer: 0, done: false, fade: 1, life: RELIC_LIFE, pair });
+}
+
+// 每種只在玩家第一次看到時用橫幅介紹；之後靠畫面邊緣的箭頭和地上的圖示就認得
+function introduceRelic(key, text, sub, color, icon) {
+    meta.relicSeen = meta.relicSeen || {};
+    if (meta.relicSeen[key] || gameState.banner) return;
+    gameState.banner = { text, sub, color, life: CONFIG.wave.bannerDuration * 1.5, icon };
+    meta.relicSeen[key] = true;
+    saveMeta();
 }
 
 function spawnRelic() {
     const p = gameState.player;
     if (!p || !p.isAlive) return;
+    const a = Math.random() * Math.PI * 2;
     const kind = pickRelicKind();
-    const T = RELIC_TYPES[kind];
-    const a = Math.random() * Math.PI * 2, d = randomInRange(RELIC_DIST_MIN, RELIC_DIST_MAX);
-    gameState.relics.push({ kind, x: p.pos.x + Math.cos(a) * d, y: p.pos.y + Math.sin(a) * d, progress: 0, pool: T.pool || 0, healFrac: 0, healShown: 0, healTextTimer: 0, done: false, fade: 1 });
-    // 每種只在玩家第一次看到時用橫幅介紹；之後靠畫面邊緣的箭頭和地上的圖示就認得
-    meta.relicSeen = meta.relicSeen || {};
-    if (!meta.relicSeen[kind] && !gameState.banner) {
-        gameState.banner = { text: T.name, sub: T.hint, color: T.color, life: CONFIG.wave.bannerDuration * 1.5, icon: T.icon };
-        meta.relicSeen[kind] = true;
-        saveMeta();
+    const fork = gameState.currentWave >= RELIC_FORK_WAVE && Math.random() < RELIC_FORK_CHANCE;
+    const pair = fork ? Math.random() : 0;
+    placeRelic(kind, a, pair);
+    if (fork) {
+        placeRelic(pickRelicKind(kind), a + Math.PI + randomInRange(-RELIC_FORK_SPREAD, RELIC_FORK_SPREAD), pair);
+        introduceRelic('fork', '二選一', '走進一座，另一座就崩塌', '#FFE082', 'fork');
     }
+    const T = RELIC_TYPES[kind];
+    introduceRelic(kind, T.name, T.hint, T.color, T.icon);
     Sfx.play('spawn');
+}
+
+// 二選一：走進其中一座的那一刻，另一座崩塌
+function breakRelicPartner(r) {
+    for (const o of gameState.relics) {
+        if (o === r || o.done || o.pair !== r.pair) continue;
+        o.done = true;
+        spawnParticles(o.x, o.y, '#9E9E9E', 24, 120, 0.6, 3);
+        spawnFloatText(o.x, o.y - 30, '崩塌', '#BDBDBD', 14, 1);
+    }
+    r.pair = 0;
+}
+
+function expireRelic(r) {
+    r.done = true;
+    spawnParticles(r.x, r.y, RELIC_TYPES[r.kind].color, 12, 60, 0.5, 2);
+    spawnFloatText(r.x, r.y - 30, '消散', '#BDBDBD', 13, 0.9);
 }
 
 function finishRelic(r) {
@@ -4996,17 +5041,24 @@ function finishRelic(r) {
 }
 
 function updateRelics(deltaTime) {
-    if (gameState.relicTimer > 0) {
+    const fighting = !gameState.betweenWaves;
+    const hadLive = gameState.relics.some(r => !r.done);
+    if (fighting && !hadLive && gameState.currentWave >= RELIC_START_WAVE && !isFinalWave(gameState.currentWave)) {
         gameState.relicTimer -= deltaTime;
-        if (gameState.relicTimer <= 0 && !gameState.betweenWaves) spawnRelic();
+        if (gameState.relicTimer <= 0) spawnRelic();
     }
     if (!gameState.relics.length) return;
     const p = gameState.player;
     const rSq = RELIC_RADIUS * RELIC_RADIUS;
     for (const r of gameState.relics) {
         if (r.done) { r.fade -= deltaTime * 2; continue; }
+        if (fighting) {
+            r.life -= deltaTime;
+            if (r.life <= 0) { expireRelic(r); continue; }
+        }
         const T = RELIC_TYPES[r.kind];
         const inside = p && p.isAlive && distanceSq(p.pos, r) <= rSq;
+        if (inside && r.pair) breakRelicPartner(r);
         if (r.kind === 'spring') {
             r.healTextTimer -= deltaTime;
             if (inside && classDef().onSpring) classDef().onSpring(r, deltaTime);
@@ -5034,12 +5086,11 @@ function updateRelics(deltaTime) {
         if (r.progress >= 1) finishRelic(r);
     }
     gameState.relics = gameState.relics.filter(r => r.fade > 0);
+    if (hadLive && !gameState.relics.some(r => !r.done)) gameState.relicTimer = randomInRange(RELIC_GAP_MIN, RELIC_GAP_MAX);
 }
 
-// 波次結束：沒去拿的遺跡就消失；寶棺開出的祝福接在這一波的祝福後面
+// 波次結束：遺跡留在場上（倒數停住，下一波接著算）；寶棺開出的祝福接在這一波的祝福後面
 function settleRelicsAtWaveEnd() {
-    gameState.relics = [];
-    gameState.relicTimer = 0;
     if (gameState.relicDrafts <= 0) return;
     if (gameState.pendingDraft) gameState.extraDrafts += gameState.relicDrafts;
     else { queueDraft(); gameState.extraDrafts += gameState.relicDrafts - 1; }
@@ -5059,9 +5110,19 @@ function drawRelicsGround() {
         ctx.strokeStyle = TEXT_OUTLINE;
         ctx.lineWidth = 4;
         ctx.stroke();
-        ctx.strokeStyle = T.color;
+        ctx.strokeStyle = `rgba(${T.glow}, 0.35)`;
         ctx.lineWidth = 2;
         ctx.stroke();
+        // 外圈就是倒數：剩多少時間就畫多長，快散掉時閃
+        if (!r.done) {
+            const left = Math.max(0, r.life / RELIC_LIFE);
+            const blink = r.life < RELIC_BLINK_AT ? 0.45 + 0.55 * Math.abs(Math.sin(t * 6)) : 1;
+            ctx.globalAlpha = Math.max(0, r.fade) * blink;
+            ctx.strokeStyle = T.color;
+            ctx.lineWidth = 4;
+            ctx.beginPath(); ctx.arc(r.x, r.y, RELIC_RADIUS, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); ctx.stroke();
+            ctx.globalAlpha = Math.max(0, r.fade);
+        }
         // 慢慢轉的虛線內圈：一眼看得出是「可以站上去的地方」，不是怪的招式預警（預警是紅的、會填滿）
         ctx.save();
         ctx.translate(r.x, r.y);
@@ -5112,6 +5173,48 @@ function drawRelicsTop() {
         if (icon) ctx.drawImage(icon, bx - 10, by - 10, 20, 20);
     }
     ctx.globalAlpha = 1;
+}
+
+// 進行中的限時效果：圖示＋倒數圈，排在狀態列底下左邊。效果在身上時一直看得到，不只開頭那一下飄字
+const BUFF_CHIP_R = 15;
+const BUFF_CHIP_GAP = 8;
+const BUFF_CHIP_LEFT = 14;
+const BUFF_CHIP_TOP = 26;
+const FRENZY_CHIP_COLOR = '#E1BEE7';
+// 每種效果的起始長度：計時器往上跳（又拿到一次）時重記，倒數圈才畫得出「剩幾成」
+const buffPeak = {};
+function activeBuffs() {
+    const list = [];
+    if (gameState.frenzyTimer > 0) list.push({ icon: 'burst', t: gameState.frenzyTimer, color: FRENZY_CHIP_COLOR });
+    const cls = classDef();
+    if (cls.buffs) list.push(...cls.buffs());
+    return list;
+}
+function drawBuffChips() {
+    if (appScreen !== 'playing' || !gameState.player) return;
+    const list = activeBuffs();
+    for (const k in buffPeak) if (!list.some(b => b.icon === k)) delete buffPeak[k];
+    let x = BUFF_CHIP_LEFT + BUFF_CHIP_R;
+    const y = hudTop + BUFF_CHIP_TOP;
+    for (const b of list) {
+        const peak = buffPeak[b.icon];
+        if (!peak || b.t > peak.last + 0.01) buffPeak[b.icon] = { max: b.t, last: b.t };
+        else peak.last = b.t;
+        const k = b.t / buffPeak[b.icon].max;
+        ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
+        ctx.beginPath(); ctx.arc(x, y, BUFF_CHIP_R, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.stroke();
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = b.color;
+        ctx.beginPath(); ctx.arc(x, y, BUFF_CHIP_R + 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
+        ctx.lineCap = 'butt';
+        const icon = getIconImage(b.icon);
+        if (icon) ctx.drawImage(icon, x - 10, y - 10, 20, 20);
+        x += BUFF_CHIP_R * 2 + BUFF_CHIP_GAP;
+    }
 }
 
 const CURSES = [
@@ -6149,7 +6252,8 @@ function updateTimers(deltaTime) {
     if (tutorial && gameState.currentWave === 0) return;
     updateSpawner(deltaTime);
     gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
-    gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
+    // 波與波之間沒有怪打，狂暴不扣時間：不會白白耗在空檔裡
+    if (!gameState.betweenWaves) gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
     achvCheckTimer -= deltaTime;
     if (achvCheckTimer <= 0) { achvCheckTimer = ACHV_CHECK_EVERY; checkAchievements(); }
     if (gameState.streakTimer > 0) {
@@ -6774,6 +6878,8 @@ function saveGameState() {
         banishLeft: gameState.banishLeft,
         rerollsLeft: gameState.rerollsLeft,
         classExtra: classDef().saveExtra ? classDef().saveExtra() : null,
+        relics: gameState.relics.filter(r => !r.done),
+        relicTimer: gameState.relicTimer,
         waveSouls: gameState.waveSouls,
         achvCrystals: gameState.achvCrystals,
         run: gameState.run,
@@ -6841,6 +6947,8 @@ function loadGameState() {
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
         gameState.waveSouls = loadedState.waveSouls ?? 0;
+        gameState.relics = (loadedState.relics || []).map(r => ({ ...r, life: r.life ?? RELIC_LIFE, pair: r.pair || 0 }));
+        gameState.relicTimer = loadedState.relicTimer ?? randomInRange(RELIC_FIRST_DELAY_MIN, RELIC_FIRST_DELAY_MAX);
         gameState.achvCrystals = loadedState.achvCrystals ?? 0;
         gameState.achvCount = loadedState.achvCount ?? 0;
         gameState.runTime = loadedState.runTime ?? 0;
@@ -7533,6 +7641,7 @@ function drawGame() {
     drawBossBar();
     drawStreak();
     drawOffscreenPointers();
+    drawBuffChips();
     drawCountdown();
     drawBanner();
     drawJoystick();
