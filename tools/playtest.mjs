@@ -107,10 +107,15 @@ for (;;) {
                 B.spendTimer = 0.5;
                 for (let g = 0; g < 50; g++) {
                     let did = false;
-                    for (const u of UNIT_UI) { const unit = gameState.units[u.type], uc = unit.upgradeCost; if (unit.count > 0 && gameState.souls >= uc && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(UNIT_TYPES[u.type].cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
+                    for (const u of UNIT_UI) { const unit = gameState.units[u.type], uc = getUpgradeCost(u.type); if (unit.count > 0 && gameState.souls >= uc && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(UNIT_TYPES[u.type].cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
                     // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%；戰士：盾兵 40%、長槍 30%、弩手 30%）
                     const MIX = { necro: [0.55, 0.15], warrior: [0.4, 0.3] }[runClass()] || [0.34, 0.33];
-                    if (!did) { const x = Math.random(); did = trySummon(UNIT_UI[x < MIX[0] ? 0 : x < MIX[0] + MIX[1] ? 1 : 2].type); }
+                    // 有人數上限的職業：補最缺的那種（照比例），不然死得快的後排永遠補不回來、整隊漸漸變成同一兵種
+                    const share = [MIX[0], MIX[1], 1 - MIX[0] - MIX[1]];
+                    const pick = classDef().troopCap
+                        ? UNIT_UI.map((u, i) => ({ i, k: gameState.units[u.type].count / share[i] })).sort((a, b) => a.k - b.k)[0].i
+                        : (x => x < MIX[0] ? 0 : x < MIX[0] + MIX[1] ? 1 : 2)(Math.random());
+                    if (!did) did = trySummon(UNIT_UI[pick].type);
                     if (!did) break;
                 }
             }
@@ -148,10 +153,13 @@ const out = await page.evaluate(() => ({
     killedBy: gameState.killedBy && gameState.killedBy.config && gameState.killedBy.config.type,
     souls: window.__bot.src, resonance: gameState.resonance, blessings: gameState.blessings, relics: window.__bot.relics,
     achv: Object.keys(meta.achv), maxArmy: window.__bot.maxArmy, kills: meta.stats.kills,
+    units: Object.fromEntries(Object.entries(gameState.units).filter(([, u]) => u.count || u.level).map(([t, u]) => [t, `${u.count}@L${u.level}`])),
+    hero: Math.round(gameState.player.maxHealth),
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
 console.log(`RESULT ${TAG} policy=${POLICY} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
 console.log('SOULS', JSON.stringify(out.souls));
+console.log('UNITS', JSON.stringify(out.units), 'heroMaxHp', out.hero);
 console.log('RELICS', JSON.stringify(out.relics), 'blessings', Object.values(out.blessings).reduce((a, b) => a + b, 0));
 console.log('ACHV', out.achv.length, out.achv.join(' '), 'maxArmy', out.maxArmy);
 // 每種怪一局打倒幾隻：圖鑑成就的門檻照這個定

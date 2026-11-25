@@ -14,8 +14,8 @@ const WARRIOR = {
     killHeal: 0.015, killHealMax: 0.05,
     // 鐵甲：戰士本人常駐受傷 ×armorTaken（狂怒時再乘 berserkTaken）。陣型只擋得住正面，側面背後來的怪最近的就是戰士
     armorTaken: 0.75,
-    // 每次升級（任何兵種）戰士本人成長多少：怪的攻擊會指數成長，戰士站在前線，自己不長的話後期兩三下就倒
-    drillHp: 0.02, drillDamage: 0.03,
+    // 每次升級（任何兵種）大劍傷害成長多少（大劍本身已經跟著波數變強）；血量的成長見 onUpgrade
+    drillDamage: 0.03,
     // 陣型每秒最多轉多少弧度：轉向慢，從背後殺來的怪要先「轉過去」才擋得住
     turnRate: 2.2,
     // 從背後（相對陣型面向）打到士兵的傷害倍率
@@ -54,7 +54,7 @@ OPTIONAL_ART.soldier_crossbow = 'soldier_crossbow.png';
 // 士兵的設定：欄位跟骷髏一樣（SummonUnit 會讀 wander*、targetSearchRadius 這些），rank 決定排在陣型第幾段
 const SOLDIER_COMMON = {
     // 人少：每升一級加得比骷髏（0.1）多得多，升級才划得來
-    radius: 11, imgScaleMultiplier: 3.2, moveSpeed: 85, upgradeBonus: 0.35,
+    radius: 11, imgScaleMultiplier: 3.2, moveSpeed: 85, upgradeBonus: 0.55,
     targetSearchRadius: 150, returnDistance: 30, avoidanceRadius: 14, avoidanceForce: 100, playerAvoidanceForce: 40,
     wanderRadius: 0, wanderSpeedFactor: 0, wanderIntervalMin: 99, wanderIntervalMax: 99,
 };
@@ -93,6 +93,52 @@ const SOLDIER_TIER1_REACH = 1.25;
 const SPEAR_PIERCE_RADIUS = 28;
 const SOLDIER_TIER3_ELITE_MULT = 2;
 
+// ---------- 五個流派（規劃見 docs/characters.md）：各 4 張祝福、3 層與 6 層各一段共鳴；3 張專屬傳說 ----------
+// 圖示名稱 = 祝福 id（icons.js）
+Object.assign(SCHOOLS, {
+    shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', res: [{ name: '龜甲陣', desc: '戰士站著不動時，全軍受傷 -30%' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },
+    phalanx: { name: '長槍方陣', img: 'soldier_spear.png', color: '#CFD8DC', res: [{ name: '槍林', desc: '每 2 秒陣型前方整排刺擊' }, { name: '馬其頓方陣', desc: '長槍兵攻速 ×1.5' }] },
+    crossbow: { name: '弩陣', img: 'soldier_crossbow.png', color: '#BCAAA4', res: [{ name: '三段射', desc: '弩手攻速 +40%' }, { name: '箭雨', desc: '每 6 秒弩手對最大一群怪齊射' }] },
+    berserk: { name: '狂戰', icon: 'rage', color: '#EF9A9A', res: [{ name: '熊皮戰士', desc: '狂怒結束不會虛脫' }, { name: '戰神降臨', desc: '狂怒時全軍一起狂暴' }] },
+    legion: { name: '軍團紀律', icon: 'legion', color: '#FFE082', res: [{ name: '鐵律', desc: '陣型轉向快一倍' }, { name: '最後一線', desc: '人數剩三分之一時，倖存者全部視為百戰老兵' }] },
+});
+Object.assign(BLESSINGS, {
+    wallThick: { school: 'shieldwall', name: '厚盾', max: 5, per: 0.3, desc: b => `盾兵血量 +${pct(b.per)}` },
+    wallSpikes: { school: 'shieldwall', name: '尖刺盾', max: 3, per: 0.25, desc: b => `盾兵把近戰傷害的 ${pct(b.per)} 反彈回去` },
+    wallTaunt: { school: 'shieldwall', name: '挑釁', max: 3, per: 0.3, desc: b => `盾兵嘲諷範圍 +${pct(b.per)}` },
+    wallRotate: { school: 'shieldwall', name: '輪替有序', max: 3, per: 0.5, desc: b => `退下休息的盾兵回血 +${pct(b.per)}` },
+    spearLength: { school: 'phalanx', name: '長槍', max: 3, per: 0.15, desc: b => `長槍兵刺擊距離 +${pct(b.per)}` },
+    spearPower: { school: 'phalanx', name: '破甲', max: 5, per: 0.3, desc: b => `長槍兵傷害 +${pct(b.per)}` },
+    spearBrace: { school: 'phalanx', name: '拒馬', max: 3, per: 0.5, desc: b => `長槍兵對首領、大型、會飛的怪再 +${pct(b.per)}` },
+    spearSweep: { school: 'phalanx', name: '掃槍', max: 2, per: 1, desc: b => `長槍每一刺多刺穿 ${b.per} 隻` },
+    bowReload: { school: 'crossbow', name: '快速裝填', max: 4, per: 0.25, desc: b => `弩手攻速 +${pct(b.per)}` },
+    bowPower: { school: 'crossbow', name: '重弩', max: 5, per: 0.35, desc: b => `弩手傷害 +${pct(b.per)}` },
+    bowRange: { school: 'crossbow', name: '遠射', max: 3, per: 0.2, desc: b => `弩手射程 +${pct(b.per)}` },
+    bowVolley: { school: 'crossbow', name: '連弩', max: 2, per: 1, desc: b => `弩手每次多射 ${b.per} 支` },
+    rageGain: { school: 'berserk', name: '戰意', max: 3, per: 0.3, desc: b => `怒氣累積 +${pct(b.per)}` },
+    rageLength: { school: 'berserk', name: '血怒', max: 3, per: 2, desc: b => `狂怒多 ${b.per} 秒` },
+    rageCleave: { school: 'berserk', name: '旋風斬', max: 3, per: 0.2, desc: b => `大劍範圍 +${pct(b.per)}` },
+    rageLeech: { school: 'berserk', name: '嗜血', max: 3, per: 0.01, desc: b => `大劍每砍死一隻多回 ${pct(b.per)} 血` },
+    legionCap: { school: 'legion', name: '擴編', max: 4, per: 4, desc: b => `人數上限 +${b.per}` },
+    legionDrill: { school: 'legion', name: '操練', max: 2, per: 0.25, desc: b => `升老兵需要的擊殺 -${pct(b.per)}` },
+    legionPay: { school: 'legion', name: '軍餉', max: 3, per: 0.15, desc: b => `升級費用 -${pct(b.per)}` },
+    legionVet: { school: 'legion', name: '百戰之師', max: 3, per: 0.1, desc: b => `老兵每顆星多 +${pct(b.per)} 血量與攻擊` },
+    // 傳說：改變打法
+    valhalla: { school: 'legion', name: '英靈殿', legendary: true, max: 1, per: 1, desc: () => '陣亡的老兵下一波免費歸隊，星星照舊' },
+    aquila: { school: 'shieldwall', name: '鷹旗', legendary: true, max: 1, per: 0.3, desc: b => `戰士身邊的士兵受致命傷時，每波撐住一次（留 ${pct(b.per)} 血）` },
+    spartans: { school: 'phalanx', name: '三百壯士', legendary: true, max: 1, per: 2.5, desc: b => `人數上限減半，每個士兵血量與攻擊 ×${b.per}` },
+});
+// 共鳴與傳說的細部數值（說明文字只講會影響選擇的那個數）
+const RES_TURTLE_TAKEN = 0.7;
+const RES_IRONWALL_BLOCK = 2;
+const RES_SPEARWALL_EVERY = 2, RES_SPEARWALL_LENGTH = 70;
+const RES_PHALANX_RATE = 1.5;
+const RES_THREE_SHOT_RATE = 1.4;
+const RES_ARROWRAIN_EVERY = 6, RES_ARROWRAIN_RADIUS = 70, RES_ARROWRAIN_RANGE = 280, RES_ARROWRAIN_SHARE = 0.6;
+const RES_IRONLAW_TURN = 2;
+const RES_LASTSTAND_SHARE = 1 / 3;
+const AQUILA_RADIUS = 140;
+
 Object.assign(UNIT_TYPES, {
     Shieldman: { cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
     Spearman: { cfg: () => CONFIG.spearman, Cls: () => Spearman, name: '長槍兵', img: 'soldier_spear.png' },
@@ -102,9 +148,29 @@ Object.assign(UNIT_TYPES, {
 CLASSES.warrior = {
     name: '戰士', title: '鐵血軍團長', portrait: 'warrior.png', tagline: '少數精兵排成陣型，自己站最前線',
     unlock: 'wave20',
-    cards: ['Shieldman', 'Spearman', 'Crossbowman'], schools: ['soul'],
+    cards: ['Shieldman', 'Spearman', 'Crossbowman'], schools: ['shieldwall', 'phalanx', 'crossbow', 'berserk', 'legion', 'soul'],
     hero: { imageName: 'warrior', baseHealth: WARRIOR.baseHealth, moveSpeed: WARRIOR.moveSpeed },
-    troopCap: () => WARRIOR.troopCap,
+    troopCap: () => warTroopCap(),
+    upgradeCostMult: () => 1 - blessVal('legionPay'),
+    // 每波開始：鷹旗重新可用；英靈殿讓上一波陣亡的老兵歸隊
+    onWaveStart: () => {
+        for (const s of gameState.summons) if (s instanceof Soldier) s.aquilaUsed = false;
+        const w = warState(), p = gameState.player;
+        while (w.fallen.length && troopCount() < warTroopCap()) {
+            const f = w.fallen.shift();
+            const pos = p.getSummonPosition();
+            const s = new (UNIT_TYPES[f.type].Cls())(pos.x, pos.y, gameState.units[f.type].level, p);
+            s.kills = f.kills;
+            s.vet = vetFromKills(f.kills);
+            s.refreshStats();
+            s.currentHealth = s.maxHealth;
+            gameState.summons.push(s);
+            gameState.units[f.type].count++;
+            spawnParticles(pos.x, pos.y, '#FFE082', 16, 90, 0.7, 3);
+            spawnFloatText(pos.x, pos.y - 20, '英靈歸隊', '#FFE082', 12, 1.2, 'valhalla');
+        }
+        w.fallen.length = 0;
+    },
     attack: (p, dt) => warriorSwing(p, dt),
     update: (dt) => warriorUpdate(dt),
     reset: () => { gameState.war = newWarState(); },
@@ -118,14 +184,15 @@ CLASSES.warrior = {
         }
     },
     heroSpeedMult: () => warState().berserkT > 0 ? WARRIOR.berserkSpeed : warState().exhaustT > 0 ? WARRIOR.exhaustSpeed : 1,
-    heroDamageTakenMult: () => WARRIOR.armorTaken * (warState().berserkT > 0 ? WARRIOR.berserkTaken : 1),
+    heroDamageTakenMult: () => WARRIOR.armorTaken * (warState().berserkT > 0 ? WARRIOR.berserkTaken : 1) * turtleTaken(),
     onHeroHurt: (lostFrac) => addRage(lostFrac * 100 * WARRIOR.ragePerHp),
     drawHero: (ctx, p) => drawWarriorHud(ctx, p),
-    // 軍團長跟著部下一起操練：每升級一次任何兵種，戰士最大血量 +drillHp、大劍傷害 +drillDamage
+    // 軍團長跟著部下一起操練：每升級一次任何兵種，戰士最大血量長得跟「平均一個士兵」一樣快
+    // （士兵每升一級 +upgradeBonus，分到三個兵種上）。怪的攻擊指數成長，戰士站在前線，長得比士兵慢的話後期兩三下就倒
     onUpgrade: () => {
         const w = warState(), p = gameState.player;
         w.drills++;
-        const gain = Math.max(1, Math.round(WARRIOR.baseHealth * WARRIOR.drillHp));
+        const gain = Math.max(1, Math.round(WARRIOR.baseHealth * SOLDIER_COMMON.upgradeBonus / CLASSES.warrior.cards.length));
         p.maxHealth += gain;
         p.currentHealth += gain;
     },
@@ -144,7 +211,7 @@ CLASSES.warrior = {
     saveExtra: () => {
         const kills = {};
         for (const s of gameState.summons) if (s.isAlive && s instanceof Soldier) (kills[s.config.type] = kills[s.config.type] || []).push(s.kills);
-        return { kills, rage: warState().rage, drills: warState().drills };
+        return { kills, rage: warState().rage, drills: warState().drills, fallen: warState().fallen };
     },
     loadExtra: (data) => {
         const left = { ...(data.kills || {}) };
@@ -153,12 +220,13 @@ CLASSES.warrior = {
             const list = left[s.config.type];
             if (!list || !list.length) continue;
             s.kills = list.shift();
-            s.vet = WARRIOR.vetKills.filter(k => s.kills >= k).length;
+            s.vet = vetFromKills(s.kills);
             s.refreshStats();
             s.currentHealth = s.maxHealth;
         }
         warState().rage = data.rage || 0;
         warState().drills = data.drills || 0;
+        warState().fallen = data.fallen || [];
     },
     ultimate: {
         name: '標槍', icon: 'javelin', hint: '標槍：全軍朝前方齊射，再衝鋒',
@@ -166,18 +234,29 @@ CLASSES.warrior = {
     },
 };
 
-// drills：這一局一共升級了幾次（軍團長跟著部下一起操練變強）
-function newWarState() { return { rage: 0, berserkT: 0, exhaustT: 0, fx: 1, fy: 0, swingT: 0, chargeT: 0, tauntT: 0, drills: 0 }; }
+// drills：這一局一共升級了幾次（軍團長跟著部下一起操練變強）；fallen：英靈殿要讓下一波歸隊的老兵；
+// still：戰士這一格有沒有站著不動（龜甲陣）；lastStand：最後一線生效中；spearT／rainT：槍林、箭雨的計時
+function newWarState() { return { rage: 0, berserkT: 0, exhaustT: 0, fx: 1, fy: 0, swingT: 0, chargeT: 0, tauntT: 0, drills: 0, fallen: [], still: false, lastStand: false, spearT: 0, rainT: 0 }; }
 function warState() { return gameState.war || (gameState.war = newWarState()); }
 function troopCount() { return classDef().cards.reduce((n, t) => n + gameState.units[t].count, 0); }
+function warTroopCap() {
+    const c = WARRIOR.troopCap + blessVal('legionCap');
+    return bl('spartans') ? Math.floor(c / 2) : c;
+}
+function vetFromKills(kills) {
+    const k = 1 - blessVal('legionDrill');
+    return WARRIOR.vetKills.filter(n => kills >= n * k).length;
+}
+// 龜甲陣：戰士站著不動時全軍受傷打折
+function turtleTaken() { return res('shieldwall') >= 1 && warState().still ? RES_TURTLE_TAKEN : 1; }
 
 function addRage(amount) {
     const w = warState();
     if (w.berserkT > 0 || w.exhaustT > 0) return;
-    w.rage = Math.min(WARRIOR.rageMax, w.rage + amount);
+    w.rage = Math.min(WARRIOR.rageMax, w.rage + amount * (1 + blessVal('rageGain')));
     if (w.rage < WARRIOR.rageMax) return;
     w.rage = 0;
-    w.berserkT = WARRIOR.berserkTime;
+    w.berserkT = WARRIOR.berserkTime + blessVal('rageLength');
     const p = gameState.player;
     spawnParticles(p.pos.x, p.pos.y, '#FF5252', 36, 200, 0.7, 3);
     spawnFloatText(p.pos.x, p.pos.y - 40, '狂怒！', '#FF8A80', 20, 1.2, 'rage');
@@ -190,19 +269,39 @@ let soldierSeq = 0;
 function warriorUpdate(dt) {
     const w = warState(), p = gameState.player;
     if (!p) return;
-    if (w.berserkT > 0) { w.berserkT -= dt; if (w.berserkT <= 0) { w.berserkT = 0; w.exhaustT = WARRIOR.exhaustTime; spawnFloatText(p.pos.x, p.pos.y - 40, '虛脫', '#B0BEC5', 15, 1.2); } }
+    if (w.berserkT > 0) {
+        w.berserkT -= dt;
+        // 戰神降臨：狂怒時全軍一起狂暴
+        if (res('berserk') >= 2) gameState.frenzyTimer = Math.max(gameState.frenzyTimer, w.berserkT);
+        if (w.berserkT <= 0) {
+            w.berserkT = 0;
+            // 熊皮戰士：不會虛脫
+            if (res('berserk') < 1) { w.exhaustT = WARRIOR.exhaustTime; spawnFloatText(p.pos.x, p.pos.y - 40, '虛脫', '#B0BEC5', 15, 1.2); }
+        }
+    }
     else if (w.exhaustT > 0) w.exhaustT = Math.max(0, w.exhaustT - dt);
     w.chargeT = Math.max(0, w.chargeT - dt);
-    // 面向慢慢轉向移動方向
+    // 面向慢慢轉向移動方向（鐵律：快一倍）
     const mv = getMoveVector();
-    if (Math.hypot(mv.x, mv.y) > 0.1) {
+    w.still = Math.hypot(mv.x, mv.y) <= 0.1;
+    if (!w.still) {
         const cur = Math.atan2(w.fy, w.fx), want = Math.atan2(mv.y, mv.x);
         let d = want - cur;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
-        const step = Math.sign(d) * Math.min(Math.abs(d), WARRIOR.turnRate * dt);
+        const turn = WARRIOR.turnRate * (res('legion') >= 1 ? RES_IRONLAW_TURN : 1);
+        const step = Math.sign(d) * Math.min(Math.abs(d), turn * dt);
         w.fx = Math.cos(cur + step); w.fy = Math.sin(cur + step);
     }
+    // 最後一線：人數剩三分之一以下時全員視為百戰老兵（狀態變了才重算數值）
+    const last = res('legion') >= 2 && troopCount() > 0 && troopCount() <= warTroopCap() * RES_LASTSTAND_SHARE;
+    if (last !== w.lastStand) {
+        w.lastStand = last;
+        for (const s of gameState.summons) if (s.isAlive && s instanceof Soldier) s.refreshStats();
+        if (last) spawnFloatText(p.pos.x, p.pos.y - 44, '最後一線', '#FFE082', 16, 1.4, 'legion');
+    }
+    if (res('phalanx') >= 1) { w.spearT -= dt; if (w.spearT <= 0) { w.spearT = RES_SPEARWALL_EVERY; spearWall(p, w); } }
+    if (res('crossbow') >= 2) { w.rainT -= dt; if (w.rainT <= 0) { w.rainT = RES_ARROWRAIN_EVERY; arrowRain(p); } }
     // 二階以上的盾兵：每隔一下把身邊的怪的仇恨拉到自己身上
     w.tauntT -= dt;
     const taunt = w.tauntT <= 0;
@@ -213,7 +312,7 @@ function warriorUpdate(dt) {
         if (!s.isAlive || !(s instanceof Soldier)) continue;
         groups[s.resting ? 3 : s.config.rank].push(s);
         if (taunt && s instanceof Shieldman && !s.resting) {
-            const r = WARRIOR.tauntRadius * (s.tier >= 2 ? WARRIOR.tauntTier2Mult : 1);
+            const r = WARRIOR.tauntRadius * (s.tier >= 2 ? WARRIOR.tauntTier2Mult : 1) * (1 + blessVal('wallTaunt'));
             monsterGrid.forEachInRadius(s.pos, r, m => { if (m.isAlive && !(m instanceof BossMonster)) { m.tauntBy = s; m.tauntT = WARRIOR.tauntTime; } });
         }
     }
@@ -242,7 +341,7 @@ function warriorSwing(p, dt) {
     const w = warState();
     w.swingT -= dt * (w.berserkT > 0 ? WARRIOR.berserkSwingRate : w.exhaustT > 0 ? WARRIOR.exhaustSwingRate : 1);
     if (w.swingT > 0) return;
-    const range = WARRIOR.swingRange * (w.berserkT > 0 ? WARRIOR.berserkRange : 1), rSq = range * range;
+    const range = WARRIOR.swingRange * (w.berserkT > 0 ? WARRIOR.berserkRange : 1) * (1 + blessVal('rageCleave')), rSq = range * range;
     // 狂怒時整圈都砍；平常只砍面向前方
     const halfArc = w.berserkT > 0 ? Math.PI : WARRIOR.swingArc / 2, cosHalf = Math.cos(halfArc);
     const hits = [];
@@ -260,7 +359,8 @@ function warriorSwing(p, dt) {
     for (const m of hits) { m.takeDamage(dmg); if (!m.isAlive) kills++; }
     // 大劍親手砍死的怪回血：站最前線又沒有波間回血，戰士要靠打下去撐住
     if (kills > 0 && p.currentHealth < p.maxHealth) {
-        const heal = Math.max(1, Math.round(p.maxHealth * Math.min(WARRIOR.killHealMax, kills * WARRIOR.killHeal)));
+        const per = WARRIOR.killHeal + blessVal('rageLeech');
+        const heal = Math.max(1, Math.round(p.maxHealth * Math.min(WARRIOR.killHealMax + blessVal('rageLeech') * 3, kills * per)));
         p.currentHealth = Math.min(p.maxHealth, p.currentHealth + heal);
         spawnFloatText(p.pos.x, p.pos.y - 26, `+${heal}`, '#81C784', 12, 0.6);
     }
@@ -377,10 +477,20 @@ class Soldier extends SummonUnit {
     computeStats() {
         super.computeStats();
         // SummonUnit 的建構子會先算一次數值，那時還沒設 vet
-        const v = 1 + (this.vet || 0) * WARRIOR.vetBonus;
-        this.maxHealth = Math.round(this.maxHealth * v);
-        this.attack *= v;
-        if (this.tier >= 1 && this.config.type !== 'Shieldman') this.attackRange *= SOLDIER_TIER1_REACH;
+        const type = this.config.type;
+        const vet = warState().lastStand ? WARRIOR.vetKills.length : (this.vet || 0);
+        const v = (1 + vet * (WARRIOR.vetBonus + blessVal('legionVet'))) * (bl('spartans') ? BLESSINGS.spartans.per : 1);
+        this.maxHealth = Math.round(this.maxHealth * v * (type === 'Shieldman' ? 1 + blessVal('wallThick') : 1));
+        this.attack *= v * (type === 'Spearman' ? 1 + blessVal('spearPower') : type === 'Crossbowman' ? 1 + blessVal('bowPower') : 1);
+        if (type === 'Spearman') {
+            this.attackRange *= 1 + blessVal('spearLength');
+            if (res('phalanx') >= 2) this.attackSpeed *= RES_PHALANX_RATE;
+        }
+        if (type === 'Crossbowman') {
+            this.attackRange *= 1 + blessVal('bowRange');
+            this.attackSpeed *= (1 + blessVal('bowReload')) * (res('crossbow') >= 1 ? RES_THREE_SHOT_RATE : 1);
+        }
+        if (this.tier >= 1 && type !== 'Shieldman') this.attackRange *= SOLDIER_TIER1_REACH;
         this.attackRangeSq = this.attackRange * this.attackRange;
     }
     update(deltaTime) {
@@ -393,7 +503,7 @@ class Soldier extends SummonUnit {
         if (this.config.type === 'Shieldman') {
             if (!this.resting && this.currentHealth < this.maxHealth * WARRIOR.rotateBelow) { this.resting = true; this.target = null; }
             if (this.resting) {
-                this.currentHealth = Math.min(this.maxHealth, this.currentHealth + this.maxHealth * WARRIOR.rotateRegen * deltaTime);
+                this.currentHealth = Math.min(this.maxHealth, this.currentHealth + this.maxHealth * WARRIOR.rotateRegen * (1 + blessVal('wallRotate')) * deltaTime);
                 if (this.currentHealth >= this.maxHealth * WARRIOR.rotateBackAbove) this.resting = false;
             }
         }
@@ -445,9 +555,13 @@ class Soldier extends SummonUnit {
         if (this.tier >= 3 && (t.isElite || t instanceof BossMonster)) dmg *= SOLDIER_TIER3_ELITE_MULT;
         if (c.type === 'Crossbowman') {
             const targets = [t];
-            if (this.tier >= 2) {
-                const other = monsterGrid.nearestShared(t.pos, this.attackRange);
-                targets.push(other && other !== t && other.isAlive ? other : t);
+            const extra = (this.tier >= 2 ? 1 : 0) + bl('bowVolley');
+            if (extra > 0) {
+                const others = [];
+                const rSq = this.attackRangeSq;
+                monsterGrid.forEachInRadius(this.pos, this.attackRange, m => { if (m.isAlive && m !== t && !m.stealthed && distanceSq(this.pos, m.pos) <= rSq) others.push(m); });
+                others.sort((a, b) => distanceSq(this.pos, a.pos) - distanceSq(this.pos, b.pos));
+                for (let i = 0; i < extra; i++) targets.push(others[i] || t);
             }
             for (const target of targets) {
                 const pr = getProjectileFromPool();
@@ -455,16 +569,17 @@ class Soldier extends SummonUnit {
                 gameState.projectiles.push(pr);
             }
         } else {
-            if (c.bigMult && (t instanceof BossMonster || t.flying || t.radius >= c.bigRadius)) dmg *= c.bigMult;
+            if (c.bigMult && (t instanceof BossMonster || t.flying || t.radius >= c.bigRadius)) dmg *= c.bigMult + blessVal('spearBrace');
             t.takeDamage(dmg);
             this.healFromDamage(dmg);
             this.onHit(t);
-            if (c.type === 'Spearman' && this.tier >= 2) {
+            const pierce = c.type === 'Spearman' ? (this.tier >= 2 ? 1 : 0) + bl('spearSweep') : 0;
+            if (pierce > 0) {
                 const rSq = SPEAR_PIERCE_RADIUS * SPEAR_PIERCE_RADIUS;
-                let done = false;
+                let left = pierce;
                 monsterGrid.forEachInRadius(t.pos, SPEAR_PIERCE_RADIUS, m => {
-                    if (done || m === t || !m.isAlive || distanceSq(t.pos, m.pos) > rSq) return;
-                    m.takeDamage(dmg); this.onHit(m); done = true;
+                    if (left <= 0 || m === t || !m.isAlive || distanceSq(t.pos, m.pos) > rSq) return;
+                    m.takeDamage(dmg); this.onHit(m); left--;
                 });
             }
             const fx = getVisualEffectFromPool(SlashEffect);
@@ -476,7 +591,7 @@ class Soldier extends SummonUnit {
     onHit(m) {
         if (m.isAlive) return;
         this.kills++;
-        const v = WARRIOR.vetKills.filter(k => this.kills >= k).length;
+        const v = vetFromKills(this.kills);
         if (v <= this.vet) return;
         this.vet = v;
         this.refreshStats();
@@ -484,16 +599,29 @@ class Soldier extends SummonUnit {
     }
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
-        if (this.config.type === 'Shieldman' && this.tier >= 3 && this.blockT <= 0) {
-            this.blockT = WARRIOR.blockEvery;
+        const shield = this.config.type === 'Shieldman';
+        // 格擋：三階盾兵每 4 秒一次；共鳴「鐵壁」讓所有盾兵每 2 秒一次
+        const blockEvery = shield && res('shieldwall') >= 2 ? RES_IRONWALL_BLOCK : shield && this.tier >= 3 ? WARRIOR.blockEvery : 0;
+        if (blockEvery && this.blockT <= 0) {
+            this.blockT = blockEvery;
             spawnParticles(this.pos.x, this.pos.y, '#ECEFF1', 6, 60, 0.3, 2);
             return;
         }
-        let k = this.config.type === 'Shieldman' && this.tier >= 1 ? SOLDIER_TIER1_TAKEN : 1;
+        let k = (shield && this.tier >= 1 ? SOLDIER_TIER1_TAKEN : 1) * turtleTaken();
         // 從陣型背後打來的加倍
         if (source && source.pos) {
             const w = warState(), p = gameState.player;
             if ((source.pos.x - p.pos.x) * w.fx + (source.pos.y - p.pos.y) * w.fy < 0) k *= WARRIOR.flankMult;
+            // 尖刺盾：近戰打到盾兵的反彈回去
+            if (shield && bl('wallSpikes') && source instanceof Monster && source.isAlive) source.takeDamage(amount * blessVal('wallSpikes'));
+        }
+        // 鷹旗：戰士身邊的士兵受致命傷時，每波撐住一次
+        if (bl('aquila') && !this.aquilaUsed && this.currentHealth - amount * k <= 0 && distanceSq(this.pos, gameState.player.pos) <= AQUILA_RADIUS * AQUILA_RADIUS) {
+            this.aquilaUsed = true;
+            this.currentHealth = Math.max(1, Math.round(this.maxHealth * BLESSINGS.aquila.per));
+            this.hitFlash = CONFIG.visuals.hitFlashDuration;
+            spawnFloatText(this.pos.x, this.pos.y - 20, '鷹旗', '#FFE082', 12, 1.0, 'aquila');
+            return;
         }
         super.takeDamage(amount * k);
     }
@@ -501,6 +629,8 @@ class Soldier extends SummonUnit {
         if (!this.isAlive) return;
         this.isAlive = false;
         gameState.units[this.config.type].count--;
+        // 英靈殿：有星星的老兵下一波歸隊
+        if (bl('valhalla') && this.vet > 0) warState().fallen.push({ type: this.config.type, kills: this.kills });
         onSummonDeath(this);
         addRage(WARRIOR.ragePerFallen);
         spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 10, 70, 0.45);
@@ -515,6 +645,68 @@ class Soldier extends SummonUnit {
         for (let i = 0; i < this.vet; i++) ctx.drawImage(star, this.pos.x - this.vet * 4 + i * 8, y, 8, 8);
     }
 }
+// 共鳴「槍林」：陣型前方一整排被長槍刺一輪（傷害＝場上長槍兵平均攻擊力）
+function spearWall(p, w) {
+    const spears = gameState.summons.filter(s => s.isAlive && s instanceof Spearman && !s.resting);
+    if (!spears.length) return;
+    const dmg = spears.reduce((a, s) => a + s.attack, 0) / spears.length;
+    const halfW = WARRIOR.rowSize * WARRIOR.colGap / 2, from = WARRIOR.frontDist - WARRIOR.rowGap, to = WARRIOR.frontDist + RES_SPEARWALL_LENGTH;
+    let any = false;
+    for (const m of gameState.monsters) {
+        if (!m.isAlive || m.stealthed) continue;
+        const dx = m.pos.x - p.pos.x, dy = m.pos.y - p.pos.y;
+        const along = dx * w.fx + dy * w.fy, side = Math.abs(dx * -w.fy + dy * w.fx);
+        if (along < from || along > to || side > halfW) continue;
+        m.takeDamage(dmg);
+        any = true;
+    }
+    if (!any) return;
+    const fx = new JavelinEffect(spears.map(s => ({ x: s.pos.x, y: s.pos.y })), w.fx, w.fy, RES_SPEARWALL_LENGTH, 0.15);
+    gameState.visualEffects.push(fx);
+}
+// 共鳴「箭雨」：射程內最密的一群怪被所有弩手齊射一輪
+function arrowRain(p) {
+    const bows = gameState.summons.filter(s => s.isAlive && s instanceof Crossbowman);
+    if (!bows.length) return;
+    const near = gameState.monsters.filter(m => m.isAlive && !m.stealthed && distanceSq(m.pos, p.pos) <= RES_ARROWRAIN_RANGE * RES_ARROWRAIN_RANGE);
+    if (!near.length) return;
+    const rSq = RES_ARROWRAIN_RADIUS * RES_ARROWRAIN_RADIUS;
+    let best = near[0], bestN = 0;
+    for (const m of near) {
+        let n = 0;
+        for (const o of near) if (distanceSq(m.pos, o.pos) <= rSq) n++;
+        if (n > bestN) { bestN = n; best = m; }
+    }
+    const dmg = bows.reduce((a, s) => a + s.attack, 0) * RES_ARROWRAIN_SHARE;
+    const c = { x: best.pos.x, y: best.pos.y };
+    for (const m of near) if (distanceSq(m.pos, c) <= rSq) m.takeDamage(dmg);
+    gameState.visualEffects.push(new ArrowRainEffect(c, RES_ARROWRAIN_RADIUS));
+}
+class ArrowRainEffect extends TimedEffect {
+    constructor(pos, radius) {
+        super(pos, 0.45);
+        this.radius = radius;
+        this.drops = Array.from({ length: 14 }, () => { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius; return { x: Math.cos(a) * r, y: Math.sin(a) * r, d: Math.random() * 0.2 }; });
+    }
+    draw(ctx) {
+        const t = this.duration - this.life;
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.25 * Math.min(1, this.life * 4);
+        ctx.fillStyle = '#8D6E63';
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+        for (const d of this.drops) {
+            const k = Math.min(1, Math.max(0, (t - d.d) / 0.15));
+            if (k <= 0) continue;
+            const x = this.pos.x + d.x, y = this.pos.y + d.y - (1 - k) * 60;
+            ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.moveTo(x - 3, y - 14); ctx.lineTo(x, y); ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+
 class Shieldman extends Soldier { constructor(x, y, level, p) { super(x, y, CONFIG.shieldman, level, p); } }
 class Spearman extends Soldier { constructor(x, y, level, p) { super(x, y, CONFIG.spearman, level, p); } }
 class Crossbowman extends Soldier { constructor(x, y, level, p) { super(x, y, CONFIG.crossbowman, level, p); } }

@@ -1,5 +1,5 @@
 // 介面檢查：用「實際玩家手機」的條件截出各個畫面，改了介面就跑一次看有沒有字撐破框。
-// 用法：node tools/ui-check.mjs <遊戲網址> <輸出資料夾> [字體放大倍率] [寬] [高]
+// 用法：node tools/ui-check.mjs <遊戲網址> <輸出資料夾> [字體放大倍率] [寬] [高] [職業 id，預設 necro]
 //
 // 預設條件取自一支玩家手機在 LINE 內建瀏覽器裡的實機截圖（2026-11 回報）：
 //   可用畫面約 408×673 CSS px（比一般測試用的 390×780 寬一點、矮很多），
@@ -14,6 +14,7 @@ const URL = process.argv[2];
 const OUT = process.argv[3];
 const SCALE = Number(process.argv[4] || 1.8);
 const W = Number(process.argv[5] || 408), H = Number(process.argv[6] || 673);
+const CLASS = process.argv[7] || 'necro';
 // 實機截圖量出來的每 CSS px 像素數
 const DPR = 2.25;
 if (!URL || !OUT) { console.error('usage: node tools/ui-check.mjs <url> <out-dir> [scale] [width] [height]'); process.exit(1); }
@@ -42,22 +43,42 @@ console.log('measured zoom:', await page.evaluate(() => window.__measuredZoom));
 const shot = async (name) => { await page.waitForTimeout(600); await page.screenshot({ path: join(OUT, `${name}.png`) }); console.log(join(OUT, `${name}.png`)); };
 await shot('1-title');
 // 戰鬥中：數字盡量撐到最寬（三位數兵數、二位數等級、帶兩位數的血量）
-await page.evaluate(() => {
-    meta.tutorialDone = true; resetGame(); enterPlaying(); tutorial = null;
+await page.evaluate((cls) => {
+    meta.tutorialDone = true;
+    meta.classSel = cls;
+    if (CLASSES[cls].unlock) meta.achv[CLASSES[cls].unlock] = true;
+    resetGame(); enterPlaying(); tutorial = null;
     gameState.currentWave = 21; prepareNextWave(); gameState.banner = null;
     gameState.souls = 1e6;
-    for (let i = 0; i < 9; i++) tryUpgrade('SkeletonWarrior');
-    for (let i = 0; i < 25; i++) tryUpgrade('EyeMonster');
-    for (let i = 0; i < 117; i++) trySummon('SkeletonWarrior');
-    for (let i = 0; i < 209; i++) trySummon('EyeMonster');
-    for (let i = 0; i < 5; i++) trySummon('Wraith');
+    const [a, b, c] = CLASSES[cls].cards;
+    for (let i = 0; i < 9; i++) tryUpgrade(a);
+    for (let i = 0; i < 25; i++) tryUpgrade(c);
+    for (let i = 0; i < 117; i++) trySummon(a);
+    for (let i = 0; i < 209; i++) trySummon(c);
+    for (let i = 0; i < 5; i++) trySummon(b);
     gameState.souls = 16100; updateUI();
-});
+}, CLASS);
 await shot('2-playing');
-await page.evaluate(() => { gameState.pendingDraft = { options: ['cleave', 'eagleEye', 'frenzyTime'] }; gameState.banishLeft = 1; openDraft(); });
+// 抽卡：說明最長的那幾張（最容易撐破框）
+const longest = (n) => page.evaluate(([cls, n]) => Object.keys(BLESSINGS).filter(id => !BLESSINGS[id].legendary && CLASSES[cls].schools.includes(BLESSINGS[id].school))
+    .sort((x, y) => BLESSINGS[y].desc(BLESSINGS[y]).length - BLESSINGS[x].desc(BLESSINGS[x]).length).slice(0, n), [CLASS, n]);
+const three = CLASS === 'necro' ? ['cleave', 'eagleEye', 'frenzyTime'] : await longest(3);
+const four = CLASS === 'necro' ? ['auraMight', 'giantBones', 'soulVolley', 'pact'] : await longest(4);
+await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; gameState.banishLeft = 1; openDraft(); }, three);
 await shot('3-draft');
-await page.evaluate(() => { gameState.pendingDraft = { options: ['auraMight', 'giantBones', 'soulVolley', 'pact'] }; renderDraftCards(); });
+await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; renderDraftCards(); }, four);
 await shot('4-draft-four');
+// 傳說與共鳴都要看得到：塞滿這個職業每個流派到 6 層
+await page.evaluate((cls) => {
+    for (const s of CLASSES[cls].schools) {
+        const ids = Object.keys(BLESSINGS).filter(id => BLESSINGS[id].school === s && !BLESSINGS[id].legendary);
+        for (let k = 0; k < 6; k++) { const id = ids[k % ids.length]; if (bl(id) < BLESSINGS[id].max) { gameState.pendingDraft = { options: [id] }; pickBlessing(id); } }
+    }
+    const leg = Object.keys(BLESSINGS).filter(id => BLESSINGS[id].legendary && CLASSES[cls].schools.includes(BLESSINGS[id].school));
+    // 職業專屬的傳說排在共用（靈魂流派）的後面
+    gameState.pendingDraft = { options: leg.slice(-3), boss: true }; renderDraftCards(); showScreen(uiElements.draftScreen, true); gameState.draftOpen = true;
+}, CLASS);
+await shot('4b-draft-legend');
 await page.evaluate(() => { gameState.draftOpen = false; showScreen(uiElements.draftScreen, false); togglePause(); });
 await shot('5-pause');
 await page.evaluate(() => { togglePause(); gameState.gameOver = true; showGameOver('died'); });

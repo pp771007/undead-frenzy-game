@@ -50,6 +50,71 @@ const ICON_BODIES = {
         <circle cx="45" cy="48" r="10" fill="#ffd54f"/><circle cx="45" cy="48" r="5.5" stroke="#e0a82e" stroke-width="2.5"/>`,
     flame: `<path d="M32 58 C17 58 11 46 15 35 C18 27 24 24 25 14 C34 20 37 26 37 32 C41 28 42 23 41 17 C51 26 54 38 50 47 C47 54 40 58 32 58 Z" fill="#ff8a3d"/>
         <path d="M32 53 C25 53 22 47 25 41 C27 37 31 35 32 30 C37 35 40 40 39 46 C38 50 36 53 32 53 Z" fill="#ffd54f" stroke="none"/>`,
+    // ---- 戰士的五個流派（warrior.js）----
+    // 流派「軍團紀律」：紅底金邊的軍旗
+    legion: `<path d="M16 6 L16 60" stroke-width="4"/><path d="M16 8 L52 8 L52 40 L16 40 Z" fill="#c62828"/><path d="M16 40 L22 46 L28 40 L34 46 L40 40 L46 46 L52 40" stroke="#ffd54f" stroke-width="3"/>
+        <path d="M34 16 L37 22 L44 23 L39 28 L40 35 L34 31 L28 35 L29 28 L24 23 L31 22 Z" fill="#ffd54f" stroke-width="2"/><circle cx="16" cy="6" r="4" fill="#ffd54f" stroke-width="2.5"/>`,
+    // 盾牆
+    wallThick: `<circle cx="32" cy="32" r="27" fill="#607d8b"/><circle cx="32" cy="32" r="21" fill="#90a4ae" stroke-width="3"/><circle cx="32" cy="32" r="14" fill="#b0bec5" stroke-width="3"/>
+        <circle cx="32" cy="32" r="5" fill="#eceff1" stroke-width="2.5"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return `<circle cx="${(32 + Math.cos(a) * 24).toFixed(1)}" cy="${(32 + Math.sin(a) * 24).toFixed(1)}" r="2" fill="#eceff1" stroke="none"/>`; }).join('')}${shine(22, 20, 4, 2.5)}`,
+    wallSpikes: `${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<path d="M${(32 + Math.cos(a - 0.2) * 20).toFixed(1)} ${(32 + Math.sin(a - 0.2) * 20).toFixed(1)} L${(32 + Math.cos(a) * 30).toFixed(1)} ${(32 + Math.sin(a) * 30).toFixed(1)} L${(32 + Math.cos(a + 0.2) * 20).toFixed(1)} ${(32 + Math.sin(a + 0.2) * 20).toFixed(1)} Z" fill="#cfd8dc" stroke-width="2.5"/>`; }).join('')}
+        <circle cx="32" cy="32" r="20" fill="#78909c"/><circle cx="32" cy="32" r="7" fill="#e5484d" stroke-width="2.5"/>`,
+    wallTaunt: `<path d="M8 10 L36 4 L36 50 C26 56 14 52 8 44 Z" fill="#90a4ae"/><path d="M20 16 L22 32 M21 38 L21 41" stroke="#e5484d" stroke-width="5"/>
+        <path d="M44 20 C48 24 48 32 44 36 M50 14 C57 22 57 34 50 42 M56 8 C66 20 66 36 56 48" stroke="#ffcc80" stroke-width="3"/>`,
+    wallRotate: `<path d="M8 14 L26 10 L26 40 C20 44 12 42 8 36 Z" fill="#90a4ae"/><path d="M38 24 L56 20 L56 50 C50 54 42 52 38 46 Z" fill="#78909c"/>
+        <path d="M30 6 C44 4 52 10 54 16" stroke="#81c784" stroke-width="3.5"/><path d="M54 16 L48 14 L54 9 Z" fill="#81c784" stroke-width="2"/>
+        <path d="M34 58 C20 60 12 54 10 48" stroke="#81c784" stroke-width="3.5"/><path d="M10 48 L16 50 L10 55 Z" fill="#81c784" stroke-width="2"/>`,
+    // 長槍方陣
+    spearLength: `<path d="M4 60 L56 8" stroke-width="5"/><path d="M4 60 L56 8" stroke="#8d6e63" stroke-width="2.5"/><path d="M56 8 L62 2 L60 14 L50 14 Z" fill="#cfd8dc"/>
+        <path d="M14 40 L20 46 M24 30 L30 36 M34 20 L40 26" stroke="#ffd54f" stroke-width="3"/>`,
+    spearPower: `<path d="M10 14 L38 10 L44 46 C34 54 20 54 12 46 Z" fill="#90a4ae"/><path d="M26 18 L30 30 L22 36 L30 48" stroke-width="3"/>
+        <path d="M60 4 L34 30" stroke-width="5"/><path d="M60 4 L34 30" stroke="#8d6e63" stroke-width="2.5"/><path d="M34 30 L26 34 L30 26 Z" fill="#eceff1" stroke-width="2.5"/>${'<circle cx="24" cy="34" r="2.5" fill="#ffd54f" stroke="none"/>'}`,
+    spearBrace: `<path d="M8 54 L56 54" stroke-width="5"/><path d="M8 54 L56 54" stroke="#6d4c41" stroke-width="2.5"/>
+        <path d="M12 56 L30 14 M26 56 L44 14 M40 56 L58 14 M52 56 L34 14 M38 56 L20 14 M24 56 L6 14" stroke-width="4"/>
+        <path d="M12 56 L30 14 M26 56 L44 14 M40 56 L58 14 M52 56 L34 14 M38 56 L20 14 M24 56 L6 14" stroke="#a1887f" stroke-width="2"/>`,
+    spearSweep: `<circle cx="22" cy="38" r="10" fill="#ef9a9a"/><circle cx="40" cy="26" r="10" fill="#ef9a9a"/><circle cx="19" cy="36" r="1.8" fill="#1b1424" stroke="none"/><circle cx="37" cy="24" r="1.8" fill="#1b1424" stroke="none"/>
+        <path d="M4 52 L58 10" stroke-width="5"/><path d="M4 52 L58 10" stroke="#8d6e63" stroke-width="2.5"/><path d="M58 10 L62 4 L62 14 L54 14 Z" fill="#cfd8dc" stroke-width="2.5"/>`,
+    // 弩陣
+    bowReload: `<path d="M10 30 C16 16 40 16 46 30" stroke-width="5"/><path d="M10 30 C16 16 40 16 46 30" stroke="#8d6e63" stroke-width="2.5"/><path d="M28 18 L28 52" stroke-width="5"/><path d="M28 18 L28 52" stroke="#a1887f" stroke-width="2.5"/>
+        <path d="M10 30 L28 36 L46 30" stroke="#eceff1" stroke-width="1.8"/>
+        <path d="M50 40 C60 40 62 52 54 58 C48 62 40 58 40 52" stroke="#81c784" stroke-width="3.5"/><path d="M40 52 L36 46 L44 46 Z" fill="#81c784" stroke-width="2"/>`,
+    bowPower: `<path d="M6 34 C12 14 52 14 58 34" stroke-width="7"/><path d="M6 34 C12 14 52 14 58 34" stroke="#5d4037" stroke-width="4"/><path d="M32 18 L32 58" stroke-width="7"/><path d="M32 18 L32 58" stroke="#8d6e63" stroke-width="4"/>
+        <path d="M6 34 L32 40 L58 34" stroke="#eceff1" stroke-width="2"/><path d="M32 4 L38 14 L26 14 Z" fill="#b0bec5"/><rect x="24" y="44" width="16" height="10" rx="2" fill="#78909c"/>`,
+    bowRange: `<path d="M4 44 C8 32 24 32 28 44" stroke-width="4"/><path d="M4 44 C8 32 24 32 28 44" stroke="#8d6e63" stroke-width="2"/><path d="M16 36 L16 60" stroke-width="4"/>
+        <path d="M20 30 L30 22 M36 18 L44 12" stroke="#ffd54f" stroke-width="3" stroke-dasharray="3 4"/><circle cx="54" cy="10" r="7" fill="#e5484d"/><circle cx="54" cy="10" r="3" fill="#fff8e1" stroke-width="2"/>`,
+    bowVolley: `<path d="M6 46 C10 34 26 34 30 46" stroke-width="4"/><path d="M6 46 C10 34 26 34 30 46" stroke="#8d6e63" stroke-width="2"/><path d="M18 38 L18 62" stroke-width="4"/>
+        ${[[50, 8], [58, 26], [44, 22]].map(([x, y]) => `<path d="M20 34 L${x} ${y}" stroke="#cfd8dc" stroke-width="2.5"/><path d="M${x} ${y} L${x - 7} ${y - 1} L${x - 3} ${y + 5} Z" fill="#eceff1" stroke-width="2"/>`).join('')}`,
+    // 狂戰
+    rageGain: `<path d="M32 60 C16 60 8 48 14 34 C18 26 18 18 14 6 C24 12 30 20 30 28 C34 22 36 16 36 8 C48 18 54 32 48 46 C44 54 40 60 32 60 Z" fill="#e53935"/>
+        <path d="M32 54 C24 54 20 46 24 38 C26 34 28 32 28 26 C34 30 38 36 38 42 C38 48 36 54 32 54 Z" fill="#ffab40" stroke="none"/>${duoStroke('M48 26 L58 16 M58 16 L50 16 M58 16 L58 24', '#ffd54f', 3)}`,
+    rageLength: `<path d="M16 6 L48 6 M16 58 L48 58" stroke-width="5"/><path d="M19 8 C19 22 30 26 30 32 C30 38 19 42 19 56 L45 56 C45 42 34 38 34 32 C34 26 45 22 45 8 Z" fill="#ffcdd2"/>
+        <path d="M23 18 L41 18 C40 25 34 28 32 31 C30 28 24 25 23 18 Z" fill="#c62828" stroke="none"/><path d="M22 54 C24 44 40 44 42 54 Z" fill="#c62828" stroke="none"/><path d="M32 33 L32 46" stroke="#c62828" stroke-width="2"/>`,
+    rageCleave: `<circle cx="32" cy="32" r="24" stroke="#ef9a9a" stroke-width="3" stroke-dasharray="8 6"/>
+        <path d="M14 50 L44 20" stroke-width="7"/><path d="M14 50 L44 20" stroke="#cfd8dc" stroke-width="4"/><path d="M44 20 L54 10 L52 22 Z" fill="#eceff1" stroke-width="2.5"/>
+        <path d="M10 46 L18 54" stroke-width="5"/><path d="M10 46 L18 54" stroke="#ffd54f" stroke-width="2.5"/><path d="M6 58 L12 52" stroke-width="5"/><path d="M6 58 L12 52" stroke="#6d4c41" stroke-width="2.5"/>`,
+    rageLeech: `<path d="M8 8 L36 36" stroke-width="7"/><path d="M8 8 L36 36" stroke="#cfd8dc" stroke-width="4"/><path d="M34 30 L42 38 M38 34 L32 40" stroke-width="5"/>
+        <path d="M40 40 C40 44 42 46 42 48 C42 50 40 52 40 52 C40 52 38 50 38 48 C38 46 40 44 40 40 Z" fill="#c62828" stroke-width="2"/>
+        <path d="M46 62 C34 54 30 46 35 40 C39 35 44 37 46 41 C48 37 53 35 57 40 C62 46 58 54 46 62 Z" fill="#e53935"/>`,
+    // 軍團紀律
+    legionCap: `${[[16, 36], [32, 30], [48, 36]].map(([x, y]) => `<path d="M${x - 10} ${y + 6} C${x - 10} ${y - 8} ${x + 10} ${y - 8} ${x + 10} ${y + 6} Z" fill="#90a4ae"/><path d="M${x} ${y - 6} L${x} ${y - 12}" stroke="#c62828" stroke-width="4"/>`).join('')}
+        <path d="M4 50 L60 50" stroke-width="4"/>${duoStroke('M50 8 L50 22 M43 15 L57 15', '#81c784', 3.5)}`,
+    legionDrill: `<path d="M32 22 L32 60" stroke-width="5"/><path d="M32 22 L32 60" stroke="#8d6e63" stroke-width="2.5"/><path d="M14 30 L50 30" stroke-width="5"/><path d="M14 30 L50 30" stroke="#8d6e63" stroke-width="2.5"/>
+        <ellipse cx="32" cy="38" rx="10" ry="14" fill="#ffe082"/><circle cx="32" cy="14" r="9" fill="#ffe082"/><path d="M26 34 L38 42 M38 34 L26 42" stroke="#a1887f" stroke-width="2"/>
+        <path d="M48 46 L58 56 M52 44 L60 52" stroke="#cfd8dc" stroke-width="3"/>`,
+    legionPay: `<ellipse cx="32" cy="50" rx="18" ry="6" fill="#e0a82e"/><ellipse cx="32" cy="42" rx="18" ry="6" fill="#ffd54f"/><ellipse cx="32" cy="34" rx="18" ry="6" fill="#e0a82e"/><ellipse cx="32" cy="26" rx="18" ry="6" fill="#ffd54f"/>
+        <path d="M6 8 L22 22 M58 8 L42 22" stroke-width="5"/><path d="M6 8 L22 22 M58 8 L42 22" stroke="#cfd8dc" stroke-width="2.5"/>${shine(26, 24, 4, 2)}`,
+    legionVet: `<path d="M20 4 L32 18 L44 4 L44 14 L32 28 L20 14 Z" fill="#c62828"/><circle cx="32" cy="42" r="16" fill="#ffd54f"/>
+        <path d="${starPath(32, 42, 10, 4.5, 5)}" fill="#fff8e1" stroke-width="2.5"/><path d="M22 58 L32 52 L42 58" stroke="#e0a82e" stroke-width="3"/>`,
+    // 傳說
+    valhalla: `<path d="M8 36 C2 24 6 12 14 10 C12 20 16 28 22 30 Z M56 36 C62 24 58 12 50 10 C52 20 48 28 42 30 Z" fill="#fff8e1"/>
+        <path d="M32 12 C18 12 14 24 14 36 L50 36 C50 24 46 12 32 12 Z" fill="#ffd54f"/><rect x="12" y="34" width="40" height="8" rx="2" fill="#e0a82e"/>
+        <path d="M18 42 L18 52 C24 58 40 58 46 52 L46 42" fill="#b0bec5"/>${[[32, 4, 4], [6, 52, 3], [58, 50, 3]].map(([x, y, r]) => `<path d="${starPath(x, y, r, r * 0.35, 4)}" fill="#fff8e1" stroke-width="1.5"/>`).join('')}`,
+    aquila: `<path d="M32 26 L32 62" stroke-width="5"/><path d="M32 26 L32 62" stroke="#8d6e63" stroke-width="2.5"/><rect x="22" y="38" width="20" height="14" rx="2" fill="#c62828"/>
+        <path d="M32 24 C24 12 10 10 4 14 C10 16 14 20 16 24 C22 22 28 24 32 28 C36 24 42 22 48 24 C50 20 54 16 60 14 C54 10 40 12 32 24 Z" fill="#ffd54f"/>
+        <circle cx="32" cy="14" r="5" fill="#ffd54f"/><path d="M36 14 L40 16 L36 17 Z" fill="#e0a82e" stroke-width="2"/>`,
+    spartans: `<path d="M8 34 C8 14 56 14 56 34 L56 46 C50 50 46 56 44 60 L20 60 C18 56 14 50 8 46 Z" fill="#e0a82e"/>
+        <path d="M24 34 L24 50 M40 34 L40 50" stroke-width="4"/><path d="M14 30 L50 30" stroke-width="4"/>
+        <path d="M10 18 C14 4 50 4 54 18 C46 12 18 12 10 18 Z" fill="#c62828"/>${shine(20, 26, 4, 2.5)}`,
     // 戰士的大招：兩支交叉擲出的標槍
     javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
         <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>

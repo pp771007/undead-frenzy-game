@@ -859,7 +859,7 @@ function buildAchievements() {
         const name = CONFIG.evolution.names[type][t];
         add('army', `evo_${type}_${t + 1}`, name, `升到 Lv${lv}，進化成${name}`, 15 + t * 20, () => gameState.units[type].level >= lv);
     });
-    for (const s of Object.keys(SCHOOLS)) SCHOOLS[s].res.forEach((r, t) => add('resonance', t === 1 ? `res_${s}` : `res1_${s}`, r.name, `${SCHOOLS[s].name}流派疊到 ${RESONANCE_STEPS[t]} 層`, t === 1 ? 40 : 15, () => res(s) >= t + 1));
+    for (const s of CLASSES.necro.schools) SCHOOLS[s].res.forEach((r, t) => add('resonance', t === 1 ? `res_${s}` : `res1_${s}`, r.name, `${SCHOOLS[s].name}流派疊到 ${RESONANCE_STEPS[t]} 層`, t === 1 ? 40 : 15, () => res(s) >= t + 1));
     for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary)) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
     add('legend', 'legends', '傳說加身', `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, 40, () => countTaken(b => b.legendary) >= ACHV_LEGENDS);
     add('legend', 'legendAll', '萬古傳說', '每一張傳說祝福都拿過', 120, () => Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary).every(b => S().legends[b]));
@@ -989,7 +989,8 @@ const UNIT_TYPES = {
 //   saveExtra()／loadExtra(data)：存檔時多存、讀檔重建召喚物後還原的東西
 //   onRunStart()：開新局（不是讀檔）時跑一次，例如開局就帶的兵
 //   blockBolt(bolt)：射向主角的血彈飛行途中每格問一次，回傳 true 就被擋下（戰士的盾兵）
-//   onUpgrade(type)：底部卡片升級成功之後
+//   onUpgrade(type)：底部卡片升級成功之後；upgradeCostMult()：升級費用倍率
+//   onWaveStart()：每一波開始時
 const CLASSES = {
     necro: {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
@@ -5241,6 +5242,7 @@ function prepareNextWave() {
     gameState.spawnQueue = buildWaveQueue(waveNum);
     gameState.spawnTimer = CONFIG.wave.firstSpawnDelay;
     gameState.run.waveKills = 0;
+    if (classDef().onWaveStart) classDef().onWaveStart();
     gameState.run.flags.waveHit = false;
     gameState.waveStartAt = worldTime;
     gameState.lastWaveSouls = gameState.waveSouls;
@@ -6131,11 +6133,17 @@ function announceEvolution(type, tier) {
     Sfx.play('evolve');
 }
 
+// 升級要花多少（職業可以打折，例如戰士的軍餉）
+function getUpgradeCost(type) {
+    const c = classDef();
+    return Math.max(1, Math.round(gameState.units[type].upgradeCost * (c.upgradeCostMult ? c.upgradeCostMult() : 1)));
+}
+
 function tryUpgrade(type, combo = 0) {
     if (!UNIT_TYPES[type] || !unitAllowed(type)) return false;
     if (gameState.draftOpen) return false;
     const unit = gameState.units[type];
-    const cost = unit.upgradeCost;
+    const cost = getUpgradeCost(type);
 
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
@@ -6475,7 +6483,7 @@ function updateUI() {
         const el = u.el, unit = gameState.units[u.type];
         const level = unit.level;
         const summonCost = getSummonCost(UNIT_TYPES[u.type].cfg());
-        const upgradeCost = unit.upgradeCost;
+        const upgradeCost = getUpgradeCost(u.type);
         setTextIfChanged(el.level, String(level));
         setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
         setTextIfChanged(el.count, formatNumberK(unit.count));
