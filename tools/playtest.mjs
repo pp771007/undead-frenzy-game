@@ -46,7 +46,9 @@ for (;;) {
     r = await page.evaluate((steps) => {
         const B = window.__bot, DT = 1 / 30, REACT = 0.4, DECIDE = 0.15, STUCK_SECONDS = 240, MAX_SECONDS = 3600;
         // 各職業三張卡的召喚比例
-        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3] };
+        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3] };
+        // 德魯伊：沒有要閃的東西時，離林地（最近一棵橡樹）超過這麼遠就走回去
+        const BOT_GROVE_RETURN = 110, BOT_GROVE_PLANT = 90;
         const noticed = (o) => { if (!B.seen.has(o)) B.seen.set(o, B.t); return B.t - B.seen.get(o) >= REACT; };
         for (let i = 0; i < steps; i++) {
             if (gameState.gameOver) return { over: true };
@@ -93,6 +95,12 @@ for (;;) {
                             if (nd > BOT_WAR_HOLD) { hx = ux; hy = uy; } else { hx = ux * 0.05; hy = uy * 0.05; }
                         }
                     }
+                    if (runClass() === 'druid' && Math.hypot(hx, hy) < 0.1) {
+                        let oak = null, od = Infinity;
+                        // 守著最老那棵（林地中心）：種樹也只種在它旁邊
+                        oak = eldestOak(); od = oak ? distanceSq(oak.pos, p.pos) : Infinity;
+                        if (oak && od > BOT_GROVE_RETURN * BOT_GROVE_RETURN) { hx = oak.pos.x - p.pos.x; hy = oak.pos.y - p.pos.y; }
+                    }
                     const relic = Math.hypot(hx, hy) < 0.1 && gameState.relics.find(x => !x.done && noticed(x));
                     if (relic) { hx = relic.x - p.pos.x; hy = relic.y - p.pos.y; }
                     else if (Math.hypot(hx, hy) < 0.1) { let best = null, bd = 1e9; for (const o of gameState.orbs) { const d = distanceSq(o.pos, p.pos); if (d < bd) { bd = d; best = o; } } if (best && bd < 250 * 250) { hx = (best.pos.x - p.pos.x) * 0.01; hy = (best.pos.y - p.pos.y) * 0.01; } }
@@ -117,6 +125,8 @@ for (;;) {
                     let pick = null;
                     if (open.length && runClass() === 'necro') { const x = Math.random(); pick = UNIT_UI[x < share[0] ? 0 : x < share[0] + share[1] ? 1 : 2].type; }
                     else if (open.length) pick = open.map(o => ({ type: o.type, k: gameState.units[o.type].count / share[o.i] })).sort((a, b) => a.k - b.k)[0].type;
+                    // 德魯伊：橡樹種在林地裡（離最近一棵 BOT_GROVE_PLANT 內），不要邊走邊種、種得東一棵西一棵
+                    if (pick === 'SacredOak' && eldestOak() && distanceSq(eldestOak().pos, p.pos) > BOT_GROVE_PLANT * BOT_GROVE_PLANT) pick = null;
                     if (!did && pick) did = trySummon(pick);
                     if (!did) break;
                 }

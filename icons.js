@@ -115,6 +115,86 @@ const ICON_BODIES = {
     spartans: `<path d="M8 34 C8 14 56 14 56 34 L56 46 C50 50 46 56 44 60 L20 60 C18 56 14 50 8 46 Z" fill="#e0a82e"/>
         <path d="M24 34 L24 50 M40 34 L40 50" stroke-width="4"/><path d="M14 30 L50 30" stroke-width="4"/>
         <path d="M10 18 C14 4 50 4 54 18 C46 12 18 12 10 18 Z" fill="#c62828"/>${shine(20, 26, 4, 2.5)}`,
+    // ---- 德魯伊（druid.js）----
+    // 大招「野性化身」：熊掌印
+    bearform: `<ellipse cx="32" cy="42" rx="16" ry="14" fill="#8d6e63"/>${[[14, 24, -20], [24, 15, -8], [40, 15, 8], [50, 24, 20]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="8" transform="rotate(${r} ${x} ${y})" fill="#8d6e63"/><path d="M${x} ${y - 8} L${x + r / 6} ${y - 14}" stroke-width="3"/>`).join('')}
+        <ellipse cx="32" cy="44" rx="9" ry="7" fill="#a1887f" stroke="none"/>${shine(26, 38, 4, 2.5)}`,
+    // 流派「荒野」：一叢帶刺的藤
+    thorns: `<path d="M10 58 C14 40 26 34 30 18 M30 18 C34 32 46 36 50 56 M30 30 C22 30 16 24 14 16 M38 38 C46 36 52 30 54 22" stroke-width="7"/>
+        <path d="M10 58 C14 40 26 34 30 18 M30 18 C34 32 46 36 50 56 M30 30 C22 30 16 24 14 16 M38 38 C46 36 52 30 54 22" stroke="#7cb342" stroke-width="3.5"/>
+        ${[[19, 42, -60], [27, 28, -40], [37, 30, 40], [45, 46, 60], [18, 22, -80], [48, 28, 70]].map(([x, y, r]) => `<path d="M${x} ${y} l${(Math.cos(r * Math.PI / 180) * 7).toFixed(1)} ${(Math.sin(r * Math.PI / 180) * 7).toFixed(1)}" stroke="#c5e1a5" stroke-width="2.5"/>`).join('')}`,
+    // 流派「四大節」：四色輪
+    wheel: `<circle cx="32" cy="32" r="26" fill="#3e2723"/>${['#b388ff', '#b2ff59', '#ff7043', '#ffd54f'].map((c, i) => { const a0 = i * Math.PI / 2 - Math.PI / 2, a1 = a0 + Math.PI / 2; return `<path d="M32 32 L${(32 + Math.cos(a0) * 22).toFixed(1)} ${(32 + Math.sin(a0) * 22).toFixed(1)} A22 22 0 0 1 ${(32 + Math.cos(a1) * 22).toFixed(1)} ${(32 + Math.sin(a1) * 22).toFixed(1)} Z" fill="${c}" stroke-width="2.5"/>`; }).join('')}
+        <circle cx="32" cy="32" r="6" fill="#ffecb3" stroke-width="3"/>`,
+    // 四大節
+    fest_samhain: `<path d="M8 40 C8 24 18 16 32 16 C46 16 56 24 56 40 C56 52 46 58 32 58 C18 58 8 52 8 40 Z" fill="#7e57c2"/><path d="M32 16 C30 10 34 6 38 6" stroke-width="3.5"/>
+        <path d="M18 34 L26 30 L26 38 Z M46 34 L38 30 L38 38 Z" fill="#ffe082" stroke-width="2"/><path d="M20 46 L24 50 L28 46 L32 50 L36 46 L40 50 L44 46" stroke="#ffe082" stroke-width="3"/>`,
+    fest_imbolc: `<path d="M32 60 L32 30" stroke-width="5"/><path d="M32 60 L32 30" stroke="#7cb342" stroke-width="2.5"/><path d="M32 46 C24 46 18 40 18 34 C26 34 32 40 32 46 Z" fill="#9ccc65" stroke-width="2.5"/>
+        <path d="M32 30 C22 30 18 18 24 8 C28 14 32 18 32 30 Z M32 30 C42 30 46 18 40 8 C36 14 32 18 32 30 Z" fill="#f5f5f5"/><path d="M32 30 C28 22 30 12 32 6 C34 12 36 22 32 30 Z" fill="#ffffff"/>${shine(26, 16, 2.5, 4)}`,
+    fest_beltane: `<path d="M10 58 L54 50 M10 50 L54 58" stroke-width="6"/><path d="M10 58 L54 50 M10 50 L54 58" stroke="#8d6e63" stroke-width="3"/>
+        <path d="M32 50 C18 50 14 38 20 28 C24 22 24 16 22 6 C32 12 36 20 36 26 C40 22 42 18 42 12 C52 22 52 36 46 44 C42 49 38 50 32 50 Z" fill="#ff7043"/>
+        <path d="M32 46 C26 46 24 40 26 34 C28 31 30 30 30 26 C35 29 38 34 37 39 C37 43 35 46 32 46 Z" fill="#ffd54f" stroke="none"/>`,
+    fest_lughnasadh: `${[-16, -8, 0, 8, 16].map(r => `<g transform="rotate(${r} 32 58)"><path d="M32 58 L32 18" stroke-width="4.5"/><path d="M32 58 L32 18" stroke="#c8a24a" stroke-width="2"/>
+        ${[0, 1, 2, 3].map(i => `<ellipse cx="${i % 2 ? 35 : 29}" cy="${12 + i * 5}" rx="3" ry="4.5" fill="#ffd54f" stroke-width="2"/>`).join('')}</g>`).join('')}
+        <path d="M22 44 C28 48 36 48 42 44" stroke="#c62828" stroke-width="5"/>`,
+    // 聖林
+    oakHp: `<rect x="26" y="34" width="12" height="24" rx="3" fill="#6d4c41"/><circle cx="32" cy="24" r="18" fill="#558b2f"/><circle cx="20" cy="30" r="10" fill="#689f38"/><circle cx="44" cy="30" r="10" fill="#689f38"/>
+        <path d="M28 44 C30 46 34 46 36 44 M28 50 L36 50" stroke="#3e2723" stroke-width="2"/><path d="M44 46 L56 46 L56 58 L44 58 Z" fill="#e5484d" stroke-width="2.5"/><path d="M50 49 L50 55 M47 52 L53 52" stroke="#fff" stroke-width="2.5"/>${shine(24, 16, 4, 2.5)}`,
+    oakGrowth: `<path d="M6 54 C16 48 48 48 58 54 L58 60 L6 60 Z" fill="#5d4037"/><path d="M32 52 L32 30" stroke-width="5"/><path d="M32 52 L32 30" stroke="#7cb342" stroke-width="2.5"/>
+        <path d="M32 36 C22 36 14 28 14 18 C24 18 32 26 32 36 Z M32 30 C42 30 50 22 50 12 C40 12 32 20 32 30 Z" fill="#9ccc65"/>${[[12, 44], [50, 42], [22, 56]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="#ffd54f" stroke="none"/>`).join('')}
+        ${duoStroke('M52 32 L52 22 M47 27 L52 22 L57 27', '#ffd54f', 2.5)}`,
+    groveSize: `${[[14, 28], [32, 22], [50, 28]].map(([x, y]) => `<rect x="${x - 3}" y="${y + 8}" width="6" height="14" fill="#6d4c41" stroke-width="2.5"/><circle cx="${x}" cy="${y}" r="10" fill="#689f38" stroke-width="3"/>`).join('')}
+        <ellipse cx="32" cy="52" rx="26" ry="7" fill="#33691e"/>${duoStroke('M32 46 L32 58 M26 52 L38 52', '#ffd54f', 3)}`,
+    oakHeal: `<path d="M4 20 C14 4 50 4 60 20 C50 18 14 18 4 20 Z" fill="#558b2f"/><path d="M32 18 L32 60" stroke-width="5"/><path d="M32 18 L32 60" stroke="#6d4c41" stroke-width="2.5"/>
+        ${[[16, 38], [48, 34], [24, 52], [44, 52]].map(([x, y]) => `<path d="M${x} ${y - 5} L${x} ${y + 5} M${x - 5} ${y} L${x + 5} ${y}" stroke="#81c784" stroke-width="3"/>`).join('')}`,
+    // 狼群
+    wolfFang: `<path d="M8 20 C20 12 44 12 56 20 L50 30 L44 22 L38 34 L32 22 L26 34 L20 22 L14 30 Z" fill="#eceff1"/><path d="M8 46 C20 54 44 54 56 46 L50 38 L44 44 L38 34 L32 44 L26 34 L20 44 L14 38 Z" fill="#eceff1"/>
+        <path d="M38 34 L40 42 M26 34 L24 42" stroke="#c62828" stroke-width="2.5"/>`,
+    packHunt: `${[[14, 22, 0.8], [50, 22, 0.8], [32, 40, 1]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z" fill="#90a4ae"/>
+        <circle cx="-5" cy="0" r="2" fill="#ffd54f" stroke="none"/><circle cx="5" cy="0" r="2" fill="#ffd54f" stroke="none"/><path d="M-2 7 L0 9 L2 7" stroke-width="2"/></g>`).join('')}`,
+    // 一串越跳越遠的狼爪印
+    wolfSpeed: `${[[16, 50, 0.7], [32, 36, 0.85], [50, 20, 1]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="4" rx="7" ry="6" fill="#b0bec5"/>${[[-7, -4], [-2.5, -8], [2.5, -8], [7, -4]].map(([a, b]) => `<ellipse cx="${a}" cy="${b}" rx="2.6" ry="3.4" fill="#b0bec5" stroke-width="2.5"/>`).join('')}</g>`).join('')}
+        <path d="M4 40 L12 32 M8 56 L18 46 M22 26 L30 18" stroke="#8fd3ff" stroke-width="3"/>`,
+    wolfCrit: `<path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke-width="7"/><path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke="#e53935" stroke-width="3.5"/>
+        <path d="${starPath(16, 16, 10, 4, 4)}" fill="#ffd54f" stroke-width="2.5"/>`,
+    // 巨熊
+    bearHide: `<path d="M8 22 C8 10 20 6 32 6 C44 6 56 10 56 22 L56 44 C56 54 46 60 32 60 C18 60 8 54 8 44 Z" fill="#795548"/><circle cx="14" cy="10" r="6" fill="#795548"/><circle cx="50" cy="10" r="6" fill="#795548"/>
+        <path d="M18 26 L46 26 M16 36 L48 36 M18 46 L46 46" stroke="#5d4037" stroke-width="3"/><path d="M26 20 L26 50 M38 20 L38 50" stroke="#a1887f" stroke-width="2"/>${shine(18, 18, 4, 2.5)}`,
+    bearMaul: `<ellipse cx="26" cy="40" rx="15" ry="13" fill="#8d6e63"/>${[[12, 24, -20], [22, 17, -8], [34, 18, 8], [42, 27, 20]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="5" ry="7" transform="rotate(${r} ${x} ${y})" fill="#8d6e63"/>`).join('')}
+        <ellipse cx="26" cy="42" rx="8" ry="6" fill="#a1887f" stroke="none"/>${[0, 1, 2].map(i => `<path d="M${42 + i * 6} ${10 + i * 3} L${52 + i * 4} ${30 + i * 4}" stroke="#ffccbc" stroke-width="3"/>`).join('')}`,
+    // 熊耳朵的時鐘：化身撐更久
+    bearTime: `<circle cx="13" cy="15" r="8" fill="#8d6e63"/><circle cx="51" cy="15" r="8" fill="#8d6e63"/><circle cx="32" cy="36" r="24" fill="#8d6e63"/><circle cx="32" cy="36" r="17" fill="#fff3e0"/>
+        <path d="M32 24 L32 36 L41 41" stroke-width="4"/>${[0, 1, 2, 3].map(i => { const a = i * Math.PI / 2; return `<circle cx="${(32 + Math.cos(a) * 13).toFixed(1)}" cy="${(36 + Math.sin(a) * 13).toFixed(1)}" r="1.6" fill="#1b1424" stroke="none"/>`; }).join('')}`,
+    bearStun: `${[[18, 18], [46, 18], [32, 10]].map(([x, y]) => `<path d="${starPath(x, y, 7, 3, 5)}" fill="#ffd54f" stroke-width="2"/>`).join('')}<ellipse cx="32" cy="44" rx="20" ry="14" fill="#ef9a9a"/>
+        <path d="M24 42 L28 46 M28 42 L24 46 M36 42 L40 46 M40 42 L36 46" stroke-width="2.5"/><path d="M26 52 C30 50 34 54 38 52" stroke-width="2.5"/>`,
+    // 荒野
+    seedPower: `${[[20, 24, -140], [44, 24, -40], [18, 44, 160], [46, 44, 20], [32, 16, -90], [32, 56, 90]].map(([x, y, r]) => { const c = Math.cos(r * Math.PI / 180), s = Math.sin(r * Math.PI / 180); return `<path d="M${(x - s * 4).toFixed(1)} ${(y + c * 4).toFixed(1)} L${(x + c * 10).toFixed(1)} ${(y + s * 10).toFixed(1)} L${(x + s * 4).toFixed(1)} ${(y - c * 4).toFixed(1)} Z" fill="#c5e1a5" stroke-width="2.5"/>`; }).join('')}
+        <ellipse cx="32" cy="36" rx="14" ry="18" fill="#7cb342"/><path d="M32 20 L32 52" stroke="#33691e" stroke-width="2.5"/>
+        <circle cx="44" cy="52" r="6" fill="#ab47bc" stroke-width="2.5"/>${shine(26, 28, 3, 5, 20)}`,
+    seedRoot: `<ellipse cx="32" cy="22" rx="12" ry="14" fill="#ef9a9a"/><circle cx="27" cy="20" r="2" fill="#1b1424" stroke="none"/><circle cx="37" cy="20" r="2" fill="#1b1424" stroke="none"/>
+        <path d="M8 58 C12 44 20 40 22 30 C28 34 36 34 42 30 C44 40 52 44 56 58" stroke-width="7"/><path d="M8 58 C12 44 20 40 22 30 C28 34 36 34 42 30 C44 40 52 44 56 58" stroke="#7cb342" stroke-width="3.5"/>
+        <path d="M18 34 C26 40 38 40 46 34" stroke="#7cb342" stroke-width="3"/>`,
+    seedCount: `${[[16, 40], [32, 30], [48, 40], [24, 54], [42, 54]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="5" ry="6.5" fill="#7cb342" stroke-width="2.5"/>`).join('')}
+        <path d="M10 18 C20 8 44 8 54 18" stroke="#c5e1a5" stroke-width="3" stroke-dasharray="4 4"/>`,
+    seedRadius: `<circle cx="32" cy="34" r="24" stroke="#9ccc65" stroke-width="3" stroke-dasharray="6 5"/>${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<path d="M32 34 Q${(32 + Math.cos(a + 0.5) * 12).toFixed(1)} ${(34 + Math.sin(a + 0.5) * 12).toFixed(1)} ${(32 + Math.cos(a) * 20).toFixed(1)} ${(34 + Math.sin(a) * 20).toFixed(1)}" stroke="#7cb342" stroke-width="3"/>`; }).join('')}
+        <circle cx="32" cy="34" r="5" fill="#558b2f" stroke-width="2.5"/>`,
+    // 四大節
+    festPower: `<path d="M20 60 L24 26 L40 26 L44 60 Z" fill="#eceff1"/><path d="M24 26 C24 16 40 16 40 26" fill="#eceff1"/><circle cx="32" cy="14" r="8" fill="#ffe0b2"/>
+        <path d="M12 8 L20 20 M52 8 L44 20" stroke="#ffd54f" stroke-width="3"/><path d="M16 40 L8 30" stroke-width="4"/><path d="M8 30 C4 24 10 20 12 24" fill="#9ccc65" stroke-width="2.5"/>
+        <path d="M44 38 L56 34" stroke-width="4"/><path d="M56 30 C60 30 60 38 56 38" stroke="#ffd54f" stroke-width="3"/>`,
+    festLinger: `<circle cx="24" cy="32" r="16" fill="#ff7043" opacity="0.55"/><circle cx="40" cy="32" r="16" fill="#ffd54f"/><path d="M24 16 C14 16 8 24 8 32 C8 40 14 48 24 48" stroke-width="3" stroke-dasharray="3 3"/>`,
+    festRenew: `<path d="M32 58 C22 52 12 42 12 30 C12 20 20 14 26 14 C30 14 32 18 32 18 C32 18 34 14 38 14 C44 14 52 20 52 30 C52 42 42 52 32 58 Z" fill="#9ccc65"/>
+        <path d="M32 50 L32 26 M24 34 L32 26 L40 34" stroke="#fff" stroke-width="3.5"/>`,
+    festOffering: `<path d="M8 50 L56 50 L50 60 L14 60 Z" fill="#bcaaa4"/><path d="M14 50 L14 44 L50 44 L50 50" fill="#d7ccc8"/>
+        <path d="M32 44 L32 24" stroke-width="4"/><path d="M32 24 C24 24 20 18 20 10 C28 10 32 16 32 24 Z M32 24 C40 24 44 18 44 10 C36 10 32 16 32 24 Z" fill="#9ccc65"/>${duoStroke('M50 30 L50 18 M45 23 L50 18 L55 23', '#ffd54f', 2.5)}`,
+    // 傳說
+    goldenSickle: `<path d="M44 14 C26 8 10 22 14 40 C20 28 32 22 46 24 Z" fill="#ffd54f"/><path d="M44 14 C26 8 10 22 14 40" stroke-width="3"/><path d="M46 24 L54 52" stroke-width="5"/><path d="M46 24 L54 52" stroke="#8d6e63" stroke-width="2.5"/>
+        ${[[28, 46], [34, 52], [24, 54]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="#f1f8e9" stroke-width="2"/>`).join('')}<path d="M20 50 C24 44 30 42 36 44" stroke="#7cb342" stroke-width="3"/>${shine(26, 18, 4, 2)}`,
+    yggdrasil: `<path d="M26 60 C28 46 28 38 26 30 L38 30 C36 38 36 46 38 60 Z" fill="#6d4c41"/><path d="M14 60 C20 56 24 56 28 60 M50 60 C44 56 40 56 36 60" stroke-width="4"/>
+        <circle cx="32" cy="22" r="18" fill="#33691e"/><circle cx="16" cy="26" r="10" fill="#558b2f"/><circle cx="48" cy="26" r="10" fill="#558b2f"/>${[[22, 14], [40, 12], [32, 26], [14, 26], [50, 26]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.2" fill="#fff59d" stroke="none"/>`).join('')}`,
+    whiteBull: `<path d="M14 26 C4 22 4 10 10 6 C12 14 16 18 22 20 Z M50 26 C60 22 60 10 54 6 C52 14 48 18 42 20 Z" fill="#fff8e1"/>
+        <path d="M18 22 C18 14 46 14 46 22 L48 40 C48 52 40 58 32 58 C24 58 16 52 16 40 Z" fill="#f5f5f5"/><ellipse cx="32" cy="48" rx="10" ry="7" fill="#ffcdd2"/>
+        <circle cx="28" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="36" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="25" cy="32" r="2.2" fill="#1b1424" stroke="none"/><circle cx="39" cy="32" r="2.2" fill="#1b1424" stroke="none"/>`,
     // 戰士的大招：兩支交叉擲出的標槍
     javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
         <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>

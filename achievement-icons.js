@@ -344,4 +344,29 @@ Object.assign(ACHV_ICON_BODIES, {
     warrior_noRecruit: `<rect x="4" y="6" width="56" height="54" rx="8" fill="${C.goldDark}"/>
         ${[[19, 21, WAR_RED], [45, 21, WAR_RED], [19, 46, C.steelDark], [45, 46, C.wood]].map(([x, y, c]) => at(x, y, 0.44, HELM(c))).join('')}`,
 });
+// ---- 職業：德魯伊（druid.js）。母題是橡樹與林地：綠葉、樹幹、四色節氣 ----
+const OAK = (leaf = '#558b2f', trunk = '#6d4c41') => `<path d="M-5 28 L-4 4 L4 4 L5 28 Z" fill="${trunk}"/><circle cx="0" cy="-8" r="16" fill="${leaf}"/><circle cx="-12" cy="0" r="9" fill="${leaf}"/><circle cx="12" cy="0" r="9" fill="${leaf}"/>${shine(-6, -16, 4, 2.5)}`;
+const PAW = (fill = '#8d6e63') => `<ellipse cx="0" cy="6" rx="12" ry="10" fill="${fill}"/>${[[-11, -7, -20], [-4, -13, -8], [4, -13, 8], [11, -7, 20]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="4" ry="5.5" transform="rotate(${r} ${x} ${y})" fill="${fill}"/>`).join('')}`;
+Object.assign(ACHV_ICON_BODIES, {
+    relics30: `${at(14, 46, 0.36, `<g transform="translate(-32 -32)"><path d="M14 56 L14 30 L32 14 L50 30 L50 56 Z" fill="#e1bee7"/></g>`)}${at(32, 22, 0.5, P.tomb('#ffe082'))}${at(50, 46, 0.34, P.heart('#a5d6a7'))}
+        <path d="M8 60 C20 52 44 52 56 60" stroke="${C.gold}" stroke-width="3" stroke-dasharray="4 4"/>`,
+    druid_win: `${at(32, 36, 1, P.laurel(C.gold))}${at(32, 30, 0.7, OAK())}${at(32, 10, 0.4, P.crown())}`,
+    druid_speed28: `${at(22, 34, 0.8, PAW('#90a4ae'))}<path d="M40 20 L56 20 M44 32 L60 32 M40 44 L56 44" stroke="${C.sky}" stroke-width="3.5"/>`,
+    druid_speed24: `${at(18, 44, 0.55, PAW('#90a4ae'))}${at(40, 24, 0.65, PAW('#90a4ae'))}${at(54, 50, 0.5, P.bolt())}`,
+    druid_speed20: `${at(30, 36, 0.9, `<path d="M-18 14 L-18 -6 L-12 -20 L-6 -8 L6 -8 L12 -20 L18 -6 L18 14 C12 24 -12 24 -18 14 Z" fill="#eceff1"/><circle cx="-7" cy="0" r="3" fill="#4fc3f7" stroke="none"/><circle cx="7" cy="0" r="3" fill="#4fc3f7" stroke="none"/><path d="M-3 12 L0 15 L3 12" stroke-width="2.5"/>`)}
+        ${at(54, 46, 0.5, P.bolt())}${at(8, 50, 0.36, P.bolt())}${sparks([[52, 10, 4], [10, 14, 3]], C.white)}`,
+    druid_res_grove: `${at(16, 40, 0.55, OAK('#33691e'))}${at(48, 40, 0.55, OAK('#33691e'))}${at(32, 32, 0.8, OAK('#689f38'))}${sparks([[32, 4, 4]], '#fff59d')}`,
+    druid_res_pack: `${at(32, 32, 1, `<path d="M-18 14 L-18 -6 L-12 -20 L-6 -8 L6 -8 L12 -20 L18 -6 L18 14 C12 24 -12 24 -18 14 Z" fill="#90a4ae"/><circle cx="-7" cy="0" r="3" fill="${C.gold}" stroke="none"/><circle cx="7" cy="0" r="3" fill="${C.gold}" stroke="none"/><path d="M-3 12 L0 15 L3 12" stroke-width="2.5"/>`)}
+        ${at(32, 8, 0.38, P.crown())}`,
+    druid_res_bear: `${rays(32, 34, 20, 30, 10, '#ffab91', 3)}${at(32, 36, 1, PAW())}<ellipse cx="32" cy="42" rx="7" ry="5" fill="#a1887f" stroke="none"/>`,
+    druid_res_wild: `<circle cx="32" cy="34" r="24" stroke="#7cb342" stroke-width="6"/>${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4, c = Math.cos(a), s = Math.sin(a); return `<path d="M${(32 + c * 26).toFixed(1)} ${(34 + s * 26).toFixed(1)} L${(32 + c * 34).toFixed(1)} ${(34 + s * 34).toFixed(1)}" stroke="#c5e1a5" stroke-width="3"/>`; }).join('')}
+        ${at(32, 36, 0.55, OAK())}`,
+    druid_res_seasons: `${['#b388ff', '#b2ff59', '#ff7043', '#ffd54f'].map((c, i) => { const a = i * Math.PI / 2 + Math.PI / 4; return at(32 + Math.cos(a) * 16, 32 + Math.sin(a) * 16, 0.34, P.flame(c, '#fff8e1')); }).join('')}<circle cx="32" cy="32" r="7" fill="#ffecb3"/>`,
+    druid_oaks: `${[[12, 26], [32, 20], [52, 26], [20, 46], [44, 46]].map(([x, y]) => at(x, y, 0.4, OAK())).join('')}${sparks([[32, 4, 3], [58, 8, 3]], '#fff59d')}`,
+    druid_bearBoss: `${at(32, 40, 0.8, P.crown())}${[0, 1, 2].map(i => `<path d="M${16 + i * 12} 8 L${22 + i * 12} 34" stroke-width="6"/><path d="M${16 + i * 12} 8 L${22 + i * 12} 34" stroke="#ffccbc" stroke-width="3"/>`).join('')}`,
+    druid_evergreen: `${at(32, 34, 0.9, OAK('#2e7d32'))}${['#b388ff', '#b2ff59', '#ff7043', '#ffd54f'].map((c, i) => `<circle cx="${10 + i * 15}" cy="58" r="4" fill="${c}" stroke-width="2"/>`).join('')}`,
+    druid_kings: `${[[12, 40], [24, 34], [40, 34], [52, 40], [32, 46]].map(([x, y]) => at(x, y, 0.36, `<path d="M-18 14 L-18 -6 L-12 -20 L-6 -8 L6 -8 L12 -20 L18 -6 L18 14 C12 24 -12 24 -18 14 Z" fill="#cfd8dc"/>`)).join('')}
+        ${[[12, 28], [24, 22], [40, 22], [52, 28], [32, 34]].map(([x, y]) => at(x, y, 0.2, P.crown())).join('')}`,
+    druid_loneOak: `<path d="M4 58 C16 52 48 52 60 58" stroke="#8d6e63" stroke-width="4"/>${at(32, 34, 0.95, OAK('#7cb342'))}${at(54, 12, 0.36, P.moon())}`,
+});
 const ACHV_ICON_SVGS = Object.fromEntries(Object.entries(ACHV_ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));

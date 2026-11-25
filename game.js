@@ -805,6 +805,7 @@ const ACHV_RELICS = [
     ['altar10', '戰鼓手', '累計敲響 10 座戰鼓祭壇', 25, s => (s.relics.altar || 0) >= 10],
     ['altar50', '戰神之鼓', '累計敲響 50 座戰鼓祭壇', 70, s => (s.relics.altar || 0) >= 50],
     ['spring10', '泉水常客', '累計喝乾 10 座靈泉', 30, s => (s.relics.spring || 0) >= 10],
+    ['relics30', '巡禮者', '累計啟動 30 座戰場遺跡', 40, s => Object.values(s.relics).reduce((a, b) => a + b, 0) >= 30],
 ];
 const ACHV_SPEED_WAVE = 20, ACHV_SPEED_SECONDS = 10;
 const ACHV_WEALTH = 10000;
@@ -1015,6 +1016,7 @@ const UNIT_TYPES = {
 //   canAfford(cost)／pay(cost)：用什麼付召喚與升級（吸血鬼可以拿自己的血付）；onOrbCollect(value)：撿到靈魂時，回傳要存進錢包的量
 //   soulMult(monster)：這隻怪掉的靈魂倍率；onMonsterKill(monster)：怪死掉時
 //   heroHidden()：主角這一格怪看不到（刺客隱身）
+//   targetableSummons()：怪找目標時看得到的召喚物（沒有就是全部）；德魯伊離得太遠的橡樹會沉睡、怪不理
 //   drawWorld(ctx)：世界座標、畫在特效之後；drawScreen(ctx)：螢幕座標、畫在介面之前
 const CLASSES = {
     necro: {
@@ -2929,6 +2931,28 @@ class TimedEffect {
         if (this.life <= 0) { this.isAlive = false; }
     }
     draw(ctx) { }
+}
+
+// 主角的範圍揮砍（戰士的大劍、德魯伊化身後的熊掌）：一道弧光從內往外掃
+class SweepEffect extends TimedEffect {
+    constructor() { super(null, 0.18); }
+    init(pos, angle, halfArc, range, rage) {
+        this.initBase(pos, 0.18);
+        this.angle = angle; this.halfArc = halfArc; this.range = range; this.rage = rage;
+        return this;
+    }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - k) * 0.85;
+        ctx.strokeStyle = this.rage ? '#FF5252' : '#ECEFF1';
+        ctx.lineWidth = 6 * (1 - k) + 2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(this.pos.x, this.pos.y, this.range * (0.75 + 0.25 * k), this.angle - this.halfArc, this.angle + this.halfArc);
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
 class SlashEffect extends TimedEffect {
@@ -6962,7 +6986,8 @@ function updateGame(deltaTime) {
     gameState.wraithBuffRadius = wraithBuffRadius;
     wraithGrid.rebuild(wraiths);
     summonGrid.rebuild(gameState.summons);
-    summonCoarseGrid.rebuild(gameState.summons);
+    const targetable = classDef().targetableSummons;
+    summonCoarseGrid.rebuild(targetable ? targetable() : gameState.summons);
     monsterGrid.rebuild(gameState.monsters);
     groundMonsterGrid.rebuild(gameState.monsters.filter(m => !m.flying));
     rebuildEyeTargetCounts(gameState.summons);

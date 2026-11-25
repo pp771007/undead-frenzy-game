@@ -413,27 +413,6 @@ function warriorSwing(p, dt) {
     Sfx.play('hit');
 }
 
-class SweepEffect extends TimedEffect {
-    constructor() { super(null, 0.18); }
-    init(pos, angle, halfArc, range, rage) {
-        this.initBase(pos, 0.18);
-        this.angle = angle; this.halfArc = halfArc; this.range = range; this.rage = rage;
-        return this;
-    }
-    draw(ctx) {
-        const k = 1 - this.life / this.duration;
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, 1 - k) * 0.85;
-        ctx.strokeStyle = this.rage ? '#FF5252' : '#ECEFF1';
-        ctx.lineWidth = 6 * (1 - k) + 2;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.arc(this.pos.x, this.pos.y, this.range * (0.75 + 0.25 * k), this.angle - this.halfArc, this.angle + this.halfArc);
-        ctx.stroke();
-        ctx.restore();
-    }
-}
-
 // ---------- 大招：標槍齊射，然後衝鋒 ----------
 function useJavelin() {
     const p = gameState.player, w = warState(), J = WARRIOR.javelin;
