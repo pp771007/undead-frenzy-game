@@ -6,6 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>亡靈狂潮 (Undead Frenzy)</title>
     <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="亡靈狂潮">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="體驗黑暗奇幻生存！《亡靈狂潮》讓你扮演死靈法師，召喚不死生物對抗怪物潮。收集靈魂、強化僕從，挑戰你的生存極限！">
     <meta name="theme-color" content="#140f1c">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2124,7 +2130,9 @@
             <div class="setting-row"><span data-icon="music"></span><input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
             <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
             <label class="setting-row setting-toggle"><span data-icon="battery"></span><span class="setting-label">省電模式</span><input type="checkbox" id="saver-toggle" class="switch"></label>
+            <label class="setting-row setting-toggle"><span data-icon="fullscreen"></span><span class="setting-label">全螢幕</span><input type="checkbox" id="fullscreen-toggle" class="switch"></label>
             <div class="stack">
+                <button id="install-btn" class="btn btn-gold hidden"><span class="btn-icon" data-icon="install"></span>安裝成 App</button>
                 <button id="settings-close-btn" class="btn btn-dark">返回</button>
             </div>
         </div>
@@ -2156,6 +2164,7 @@
             <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="pause-sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
             <div class="section-title">畫面</div>
             <label class="setting-row setting-toggle"><span data-icon="battery"></span><span class="setting-label">省電模式</span><input type="checkbox" id="pause-saver-toggle" class="switch"></label>
+            <label class="setting-row setting-toggle"><span data-icon="fullscreen"></span><span class="setting-label">全螢幕</span><input type="checkbox" id="pause-fullscreen-toggle" class="switch"></label>
             <div class="stack">
                 <button id="resume-game-btn" class="btn btn-green btn-big"><span class="btn-icon" data-icon="play"></span>繼續</button>
                 <div class="btn-row" style="margin-top:0">
@@ -2208,6 +2217,7 @@
 
     <audio id="bgm" loop src="background.mp3"></audio>
 
+    <script src="storage.js"></script>
     <script src="icons.js"></script>
     <script src="achievement-icons.js"></script>
     <script src="game.js"></script>

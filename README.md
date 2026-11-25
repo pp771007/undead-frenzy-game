@@ -6,7 +6,7 @@
 
 **召喚沒有上限的骷髏大軍，撐過 50 波怪物浪潮。**
 
-打開瀏覽器就能玩，手機、電腦都可以，不用安裝。
+打開瀏覽器就能玩，手機、電腦都可以，不用安裝；想要的話也能裝成 App，全螢幕、沒網路也能玩。
 
 <a href="https://pp771007.github.io/undead-frenzy-game/">
   <img src="https://img.shields.io/badge/%E2%96%B6%20%E7%AB%8B%E5%8D%B3%E9%81%8A%E7%8E%A9-PLAY%20NOW-8e44ad?style=for-the-badge" alt="立即遊玩" />

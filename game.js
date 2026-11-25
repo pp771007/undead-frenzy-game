@@ -105,6 +105,9 @@ const uiElements = {
     pauseSfxSlider: $id('pause-sfx-slider'),
     saverToggle: $id('saver-toggle'),
     pauseSaverToggle: $id('pause-saver-toggle'),
+    fullscreenToggle: $id('fullscreen-toggle'),
+    pauseFullscreenToggle: $id('pause-fullscreen-toggle'),
+    installBtn: $id('install-btn'),
     draftScreen: $id('draft-screen'),
     draftCards: $id('draft-cards'),
     rerollBtn: $id('reroll-btn'), skipBtn: $id('skip-btn'), healBtn: $id('heal-btn'),
@@ -737,15 +740,16 @@ function defaultMeta() {
 }
 function loadMeta() {
     try {
-        const m = JSON.parse(localStorage.getItem(META_KEY));
+        const m = JSON.parse(SaveStore.get(META_KEY));
         if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) } };
     } catch (e) { }
     return defaultMeta();
 }
 function saveMeta() {
-    try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (e) { }
+    try { SaveStore.set(META_KEY, JSON.stringify(meta)); } catch (e) { }
 }
-const meta = loadMeta();
+// 存檔庫是非同步開的，開場（boot）讀完才把存的內容填進來
+const meta = defaultMeta();
 function metaLv(id) { return meta.upgrades[id] || 0; }
 function metaVal(id) { return META_UPGRADES[id].per * metaLv(id); }
 function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
@@ -5822,13 +5826,13 @@ function showConfirm(title, text, yesLabel, onYes) {
 
 function peekSave() {
     try {
-        const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+        const s = JSON.parse(SaveStore.get(SAVE_KEY));
         if (s && COMPATIBLE_SAVE_VERSIONS.includes(s.saveVersion)) return s;
     } catch (e) { }
     return null;
 }
 function getBestWave() {
-    try { return parseInt(localStorage.getItem(BEST_WAVE_KEY), 10) || 0; } catch (e) { return 0; }
+    try { return parseInt(SaveStore.get(BEST_WAVE_KEY), 10) || 0; } catch (e) { return 0; }
 }
 
 function refreshTitle() {
@@ -6708,7 +6712,7 @@ function showGameOver(reason = 'died') {
     const best = getBestWave();
     const isRecord = survived > best;
     if (isRecord) {
-        try { localStorage.setItem(BEST_WAVE_KEY, String(survived)); } catch (e) { }
+        try { SaveStore.set(BEST_WAVE_KEY, String(survived)); } catch (e) { }
     }
     uiElements.finalWaveText.textContent = survived;
     uiElements.bestWaveText.innerHTML = isRecord ? `${iconHtml('trophy')}新紀錄` : `最佳 ${best} 波`;
@@ -6730,7 +6734,7 @@ function showGameOver(reason = 'died') {
     renderBlessingList(uiElements.finalBlessings);
     uiElements.hud.classList.add('hidden');
     showScreen(uiElements.gameOverScreen, true);
-    localStorage.removeItem(SAVE_KEY);
+    SaveStore.remove(SAVE_KEY);
     pauseMusic();
 }
 
@@ -6778,23 +6782,23 @@ function saveGameState() {
 
     try {
         const savedString = JSON.stringify(stateToSave);
-        localStorage.setItem(SAVE_KEY, savedString);
+        SaveStore.set(SAVE_KEY, savedString);
     } catch (error) {
         showMessage("儲存失敗!", 1500);
     }
 }
 
 function loadGameState() {
-    const savedString = localStorage.getItem(SAVE_KEY);
+    const savedString = SaveStore.get(SAVE_KEY);
     if (savedString) {
         let loadedState;
         try { loadedState = JSON.parse(savedString); }
         catch (error) {
-            localStorage.removeItem(SAVE_KEY); return false;
+            SaveStore.remove(SAVE_KEY); return false;
         }
 
         if (!COMPATIBLE_SAVE_VERSIONS.includes(loadedState.saveVersion)) {
-            localStorage.removeItem(SAVE_KEY); return false;
+            SaveStore.remove(SAVE_KEY); return false;
         }
 
         resetGameInternalState(false);
@@ -6938,7 +6942,7 @@ function setupNewRun(daily = null) {
 }
 
 function resetGame(daily = null) {
-    localStorage.removeItem(SAVE_KEY);
+    SaveStore.remove(SAVE_KEY);
     setupNewRun(daily);
     if (classDef().onRunStart) classDef().onRunStart();
     stats().runs++;
@@ -7782,6 +7786,56 @@ function bindVolumeSliders() {
     });
 }
 
+// iPhone 的 Safari 不支援網頁全螢幕（要加到主畫面才行），已經用全螢幕 App 開著也用不到，這兩種情況不顯示開關
+function bindFullscreenToggles() {
+    const toggles = [uiElements.fullscreenToggle, uiElements.pauseFullscreenToggle];
+    if (!document.fullscreenEnabled || matchMedia('(display-mode: fullscreen)').matches) {
+        toggles.forEach(t => t.closest('.setting-row').classList.add('hidden'));
+        return;
+    }
+    const sync = () => toggles.forEach(t => { t.checked = !!document.fullscreenElement; });
+    toggles.forEach(t => t.addEventListener('change', e => {
+        const req = e.target.checked ? document.documentElement.requestFullscreen() : document.exitFullscreen();
+        req.catch(sync);
+    }));
+    document.addEventListener('fullscreenchange', sync);
+    sync();
+}
+
+// 瀏覽器判定可以安裝時才給按鈕（Chrome / Edge / Android）；Safari 沒有這個事件，照它自己的「加入主畫面」
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+    installPrompt = e;
+    uiElements.installBtn.classList.remove('hidden');
+});
+window.addEventListener('appinstalled', () => {
+    installPrompt = null;
+    uiElements.installBtn.classList.add('hidden');
+});
+function bindInstallButton() {
+    uiElements.installBtn.addEventListener('click', () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        installPrompt.userChoice.then(() => {
+            installPrompt = null;
+            uiElements.installBtn.classList.add('hidden');
+        });
+    });
+}
+
+// 裝成 App 與離線遊玩靠 Service Worker；第一次開的時候它還沒接手，把這次載過的檔案清單交給它補進快取
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+    navigator.serviceWorker.register('sw.js')
+        .then(() => navigator.serviceWorker.ready)
+        .then(reg => {
+            // 背景音樂要等玩家按開始才載入，不在已載入的清單裡，另外補上
+            const urls = [location.href.split('#')[0], ...performance.getEntriesByType('resource').map(e => e.name), ...[...document.querySelectorAll('audio[src]')].map(a => a.src)];
+            reg.active.postMessage({ type: 'precache', urls });
+        })
+        .catch(() => { });
+}
+
 function handleVisibilityChange() {
     // 切到別的 App / 回桌面：自動暫停，回來時停在暫停選單，不會一回來就被圍死
     if (document.hidden && appScreen === 'playing' && !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen) {
@@ -7851,6 +7905,8 @@ function init() {
     syncSettingControls();
     bindVolumeSliders();
     bindSaverToggles();
+    bindFullscreenToggles();
+    bindInstallButton();
 
     canvas.addEventListener('pointerdown', handleCanvasPointerDown);
     canvas.addEventListener('pointermove', handleCanvasPointerMove);
@@ -7954,8 +8010,20 @@ function init() {
     Promise.all([loadAllImages(), trackLoad(preloadIconImages()), trackLoad(waitForFonts())]).then(() => {
         setupNewRun();
         showTitle();
+        registerServiceWorker();
     });
 }
 
+async function boot() {
+    await SaveStore.ready;
+    await SaveStore.adopt([META_KEY, SAVE_KEY, BEST_WAVE_KEY]);
+    Object.assign(meta, loadMeta());
+    // 裝成 App 的才要求「不要自動清掉」：一般分頁要求的話 Firefox 會跳出詢問
+    if (matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches && navigator.storage && navigator.storage.persist) {
+        navigator.storage.persist();
+    }
+    init();
+}
+
 // 等所有腳本（各職業的 warrior.js…）都載完、登記好自己，才開始
-window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('DOMContentLoaded', boot);
