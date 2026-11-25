@@ -1301,6 +1301,12 @@
             color: #ff8a80;
         }
 
+        /* 每日變異不能用的兵種：整張卡變灰 */
+        .unit-card.daily-locked {
+            opacity: 0.35;
+            filter: grayscale(1);
+        }
+
         .boon,
         .bane {
             display: block;
@@ -1748,6 +1754,7 @@
         }
 
         #confirm-text {
+            white-space: pre-line;
             color: var(--bone);
             font-size: 15px;
             margin: 4px 0 6px;
@@ -1887,6 +1894,7 @@
         <div class="title-menu">
             <button id="title-continue-btn" class="btn btn-gold btn-big hidden"></button>
             <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
+            <button id="title-daily-btn" class="btn btn-red"></button>
             <div class="title-row">
                 <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
                 <button id="title-achv-btn" class="btn btn-dark"><span class="btn-icon" data-icon="trophy"></span>成就</button>

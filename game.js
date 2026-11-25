@@ -91,7 +91,7 @@ const uiElements = {
     messageArea: $id('message-area'),
     titleScreen: $id('title-screen'),
     titleContinueBtn: $id('title-continue-btn'),
-    titleStartBtn: $id('title-start-btn'),
+    titleStartBtn: $id('title-start-btn'), titleDailyBtn: $id('title-daily-btn'),
     titleMetaBtn: $id('title-meta-btn'),
     titleSettingsBtn: $id('title-settings-btn'),
     titleBest: $id('title-best'),
@@ -766,6 +766,7 @@ const ACHV_ARMY_SMALL = 500, ACHV_ARMY_BIG = 2000;
 const ACHV_STREAK_SMALL = 500, ACHV_STREAK_BIG = 2000;
 const ACHV_LEGENDS = 3;
 const ACHV_PACTS = 3;
+const ACHV_DAILY_WAVE = 20;
 const ACHV_COFFINS = 10;
 const ACHV_ENDLESS_WAVE = 60;
 const ACHV_CURSE_MID = 4;
@@ -794,6 +795,7 @@ const ACHIEVEMENTS = [
     { id: 'streak1', icon: 'flame', name: '殺戮狂潮', desc: `連殺 ${ACHV_STREAK_SMALL}`, reward: 30, test: () => gameState.bestStreak >= ACHV_STREAK_SMALL },
     { id: 'streak2', icon: 'flame', name: '屠戮之王', desc: `連殺 ${ACHV_STREAK_BIG}`, reward: 60, test: () => gameState.bestStreak >= ACHV_STREAK_BIG },
     { id: 'pacts', icon: 'flame', name: '魔鬼交易', desc: `一局立下 ${ACHV_PACTS} 份契約`, reward: 40, test: () => Object.keys(gameState.blessings).filter(id => BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0).length >= ACHV_PACTS },
+    { id: 'daily', icon: 'star', name: '異變求生', desc: `每日變異撐過第 ${ACHV_DAILY_WAVE} 波`, reward: 40, test: () => !!gameState.daily && getSurvivedWaves() >= ACHV_DAILY_WAVE },
     { id: 'legends', icon: 'star', name: '傳說加身', desc: `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, reward: 40, test: () => legendCount() >= ACHV_LEGENDS },
     { id: 'coffins', icon: 'lock', name: '盜墓者', desc: `累計打開 ${ACHV_COFFINS} 座封印寶棺`, reward: 30, test: () => (meta.stats.coffins || 0) >= ACHV_COFFINS },
 ];
@@ -4820,6 +4822,40 @@ const CURSES = [
 const CURSE_CRYSTAL_STEP = 0.3;
 const ASSASSIN_EARLY_WAVE = 6;
 const VICTORY_CRYSTALS = 100;
+// ---------- 每日變異（同 PokeBonk 的 Daily Mutation）：每天一條特殊規則，當天第一場結算的結晶 ×DAILY_CRYSTAL_MULT ----------
+// 照本地日期輪流，連續兩天不會重複；只有規則沒有排行榜，所以照樣吃永久強化，但不疊詛咒
+const DAILY_MS = 86400000;
+const DAILY_CRYSTAL_MULT = 2;
+const DAILY_MUTATIONS = [
+    { id: 'glass', icon: 'heart', name: '玻璃之軀', mods: { mageHpMult: 0.25, summonDmgMult: 2, boltDmgMult: 2 } },
+    { id: 'giants', icon: 'claws', name: '巨獸橫行', mods: { hpMult: 2, atkMult: 1.5, speedMult: 0.85, soulMult: 1.6 } },
+    { id: 'eyes', icon: 'splitGaze', name: '千眼之日', rule: '只能召喚眼魔', onlyUnit: 'EyeMonster', mods: { summonDmgMult: 1.3 } },
+    { id: 'bloodMoon', icon: 'bloodMoon', name: '永夜血月', rule: '每一波都是血月' , forceEvent: 'bloodMoon' },
+    { id: 'feast', icon: 'soul', name: '靈魂盛宴', mods: { soulMult: 2, hpMult: 1.5, atkMult: 1.25 } },
+    { id: 'bones', icon: 'boneBlade', name: '白骨之日', rule: '只能召喚骷髏', onlyUnit: 'SkeletonWarrior', mods: { summonAtkSpeedMult: 1.3 } },
+    { id: 'market', icon: 'flame', name: '魔鬼市集', rule: '每次選祝福都有一張契約', pactAlways: true },
+    { id: 'storm', icon: 'burst', name: '新星風暴', mods: { novaCdMult: 0.4, speedMult: 1.25 } },
+];
+function localDayNumber() {
+    const now = new Date();
+    return Math.floor((now.getTime() - now.getTimezoneOffset() * 60000) / DAILY_MS);
+}
+function todayKey() { return String(localDayNumber()); }
+function todayMutation() { return DAILY_MUTATIONS[localDayNumber() % DAILY_MUTATIONS.length]; }
+function dailyDef() { return gameState.daily ? DAILY_MUTATIONS.find(d => d.id === gameState.daily) || null : null; }
+// 規則的純文字（確認框、開戰橫幅）：特殊規則在前，乘數在後
+function dailyRulesText(d) {
+    return [d.rule, ...Object.keys(d.mods || {}).map(k => runModText(k, d.mods[k]))].filter(Boolean).join('、');
+}
+// 這一局是每日變異、而且那一天的加倍還沒領過
+function dailyCrystalMult() {
+    return gameState.daily && meta.dailyClaimed !== gameState.dailyDate ? DAILY_CRYSTAL_MULT : 1;
+}
+function unitAllowed(type) {
+    const d = dailyDef();
+    return !d || !d.onlyUnit || d.onlyUnit === type;
+}
+
 // 整局的乘數：詛咒、已立的契約、每日變異疊在一起（鍵見 RUN_MOD_LABELS）。
 // 生怪、算靈魂每次都要查，所以快取在 gameState.runModsCache；詛咒、契約、每日變異變動時呼叫 invalidateRunMods()
 function runMods() {
@@ -4836,6 +4872,8 @@ function computeRunMods() {
         if (CURSES[i].assassinEarly) m.assassinEarly = true;
     }
     for (const id in gameState.blessings) if (BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0) apply(BLESSINGS[id].mods);
+    const d = dailyDef();
+    if (d && d.mods) apply(d.mods);
     return m;
 }
 function curseCrystalMult(lv = gameState.curse || 0) {
@@ -4849,6 +4887,8 @@ function getWaveEvent() {
 function rollWaveEvent(wave) {
     const W = CONFIG.waveEvents;
     const isBossWave = wave % CONFIG.wave.bossEvery === 0;
+    const d = dailyDef();
+    if (d && d.forceEvent) return isBossWave ? null : d.forceEvent;
     if (wave < W.startWave || isBossWave || gameState.lastEventWave === wave - 1) return null;
     if (Math.random() >= W.chance) return null;
     const ids = Object.keys(W.list);
@@ -5008,6 +5048,9 @@ function prepareNextWave() {
             const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
             gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'warning' };
         }
+    } else if (waveNum === 1 && dailyDef()) {
+        const d = dailyDef();
+        gameState.banner = { text: d.name, sub: dailyRulesText(d), color: '#FF8A80', life: CONFIG.wave.bannerDuration * 1.8, icon: d.icon };
     } else if (getNewcomer(waveNum)) {
         const n = getNewcomer(waveNum);
         gameState.banner = { text: n.name, sub: `新威脅 · ${n.hint}`, color: n.color, life: CONFIG.wave.bannerDuration * 1.8, icon: n.icon, look: n.look };
@@ -5195,7 +5238,8 @@ function rollDraftOptions(boss) {
     const count = draftOptionCount();
     const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
     const legend = legendRoll ? weightedPick(draftPool(true), 1)[0] : null;
-    const pactRoll = !boss && gameState.currentWave >= PACT_START_WAVE && Math.random() < PACT_CHANCE;
+    const daily = dailyDef();
+    const pactRoll = !boss && ((daily && daily.pactAlways) || (gameState.currentWave >= PACT_START_WAVE && Math.random() < PACT_CHANCE));
     const pact = pactRoll ? weightedPick(pactPool(), 1)[0] : null;
     const special = [legend, pact].filter(Boolean);
     const options = weightedPick(draftPool(false), count - special.length);
@@ -5433,6 +5477,10 @@ function refreshTitle() {
     const curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     uiElements.titleStartBtn.textContent = curse > 0 ? `開始遊戲 · 詛咒 ${curse}` : '開始遊戲';
     uiElements.titleCurseBtn.classList.toggle('hidden', !(meta.curseUnlocked > 0));
+    const daily = todayMutation();
+    const claimed = meta.dailyClaimed === todayKey();
+    uiElements.titleDailyBtn.innerHTML = `${iconHtml(daily.icon, 'icon btn-icon')}每日 · ${daily.name}` +
+        (claimed ? `<span class="price">${iconHtml('trophy')}</span>` : `<span class="price">${iconHtml('crystal')}×${DAILY_CRYSTAL_MULT}</span>`);
     const best = getBestWave();
     const wins = meta.wins || 0;
     uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
@@ -5487,6 +5535,14 @@ function startNewRun() {
     const save = peekSave();
     if (save && save.currentWave > 0) showConfirm('開始新的一局？', `第 ${save.currentWave} 波的進度會被覆蓋`, '開始', begin);
     else begin();
+}
+
+function startDailyRun() {
+    const d = todayMutation();
+    const save = peekSave();
+    const overwrite = save && save.currentWave > 0 ? `\n第 ${save.currentWave} 波的進度會被覆蓋` : '';
+    const bonus = meta.dailyClaimed === todayKey() ? '' : `\n今天第一場結晶 ×${DAILY_CRYSTAL_MULT}`;
+    showConfirm(`每日變異 · ${d.name}`, `${dailyRulesText(d)}${bonus}${overwrite}`, '出發', () => { resetGame(d); enterPlaying(); });
 }
 
 function continueRun() {
@@ -5722,6 +5778,7 @@ function showMessage(msg, duration = 2000) {
 
 // combo：長按連段的第幾下（0 = 單點），連段時換成會往上爬的音效
 function trySummon(type, combo = 0) {
+    if (!unitAllowed(type)) return false;
     let config, cost, currentCount, level, SummonClass, unitName;
 
     switch (type) {
@@ -5795,6 +5852,7 @@ function announceEvolution(type, tier) {
 }
 
 function tryUpgrade(type, combo = 0) {
+    if (!unitAllowed(type)) return false;
     let cost, costIncrement, costKey, levelKey, unitName;
     switch (type) {
         case 'SkeletonWarrior':
@@ -6104,8 +6162,10 @@ function updateUI() {
         setTextIfChanged(el.count, formatNumberK(gameState[u.countKey]));
         setHtmlIfChanged(el.summon, priceButtonHtml('召喚', summonCost));
         setHtmlIfChanged(el.upgrade, priceButtonHtml('升級', upgradeCost));
-        if (el.summon.disabled !== !canAct) el.summon.disabled = !canAct;
-        if (el.upgrade.disabled !== !canAct) el.upgrade.disabled = !canAct;
+        const allowed = unitAllowed(u.type);
+        if (el.summon.disabled !== !(canAct && allowed)) el.summon.disabled = !(canAct && allowed);
+        if (el.upgrade.disabled !== !(canAct && allowed)) el.upgrade.disabled = !(canAct && allowed);
+        el.summon.closest('.unit-card').classList.toggle('daily-locked', !allowed);
         el.summon.classList.toggle('cant-afford', souls < summonCost);
         el.upgrade.classList.toggle('cant-afford', souls < upgradeCost);
         el.upgrade.classList.toggle('good-deal', souls >= upgradeCost && isUpgradeGoodDeal(u, level, summonCost, upgradeCost));
@@ -6160,13 +6220,14 @@ function renderRewardDetail(survived) {
     let html = `<span>${iconHtml('skull')}${survived} 波 ×${CRYSTALS_PER_WAVE}<b>+${survived * CRYSTALS_PER_WAVE}</b></span>`;
     if (bosses > 0) html += `<span>${iconHtml('crown')}首領 ${bosses} 隻 ×${CRYSTALS_PER_BOSS}<b>+${bosses * CRYSTALS_PER_BOSS}</b></span>`;
     if (mult > 1) html += `<span>${iconHtml('flame')}詛咒<b>×${mult.toFixed(1)}</b></span>`;
+    if (dailyCrystalMult() > 1) html += `<span>${iconHtml(dailyDef().icon)}每日變異<b>×${DAILY_CRYSTAL_MULT}</b></span>`;
     // 成就的結晶達成當下就入帳了，這裡只是列出來，不算進 getRunReward
     if (gameState.achvCount > 0) html += `<span>${iconHtml('trophy')}成就 ${gameState.achvCount} 個<b>+${gameState.achvCrystals}</b></span>`;
     uiElements.finalRewardDetail.innerHTML = html;
 }
 
 function getRunReward() {
-    return Math.round((getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS) * curseCrystalMult());
+    return Math.round((getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS) * curseCrystalMult() * dailyCrystalMult());
 }
 function spawnCrystalText(amount) {
     const p = gameState.player;
@@ -6221,8 +6282,10 @@ function showGameOver(reason = 'died') {
     checkAchievements();
     const reward = getRunReward();
     meta.crystals += reward;
-    saveMeta();
     renderRewardDetail(survived);
+    // 那一天的加倍只算一場：有拿到結晶才算用掉（開了馬上放棄不會白白浪費）
+    if (dailyCrystalMult() > 1 && reward > 0) meta.dailyClaimed = gameState.dailyDate;
+    saveMeta();
     uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward + gameState.achvCrystals}`;
     uiElements.gameoverMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
     renderBlessingList(uiElements.finalBlessings);
@@ -6272,6 +6335,8 @@ function saveGameState() {
         achvCount: gameState.achvCount,
         curse: gameState.curse,
         endless: gameState.endless,
+        daily: gameState.daily,
+        dailyDate: gameState.dailyDate,
     };
 
     try {
@@ -6324,6 +6389,8 @@ function loadGameState() {
         gameState.achvCrystals = loadedState.achvCrystals ?? 0;
         gameState.achvCount = loadedState.achvCount ?? 0;
         gameState.curse = loadedState.curse ?? 0;
+        gameState.daily = loadedState.daily ?? null;
+        gameState.dailyDate = loadedState.dailyDate ?? null;
         invalidateRunMods();
         // 已經過了最終波的舊存檔直接算進無盡模式，不會再跳一次通關
         gameState.endless = loadedState.endless ?? (gameState.currentWave >= CONFIG.wave.finalWave);
@@ -6414,9 +6481,11 @@ function resetGameInternalState() {
 }
 
 // 新的一局（不碰存檔）：永久強化在這裡套用
-function setupNewRun() {
+function setupNewRun(daily = null) {
     resetGameInternalState();
-    gameState.curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
+    gameState.daily = daily ? daily.id : null;
+    gameState.dailyDate = daily ? todayKey() : null;
+    gameState.curse = daily ? 0 : Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     invalidateRunMods();
     gameState.player = new Player(0, 0);
     gameState.player.maxHealth = Math.round((CONFIG.player.baseHealth + metaVal('mageHp')) * runMods().mageHpMult);
@@ -6428,9 +6497,9 @@ function setupNewRun() {
     [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
 }
 
-function resetGame() {
+function resetGame(daily = null) {
     localStorage.removeItem(SAVE_KEY);
-    setupNewRun();
+    setupNewRun(daily);
     if (metaLv('headStart') > 0) queueDraft();
     updateUI();
 }
@@ -7376,6 +7445,7 @@ function init() {
     // 觸控的 pointerdown 不算使用者手勢，第一次解鎖音效要等到 click
     const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
     onTap(uiElements.titleStartBtn, startNewRun);
+    onTap(uiElements.titleDailyBtn, startDailyRun);
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
     onTap(uiElements.titleSettingsBtn, () => { syncSettingControls(); showScreen(uiElements.settingsScreen, true); });
