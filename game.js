@@ -71,7 +71,7 @@ const uiElements = {
     curseCloseBtn: $id('curse-close-btn'),
     titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'), achvTabs: $id('achv-tabs'), achvSubtabs: $id('achv-subtabs'),
     achvCloseBtn: $id('achv-close-btn'), achvToast: $id('achv-toast'),
-    titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'),
+    titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'), finalTarget: $id('final-target'),
     lbScreen: $id('lb-screen'), lbTabs: $id('lb-tabs'), lbList: $id('lb-list'), lbCloseBtn: $id('lb-close-btn'),
     lbDetail: $id('lb-detail'), lbDetailBody: $id('lb-detail-body'), lbDetailCloseBtn: $id('lb-detail-close-btn'),
     lbCongrats: $id('lb-congrats'), lbCongratsRanks: $id('lb-congrats-ranks'), lbCongratsResult: $id('lb-congrats-result'), lbNameInput: $id('lb-name-input'),
@@ -846,8 +846,8 @@ function defaultStats() {
 function stats() { return meta.stats; }
 // 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
 function emptyRunStats() {
-    // recruits：自己按卡片召喚了幾次（開局就帶的兵、免費送的不算）
-    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, recruits: 0, relics: {}, flags: {} };
+    // recruits：自己按卡片召喚了幾次（開局就帶的兵、免費送的不算）；splits：打完每一波首領時的時間（排行榜的分段計時）
+    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, recruits: 0, relics: {}, flags: {}, splits: {} };
 }
 function runUnitsUsed() { return Object.keys(gameState.totalSummons).filter(k => gameState.totalSummons[k] > 0); }
 function wonOnlyWith(type) { const u = runUnitsUsed(); return gameState.endless && u.length === 1 && u[0] === type; }
@@ -5515,6 +5515,7 @@ function checkWaveEndCondition() {
         spawnCrystalText(CRYSTALS_PER_WAVE);
         queueDraftIfDue();
         settleRelicsAtWaveEnd();
+        lbWaveEnd();
         gameState.projectiles.forEach(returnProjectileToPool);
         gameState.projectiles = [];
         gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -5594,16 +5595,47 @@ const LB_MIN_WAVE = 5;
 const LB_DEFAULT_NAME = '無名亡靈';
 const LB_ALL = 'all';
 const LB_RESULT_NAMES = { died: '陣亡', quit: '中途結束' };
+// 對手：榜上先排好十個亡靈議會的人，從第 7 波排到 21 分半通關。只有自己的紀錄的話，
+// 新玩家打開是空的、沒有東西可追；有一排名字擋在前面，每一局都在「爬」，戰鬥中越過誰也喊得出來。
+// 只寫在程式裡、不進存檔；玩家的紀錄多了，他們自然被擠出榜外
+const LB_RIVAL_SEC_PER_WAVE = 32;
+const LB_RIVALS = [
+    ['永夜之主 薩洛斯', 'necro', 0, 1290, '亡靈王倒下的那晚，我只用了二十一分半'],
+    ['鐵壁 瓦倫', 'warrior', 0, 1500, '陣型不散，就沒有過不去的夜'],
+    ['月影 希兒', 'elf', 0, 1740, '停下腳步的弓手，活不過第十波'],
+    ['血伯爵 卡蘭', 'vampire', 44, 0, '再一口血，我就能看見第五十波'],
+    ['古橡 艾薇', 'druid', 37, 0, '我的林地撐過了三十七個黎明'],
+    ['無聲 夜鴉', 'rogue', 30, 0, '沒有人看見我倒下'],
+    ['石拳 玄空', 'monk', 24, 0, '拳到之處，皆是禪'],
+    ['老兵 葛雷', 'warrior', 18, 0, '十八波，夠我吹一輩子了'],
+    ['見習 米拉', 'necro', 12, 0, '骷髏好可愛，可是怪好多……'],
+    ['迷途 小骨', 'necro', 7, 0, '我只是想回家'],
+].map(([name, cls, wave, time, motto], i) => ({
+    id: `rival${i}`, rival: true, name, cls, motto, curse: 0,
+    won: wave === 0, wave: wave || CONFIG.wave.finalWave, time: time || wave * LB_RIVAL_SEC_PER_WAVE,
+}));
 
 function lbCompare(a, b) {
     if (a.won !== b.won) return a.won ? -1 : 1;
     if (a.won) return a.time - b.time;
     return b.wave - a.wave || a.time - b.time;
 }
+function lbEntries(tab) {
+    return [...meta.leaderboard, ...LB_RIVALS].filter(e => tab === LB_ALL || e.cls === tab);
+}
 function lbBoard(tab) {
-    return meta.leaderboard.filter(e => tab === LB_ALL || e.cls === tab).sort(lbCompare).slice(0, LB_SIZE);
+    return lbEntries(tab).sort(lbCompare).slice(0, LB_SIZE);
 }
 function lbRank(e, tab) { return lbBoard(tab).indexOf(e) + 1; }
+// 還沒存進榜的成績（打到一半的這一局）會排第幾：比它好的有幾筆
+function lbPlace(run, tab) { return lbEntries(tab).filter(e => e !== run && lbCompare(e, run) < 0).length + 1; }
+// 自己最好的那筆（不分職業）：拿來判斷哪些對手是「這一局才第一次超越」
+function lbOwnBest() { return [...meta.leaderboard].sort(lbCompare)[0] || null; }
+function lbBeaten(r, best) { return !!best && lbCompare(best, r) < 0; }
+// 打到一半的這一局，當成一筆成績
+function lbRunNow() {
+    return { cls: runClass(), won: !!gameState.endless, wave: getSurvivedWaves(), time: gameState.runTime };
+}
 // 掉出所有榜的就刪掉，存檔不會一直長大
 function lbPrune() {
     const keep = new Set(lbBoard(LB_ALL));
@@ -5614,9 +5646,10 @@ function lbPrune() {
 function seedLeaderboard(bestClear) {
     return Object.entries(bestClear || {}).map(([cls, r], i) => ({ id: i + 1, name: LB_DEFAULT_NAME, cls, won: true, time: r.time, curse: r.curse || 0 }));
 }
-// 這一局上榜就回傳那一筆，沒上榜回 null
+// 這一局上榜就回傳那一筆（passed：這一局第一次超越的對手），沒上榜回 null
 function lbSubmit(reason) {
     if (appScreen !== 'playing' || gameState.daily || getSurvivedWaves() < LB_MIN_WAVE) return null;
+    const best = lbOwnBest();
     const k = reason === 'died' ? gameState.killedBy : null;
     const e = {
         id: Date.now(), name: meta.lbName || LB_DEFAULT_NAME, cls: runClass(), date: Date.now(),
@@ -5625,11 +5658,47 @@ function lbSubmit(reason) {
         kills: Object.values(gameState.totalKills).reduce((a, b) => a + b, 0),
         summons: Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0),
         streak: gameState.bestStreak, bosses: gameState.totalKills.Boss || 0,
-        blessings: { ...gameState.blessings },
+        blessings: { ...gameState.blessings }, splits: { ...gameState.run.splits },
     };
     meta.leaderboard.push(e);
     lbPrune();
-    return meta.leaderboard.includes(e) ? e : null;
+    if (!meta.leaderboard.includes(e)) return null;
+    return { entry: e, passed: LB_RIVALS.filter(r => lbCompare(e, r) < 0 && !lbBeaten(r, best)) };
+}
+
+// 波次結束時喊一聲：這一局第一次越過某個對手（以前的紀錄還沒贏過他），或是首領波的分段時間跟自己最快的通關比
+function lbWaveEnd() {
+    if (appScreen !== 'playing' || gameState.daily || gameState.endless) return;
+    const w = gameState.currentWave, run = gameState.run, now = lbRunNow();
+    if (w % CONFIG.wave.bossEvery === 0) run.splits[w] = gameState.runTime;
+    const best = lbOwnBest();
+    const passed = LB_RIVALS.filter(r => !r.won && r.wave === w - 1 && !lbBeaten(r, best));
+    if (passed.length > 0) {
+        gameState.banner = { text: `超越 ${passed[0].name}`, sub: `排行榜綜合第 ${lbPlace(now, LB_ALL)} 名`, color: '#FFD54F', life: CONFIG.wave.bannerDuration * 1.4, icon: 'podium' };
+        return;
+    }
+    const target = lbSplitTarget(w);
+    if (target != null && !isFinalWave(w)) {
+        const d = gameState.runTime - target;
+        gameState.banner = { text: `比最佳${d <= 0 ? '快' : '慢'} ${formatClock(Math.abs(d))}`, sub: `第 ${w} 波 · ${formatClock(gameState.runTime)}`, color: d <= 0 ? '#A5D6A7' : '#EF9A9A', life: CONFIG.wave.bannerDuration * 1.2, icon: 'clock' };
+    }
+}
+// 這個職業自己最快的那次通關，打到第 w 波時用了多久（沒有就 null）
+function lbSplitTarget(w) {
+    const best = meta.leaderboard.filter(e => e.won && e.cls === runClass() && e.splits && e.splits[w] != null).sort(lbCompare)[0];
+    return best ? best.splits[w] : null;
+}
+// 結算畫面的下一個目標：榜上排在這一局前面的那一筆，還差多少
+function lbNextTargetHtml(run) {
+    if (gameState.daily) return '';
+    const board = lbBoard(LB_ALL), place = lbPlace(run, LB_ALL);
+    if (place === 1) return `${iconHtml('crown')}綜合榜第一`;
+    const t = board[Math.min(place, board.length + 1) - 2];
+    if (!t) return '';
+    const who = escapeHtml(t.name);
+    if (t.won && !run.won) return `${iconHtml('podium')}通關就能超越 ${who}`;
+    if (t.won) return `${iconHtml('podium')}再快 ${formatClock(run.time - t.time + 1)} 超越 ${who}`;
+    return `${iconHtml('podium')}再撐 ${t.wave - run.wave + 1} 波超越 ${who}`;
 }
 
 function escapeHtml(s) {
@@ -5670,8 +5739,9 @@ function renderLeaderboard() {
     const board = lbBoard(lbTab);
     uiElements.lbList.innerHTML = board.length === 0 ? `<span class="empty-note">撐過第 ${LB_MIN_WAVE} 波就能上榜</span>` : board.map((e, i) => {
         const sub = (e.won ? `<span>${iconHtml('crown')}通關</span>` : `<span>${iconHtml('skull')}第 ${e.wave} 波</span>`) +
-            (e.curse > 0 ? `<span>${iconHtml('flame')}詛咒 ${e.curse}</span>` : '');
-        return `<button class="lb-row${e.id === lbMineId ? ' mine' : ''}" data-lb="${e.id}"><span class="lb-no">${i + 1}</span>${lbClassImg(e.cls)}` +
+            (e.curse > 0 ? `<span>${iconHtml('flame')}詛咒 ${e.curse}</span>` : '') +
+            (e.rival ? '<span class="lb-tag">對手</span>' : '');
+        return `<button class="lb-row${e.id === lbMineId ? ' mine' : ''}${e.rival ? ' rival' : ''}" data-lb="${e.id}"><span class="lb-no">${i + 1}</span>${lbClassImg(e.cls)}` +
             `<span class="lb-who"><div class="lb-name">${escapeHtml(e.name)}</div><div class="lb-sub">${sub}</div></span>` +
             `<span class="lb-time${e.won ? ' won' : ''}">${iconHtml('clock')}${formatClock(e.time)}</span></button>`;
     }).join('');
@@ -5679,7 +5749,7 @@ function renderLeaderboard() {
     if (mineRow) mineRow.scrollIntoView({ block: 'nearest' });
 }
 function openLbDetail(id) {
-    const e = meta.leaderboard.find(x => String(x.id) === String(id));
+    const e = lbEntries(LB_ALL).find(x => String(x.id) === String(id));
     if (!e) return;
     const C = CLASSES[e.cls];
     const stat = (v, label) => v == null ? '' : `<div class="result-stat"><b>${v}</b><span>${label}</span></div>`;
@@ -5688,6 +5758,7 @@ function openLbDetail(id) {
         `<div class="lb-sub">${C ? (C.title === C.name ? C.name : `${C.name} · ${C.title}`) : ''}${e.date ? `<span>${new Date(e.date).toLocaleDateString('zh-TW')}</span>` : ''}</div></div></div>` +
         `<div class="lb-ranks">${lbRanksHtml(e)}${e.curse > 0 ? `<span>${iconHtml('flame')}詛咒<b>${e.curse}</b></span>` : ''}</div>` +
         lbResultHtml(e) +
+        (e.rival ? `<p class="lb-motto">「${e.motto}」</p><div class="lb-sub lb-beaten">${lbBeaten(e, lbOwnBest()) ? `${iconHtml('crown')}已經超越` : e.won ? `${formatClock(e.time)} 內通關就能超越` : `撐過第 ${e.wave + 1} 波就能超越`}</div>` : '') +
         (e.kills == null ? '' : `<div class="result-stats">${stat(formatNumberK(e.kills), '擊殺')}${stat(formatNumberK(e.summons), '召喚')}${stat(formatNumberK(e.streak), '最高連殺')}${stat(e.bosses, '首領')}</div>`) +
         (e.blessings ? `<div class="bless-list">${blessingChipsHtml(e.blessings)}</div>` : '');
     showScreen(uiElements.lbDetail, true);
@@ -5695,10 +5766,14 @@ function openLbDetail(id) {
 
 // 結算時上榜：恭喜＋留名字。不填直接關掉就用預設名字（上次填過的名字、沒填過就是「無名亡靈」）
 let lbPending = null;
-function openLbCongrats(e) {
+// 這一局第一次超越的對手最多列這幾個（一口氣跳很多名時只列最前面的）
+const LB_PASSED_SHOWN = 2;
+function openLbCongrats({ entry: e, passed }) {
     lbPending = e;
     uiElements.lbCongratsRanks.innerHTML = lbRanksHtml(e);
-    uiElements.lbCongratsResult.innerHTML = lbResultHtml(e);
+    const top = passed.sort(lbCompare).slice(0, LB_PASSED_SHOWN);
+    uiElements.lbCongratsResult.innerHTML = lbResultHtml(e) +
+        (top.length ? `<div class="lb-passed">${top.map(r => `<span>${lbClassImg(r.cls)}超越 ${r.name}</span>`).join('')}${passed.length > top.length ? `<span>等 ${passed.length} 人</span>` : ''}</div>` : '');
     uiElements.lbNameInput.value = meta.lbName || '';
     uiElements.lbNameInput.placeholder = LB_DEFAULT_NAME;
     showScreen(uiElements.lbCongrats, true);
@@ -7002,6 +7077,9 @@ function showGameOver(reason = 'died') {
     showScreen(uiElements.gameOverScreen, true);
     SaveStore.remove(SAVE_KEY);
     pauseMusic();
+    const target = lbNextTargetHtml(ranked ? ranked.entry : lbRunNow());
+    uiElements.finalTarget.classList.toggle('hidden', !target);
+    uiElements.finalTarget.innerHTML = target;
     if (ranked) openLbCongrats(ranked);
 }
 
@@ -8269,6 +8347,7 @@ function init() {
     uiElements.achvSubtabs.addEventListener('click', (e) => { const b = e.target.closest('[data-cls]'); if (b) { achvClassTab = b.dataset.cls; renderAchievements(); } });
     onTap(uiElements.titleLbBtn, () => openLeaderboard());
     onTap(uiElements.gameoverLbBtn, () => openLeaderboard());
+    onTap(uiElements.finalTarget, () => openLeaderboard(LB_ALL));
     onTap(uiElements.lbCloseBtn, closeLeaderboard);
     uiElements.lbTabs.addEventListener('click', (e) => { const b = e.target.closest('[data-lb-tab]'); if (b) { lbTab = b.dataset.lbTab; renderLeaderboard(); } });
     uiElements.lbList.addEventListener('click', (e) => { const b = e.target.closest('[data-lb]'); if (b) openLbDetail(b.dataset.lb); });
