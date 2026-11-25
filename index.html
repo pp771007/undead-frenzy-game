@@ -971,6 +971,11 @@
             z-index: 15;
         }
 
+        /* 從設定頁打開，要蓋在設定頁上面 */
+        #install-screen {
+            z-index: 16;
+        }
+
         /* 通關 / 詛咒 */
         .title-text.victory,
         #game-over-screen .title-text.victory {
@@ -1784,6 +1789,68 @@
         }
 
         /* 設定開關（省電模式） */
+        .install-steps {
+            list-style: none;
+            margin: 4px 0 6px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            text-align: left;
+        }
+
+        .install-steps li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.28);
+        }
+
+        .install-steps .step-no {
+            flex: none;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            background: var(--gold);
+            color: var(--ink);
+            font-weight: 900;
+            font-size: 15px;
+        }
+
+        .install-steps .icon {
+            flex: none;
+            width: 34px;
+            height: 34px;
+        }
+
+        .install-steps .step-text {
+            font-weight: 700;
+            font-size: 17px;
+            color: var(--bone);
+            text-shadow: var(--text-outline);
+        }
+
+        .install-steps .step-hint {
+            display: block;
+            font-weight: 400;
+            font-size: 13px;
+            color: var(--bone-dim);
+        }
+
+        .install-note {
+            margin: 0 0 4px;
+            font-size: 14px;
+            color: var(--bone-dim);
+        }
+
+        .install-note.warn {
+            color: #ffcdd2;
+        }
+
         .setting-toggle {
             cursor: pointer;
         }
@@ -2134,6 +2201,19 @@
             <div class="stack">
                 <button id="install-btn" class="btn btn-gold hidden"><span class="btn-icon" data-icon="install"></span>安裝成 App</button>
                 <button id="settings-close-btn" class="btn btn-dark">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 安裝教學（瀏覽器不能直接叫出安裝視窗時） -->
+    <div id="install-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <h2 class="title-text">安裝成 App</h2>
+            <ol id="install-steps" class="install-steps"></ol>
+            <div id="install-note" class="install-note hidden"></div>
+            <div class="stack">
+                <button id="install-open-btn" class="btn btn-gold hidden"><span class="btn-icon" data-icon="browser"></span>用瀏覽器開啟</button>
+                <button id="install-close-btn" class="btn btn-dark">返回</button>
             </div>
         </div>
     </div>

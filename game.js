@@ -108,6 +108,11 @@ const uiElements = {
     fullscreenToggle: $id('fullscreen-toggle'),
     pauseFullscreenToggle: $id('pause-fullscreen-toggle'),
     installBtn: $id('install-btn'),
+    installScreen: $id('install-screen'),
+    installSteps: $id('install-steps'),
+    installNote: $id('install-note'),
+    installOpenBtn: $id('install-open-btn'),
+    installCloseBtn: $id('install-close-btn'),
     draftScreen: $id('draft-screen'),
     draftCards: $id('draft-cards'),
     rerollBtn: $id('reroll-btn'), skipBtn: $id('skip-btn'), healBtn: $id('heal-btn'),
@@ -7808,25 +7813,70 @@ function bindFullscreenToggles() {
     sync();
 }
 
-// 瀏覽器判定可以安裝時才給按鈕（Chrome / Edge / Android）；Safari 沒有這個事件，照它自己的「加入主畫面」
+// 安裝：Chrome / Edge / Android Chrome 會給 beforeinstallprompt，按鈕直接叫出安裝視窗；
+// 其他瀏覽器網頁叫不出來（Safari、Samsung、App 內建瀏覽器），按鈕改成打開這個裝置的步驟教學
 let installPrompt = null;
+function isInstalledApp() {
+    return matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone === true;
+}
+function installEnv() {
+    const ua = navigator.userAgent;
+    if (/ Line\//i.test(ua)) return 'line';
+    if (/FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|Barcelona/i.test(ua)) return 'inapp';
+    if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return 'ios';
+    if (/Android/.test(ua)) return 'android';
+    if (/Macintosh/.test(ua) && /Safari\//.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua)) return 'macSafari';
+    return null;
+}
+// [圖示, 動作, 補充]；補充只放「找不到時怎麼辦」
+const INSTALL_GUIDES = {
+    ios: { steps: [['share', '點「分享」', '找不到就先點「⋯」'], ['addHome', '選「加入主畫面」']], note: '主畫面的 App 存檔另外算，目前的進度不會帶過去' },
+    android: { steps: [['menuDots', '點瀏覽器的選單'], ['addHome', '選「安裝」或「加到主畫面」']] },
+    macSafari: { steps: [['share', '點「分享」'], ['addHome', '選「加入 Dock」']] },
+    line: { steps: [], hint: '開啟後再到設定安裝', openExternal: true },
+    inapp: { steps: [['menuDots', '點右上角的選單'], ['browser', '選「用瀏覽器開啟」', '開啟後再到設定安裝']] },
+};
+function refreshInstallButton() {
+    uiElements.installBtn.classList.toggle('hidden', isInstalledApp() || (!installPrompt && !installEnv()));
+}
+function showInstallGuide() {
+    const guide = INSTALL_GUIDES[installEnv()];
+    uiElements.installSteps.innerHTML = guide.steps.map(([icon, text, hint], i) =>
+        `<li><span class="step-no">${i + 1}</span>${iconHtml(icon)}<span class="step-text">${text}${hint ? `<span class="step-hint">${hint}</span>` : ''}</span></li>`).join('');
+    uiElements.installSteps.classList.toggle('hidden', !guide.steps.length);
+    uiElements.installNote.textContent = guide.note || guide.hint || '';
+    uiElements.installNote.classList.toggle('warn', !!guide.note);
+    uiElements.installNote.classList.toggle('hidden', !guide.note && !guide.hint);
+    uiElements.installOpenBtn.classList.toggle('hidden', !guide.openExternal);
+    showScreen(uiElements.installScreen, true);
+}
 window.addEventListener('beforeinstallprompt', e => {
     installPrompt = e;
-    uiElements.installBtn.classList.remove('hidden');
+    refreshInstallButton();
 });
 window.addEventListener('appinstalled', () => {
     installPrompt = null;
-    uiElements.installBtn.classList.add('hidden');
+    refreshInstallButton();
 });
+// LINE 的參數：網址帶 openExternalBrowser=1 會改用手機預設的瀏覽器開
+const LINE_EXTERNAL_PARAM = 'openExternalBrowser';
 function bindInstallButton() {
     uiElements.installBtn.addEventListener('click', () => {
-        if (!installPrompt) return;
+        if (!installPrompt) { showInstallGuide(); return; }
         installPrompt.prompt();
         installPrompt.userChoice.then(() => {
             installPrompt = null;
-            uiElements.installBtn.classList.add('hidden');
+            refreshInstallButton();
         });
     });
+    uiElements.installOpenBtn.addEventListener('click', () => {
+        const url = new URL(location.href);
+        url.hash = '';
+        url.searchParams.set(LINE_EXTERNAL_PARAM, '1');
+        location.href = url.toString();
+    });
+    uiElements.installCloseBtn.addEventListener('click', () => showScreen(uiElements.installScreen, false));
+    refreshInstallButton();
 }
 
 // 裝成 App 與離線遊玩靠 Service Worker；第一次開的時候它還沒接手，把這次載過的檔案清單交給它補進快取
