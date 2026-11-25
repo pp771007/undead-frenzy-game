@@ -773,6 +773,80 @@
             text-shadow: var(--text-outline);
         }
 
+        /* 成就達成：從狀態列下方滑進來，幾秒後自己收掉 */
+        #achv-toast {
+            position: fixed;
+            top: calc(env(safe-area-inset-top) + 70px);
+            left: 50%;
+            z-index: 6;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            max-width: calc(100vw - 32px);
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(-50%, -16px);
+            border-color: var(--gold);
+        }
+
+        #achv-toast.show {
+            animation: achv-toast 2.6s ease-out forwards;
+        }
+
+        @keyframes achv-toast {
+            0% { opacity: 0; transform: translate(-50%, -16px); }
+            10%, 85% { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, -16px); }
+        }
+
+        #achv-toast>.icon {
+            width: 30px;
+            height: 30px;
+            flex: none;
+        }
+
+        .achv-toast-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .achv-toast-text b {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 15px;
+            color: var(--gold);
+        }
+
+        .achv-toast-text span {
+            font-size: 12px;
+            color: var(--bone-dim);
+        }
+
+        #achv-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .achv-row {
+            opacity: 0.55;
+        }
+
+        .achv-row.done {
+            opacity: 1;
+            border-color: rgba(233, 196, 106, 0.7);
+        }
+
+        .achv-row>.icon {
+            width: 30px;
+            height: 30px;
+        }
+
         /* ---------- 全畫面視窗 ---------- */
         .overlay-screen {
             position: fixed;
@@ -1764,6 +1838,7 @@
     </div>
 
     <div id="message-area" class="panel"></div>
+    <div id="achv-toast" class="panel"></div>
 
     <!-- 標題畫面 -->
     <div id="title-screen" class="overlay-screen">
@@ -1775,6 +1850,7 @@
             <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
             <div class="title-row">
                 <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
+                <button id="title-achv-btn" class="btn btn-dark"><span class="btn-icon" data-icon="trophy"></span>成就</button>
                 <button id="title-curse-btn" class="btn btn-red hidden"><span class="btn-icon" data-icon="skull"></span>詛咒</button>
                 <button id="title-settings-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gear"></span>設定</button>
             </div>
@@ -1794,6 +1870,20 @@
             <div class="btn-row">
                 <button id="meta-refund-btn" class="btn btn-dark"><span class="btn-icon" data-icon="reroll"></span>全部退還</button>
                 <button id="meta-close-btn" class="btn btn-dark">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成就 -->
+    <div id="achv-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <div class="meta-head">
+                <h2 class="title-text">成就</h2>
+                <span class="crystal-count" id="achv-count"></span>
+            </div>
+            <div id="achv-list"></div>
+            <div class="stack">
+                <button id="achv-close-btn" class="btn btn-dark">返回</button>
             </div>
         </div>
     </div>

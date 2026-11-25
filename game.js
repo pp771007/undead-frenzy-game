@@ -69,6 +69,8 @@ const uiElements = {
     titleCurseBtn: $id('title-curse-btn'), curseScreen: $id('curse-screen'), curseList: $id('curse-list'),
     curseLevel: $id('curse-level'), curseMult: $id('curse-mult'), curseMinus: $id('curse-minus'), cursePlus: $id('curse-plus'),
     curseCloseBtn: $id('curse-close-btn'),
+    titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'),
+    achvCloseBtn: $id('achv-close-btn'), achvToast: $id('achv-toast'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
     soulsInfo: $id('souls-info'),
@@ -694,7 +696,7 @@ const META_UPGRADES = {
 const CRYSTALS_PER_WAVE = 2;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, relicSeen: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
+    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
 }
 function loadMeta() {
     try {
@@ -710,6 +712,85 @@ const meta = loadMeta();
 function metaLv(id) { return meta.upgrades[id] || 0; }
 function metaVal(id) { return META_UPGRADES[id].per * metaLv(id); }
 function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
+
+// ---------- 成就：第一次達成就給結晶（跨局保留） ----------
+// 同類遊戲都有（PokéSurvivor 149 個成就、PokeBonk 的任務）：給每一局一個「這次試試看」的目標。
+// 共鳴那一組故意每個流派一個：逼玩家去試平常不走的流派
+const ACHV_SCHOOL_ICON = { skel: 'boneBlade', eye: 'splitGaze', wraith: 'wraithBlast', mage: 'soulBlade', soul: 'soulHarvest' };
+// 自動遊玩一局的大軍最多到 1800～3500 隻：小的那個中期拿得到，大的要後期養得好
+const ACHV_ARMY_SMALL = 500, ACHV_ARMY_BIG = 2000;
+const ACHV_STREAK_SMALL = 500, ACHV_STREAK_BIG = 2000;
+const ACHV_LEGENDS = 3;
+const ACHV_COFFINS = 10;
+const ACHV_ENDLESS_WAVE = 60;
+const ACHV_CURSE_MID = 4;
+function legendCount() {
+    let n = 0;
+    for (const id in gameState.blessings) if (BLESSINGS[id] && BLESSINGS[id].legendary && gameState.blessings[id] > 0) n++;
+    return n;
+}
+function bestUnitLevel() {
+    return Math.max(gameState.skeletonWarriorLevel, gameState.eyeMonsterLevel, gameState.wraithLevel);
+}
+// 首領的成就用類別名稱記（BossMonster.die 寫進 gameState.bossKills）；名字從各自的設定拿，改名不用改這裡
+const ACHV_BOSSES = [['ColossusBoss', () => CONFIG.boss], ['PlagueBoss', () => CONFIG.plagueBoss], ['HunterBoss', () => CONFIG.hunterBoss], ['DragonBoss', () => CONFIG.dragonBoss]];
+const ACHIEVEMENTS = [
+    { id: 'wave10', icon: 'skull', name: '初陣', desc: '撐過第 10 波', reward: 20, test: () => getSurvivedWaves() >= 10 },
+    { id: 'wave25', icon: 'skull', name: '過半', desc: '撐過第 25 波', reward: 40, test: () => getSurvivedWaves() >= 25 },
+    { id: 'win', icon: 'crown', name: '凱旋', desc: '打倒最終首領', reward: 60, test: () => gameState.endless },
+    { id: 'endless', icon: 'flame', name: '無盡深淵', desc: `無盡模式撐到第 ${ACHV_ENDLESS_WAVE} 波`, reward: 100, test: () => gameState.endless && getSurvivedWaves() >= ACHV_ENDLESS_WAVE },
+    { id: 'curseMid', icon: 'warning', name: '受詛者', desc: `詛咒 ${ACHV_CURSE_MID} 以上通關`, reward: 100, test: () => gameState.endless && gameState.curse >= ACHV_CURSE_MID },
+    { id: 'curseMax', icon: 'warning', name: '萬咒之王', desc: '詛咒全開通關', reward: 200, test: () => gameState.endless && gameState.curse >= CURSES.length },
+    ...ACHV_BOSSES.map(([cls, cfg]) => ({ id: `boss_${cls}`, icon: 'crown', get name() { return `討伐${cfg().name}`; }, get desc() { return `打倒${cfg().name}`; }, reward: 20, test: () => !!gameState.bossKills[cls] })),
+    ...Object.keys(ACHV_SCHOOL_ICON).map(s => ({ id: `res_${s}`, icon: ACHV_SCHOOL_ICON[s], get name() { return SCHOOLS[s].res[1].name; }, get desc() { return `${SCHOOLS[s].name}流派疊滿 ${RESONANCE_STEPS[1]} 層`; }, reward: 30, test: () => res(s) >= 2 })),
+    { id: 'army1', icon: 'summon', name: '亡者之海', desc: `同時有 ${ACHV_ARMY_SMALL} 隻召喚物`, reward: 30, test: () => gameState.summons.length >= ACHV_ARMY_SMALL },
+    { id: 'army2', icon: 'summon', name: '萬骨大軍', desc: `同時有 ${ACHV_ARMY_BIG} 隻召喚物`, reward: 60, test: () => gameState.summons.length >= ACHV_ARMY_BIG },
+    { id: 'evolve', icon: 'arrowUp', name: '至高進化', desc: `任一兵種升到 Lv${CONFIG.evolution.levels[2]}`, reward: 40, test: () => bestUnitLevel() >= CONFIG.evolution.levels[2] },
+    { id: 'streak1', icon: 'flame', name: '殺戮狂潮', desc: `連殺 ${ACHV_STREAK_SMALL}`, reward: 30, test: () => gameState.bestStreak >= ACHV_STREAK_SMALL },
+    { id: 'streak2', icon: 'flame', name: '屠戮之王', desc: `連殺 ${ACHV_STREAK_BIG}`, reward: 60, test: () => gameState.bestStreak >= ACHV_STREAK_BIG },
+    { id: 'legends', icon: 'star', name: '傳說加身', desc: `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, reward: 40, test: () => legendCount() >= ACHV_LEGENDS },
+    { id: 'coffins', icon: 'lock', name: '盜墓者', desc: `累計打開 ${ACHV_COFFINS} 座封印寶棺`, reward: 30, test: () => (meta.stats.coffins || 0) >= ACHV_COFFINS },
+];
+// 每隔這麼久檢查一次（條件都是看目前狀態，不需要每格算）
+const ACHV_CHECK_EVERY = 0.5;
+const ACHV_TOAST_MS = 2600;
+let achvCheckTimer = 0;
+const achvToastQueue = [];
+let achvToastBusy = false;
+function achvDone(id) { return !!meta.achv[id]; }
+function checkAchievements() {
+    if (appScreen !== 'playing' || !gameState.player) return;
+    for (const a of ACHIEVEMENTS) {
+        if (achvDone(a.id) || !a.test()) continue;
+        meta.achv[a.id] = true;
+        meta.crystals += a.reward;
+        gameState.achvCrystals += a.reward;
+        gameState.achvCount++;
+        saveMeta();
+        achvToastQueue.push(a);
+        if (!achvToastBusy) showNextAchvToast();
+    }
+}
+function showNextAchvToast() {
+    const a = achvToastQueue.shift();
+    const el = uiElements.achvToast;
+    if (!a) { achvToastBusy = false; el.classList.remove('show'); return; }
+    achvToastBusy = true;
+    el.innerHTML = `${iconHtml('trophy')}<div class="achv-toast-text"><b>${a.name}</b><span>${a.desc}</span></div><span class="crystal-count">${iconHtml('crystal')}+${a.reward}</span>`;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+    Sfx.play('comboMilestone');
+    setTimeout(showNextAchvToast, ACHV_TOAST_MS);
+}
+function renderAchievements() {
+    const done = ACHIEVEMENTS.filter(a => achvDone(a.id)).length;
+    uiElements.achvCount.textContent = `${done}/${ACHIEVEMENTS.length}`;
+    uiElements.achvList.innerHTML = ACHIEVEMENTS.map(a => {
+        const ok = achvDone(a.id);
+        return `<div class="meta-row achv-row ${ok ? 'done' : ''}">${iconHtml(ok ? 'trophy' : a.icon)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
+    }).join('');
+}
 
 function getSummonCost(config) {
     return Math.max(1, Math.round(config.summonCost * (1 - blessVal('pact'))));
@@ -800,6 +881,7 @@ let gameState = {
     hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
+    bossKills: {}, achvCrystals: 0, achvCount: 0,
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -3226,6 +3308,7 @@ class BossMonster extends Monster {
     drawHealthBar() { }
     die() {
         super.die();
+        gameState.bossKills[this.constructor.name] = true;
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
         spawnFloatText(this.pos.x, this.pos.y - 8, `+${CRYSTALS_PER_BOSS}`, '#CE93D8', 17, 1.6, 'crystal');
@@ -4555,6 +4638,8 @@ function finishRelic(r) {
         dropSouls(r.x, r.y, souls);
         // 寶棺自己噴的不算進「這一波掉了多少」，不然下一座寶棺會越滾越大
         gameState.waveSouls -= souls;
+        meta.stats.coffins = (meta.stats.coffins || 0) + 1;
+        saveMeta();
         spawnFloatText(r.x, r.y - 30, `+${formatNumberK(souls)}`, '#80DEEA', 18, 1.3, 'soul');
         if (Math.random() < T.draftChance) {
             gameState.relicDrafts++;
@@ -4922,6 +5007,7 @@ function checkWaveEndCondition() {
 
 // ---------- 通關 ----------
 function showVictory() {
+    checkAchievements();
     const lv = gameState.curse || 0;
     const bonus = Math.round(VICTORY_CRYSTALS * curseCrystalMult(lv));
     meta.crystals += bonus;
@@ -5511,6 +5597,8 @@ function updateTimers(deltaTime) {
     updateSpawner(deltaTime);
     gameState.novaCooldown = Math.max(0, gameState.novaCooldown - deltaTime);
     gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
+    achvCheckTimer -= deltaTime;
+    if (achvCheckTimer <= 0) { achvCheckTimer = ACHV_CHECK_EVERY; checkAchievements(); }
     if (gameState.streakTimer > 0) {
         gameState.streakTimer -= deltaTime;
         if (gameState.streakTimer <= 0) gameState.streak = 0;
@@ -5983,6 +6071,8 @@ function renderRewardDetail(survived) {
     let html = `<span>${iconHtml('skull')}${survived} 波 ×${CRYSTALS_PER_WAVE}<b>+${survived * CRYSTALS_PER_WAVE}</b></span>`;
     if (bosses > 0) html += `<span>${iconHtml('crown')}首領 ${bosses} 隻 ×${CRYSTALS_PER_BOSS}<b>+${bosses * CRYSTALS_PER_BOSS}</b></span>`;
     if (mult > 1) html += `<span>${iconHtml('flame')}詛咒<b>×${mult.toFixed(1)}</b></span>`;
+    // 成就的結晶達成當下就入帳了，這裡只是列出來，不算進 getRunReward
+    if (gameState.achvCount > 0) html += `<span>${iconHtml('trophy')}成就 ${gameState.achvCount} 個<b>+${gameState.achvCrystals}</b></span>`;
     uiElements.finalRewardDetail.innerHTML = html;
 }
 
@@ -6039,11 +6129,12 @@ function showGameOver(reason = 'died') {
     uiElements.finalKills.textContent = formatNumberK(kills);
     uiElements.finalSummons.textContent = formatNumberK(summons);
     uiElements.finalStreak.textContent = formatNumberK(gameState.bestStreak);
+    checkAchievements();
     const reward = getRunReward();
     meta.crystals += reward;
     saveMeta();
     renderRewardDetail(survived);
-    uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward}`;
+    uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward + gameState.achvCrystals}`;
     uiElements.gameoverMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
     renderBlessingList(uiElements.finalBlessings);
     uiElements.hud.classList.add('hidden');
@@ -6088,6 +6179,8 @@ function saveGameState() {
         banishLeft: gameState.banishLeft,
         rerollsLeft: gameState.rerollsLeft,
         waveSouls: gameState.waveSouls,
+        achvCrystals: gameState.achvCrystals,
+        achvCount: gameState.achvCount,
         curse: gameState.curse,
         endless: gameState.endless,
     };
@@ -6139,6 +6232,8 @@ function loadGameState() {
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
         gameState.waveSouls = loadedState.waveSouls ?? 0;
+        gameState.achvCrystals = loadedState.achvCrystals ?? 0;
+        gameState.achvCount = loadedState.achvCount ?? 0;
         gameState.curse = loadedState.curse ?? 0;
         // 已經過了最終波的舊存檔直接算進無盡模式，不會再跳一次通關
         gameState.endless = loadedState.endless ?? (gameState.currentWave >= CONFIG.wave.finalWave);
@@ -6223,6 +6318,7 @@ function resetGameInternalState() {
         hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
+        bossKills: {}, achvCrystals: 0, achvCount: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -7197,6 +7293,8 @@ function init() {
     onTap(uiElements.metaRefundBtn, () => showConfirm('全部退還？', '結晶全數退回，可以重新分配', '退還', refundMeta));
     onTap(uiElements.titleCurseBtn, () => { renderCurse(); showScreen(uiElements.curseScreen, true); });
     onTap(uiElements.curseCloseBtn, () => { showScreen(uiElements.curseScreen, false); refreshTitle(); });
+    onTap(uiElements.titleAchvBtn, () => { renderAchievements(); showScreen(uiElements.achvScreen, true); });
+    onTap(uiElements.achvCloseBtn, () => showScreen(uiElements.achvScreen, false));
     onTap(uiElements.curseMinus, () => stepCurse(-1));
     onTap(uiElements.cursePlus, () => stepCurse(1));
     onTap(uiElements.victoryContinueBtn, continueEndless);

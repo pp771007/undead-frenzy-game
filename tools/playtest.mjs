@@ -98,6 +98,7 @@ for (;;) {
             B.t += DT;
             if (B.cur && p.currentHealth < h0) B.cur.dmg += (h0 - p.currentHealth) / p.maxHealth;
             if (B.cur && !gameState.betweenWaves) { B.cur.minHp = Math.min(B.cur.minHp, p.currentHealth / p.maxHealth); B.cur.peak = Math.max(B.cur.peak, gameState.monsters.length); }
+            B.maxArmy = Math.max(B.maxArmy || 0, gameState.summons.length);
             // 一波打超過 STUCK_SECONDS 秒當成卡關：記下場上剩什麼、離法師多遠、在打誰
             if (B.cur && !gameState.betweenWaves && B.t - B.cur.start > STUCK_SECONDS) {
                 B.stuck = { wave: gameState.currentWave, summons: gameState.summons.length, mons: gameState.monsters.filter(m => m.isAlive).slice(0, 10).map(m => ({ type: m.config.type, d: Math.round(Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y)), tgt: m.target ? (m.target === p ? 'player' : (m.target.config?.type || 'orb')) : null })) };
@@ -114,11 +115,13 @@ const out = await page.evaluate(() => ({
     waves: window.__bot.waves, t: window.__bot.t, wave: gameState.currentWave, stuck: window.__bot.stuck,
     killedBy: gameState.killedBy && gameState.killedBy.config && gameState.killedBy.config.type,
     souls: window.__bot.src, resonance: gameState.resonance, blessings: gameState.blessings, relics: window.__bot.relics,
+    achv: Object.keys(meta.achv), maxArmy: window.__bot.maxArmy,
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
 console.log(`RESULT ${TAG} policy=${POLICY} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
 console.log('SOULS', JSON.stringify(out.souls));
 console.log('RELICS', JSON.stringify(out.relics), 'blessings', Object.values(out.blessings).reduce((a, b) => a + b, 0));
+console.log('ACHV', out.achv.join(' '), 'maxArmy', out.maxArmy);
 console.log('RESONANCE', JSON.stringify(out.resonance), JSON.stringify(out.blessings));
 console.log('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tevent');
 for (const w of out.waves) console.log([w.wave, w.dur, w.minHp.toFixed(2), w.dmg.toFixed(2), w.peak, w.summons, w.ev || ''].join('\t'));
