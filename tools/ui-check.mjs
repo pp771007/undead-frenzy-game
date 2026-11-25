@@ -81,7 +81,14 @@ await page.evaluate((cls) => {
 await shot('4b-draft-legend');
 await page.evaluate(() => { gameState.draftOpen = false; showScreen(uiElements.draftScreen, false); togglePause(); });
 await shot('5-pause');
+// 第 21 波陣亡會上榜：先跳恭喜，關掉後是排行榜，再點開自己那一筆
 await page.evaluate(() => { togglePause(); gameState.gameOver = true; showGameOver('died'); });
+await shot('6a-lb-congrats');
+await page.evaluate(() => closeLbCongrats());
+await shot('6b-leaderboard');
+await page.evaluate(() => openLbDetail(lbMineId));
+await shot('6c-lb-detail');
+await page.evaluate(() => { showScreen(uiElements.lbDetail, false); closeLeaderboard(); });
 await shot('6-gameover');
 await page.evaluate(() => openMeta('gameover'));
 await shot('7-meta');

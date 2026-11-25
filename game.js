@@ -71,6 +71,11 @@ const uiElements = {
     curseCloseBtn: $id('curse-close-btn'),
     titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'), achvTabs: $id('achv-tabs'), achvSubtabs: $id('achv-subtabs'),
     achvCloseBtn: $id('achv-close-btn'), achvToast: $id('achv-toast'),
+    titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'),
+    lbScreen: $id('lb-screen'), lbTabs: $id('lb-tabs'), lbList: $id('lb-list'), lbCloseBtn: $id('lb-close-btn'),
+    lbDetail: $id('lb-detail'), lbDetailBody: $id('lb-detail-body'), lbDetailCloseBtn: $id('lb-detail-close-btn'),
+    lbCongrats: $id('lb-congrats'), lbCongratsRanks: $id('lb-congrats-ranks'), lbCongratsResult: $id('lb-congrats-result'), lbNameInput: $id('lb-name-input'),
+    lbCongratsOkBtn: $id('lb-congrats-ok-btn'), lbCongratsCloseBtn: $id('lb-congrats-close-btn'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
     soulsInfo: $id('souls-info'),
@@ -741,12 +746,12 @@ const META_UPGRADES = {
 const CRYSTALS_PER_WAVE = 2;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
+    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
 }
 function loadMeta() {
     try {
         const m = JSON.parse(SaveStore.get(META_KEY));
-        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) } };
+        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) }, leaderboard: m.leaderboard || seedLeaderboard(m.bestClear) };
     } catch (e) { }
     return defaultMeta();
 }
@@ -5579,6 +5584,142 @@ function endRunFromVictory() {
     showGameOver('victory');
 }
 
+// ---------- 排行榜：綜合榜與各職業榜各留前十名（存在這台裝置的 meta 裡） ----------
+// 名次：通關的排前面、照通關時間快到慢；沒通關的照撐過的波數多到少，同波數用時短的在前。
+// time 是 runTime：通關後就不再走（無盡模式不算），所以通關的那筆就是通關時間。
+// 每日變異的規則每天不同（只能召喚眼魔、血量剩四分之一…），跟一般局比不公平，不上榜
+const LB_SIZE = 10;
+// 撐過這幾波才上榜：開局就放棄的不用跳恭喜
+const LB_MIN_WAVE = 5;
+const LB_DEFAULT_NAME = '無名亡靈';
+const LB_ALL = 'all';
+const LB_RESULT_NAMES = { died: '陣亡', quit: '中途結束' };
+
+function lbCompare(a, b) {
+    if (a.won !== b.won) return a.won ? -1 : 1;
+    if (a.won) return a.time - b.time;
+    return b.wave - a.wave || a.time - b.time;
+}
+function lbBoard(tab) {
+    return meta.leaderboard.filter(e => tab === LB_ALL || e.cls === tab).sort(lbCompare).slice(0, LB_SIZE);
+}
+function lbRank(e, tab) { return lbBoard(tab).indexOf(e) + 1; }
+// 掉出所有榜的就刪掉，存檔不會一直長大
+function lbPrune() {
+    const keep = new Set(lbBoard(LB_ALL));
+    for (const id of Object.keys(CLASSES)) lbBoard(id).forEach(e => keep.add(e));
+    meta.leaderboard = meta.leaderboard.filter(e => keep.has(e));
+}
+// 排行榜功能出來之前的玩家：每個職業的最快通關紀錄先放上榜（只知道時間與詛咒）
+function seedLeaderboard(bestClear) {
+    return Object.entries(bestClear || {}).map(([cls, r], i) => ({ id: i + 1, name: LB_DEFAULT_NAME, cls, won: true, time: r.time, curse: r.curse || 0 }));
+}
+// 這一局上榜就回傳那一筆，沒上榜回 null
+function lbSubmit(reason) {
+    if (appScreen !== 'playing' || gameState.daily || getSurvivedWaves() < LB_MIN_WAVE) return null;
+    const k = reason === 'died' ? gameState.killedBy : null;
+    const e = {
+        id: Date.now(), name: meta.lbName || LB_DEFAULT_NAME, cls: runClass(), date: Date.now(),
+        won: !!gameState.endless, time: gameState.runTime, wave: getSurvivedWaves(), curse: gameState.curse || 0,
+        result: reason, killer: k ? `${k.isElite ? '精英' : ''}${k.config.name}` : '',
+        kills: Object.values(gameState.totalKills).reduce((a, b) => a + b, 0),
+        summons: Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0),
+        streak: gameState.bestStreak, bosses: gameState.totalKills.Boss || 0,
+        blessings: { ...gameState.blessings },
+    };
+    meta.leaderboard.push(e);
+    lbPrune();
+    return meta.leaderboard.includes(e) ? e : null;
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+function lbClassImg(cls) { return CLASSES[cls] ? `<img src="${CLASSES[cls].portrait}" alt="">` : ''; }
+// 名次的小標籤：綜合 #3、[頭像]戰士 #1（沒進那張榜的不列）
+function lbRanksHtml(e) {
+    const all = lbRank(e, LB_ALL), mine = lbRank(e, e.cls);
+    return (all ? `<span>${iconHtml('podium')}綜合<b>#${all}</b></span>` : '') +
+        (mine && CLASSES[e.cls] ? `<span>${lbClassImg(e.cls)}${CLASSES[e.cls].name}<b>#${mine}</b></span>` : '');
+}
+// 成績一行：通關的寫通關時間，沒通關的寫撐到第幾波＋用了多久
+function lbResultHtml(e) {
+    if (e.won) return `<div class="lb-result">${iconHtml('crown')}通關 ${formatClock(e.time)}${e.wave > CONFIG.wave.finalWave ? `<small>無盡模式撐到第 ${e.wave} 波</small>` : ''}</div>`;
+    const how = e.killer ? `被${e.killer}擊倒` : LB_RESULT_NAMES[e.result] || '';
+    return `<div class="lb-result">${iconHtml('skull')}第 ${e.wave} 波 · ${formatClock(e.time)}${how ? `<small>${how}</small>` : ''}</div>`;
+}
+
+let lbTab = LB_ALL;
+let lbMineId = null;
+function openLeaderboard(tab = lbTab) {
+    lbTab = tab;
+    renderLeaderboard();
+    showScreen(uiElements.lbScreen, true);
+}
+function closeLeaderboard() {
+    lbMineId = null;
+    showScreen(uiElements.lbScreen, false);
+}
+function renderLeaderboard() {
+    const tabs = [LB_ALL, ...Object.keys(CLASSES)];
+    if (!tabs.includes(lbTab)) lbTab = LB_ALL;
+    uiElements.lbTabs.innerHTML = tabs.map(id => {
+        const pic = id === LB_ALL ? iconHtml('podium') : lbClassImg(id);
+        return `<button class="achv-tab achv-subtab${id === lbTab ? ' on' : ''}" data-lb-tab="${id}">${pic}<div>${id === LB_ALL ? '綜合' : CLASSES[id].name}</div></button>`;
+    }).join('');
+    const board = lbBoard(lbTab);
+    uiElements.lbList.innerHTML = board.length === 0 ? `<span class="empty-note">撐過第 ${LB_MIN_WAVE} 波就能上榜</span>` : board.map((e, i) => {
+        const sub = (e.won ? `<span>${iconHtml('crown')}通關</span>` : `<span>${iconHtml('skull')}第 ${e.wave} 波</span>`) +
+            (e.curse > 0 ? `<span>${iconHtml('flame')}詛咒 ${e.curse}</span>` : '');
+        return `<button class="lb-row${e.id === lbMineId ? ' mine' : ''}" data-lb="${e.id}"><span class="lb-no">${i + 1}</span>${lbClassImg(e.cls)}` +
+            `<span class="lb-who"><div class="lb-name">${escapeHtml(e.name)}</div><div class="lb-sub">${sub}</div></span>` +
+            `<span class="lb-time${e.won ? ' won' : ''}">${iconHtml('clock')}${formatClock(e.time)}</span></button>`;
+    }).join('');
+    const mineRow = uiElements.lbList.querySelector('.mine');
+    if (mineRow) mineRow.scrollIntoView({ block: 'nearest' });
+}
+function openLbDetail(id) {
+    const e = meta.leaderboard.find(x => String(x.id) === String(id));
+    if (!e) return;
+    const C = CLASSES[e.cls];
+    const stat = (v, label) => v == null ? '' : `<div class="result-stat"><b>${v}</b><span>${label}</span></div>`;
+    uiElements.lbDetailBody.innerHTML =
+        `<div class="lb-detail-head">${lbClassImg(e.cls)}<div><div class="lb-name">${escapeHtml(e.name)}</div>` +
+        `<div class="lb-sub">${C ? (C.title === C.name ? C.name : `${C.name} · ${C.title}`) : ''}${e.date ? `<span>${new Date(e.date).toLocaleDateString('zh-TW')}</span>` : ''}</div></div></div>` +
+        `<div class="lb-ranks">${lbRanksHtml(e)}${e.curse > 0 ? `<span>${iconHtml('flame')}詛咒<b>${e.curse}</b></span>` : ''}</div>` +
+        lbResultHtml(e) +
+        (e.kills == null ? '' : `<div class="result-stats">${stat(formatNumberK(e.kills), '擊殺')}${stat(formatNumberK(e.summons), '召喚')}${stat(formatNumberK(e.streak), '最高連殺')}${stat(e.bosses, '首領')}</div>`) +
+        (e.blessings ? `<div class="bless-list">${blessingChipsHtml(e.blessings)}</div>` : '');
+    showScreen(uiElements.lbDetail, true);
+}
+
+// 結算時上榜：恭喜＋留名字。不填直接關掉就用預設名字（上次填過的名字、沒填過就是「無名亡靈」）
+let lbPending = null;
+function openLbCongrats(e) {
+    lbPending = e;
+    uiElements.lbCongratsRanks.innerHTML = lbRanksHtml(e);
+    uiElements.lbCongratsResult.innerHTML = lbResultHtml(e);
+    uiElements.lbNameInput.value = meta.lbName || '';
+    uiElements.lbNameInput.placeholder = LB_DEFAULT_NAME;
+    showScreen(uiElements.lbCongrats, true);
+    // 手機上自動點進輸入框會直接彈出鍵盤蓋住名次，只在有實體鍵盤的裝置上這樣做
+    if (!matchMedia('(pointer: coarse)').matches) uiElements.lbNameInput.focus();
+}
+function closeLbCongrats() {
+    const e = lbPending;
+    if (!e) return;
+    lbPending = null;
+    const typed = uiElements.lbNameInput.value.trim();
+    if (typed) meta.lbName = typed;
+    e.name = typed || LB_DEFAULT_NAME;
+    saveMeta();
+    uiElements.lbNameInput.blur();
+    showScreen(uiElements.lbCongrats, false);
+    // 接著打開排行榜看自己排在哪：進了綜合榜就看綜合，不然看職業榜
+    lbMineId = e.id;
+    openLeaderboard(lbRank(e, LB_ALL) ? LB_ALL : e.cls);
+}
+
 const NOVA_EFFECT_COLORS = { fill: '156, 39, 176', stroke: '225, 190, 231' };
 const PULSE_EFFECT_COLORS = { fill: '77, 182, 172', stroke: '178, 223, 219' };
 // 脈衝這類「每隻都會一直放」的特效：場上特效太多時就不再加，避免大軍時畫面與效能被淹沒
@@ -5919,9 +6060,13 @@ function renderBlessingDetail(container) {
 }
 
 function renderBlessingList(container) {
-    const ids = Object.keys(BLESSINGS).filter(id => bl(id) > 0);
-    container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id =>
-        `<span class="bless-chip">${iconHtml(blessIcon(id))}${BLESSINGS[id].name}${bl(id) > 1 ? `<b>${bl(id)}</b>` : ''}</span>`).join('');
+    container.innerHTML = blessingChipsHtml(gameState.blessings);
+}
+// levels：{ 祝福 id: 層數 }（這一局的，或排行榜上存下來的）
+function blessingChipsHtml(levels) {
+    const ids = Object.keys(BLESSINGS).filter(id => levels[id] > 0);
+    return ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id =>
+        `<span class="bless-chip">${iconHtml(blessIcon(id))}${BLESSINGS[id].name}${levels[id] > 1 ? `<b>${levels[id]}</b>` : ''}</span>`).join('');
 }
 
 // ---------- 畫面切換：標題 / 遊玩中，以及疊在上面的視窗 ----------
@@ -5996,6 +6141,10 @@ function armBackButton() {
 function handleBackButton() {
     if (appScreen !== 'playing') return;
     armBackButton();
+    // 結算上面疊的排行榜視窗：一次收一層，上榜恭喜收掉時照樣用預設名字登錄
+    if (lbPending) { closeLbCongrats(); return; }
+    if (uiElements.lbDetail.style.display === 'flex') { showScreen(uiElements.lbDetail, false); return; }
+    if (uiElements.lbScreen.style.display === 'flex') { closeLeaderboard(); return; }
     if (gameState.gameOver) { showTitle(); return; }
     if (gameState.draftOpen || gameState.victoryOpen) return;
     if (uiElements.confirmDialog.style.display === 'flex') { showScreen(uiElements.confirmDialog, false); return; }
@@ -6839,6 +6988,7 @@ function showGameOver(reason = 'died') {
     uiElements.finalSummons.textContent = formatNumberK(summons);
     uiElements.finalStreak.textContent = formatNumberK(gameState.bestStreak);
     checkAchievements();
+    const ranked = lbSubmit(reason);
     const reward = getRunReward();
     meta.crystals += reward;
     renderRewardDetail(survived);
@@ -6852,6 +7002,7 @@ function showGameOver(reason = 'died') {
     showScreen(uiElements.gameOverScreen, true);
     SaveStore.remove(SAVE_KEY);
     pauseMusic();
+    if (ranked) openLbCongrats(ranked);
 }
 
 const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
@@ -8116,6 +8267,15 @@ function init() {
     onTap(uiElements.achvCloseBtn, () => showScreen(uiElements.achvScreen, false));
     uiElements.achvTabs.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { achvTab = b.dataset.tab; renderAchievements(); } });
     uiElements.achvSubtabs.addEventListener('click', (e) => { const b = e.target.closest('[data-cls]'); if (b) { achvClassTab = b.dataset.cls; renderAchievements(); } });
+    onTap(uiElements.titleLbBtn, () => openLeaderboard());
+    onTap(uiElements.gameoverLbBtn, () => openLeaderboard());
+    onTap(uiElements.lbCloseBtn, closeLeaderboard);
+    uiElements.lbTabs.addEventListener('click', (e) => { const b = e.target.closest('[data-lb-tab]'); if (b) { lbTab = b.dataset.lbTab; renderLeaderboard(); } });
+    uiElements.lbList.addEventListener('click', (e) => { const b = e.target.closest('[data-lb]'); if (b) openLbDetail(b.dataset.lb); });
+    onTap(uiElements.lbDetailCloseBtn, () => showScreen(uiElements.lbDetail, false));
+    onTap(uiElements.lbCongratsOkBtn, closeLbCongrats);
+    onTap(uiElements.lbCongratsCloseBtn, closeLbCongrats);
+    uiElements.lbNameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') closeLbCongrats(); });
     onTap(uiElements.curseMinus, () => stepCurse(-1));
     onTap(uiElements.cursePlus, () => stepCurse(1));
     onTap(uiElements.victoryContinueBtn, continueEndless);
@@ -8154,6 +8314,8 @@ function init() {
     });
 
     window.addEventListener('keydown', (e) => {
+        // 在輸入框打字（排行榜留名字）時，按鍵不能變成移動、召喚、暫停
+        if (e.target instanceof HTMLInputElement && e.target.type === 'text') return;
         if (gameState.draftOpen) {
             const idx = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
             if (idx >= 0 && gameState.pendingDraft && gameState.pendingDraft.options[idx]) pickBlessing(gameState.pendingDraft.options[idx]);

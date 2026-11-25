@@ -849,7 +849,8 @@
 
         /* 類別分頁：橫向一排可以滑，每頁寫拿了幾個；全拿完的那一頁變金色 */
         #achv-tabs,
-        #achv-subtabs {
+        #achv-subtabs,
+        #lb-tabs {
             display: flex;
             gap: 6px;
             overflow-x: auto;
@@ -980,6 +981,247 @@
         /* 從設定頁打開，要蓋在設定頁上面 */
         #install-screen {
             z-index: 16;
+        }
+
+        #lb-screen {
+            z-index: 15;
+        }
+
+        /* 從排行榜點開／結算時跳出來 */
+        #lb-detail,
+        #lb-congrats {
+            z-index: 16;
+        }
+
+        /* ---------- 排行榜 ---------- */
+        #lb-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .lb-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 6px 10px 6px 6px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--ink);
+            color: var(--bone);
+            font-family: var(--font-ui);
+            text-align: left;
+            cursor: pointer;
+        }
+
+        /* 剛上榜的那一筆 */
+        .lb-row.mine {
+            border-color: var(--gold);
+            background: rgba(233, 196, 106, 0.16);
+        }
+
+        .lb-no {
+            flex: none;
+            width: 28px;
+            text-align: center;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 18px;
+            color: var(--bone-dim);
+        }
+
+        .lb-row:nth-child(1) .lb-no {
+            color: #ffd54f;
+        }
+
+        .lb-row:nth-child(2) .lb-no {
+            color: #cfd8dc;
+        }
+
+        .lb-row:nth-child(3) .lb-no {
+            color: #d7965a;
+        }
+
+        .lb-row img,
+        .lb-ranks img {
+            flex: none;
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+        }
+
+        .lb-who {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .lb-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 15px;
+        }
+
+        .lb-sub {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--bone-dim);
+        }
+
+        .lb-sub .icon,
+        .lb-time .icon {
+            width: 14px;
+            height: 14px;
+            margin-right: 2px;
+            vertical-align: -2px;
+        }
+
+        .lb-time {
+            flex: none;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 18px;
+            color: var(--bone-dim);
+        }
+
+        .lb-time.won {
+            color: var(--gold);
+        }
+
+        .lb-ranks {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .lb-ranks>span {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px 2px 6px;
+            border-radius: 10px;
+            border: 2px solid rgba(233, 196, 106, 0.7);
+            background: rgba(0, 0, 0, 0.3);
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 14px;
+        }
+
+        .lb-ranks>span .icon {
+            width: 28px;
+            height: 28px;
+        }
+
+        .lb-ranks b {
+            color: var(--gold);
+            font-size: 18px;
+        }
+
+        .lb-result {
+            margin-bottom: 14px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 22px;
+            color: var(--bone);
+        }
+
+        .lb-result .icon {
+            width: 22px;
+            height: 22px;
+            margin-right: 4px;
+            vertical-align: -3px;
+        }
+
+        .lb-result small {
+            display: block;
+            font-family: var(--font-ui);
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--bone-dim);
+        }
+
+        #lb-congrats .overlay-content,
+        #lb-detail .overlay-content {
+            position: relative;
+            max-width: 360px;
+        }
+
+        .lb-congrats-icon {
+            display: block;
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 6px;
+        }
+
+        .lb-x {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            padding: 8px;
+            border: none;
+            background: none;
+            cursor: pointer;
+        }
+
+        .lb-name-label {
+            display: block;
+            text-align: left;
+            font-size: 13px;
+            color: var(--bone-dim);
+            margin-bottom: 4px;
+        }
+
+        /* 16px 以上：iPhone 點進輸入框才不會自動放大畫面 */
+        #lb-name-input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 2px solid var(--bone-dim);
+            background: rgba(0, 0, 0, 0.4);
+            color: var(--bone);
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 18px;
+        }
+
+        #lb-name-input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        .lb-detail-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .lb-detail-head img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+        }
+
+        .lb-detail-head .lb-name {
+            font-size: 20px;
+            color: var(--gold);
+            white-space: normal;
+        }
+
+        #lb-detail .result-stats {
+            gap: 6px;
         }
 
         /* 通關 / 詛咒 */
@@ -1180,8 +1422,10 @@
             width: 100%;
         }
 
+        /* 一排三顆，多的換到下一排 */
         .title-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 10px;
         }
 
@@ -2124,6 +2368,7 @@
             <div class="title-row">
                 <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
                 <button id="title-achv-btn" class="btn btn-dark"><span class="btn-icon" data-icon="trophy"></span>成就</button>
+                <button id="title-lb-btn" class="btn btn-dark"><span class="btn-icon" data-icon="podium"></span>排行</button>
                 <button id="title-curse-btn" class="btn btn-red hidden"><span class="btn-icon" data-icon="skull"></span>詛咒</button>
                 <button id="title-settings-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gear"></span>設定</button>
             </div>
@@ -2283,7 +2528,46 @@
                 <div class="btn-row" style="margin-top:0">
                     <button id="gameover-title-btn" class="btn btn-dark"><span class="btn-icon" data-icon="home"></span>標題</button>
                     <button id="gameover-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
+                    <button id="gameover-lb-btn" class="btn btn-dark"><span class="btn-icon" data-icon="podium"></span>排行</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 排行榜：綜合與各職業各前十名 -->
+    <div id="lb-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <h2 class="title-text">排行榜</h2>
+            <div id="lb-tabs"></div>
+            <div id="lb-list"></div>
+            <div class="stack">
+                <button id="lb-close-btn" class="btn btn-dark">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 排行榜上某一筆的詳細資料 -->
+    <div id="lb-detail" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <div id="lb-detail-body"></div>
+            <div class="stack">
+                <button id="lb-detail-close-btn" class="btn btn-dark">返回</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 結算時上榜：恭喜＋留名字 -->
+    <div id="lb-congrats" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <button id="lb-congrats-close-btn" class="lb-x" aria-label="關閉"><span class="icon" data-icon="close"></span></button>
+            <span class="icon lb-congrats-icon" data-icon="podium"></span>
+            <h2 class="title-text">進入排行榜！</h2>
+            <div id="lb-congrats-ranks" class="lb-ranks"></div>
+            <div id="lb-congrats-result"></div>
+            <label class="lb-name-label" for="lb-name-input">名字</label>
+            <input id="lb-name-input" type="text" maxlength="12" autocomplete="off" enterkeyhint="done">
+            <div class="stack">
+                <button id="lb-congrats-ok-btn" class="btn btn-gold btn-big">登錄</button>
             </div>
         </div>
     </div>
