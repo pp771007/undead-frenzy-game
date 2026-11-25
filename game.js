@@ -92,7 +92,6 @@ const uiElements = {
     titleScreen: $id('title-screen'),
     titleContinueBtn: $id('title-continue-btn'),
     titleStartBtn: $id('title-start-btn'), titleDailyBtn: $id('title-daily-btn'),
-    titleHero: $id('title-hero'), heroPicker: $id('hero-picker'), heroInfo: $id('hero-info'),
     titleMetaBtn: $id('title-meta-btn'),
     titleSettingsBtn: $id('title-settings-btn'),
     titleBest: $id('title-best'),
@@ -757,65 +756,6 @@ function metaLv(id) { return meta.upgrades[id] || 0; }
 function metaVal(id) { return META_UPGRADES[id].per * metaLv(id); }
 function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
 
-// ---------- 法師：開局選一位，各自從一個流派起步（開局就帶那個流派的兩層祝福，離第一段共鳴只差一張） ----------
-// 同類遊戲都有多個角色（PokeBonk 每隻寶可夢一套被動與大招）。沒有新立繪，用同一張法師換顏色；
-// 解鎖條件是「把那個流派的共鳴疊滿一次」：玩過一次那條路，才拿得到那條路的專家
-const HEROES = {
-    necro: { name: '亡靈法師', tint: null, start: {} },
-    bonesmith: { name: '骨匠', tint: '#FFE0B2', start: { boneBlade: 1, cleave: 1 }, unlock: 'res_skel' },
-    seer: { name: '魔眼術士', tint: '#F48FB1', start: { splitGaze: 1, eagleEye: 1 }, unlock: 'res_eye' },
-    mourner: { name: '冥域祭司', tint: '#80CBC4', start: { frostAura: 1, auraMight: 1 }, unlock: 'res_wraith' },
-    pyre: { name: '魂火術士', tint: '#4FC3F7', start: { soulBlade: 1, soulVolley: 1 }, unlock: 'res_mage' },
-    reaper: { name: '收魂者', tint: '#FFD54F', start: { soulHarvest: 1, magnet: 1 }, unlock: 'res_soul' },
-};
-const DEFAULT_HERO = 'necro';
-const HERO_TINT_STRENGTH = 0.5;
-function heroUnlocked(id) { const h = HEROES[id]; return !!h && (!h.unlock || !!meta.achv[h.unlock]); }
-function selectedHero() { return heroUnlocked(meta.hero) ? meta.hero : DEFAULT_HERO; }
-function heroStartText(h) { return Object.keys(h.start).map(id => BLESSINGS[id].name).join('、'); }
-function applyHeroLook() {
-    const h = HEROES[gameState.hero] || HEROES[DEFAULT_HERO];
-    if (!gameState.player) return;
-    gameState.player.tint = h.tint;
-    gameState.player.tintStrength = HERO_TINT_STRENGTH;
-}
-// 標題畫面的頭像：跟場上一樣染色（畫成 data URL 給 <img>）
-const HERO_PORTRAIT_PX = 120;
-const heroPortraitCache = {};
-function heroPortraitUrl(id) {
-    if (heroPortraitCache[id]) return heroPortraitCache[id];
-    const img = images[CONFIG.player.imageName];
-    if (!img) return 'player.png';
-    const h = HEROES[id];
-    if (!h.tint) return (heroPortraitCache[id] = 'player.png');
-    const k = HERO_PORTRAIT_PX / Math.max(img.width, img.height);
-    const sprite = getSprite(img, img.width * k / SPRITE_RES, img.height * k / SPRITE_RES, h.tint, HERO_TINT_STRENGTH);
-    return (heroPortraitCache[id] = sprite.toDataURL());
-}
-function renderHeroPicker() {
-    const sel = selectedHero();
-    uiElements.titleHero.src = heroPortraitUrl(sel);
-    uiElements.heroPicker.innerHTML = Object.keys(HEROES).map(id => {
-        const ok = heroUnlocked(id);
-        return `<button class="hero-pick${id === sel ? ' on' : ''}${ok ? '' : ' locked'}" data-hero="${id}" aria-label="${HEROES[id].name}"><img src="${heroPortraitUrl(id)}" alt="">${ok ? '' : iconHtml('lock')}</button>`;
-    }).join('');
-    const h = HEROES[sel];
-    uiElements.heroInfo.innerHTML = `<b>${h.name}</b>${Object.keys(h.start).length ? ` · 開局帶${heroStartText(h)}` : ''}`;
-}
-function pickHero(id) {
-    if (!HEROES[id]) return;
-    if (!heroUnlocked(id)) {
-        const a = ACHIEVEMENTS.find(x => x.id === HEROES[id].unlock);
-        uiElements.heroInfo.innerHTML = `${iconHtml('lock')}<b>${HEROES[id].name}</b> · 解鎖：${a.desc}`;
-        Sfx.play('deny');
-        return;
-    }
-    meta.hero = id;
-    saveMeta();
-    Sfx.play('click');
-    renderHeroPicker();
-}
-
 // ---------- 成就：第一次達成就給結晶（跨局保留） ----------
 // 同類遊戲都有（PokéSurvivor 149 個成就、PokeBonk 的任務）：給每一局一個「這次試試看」的目標。
 // 共鳴那一組故意每個流派一個：逼玩家去試平常不走的流派
@@ -874,8 +814,7 @@ function checkAchievements() {
         gameState.achvCrystals += a.reward;
         gameState.achvCount++;
         saveMeta();
-        const hero = Object.keys(HEROES).find(id => HEROES[id].unlock === a.id);
-        achvToastQueue.push(hero ? { ...a, desc: `解鎖新法師：${HEROES[hero].name}` } : a);
+        achvToastQueue.push(a);
         if (!achvToastBusy) showNextAchvToast();
     }
 }
@@ -5539,7 +5478,6 @@ function refreshTitle() {
         (claimed ? `<span class="price">${iconHtml('trophy')}</span>` : `<span class="price">${iconHtml('crystal')}×${DAILY_CRYSTAL_MULT}</span>`);
     const best = getBestWave();
     const wins = meta.wins || 0;
-    renderHeroPicker();
     uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
         (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         `<span class="crystal-count">${iconHtml('crystal')}${meta.crystals}</span>`;
@@ -6371,7 +6309,6 @@ function saveGameState() {
         betweenWaves: gameState.betweenWaves,
         playerCurrentHealth: gameState.player.currentHealth,
         playerMaxHealth: gameState.player.maxHealth,
-        hero: gameState.hero,
         skeletonWarriorLevel: gameState.skeletonWarriorLevel,
         eyeMonsterLevel: gameState.eyeMonsterLevel,
         wraithLevel: gameState.wraithLevel,
@@ -6461,8 +6398,6 @@ function loadGameState() {
         gameState.player = new Player(0, 0);
         snapCamera();
         gameState.player.maxHealth = loadedState.playerMaxHealth ?? CONFIG.player.baseHealth;
-        gameState.hero = HEROES[loadedState.hero] ? loadedState.hero : DEFAULT_HERO;
-        applyHeroLook();
         gameState.player.currentHealth = loadedState.playerCurrentHealth ?? gameState.player.maxHealth;
         gameState.player.maxHealth = Math.max(CONFIG.player.baseHealth, Math.round(gameState.player.maxHealth));
         gameState.player.currentHealth = Math.min(gameState.player.maxHealth, Math.max(0, Math.round(gameState.player.currentHealth)));
@@ -6552,10 +6487,6 @@ function setupNewRun(daily = null) {
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
     gameState.banishLeft = metaVal('banish');
-    gameState.hero = selectedHero();
-    gameState.blessings = { ...HEROES[gameState.hero].start };
-    refreshResonance();
-    applyHeroLook();
     gameState.rerollsLeft = REROLLS_PER_RUN + metaVal('freeReroll');
     snapCamera();
     [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
@@ -7510,7 +7441,6 @@ function init() {
     const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
     onTap(uiElements.titleStartBtn, startNewRun);
     onTap(uiElements.titleDailyBtn, startDailyRun);
-    uiElements.heroPicker.addEventListener('click', (e) => { const b = e.target.closest('[data-hero]'); if (b) pickHero(b.dataset.hero); });
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
     onTap(uiElements.titleSettingsBtn, () => { syncSettingControls(); showScreen(uiElements.settingsScreen, true); });
