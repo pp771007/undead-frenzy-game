@@ -195,7 +195,6 @@ const ACHV_ICON_BODIES = {
 // 傳說收藏：金色獎章框住那張傳說祝福自己的圖示
 const LEGEND_MEDAL = (inner) => `<circle cx="32" cy="32" r="28" fill="${C.goldDark}"/><circle cx="32" cy="32" r="22" fill="#3e2a12" stroke-width="3"/>${at(32, 32, 0.6, `<g transform="translate(-32 -32)">${inner}</g>`)}
     ${sparks([[54, 10, 5], [10, 54, 4]], '#fff3c4')}`;
-for (const id of ['boneBurst', 'giantBones', 'ricochet', 'soulfire', 'frostNova', 'eliteHunter', 'soulSiphon', 'twinSummon', 'midas', 'deathPact']) ACHV_ICON_BODIES[`leg_${id}`] = LEGEND_MEDAL(ICON_BODIES[id]);
 // 契約收藏：羊皮紙契約、蓋上那份契約的圖示當封蠟
 const PACT_SCROLL = (inner) => `<path d="M12 6 L46 6 C50 6 52 10 52 14 L52 56 L18 56 C14 56 12 52 12 48 Z" fill="#fff3e0"/><path d="M18 16 L44 16 M18 24 L44 24 M18 32 L34 32" stroke="${C.wood}" stroke-width="2.5"/>
     <circle cx="42" cy="46" r="16" fill="${C.blood}"/>${at(42, 46, 0.36, `<g transform="translate(-32 -32)">${inner}</g>`)}`;
@@ -428,4 +427,29 @@ Object.assign(ACHV_ICON_BODIES, {
     rogue_ghost: `${[0.25, 0.45, 0.7, 1].map((o, i) => `<g opacity="${o}">${at(14 + i * 12, 34, 0.55, HOOD())}</g>`).join('')}`,
     rogue_shadows: `${[[12, 22], [32, 16], [52, 22], [20, 44], [44, 44], [32, 54]].map(([x, y]) => at(x, y, 0.36, HOOD('#4527a0'))).join('')}`,
 });
+// ---- 職業：武僧（monk.js）。母題是拳與禪：握拳、蒲團、金色光環 ----
+const FIST = (fill = '#ffcc80') => `<path d="M-18 -8 C-18 -16 -12 -20 -6 -20 L10 -20 C16 -20 20 -16 20 -10 L20 6 C20 16 12 22 2 22 L-8 22 C-16 22 -20 16 -20 8 Z" fill="${fill}"/><path d="M-10 -20 L-10 -4 M0 -20 L0 -4 M10 -20 L10 -4" stroke-width="3"/><path d="M-20 4 C-14 4 -10 0 -10 -4" stroke-width="3"/>`;
+const SITTER = `<path d="M-20 16 C-20 6 -10 2 0 2 C10 2 20 6 20 16 Z" fill="#ffa726"/><circle cx="0" cy="-8" r="9" fill="#ffcc80"/><path d="M-4 -8 L-2 -8 M2 -8 L4 -8" stroke-width="2"/>`;
+Object.assign(ACHV_ICON_BODIES, {
+    monk_win: `${at(32, 36, 1, P.laurel(C.gold))}${at(32, 32, 0.75, FIST())}`,
+    monk_speed28: `${at(22, 34, 0.75, FIST())}<path d="M42 22 L58 22 M44 34 L60 34 M42 46 L58 46" stroke="#b2ebf2" stroke-width="3.5"/>`,
+    monk_speed24: `${at(18, 42, 0.55, FIST())}${at(38, 26, 0.7, FIST())}${at(54, 50, 0.5, P.bolt())}`,
+    monk_speed20: `${rays(32, 32, 20, 29, 10, '#ffd54f', 3)}${at(32, 32, 0.75, FIST('#ffe082'))}`,
+    monk_res_external: `${[[16, 20], [44, 20], [16, 46], [44, 46]].map(([x, y]) => at(x, y, 0.45, FIST())).join('')}${at(30, 33, 0.5, FIST('#ffab91'))}`,
+    monk_res_hardstyle: `<path d="M32 6 C20 6 10 16 12 32 C14 48 22 58 32 58 C42 58 50 48 52 32 C54 16 44 6 32 6 Z" fill="#ffd54f"/><path d="M12 32 L52 32" stroke="#e0a82e" stroke-width="3"/><circle cx="32" cy="58" r="4" fill="#e0a82e"/>${shine(22, 18, 4, 2.5)}`,
+    monk_res_lightfoot: `<path d="M2 50 C16 44 30 56 44 50 C52 46 58 48 62 50" stroke="#e3f2fd" stroke-width="5"/>${[0.35, 0.6, 1].map((o, i) => `<g opacity="${o}">${at(14 + i * 18, 32, 0.5, SITTER)}</g>`).join('')}`,
+    monk_res_internal: `<circle cx="32" cy="32" r="24" fill="#fff8e1"/><path d="M32 8 C44 8 44 32 32 32 C20 32 20 56 32 56 C18 56 8 46 8 32 C8 18 18 8 32 8 Z" fill="#3e2723"/><circle cx="32" cy="32" r="24" stroke-width="3.5"/>${sparks([[56, 8, 5]], C.gold)}`,
+    monk_res_qigong: `<path d="M6 32 L42 32" stroke="#80deea" stroke-width="14"/><path d="M6 32 L42 32" stroke="#e0f7fa" stroke-width="5"/>${at(52, 22, 0.32, P.skull())}${at(52, 42, 0.32, P.skull())}`,
+    monk_combo: `<path d="M6 52 L58 52" stroke="${C.gold}" stroke-width="3"/>${at(20, 30, 0.55, FIST())}<path d="M34 20 L44 20 M34 30 L50 30 M34 40 L44 40" stroke="#ff7043" stroke-width="4"/>${sparks([[54, 12, 5]], C.gold)}`,
+    monk_clean: `${at(32, 36, 0.9, SITTER)}<circle cx="32" cy="34" r="26" stroke="#b2ebf2" stroke-width="3" stroke-dasharray="5 5"/>`,
+    monk_zen: `<rect x="6" y="6" width="52" height="52" rx="4" fill="#8d6e63"/><path d="M6 20 L58 20 M6 34 L58 34 M22 6 L22 20 M42 20 L42 34" stroke="#6d4c41" stroke-width="2.5"/>${at(32, 42, 0.8, SITTER)}`,
+    monk_arhats: `<circle cx="32" cy="32" r="24" stroke="${C.gold}" stroke-width="3"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return at(32 + Math.cos(a) * 22, 32 + Math.sin(a) * 22, 0.28, SITTER); }).join('')}${at(32, 32, 0.4, P.skull())}`,
+    monk_qiBoss: `<path d="M4 32 L38 32" stroke="#80deea" stroke-width="12"/><path d="M4 32 L38 32" stroke="#e0f7fa" stroke-width="4"/>${at(48, 34, 0.6, P.crown())}`,
+});
 const ACHV_ICON_SVGS = Object.fromEntries(Object.entries(ACHV_ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
+// 傳說收藏（leg_祝福id）：獎章裡放那張傳說自己的圖示。
+// 各職業的傳說定義在職業檔裡、比這個檔晚載入，所以由 buildAchievements 一個一個要，第一次要時才組
+function legendAchvIcon(id) {
+    const key = `leg_${id}`;
+    return ACHV_ICON_SVGS[key] || (ACHV_ICON_SVGS[key] = iconSvg(LEGEND_MEDAL(ICON_BODIES[id] || '')));
+}

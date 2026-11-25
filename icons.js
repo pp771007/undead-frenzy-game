@@ -389,6 +389,59 @@ const ICON_BODIES = {
         <path d="M34 8 L34 36" stroke-width="5"/><path d="M34 8 L34 36" stroke="#eceff1" stroke-width="2.5"/><path d="M28 10 L40 10" stroke-width="4"/><path d="M28 10 L40 10" stroke="#ffd54f" stroke-width="2"/>`,
     fidai: `<path d="M32 6 L56 18 L50 50 L32 60 L14 50 L8 18 Z" fill="#212121"/><path d="M20 28 L28 32 M44 28 L36 32" stroke="#ff5252" stroke-width="3.5"/><path d="M8 18 L32 6 L56 18 L32 22 Z" fill="#424242"/>
         <path d="M2 58 L14 46 M62 58 L50 46" stroke="#b39ddb" stroke-width="3"/>`,
+    // ---- 武僧（monk.js）----
+    // 大招「十八羅漢陣」：一圈金色小人
+    arhats: `<circle cx="32" cy="32" r="22" stroke="#ffd54f" stroke-width="3" stroke-dasharray="3 4"/>${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4, x = 32 + Math.cos(a) * 22, y = 32 + Math.sin(a) * 22; return `<circle cx="${x.toFixed(1)}" cy="${(y - 3).toFixed(1)}" r="3.5" fill="#ffcc80" stroke-width="2"/><path d="M${(x - 4).toFixed(1)} ${(y + 5).toFixed(1)} L${(x + 4).toFixed(1)} ${(y + 5).toFixed(1)} L${x.toFixed(1)} ${(y - 1).toFixed(1)} Z" fill="#ffa726" stroke-width="2"/>`; }).join('')}
+        <circle cx="32" cy="32" r="6" fill="#ffe082" stroke-width="2.5"/>`,
+    // 流派（七十二藝五類）
+    external: `<path d="M16 26 C16 18 22 14 28 14 L44 14 C50 14 54 18 54 24 L54 40 C54 50 46 56 36 56 L26 56 C18 56 14 50 14 42 Z" fill="#ffcc80"/>
+        <path d="M24 14 L24 30 M34 14 L34 30 M44 14 L44 30" stroke-width="3"/><path d="M14 36 C20 36 24 32 24 28" stroke-width="3"/>${[0, 1, 2].map(i => `<path d="M${6 - i} ${18 + i * 12} L${12 - i} ${18 + i * 12}" stroke="#ffab91" stroke-width="3"/>`).join('')}`,
+    hardstyle: `<path d="M32 6 C20 6 12 14 12 30 C12 46 22 58 32 58 C42 58 52 46 52 30 C52 14 44 6 32 6 Z" fill="#a1887f"/><path d="M20 22 L44 22 M18 32 L46 32 M20 42 L44 42" stroke="#6d4c41" stroke-width="3"/>${shine(22, 16, 4, 2.5)}`,
+    lightfoot: `<path d="M10 46 C18 40 26 42 30 50" stroke="#b2ebf2" stroke-width="3"/><path d="M30 34 C38 28 46 30 50 38" stroke="#b2ebf2" stroke-width="3"/>
+        <path d="M34 48 L48 48 L52 54 L30 54 Z" fill="#8d6e63"/><path d="M48 18 C52 10 60 10 62 16 C56 16 54 18 52 24 Z" fill="#eceff1"/><path d="M4 22 L16 22 M8 30 L18 30" stroke="#b2ebf2" stroke-width="3"/>`,
+    internal: `<circle cx="32" cy="32" r="24" fill="#fff8e1"/><path d="M32 8 C44 8 44 32 32 32 C20 32 20 56 32 56 C18 56 8 46 8 32 C8 18 18 8 32 8 Z" fill="#3e2723"/>
+        <circle cx="32" cy="20" r="4" fill="#fff8e1" stroke="none"/><circle cx="32" cy="44" r="4" fill="#3e2723" stroke="none"/><circle cx="32" cy="32" r="24" fill="none" stroke-width="3.5"/>`,
+    qigong: `<path d="M6 32 C14 18 30 16 40 24" stroke="#80deea" stroke-width="7"/><path d="M6 32 C14 46 30 48 40 40" stroke="#80deea" stroke-width="7"/><circle cx="46" cy="32" r="12" fill="#e0f7fa"/><circle cx="46" cy="32" r="6" fill="#80deea" stroke="none"/>`,
+    // 外功
+    punchPower: `<path d="M12 24 C12 16 18 12 24 12 L40 12 C46 12 50 16 50 22 L50 38 C50 48 42 54 32 54 L22 54 C14 54 10 48 10 40 Z" fill="#ffcc80"/><path d="M20 12 L20 28 M30 12 L30 28 M40 12 L40 28" stroke-width="3"/>
+        <path d="M14 38 C20 40 34 40 40 36" stroke="#8d6e63" stroke-width="3"/>${duoStroke('M56 40 L56 26 M51 31 L56 26 L61 31', '#ffd54f', 2.5)}`,
+    comboCap: `<path d="M8 44 L20 32 L32 40 L44 22 L56 30" stroke-width="7"/><path d="M8 44 L20 32 L32 40 L44 22 L56 30" stroke="#ffab91" stroke-width="3.5"/><path d="M46 10 L58 10 L58 22" stroke="#ffd54f" stroke-width="4"/>
+        <path d="M6 54 L58 54" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 4"/>`,
+    comboGain: `${[12, 26, 40].map((x, i) => `<rect x="${x}" y="${44 - i * 12}" width="10" height="${12 + i * 12}" rx="2" fill="${['#ffcc80', '#ffab91', '#ff7043'][i]}"/>`).join('')}${duoStroke('M54 50 L54 16 M48 22 L54 16 L60 22', '#ffd54f', 3)}`,
+    flurry: `${[[16, 20], [30, 32], [44, 44]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="10" fill="#ffcc80"/><path d="M${x - 4} ${y - 6} L${x - 4} ${y + 2} M${x + 2} ${y - 6} L${x + 2} ${y + 2}" stroke-width="2"/>`).join('')}
+        <path d="M50 8 L58 4 M54 14 L62 12" stroke="#ffab91" stroke-width="3"/>`,
+    // 硬功
+    // 銅色的上身：胸肌、腹肌
+    ironBody: `<path d="M8 20 C14 12 22 10 32 12 C42 10 50 12 56 20 L50 40 C46 52 40 58 32 58 C24 58 18 52 14 40 Z" fill="#c58b4f"/>
+        <path d="M18 24 C22 30 28 30 31 26 M46 24 C42 30 36 30 33 26 M26 38 L38 38 M26 46 L38 46 M32 32 L32 52" stroke="#7b4a1e" stroke-width="2.5"/>${shine(20, 20, 4, 2.5)}`,
+    counter: `<path d="M8 40 L28 40" stroke="#e53935" stroke-width="4"/><path d="M28 40 L22 34 M28 40 L22 46" stroke="#e53935" stroke-width="4"/>
+        <path d="M34 20 C34 14 38 10 44 10 L52 10 C56 10 58 14 58 18 L58 30 C58 38 52 42 46 42 L40 42 C36 42 34 38 34 34 Z" fill="#ffcc80"/>${duoStroke('M40 52 L20 52 M26 46 L20 52 L26 58', '#ffd54f', 3)}`,
+    steadfast: `<path d="M8 58 L56 58 L44 24 L32 8 L20 24 Z" fill="#8d6e63"/><path d="M20 24 L32 32 L44 24" stroke="#6d4c41" stroke-width="3"/><path d="M32 8 L32 32" stroke="#a1887f" stroke-width="2"/>${shine(26, 20, 3, 2)}`,
+    stoneSkin: `<path d="M32 58 C14 46 6 34 12 22 C18 10 28 12 32 20 C36 12 46 10 52 22 C58 34 50 46 32 58 Z" fill="#9e9e9e"/><path d="M20 28 L28 34 L24 42 M40 26 L36 36 L44 40" stroke="#616161" stroke-width="2.5"/>`,
+    // 輕功
+    blinkRange: `<circle cx="14" cy="40" r="7" fill="#b2ebf2" opacity="0.6"/><path d="M22 40 L44 40" stroke="#b2ebf2" stroke-width="3" stroke-dasharray="4 4"/><circle cx="50" cy="40" r="8" fill="#ffcc80"/>
+        ${duoStroke('M22 22 L54 22 M48 16 L54 22 L48 28', '#ffd54f', 3)}`,
+    evade: `<path d="M24 58 L24 34 C24 26 30 22 36 22 C42 22 46 26 46 34 L46 58" fill="#ffcc80"/><circle cx="36" cy="14" r="7" fill="#ffcc80"/><path d="M4 30 L22 36" stroke="#e53935" stroke-width="3"/><path d="M22 36 L14 30 M22 36 L14 40" stroke="#e53935" stroke-width="3"/>
+        <path d="M50 30 C56 34 56 42 50 46" stroke="#b2ebf2" stroke-width="3"/>`,
+    swift: `<path d="M24 14 L36 14 L36 38 L50 44 C56 46 56 54 50 54 L24 54 Z" fill="#8d6e63"/><path d="M24 44 L52 44" stroke-width="3"/><path d="M4 26 L16 26 M2 36 L14 36 M6 46 L18 46" stroke="#b2ebf2" stroke-width="3.5"/>`,
+    quickStep: `${[0.3, 0.55, 1].map((o, i) => `<g opacity="${o}"><circle cx="${14 + i * 18}" cy="22" r="6" fill="#ffcc80"/><path d="M${8 + i * 18} 52 L${8 + i * 18} 34 C${8 + i * 18} 30 ${20 + i * 18} 30 ${20 + i * 18} 34 L${20 + i * 18} 52 Z" fill="#ffa726"/></g>`).join('')}`,
+    // 內功
+    zenHeal: `<path d="M12 50 C12 40 22 36 32 36 C42 36 52 40 52 50 Z" fill="#ffa726"/><circle cx="32" cy="24" r="10" fill="#ffcc80"/><path d="M28 24 L30 24 M34 24 L36 24" stroke-width="2"/>${duoStroke('M52 8 L52 22 M45 15 L59 15', '#81c784', 3)}`,
+    zenCharge: `<circle cx="32" cy="32" r="22" stroke="#ffd54f" stroke-width="5" stroke-dasharray="100 40"/><path d="M12 48 C12 40 20 36 32 36 C44 36 52 40 52 48 Z" fill="#ffa726"/><circle cx="32" cy="24" r="8" fill="#ffcc80"/>`,
+    zenFast: `<path d="M12 52 C12 42 22 38 32 38 C42 38 52 42 52 52 Z" fill="#ffa726"/><circle cx="32" cy="26" r="9" fill="#ffcc80"/>${boltAt(52, 18)}`,
+    zenPulse: `${[24, 16].map(r => `<circle cx="32" cy="38" r="${r}" stroke="#ffd54f" stroke-width="3" opacity="${r === 24 ? 0.5 : 0.9}"/>`).join('')}<path d="M22 50 C22 42 26 38 32 38 C38 38 42 42 42 50 Z" fill="#ffa726"/><circle cx="32" cy="30" r="6" fill="#ffcc80"/>`,
+    // 氣功
+    qiPower: `<circle cx="32" cy="32" r="16" fill="#80deea"/><circle cx="32" cy="32" r="8" fill="#e0f7fa"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return `<path d="M${(32 + Math.cos(a) * 20).toFixed(1)} ${(32 + Math.sin(a) * 20).toFixed(1)} L${(32 + Math.cos(a) * 28).toFixed(1)} ${(32 + Math.sin(a) * 28).toFixed(1)}" stroke="#80deea" stroke-width="3"/>`; }).join('')}`,
+    qiCount: `${[20, 44].map(y => `<path d="M6 ${y} L44 ${y}" stroke="#80deea" stroke-width="8"/><path d="M6 ${y} L44 ${y}" stroke="#e0f7fa" stroke-width="3"/><circle cx="50" cy="${y}" r="7" fill="#80deea" stroke-width="2.5"/>`).join('')}`,
+    qiWidth: `<path d="M6 32 L46 32" stroke="#80deea" stroke-width="22"/><path d="M6 32 L46 32" stroke="#e0f7fa" stroke-width="8"/><path d="M52 18 L60 32 L52 46" stroke-width="4"/><path d="M52 18 L60 32 L52 46" stroke="#ffd54f" stroke-width="2"/>`,
+    qiFreq: `<circle cx="22" cy="32" r="14" fill="#ffcc80"/><path d="M38 32 L56 32" stroke="#80deea" stroke-width="7"/><circle cx="58" cy="32" r="4" fill="#e0f7fa" stroke-width="2"/>${boltAt(22, 32)}`,
+    // 傳說
+    bodhidharma: `<rect x="6" y="6" width="52" height="52" rx="4" fill="#8d6e63"/><path d="M6 20 L58 20 M6 34 L58 34 M6 48 L58 48 M22 6 L22 20 M42 20 L42 34 M22 34 L22 48 M42 48 L42 58" stroke="#6d4c41" stroke-width="2.5"/>
+        <path d="M18 54 C18 44 24 40 32 40 C40 40 46 44 46 54 Z" fill="#ffa726"/><circle cx="32" cy="32" r="8" fill="#ffcc80"/><path d="${starPath(32, 14, 6, 2.2, 4)}" fill="#ffe082" stroke-width="2"/>`,
+    reedCrossing: `<path d="M2 48 C16 42 30 54 44 48 C52 44 58 46 62 48 L62 62 L2 62 Z" fill="#4fc3f7"/><path d="M14 44 L50 40" stroke-width="5"/><path d="M14 44 L50 40" stroke="#aed581" stroke-width="2.5"/>
+        <path d="M30 40 L30 26 C30 20 38 20 38 26 L38 40" fill="#ffa726"/><circle cx="34" cy="16" r="6" fill="#ffcc80"/>`,
+    thirteenMonks: `${[[10, 40], [22, 34], [34, 40], [46, 34], [56, 40]].map(([x, y]) => `<circle cx="${x}" cy="${y - 10}" r="4.5" fill="#ffcc80" stroke-width="2"/><path d="M${x - 5} ${y + 10} L${x - 5} ${y} C${x - 5} ${y - 4} ${x + 5} ${y - 4} ${x + 5} ${y} L${x + 5} ${y + 10} Z" fill="#ffa726" stroke-width="2"/>`).join('')}
+        <path d="M4 54 L60 46" stroke-width="4"/><path d="M4 54 L60 46" stroke="#8d6e63" stroke-width="2"/>`,
     // 戰士的大招：兩支交叉擲出的標槍
     javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
         <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>

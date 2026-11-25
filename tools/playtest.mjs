@@ -46,9 +46,12 @@ for (;;) {
     r = await page.evaluate((steps) => {
         const B = window.__bot, DT = 1 / 30, REACT = 0.4, DECIDE = 0.15, STUCK_SECONDS = 240, MAX_SECONDS = 3600;
         // 各職業三張卡的召喚比例
-        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0], elf: [0, 0, 1], rogue: [0, 0, 1] };
+        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0], elf: [0, 0, 1], rogue: [0, 0, 1], monk: [0, 0, 0] };
         // 刺客：離目標超過這麼遠就走過去
         const BOT_ROGUE_HUNT = 150;
+        // 近戰職業：被貼身不退（要站在怪堆前打）；武僧血低於 BOT_MONK_REST、BOT_MONK_SAFE 內沒怪時入定
+        const BOT_MELEE = { warrior: true, monk: true };
+        const BOT_MONK_REST = 0.5, BOT_MONK_SAFE = 150, BOT_MONK_CROWD = 4, BOT_MONK_CROWD_R = 70;
         // 精靈：怪近到這麼近就往反方向退
         const BOT_ELF_KITE = 170;
         // 吸血鬼可以拿自己的血付錢；機器人血量 BOT_VAMP_SPEND_HP 以上才拿血付（真人也不會一路把自己放到剩四分之一血）
@@ -84,7 +87,7 @@ for (;;) {
                         if (!m.isAlive) continue;
                         const dx = p.pos.x - m.pos.x, dy = p.pos.y - m.pos.y, d = Math.hypot(dx, dy) || 1;
                         // 被貼身就退開（戰士不退：他要站在怪堆前砍）
-                        if (d < 70 && runClass() !== 'warrior') { hx += dx / d; hy += dy / d; }
+                        if (d < 70 && !BOT_MELEE[runClass()]) { hx += dx / d; hy += dy / d; }
                         if (m.mark && noticed(m.mark)) { const ex = p.pos.x - m.mark.x, ey = p.pos.y - m.mark.y, e = Math.hypot(ex, ey) || 1; if (e < 60) { hx += ex / e * 3; hy += ey / e * 3; } }
                         if (m instanceof DragonBoss) {
                             if (m.windup > 0 && noticed(m) && m.inBreath(p.pos)) { const s = (dx * -m.breathDir.y + dy * m.breathDir.x) >= 0 ? 1 : -1; hx += -m.breathDir.y * s * 4; hy += m.breathDir.x * s * 4; }
@@ -98,7 +101,15 @@ for (;;) {
                     // 戰士：沒有要閃的東西時迎上去打（陣型面向走的方向，逃跑等於把背後讓給怪），走到 BOT_WAR_HOLD 內就站定讓陣型接戰。
                     // 殘血也不撤：撤退會一路逃、整波拖到卡關，真人也不會這樣打
                     const BOT_WAR_HOLD = 55, BOT_WAR_SEEK = 400;
-                    if (runClass() === 'warrior' && Math.hypot(hx, hy) < 0.1) {
+                    // 武僧殘血、身邊又沒怪：站著不動入定回血
+                    const monkRest = runClass() === 'monk' && p.currentHealth < p.maxHealth * BOT_MONK_REST && !monsterGrid.anyWithin(p.pos, BOT_MONK_SAFE);
+                    // 武僧被一群貼身時先退開找空隙（所有怪都衝著他來，站著被圍會一路掉血、連擊一直斷）
+                    if (runClass() === 'monk' && Math.hypot(hx, hy) < 0.1) {
+                        let n = 0, cx = 0, cy = 0;
+                        monsterGrid.forEachInRadius(p.pos, BOT_MONK_CROWD_R, m => { if (m.isAlive && distanceSq(m.pos, p.pos) < BOT_MONK_CROWD_R * BOT_MONK_CROWD_R) { n++; cx += m.pos.x; cy += m.pos.y; } });
+                        if (n >= BOT_MONK_CROWD) { hx = p.pos.x - cx / n; hy = p.pos.y - cy / n; }
+                    }
+                    if (BOT_MELEE[runClass()] && !monkRest && Math.hypot(hx, hy) < 0.1) {
                         let nm = null, nd = BOT_WAR_SEEK;
                         for (const m of gameState.monsters) { if (!m.isAlive || m.stealthed) continue; const d = Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y); if (d < nd) { nd = d; nm = m; } }
                         if (nm) {

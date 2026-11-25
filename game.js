@@ -863,7 +863,7 @@ function buildAchievements() {
         add('army', `evo_${type}_${t + 1}`, name, `升到 Lv${lv}，進化成${name}`, 15 + t * 20, () => gameState.units[type].level >= lv);
     });
     for (const s of CLASSES.necro.schools) SCHOOLS[s].res.forEach((r, t) => add('resonance', t === 1 ? `res_${s}` : `res1_${s}`, r.name, `${SCHOOLS[s].name}流派疊到 ${RESONANCE_STEPS[t]} 層`, t === 1 ? 40 : 15, () => res(s) >= t + 1));
-    for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary)) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
+    for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary && legendAchvIcon(b))) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
     add('legend', 'legends', '傳說加身', `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, 40, () => countTaken(b => b.legendary) >= ACHV_LEGENDS);
     add('legend', 'legendAll', '萬古傳說', '每一張傳說祝福都拿過', 120, () => Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary).every(b => S().legends[b]));
     for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].pact)) add('pact', `pact_${id}`, BLESSINGS[id].name, `立下「${BLESSINGS[id].name}」`, 15, () => !!S().pacts[id]);
