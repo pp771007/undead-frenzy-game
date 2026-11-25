@@ -7798,7 +7798,13 @@ function bindFullscreenToggles() {
         const req = e.target.checked ? document.documentElement.requestFullscreen() : document.exitFullscreen();
         req.catch(sync);
     }));
-    document.addEventListener('fullscreenchange', sync);
+    // 全螢幕中按返回鍵 / Esc 會被瀏覽器拿去退出全螢幕，遊戲收不到 popstate / keydown；畫面一縮怪照打，所以退出時直接暫停
+    document.addEventListener('fullscreenchange', () => {
+        sync();
+        if (!document.fullscreenElement && appScreen === 'playing' && !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen && !gameState.victoryOpen) {
+            togglePause();
+        }
+    });
     sync();
 }
 
