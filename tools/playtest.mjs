@@ -46,13 +46,15 @@ for (;;) {
     r = await page.evaluate((steps) => {
         const B = window.__bot, DT = 1 / 30, REACT = 0.4, DECIDE = 0.15, STUCK_SECONDS = 240, MAX_SECONDS = 3600;
         // 各職業三張卡的召喚比例
-        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0], elf: [0, 0, 1] };
+        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0], elf: [0, 0, 1], rogue: [0, 0, 1] };
+        // 刺客：離目標超過這麼遠就走過去
+        const BOT_ROGUE_HUNT = 150;
         // 精靈：怪近到這麼近就往反方向退
         const BOT_ELF_KITE = 170;
         // 吸血鬼可以拿自己的血付錢；機器人血量 BOT_VAMP_SPEND_HP 以上才拿血付（真人也不會一路把自己放到剩四分之一血）
         const BOT_VAMP_SPEND_HP = 0.7;
         // 收尾時走到離最後幾隻怪這麼近；只能修練的卡等級跟著波數走（BOT_TRAIN_PER_WAVE 級／波），不要一開局就把錢全砸進去
-        const BOT_FINISH_DIST = 110, BOT_TRAIN_PER_WAVE = 0.8;
+        const BOT_FINISH_DIST = 110, BOT_TRAIN_PER_WAVE = 1;
         const botTrainOk = (U, unit) => !U.upgradeOnly || classDef().cards.every(t => UNIT_TYPES[t].upgradeOnly) || unit.level < Math.max(1, gameState.currentWave) * BOT_TRAIN_PER_WAVE;
         const botAfford = (cost) => runClass() !== 'vampire' || gameState.souls >= cost ? canAfford(cost)
             : gameState.player.currentHealth > gameState.player.maxHealth * BOT_VAMP_SPEND_HP && canAfford(cost);
@@ -119,6 +121,11 @@ for (;;) {
                             if (d < BOT_ELF_KITE) { hx = ax; hy = ay; }
                             else { B.strafe = B.strafe || 1; if (Math.random() < 0.01) B.strafe *= -1; hx = -ay * B.strafe + (d > bowRange() * 0.8 ? -ax * 0.5 : 0); hy = ax * B.strafe + (d > bowRange() * 0.8 ? -ay * 0.5 : 0); }
                         }
+                    }
+                    // 刺客：去追標記的目標（收入幾乎全靠牠），走到飛刀射程內
+                    if (runClass() === 'rogue' && Math.hypot(hx, hy) < 0.1) {
+                        const t = rogueState().targets.find(x => x.isAlive);
+                        if (t && distanceSq(t.pos, p.pos) > BOT_ROGUE_HUNT * BOT_ROGUE_HUNT) { hx = t.pos.x - p.pos.x; hy = t.pos.y - p.pos.y; }
                     }
                     // 只剩最後幾隻、而且沒有要閃的東西：走過去收尾。站在原地的話，停在射程外的遠程怪（血瞳 190）永遠打不到，這一波收不掉
                     if (gameState.straggling && Math.hypot(hx, hy) < 0.1) {

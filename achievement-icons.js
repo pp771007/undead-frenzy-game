@@ -408,4 +408,24 @@ Object.assign(ACHV_ICON_BODIES, {
     elf_snipe: `<circle cx="32" cy="32" r="24" stroke="${C.red}" stroke-width="3"/><circle cx="32" cy="32" r="14" stroke="${C.red}" stroke-width="2.5"/><path d="M32 2 L32 14 M32 50 L32 62 M2 32 L14 32 M50 32 L62 32" stroke="${C.red}" stroke-width="3"/>${at(32, 32, 0.4, P.crown())}`,
     elf_lone: `${at(32, 34, 0.95, BOW())}${at(54, 12, 0.4, P.moon())}<path d="M6 58 L58 58" stroke="#8d6e63" stroke-width="3"/>`,
 });
+// ---- 職業：刺客（rogue.js）。母題是兜帽與匕首：紅準星、紫影 ----
+const HOOD = (fill = '#311b92') => `<path d="M0 -26 L20 -12 L16 22 L0 28 L-16 22 L-20 -12 Z" fill="${fill}"/><path d="M-20 -12 L0 -26 L20 -12 L0 -8 Z" fill="#4527a0"/><path d="M-9 -2 L-3 1 M9 -2 L3 1" stroke="#ff5252" stroke-width="3"/>`;
+const DAGGER = (blade = C.steel) => P.dagger(blade);
+const RETICLE = `<circle cx="32" cy="32" r="22" stroke="${C.red}" stroke-width="3"/><path d="M32 6 L32 16 M32 48 L32 58 M6 32 L16 32 M48 32 L58 32" stroke="${C.red}" stroke-width="3"/>`;
+Object.assign(ACHV_ICON_BODIES, {
+    rogue_win: `${at(32, 36, 1, P.laurel(C.gold))}${at(32, 30, 0.7, HOOD())}`,
+    rogue_speed28: `${at(22, 34, 0.8, HOOD())}<path d="M42 22 L58 22 M44 34 L60 34 M42 46 L58 46" stroke="#b39ddb" stroke-width="3.5"/>`,
+    rogue_speed24: `${at(18, 40, 0.6, HOOD('#4527a0'))}${at(38, 30, 0.75, HOOD())}${at(54, 50, 0.5, P.bolt())}`,
+    rogue_speed20: `${at(32, 32, 0.9, HOOD('#1a0b4d'))}${at(52, 12, 0.5, P.bolt())}${sparks([[10, 10, 4], [56, 52, 4]], '#b39ddb')}`,
+    rogue_res_assassination: `${RETICLE}${at(32, 32, 0.8, DAGGER(), 45)}`,
+    rogue_res_venomschool: `${at(32, 34, 1, P.drop('#7cb342'))}<circle cx="32" cy="40" r="7" fill="#f1f8e9" stroke-width="2.5"/><circle cx="29" cy="39" r="1.8" fill="${C.ink}" stroke="none"/><circle cx="35" cy="39" r="1.8" fill="${C.ink}" stroke="none"/>`,
+    rogue_res_shadowschool: `${[[14, 0.55, 0.5], [50, 0.55, 0.5], [24, 0.7, 0.75], [40, 0.7, 0.75], [32, 0.9, 1]].map(([x, s, o]) => `<g opacity="${o}">${at(x, 34, s, HOOD())}</g>`).join('')}`,
+    rogue_res_smoke: `<path d="M8 44 C0 44 0 30 10 30 C10 18 26 14 32 22 C38 14 54 18 52 30 C60 32 60 44 52 44 Z" fill="#90a4ae"/>${at(32, 34, 0.5, HOOD())}`,
+    rogue_res_intel: `<path d="M10 10 L46 10 L54 18 L54 58 L10 58 Z" fill="#fff3e0"/><path d="M18 22 L46 22 M18 30 L46 30" stroke="${C.wood}" stroke-width="2.5"/>${at(40, 44, 0.45, P.crown())}`,
+    rogue_targets: `${RETICLE}${at(32, 34, 0.5, P.skull())}${[[10, 10], [54, 10], [10, 54], [54, 54]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${C.red}" stroke-width="2"/>`).join('')}`,
+    rogue_executeElite: `<path d="M18 8 L18 60" stroke-width="5"/><path d="M18 8 L18 60" stroke="#6d4c41" stroke-width="2.5"/><path d="M18 10 C34 6 52 12 54 28 C44 24 30 26 18 32 Z" fill="${C.steel}"/>${at(42, 48, 0.4, P.crown())}`,
+    rogue_oneShot: `${at(32, 34, 1.2, DAGGER(), 45)}${sparks([[48, 14, 7]], C.red)}<path d="M8 56 L22 42" stroke="${C.red}" stroke-width="3"/>`,
+    rogue_ghost: `${[0.25, 0.45, 0.7, 1].map((o, i) => `<g opacity="${o}">${at(14 + i * 12, 34, 0.55, HOOD())}</g>`).join('')}`,
+    rogue_shadows: `${[[12, 22], [32, 16], [52, 22], [20, 44], [44, 44], [32, 54]].map(([x, y]) => at(x, y, 0.36, HOOD('#4527a0'))).join('')}`,
+});
 const ACHV_ICON_SVGS = Object.fromEntries(Object.entries(ACHV_ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));

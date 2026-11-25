@@ -330,6 +330,65 @@ const ICON_BODIES = {
         <path d="M4 60 L60 8" stroke="#e3f2fd" stroke-width="5"/><path d="M4 60 L60 8" stroke="#ffffff" stroke-width="2"/>`,
     noReturn: `<path d="M6 50 L22 34" stroke-width="4"/><path d="M6 50 L22 34" stroke="#a1887f" stroke-width="2"/><circle cx="26" cy="30" r="6" fill="#ef9a9a"/>
         <path d="M30 26 C38 18 46 22 44 30 C42 38 50 40 56 32" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/><circle cx="56" cy="32" r="5" fill="#ef9a9a"/><circle cx="44" cy="52" r="5" fill="#ef9a9a"/><path d="M56 36 C56 44 52 50 46 52" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/>`,
+    // ---- 刺客（rogue.js）----
+    // 大招「斬首」：兩把交叉的彎刀
+    behead: `${[[-1, '#cfd8dc'], [1, '#eceff1']].map(([s, c]) => `<g transform="translate(32 32) scale(${s} 1)"><path d="M-22 22 C-10 4 4 -10 22 -22 C10 -2 -2 10 -16 26 Z" fill="${c}"/><path d="M-16 26 L-24 18" stroke-width="5"/><path d="M-16 26 L-24 18" stroke="#5d4037" stroke-width="2.5"/></g>`).join('')}
+        <path d="M26 30 L38 34" stroke="#e53935" stroke-width="3"/>`,
+    // 流派
+    assassination: `<circle cx="32" cy="32" r="24" stroke="#e53935" stroke-width="4"/><circle cx="32" cy="32" r="12" stroke="#e53935" stroke-width="3"/><path d="M32 4 L32 18 M32 46 L32 60 M4 32 L18 32 M46 32 L60 32" stroke="#e53935" stroke-width="3.5"/>
+        <circle cx="32" cy="32" r="3.5" fill="#e53935" stroke="none"/>`,
+    venomschool: `<path d="M24 6 L40 6 L40 18 C50 24 54 34 50 44 C46 54 38 58 32 58 C26 58 18 54 14 44 C10 34 14 24 24 18 Z" fill="#7cb342"/><path d="M24 6 L40 6" stroke-width="5"/>
+        <circle cx="32" cy="36" r="8" fill="#f1f8e9" stroke-width="2.5"/><path d="M28 44 L36 44" stroke="#f1f8e9" stroke-width="4"/><circle cx="29" cy="35" r="2" fill="#1b1424" stroke="none"/><circle cx="35" cy="35" r="2" fill="#1b1424" stroke="none"/>${shine(22, 30, 3, 6, 20)}`,
+    smoke: `<path d="M10 44 C2 44 2 30 12 30 C12 18 28 14 34 22 C40 14 56 18 54 30 C62 32 62 44 54 44 Z" fill="#90a4ae"/><path d="M18 52 C26 48 38 56 46 52" stroke="#cfd8dc" stroke-width="3.5"/>
+        <path d="M22 36 C26 32 32 34 34 38" stroke="#eceff1" stroke-width="3"/>`,
+    intel: `<path d="M12 8 L44 8 L52 16 L52 58 L12 58 Z" fill="#fff3e0"/><path d="M44 8 L44 16 L52 16" fill="#ffe0b2"/><path d="M18 22 L44 22 M18 30 L44 30 M18 38 L34 38" stroke="#8d6e63" stroke-width="2.5"/>
+        <circle cx="40" cy="46" r="8" fill="none" stroke="#e53935" stroke-width="3"/><path d="M46 52 L54 60" stroke="#e53935" stroke-width="4"/>`,
+    // 暗殺
+    critChance: `<path d="M14 54 L44 24" stroke-width="5"/><path d="M14 54 L44 24" stroke="#8d6e63" stroke-width="2.5"/><path d="M44 24 L56 8 L52 28 Z" fill="#eceff1" stroke-width="2.5"/>
+        <path d="${starPath(20, 20, 10, 4, 4)}" fill="#ff5252" stroke-width="2.5"/>`,
+    critDamage: `<path d="M8 56 L36 28" stroke-width="5"/><path d="M8 56 L36 28" stroke="#8d6e63" stroke-width="2.5"/><path d="M36 28 L52 8 L46 32 Z" fill="#eceff1" stroke-width="2.5"/>
+        <path d="M44 40 C44 46 48 50 48 54 C48 58 44 60 44 60 C44 60 40 58 40 54 C40 50 44 46 44 40 Z" fill="#c62828" stroke-width="2"/><path d="M54 36 C54 40 57 43 57 46 C57 49 54 50 54 50 C54 50 51 49 51 46 C51 43 54 40 54 36 Z" fill="#c62828" stroke-width="2"/>`,
+    executeUp: `<path d="M20 8 L20 60" stroke-width="5"/><path d="M20 8 L20 60" stroke="#6d4c41" stroke-width="2.5"/><path d="M20 10 C36 6 52 12 54 26 C44 22 32 24 20 30 Z" fill="#b0bec5"/>
+        <rect x="34" y="44" width="22" height="8" rx="2" fill="#ef5350"/><rect x="34" y="44" width="6" height="8" rx="2" fill="#7f0000" stroke="none"/>`,
+    ambushPower: `<path d="M8 48 C16 30 48 30 56 48 Z" fill="#311b92"/><path d="M20 42 L26 38 M44 42 L38 38" stroke="#ff5252" stroke-width="3.5"/>
+        <path d="M44 6 L28 30" stroke-width="5"/><path d="M44 6 L28 30" stroke="#eceff1" stroke-width="2.5"/>${duoStroke('M52 18 L52 30 M46 24 L58 24', '#ffd54f', 2.5)}`,
+    // 劇毒
+    poisonStacks: `${[[20, 46], [32, 30], [44, 46]].map(([x, y]) => `<path d="M${x} ${y - 14} C${x + 6} ${y - 4} ${x + 10} ${y} ${x + 10} ${y + 5} C${x + 10} ${y + 11} ${x + 5} ${y + 14} ${x} ${y + 14} C${x - 5} ${y + 14} ${x - 10} ${y + 11} ${x - 10} ${y + 5} C${x - 10} ${y} ${x - 6} ${y - 4} ${x} ${y - 14} Z" fill="#7cb342"/>`).join('')}`,
+    poisonPower: `<path d="M24 6 L40 6 L40 18 C50 24 54 34 50 44 C46 54 38 58 32 58 C26 58 18 54 14 44 C10 34 14 24 24 18 Z" fill="#558b2f"/><path d="M24 6 L40 6" stroke-width="5"/>
+        ${[[24, 40], [36, 46], [38, 32]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4" fill="#c5e1a5" stroke-width="2"/>`).join('')}${duoStroke('M54 22 L54 8 M49 13 L54 8 L59 13', '#ffd54f', 2.5)}`,
+    poisonSpread: `<circle cx="32" cy="32" r="10" fill="#7cb342"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return `<circle cx="${(32 + Math.cos(a) * 22).toFixed(1)}" cy="${(32 + Math.sin(a) * 22).toFixed(1)}" r="5" fill="#9ccc65" stroke-width="2"/><path d="M${(32 + Math.cos(a) * 12).toFixed(1)} ${(32 + Math.sin(a) * 12).toFixed(1)} L${(32 + Math.cos(a) * 17).toFixed(1)} ${(32 + Math.sin(a) * 17).toFixed(1)}" stroke="#c5e1a5" stroke-width="2.5"/>`; }).join('')}`,
+    poisonSlow: `<ellipse cx="32" cy="36" rx="18" ry="14" fill="#aed581"/><path d="M24 34 L28 34 M36 34 L40 34" stroke-width="2.5"/><path d="M26 42 C30 40 34 44 38 42" stroke-width="2.5"/>
+        ${[[12, 18], [52, 18], [32, 10]].map(([x, y]) => `<path d="M${x - 5} ${y} L${x + 5} ${y} M${x} ${y - 5} L${x} ${y + 5}" stroke="#4fc3f7" stroke-width="2.5"/>`).join('')}`,
+    // 影
+    shadowCap: `${[[16, 0.75, 0.55], [48, 0.75, 0.55], [32, 1, 1]].map(([x, s, o]) => `<g transform="translate(${x} 36) scale(${s})" opacity="${o}"><circle cx="0" cy="-14" r="9" fill="#5e35b1"/><path d="M-12 22 L-12 0 C-12 -6 12 -6 12 0 L12 22 Z" fill="#5e35b1"/><path d="M-4 -15 L-1 -13 M4 -15 L1 -13" stroke="#ff5252" stroke-width="2"/></g>`).join('')}`,
+    shadowTime: `<circle cx="24" cy="24" r="9" fill="#5e35b1"/><path d="M12 58 L12 38 C12 32 36 32 36 38 L36 58 Z" fill="#5e35b1"/>
+        <circle cx="46" cy="44" r="14" fill="#fff3e0"/><path d="M46 36 L46 44 L52 48" stroke-width="3"/>`,
+    shadowPower: `<circle cx="26" cy="18" r="9" fill="#4527a0"/><path d="M14 58 L14 34 C14 28 38 28 38 34 L38 58 Z" fill="#4527a0"/><path d="M40 40 L56 14" stroke-width="5"/><path d="M40 40 L56 14" stroke="#b39ddb" stroke-width="2.5"/>
+        ${duoStroke('M54 56 L54 44 M49 49 L54 44 L59 49', '#ffd54f', 2.5)}`,
+    shadowStrike: `<circle cx="20" cy="20" r="8" fill="#4527a0"/><path d="M10 54 L10 34 C10 28 30 28 30 34 L30 54 Z" fill="#4527a0"/>${[0, 1, 2].map(i => `<path d="M${34 + i * 7} ${16 + i * 4} L${44 + i * 7} ${40 + i * 4}" stroke="#ff5252" stroke-width="3.5"/>`).join('')}`,
+    // 煙霧
+    smokeBomb: `<circle cx="28" cy="40" r="16" fill="#37474f"/><path d="M28 24 L32 12" stroke-width="4"/><path d="M32 12 L38 8" stroke="#ffd54f" stroke-width="3"/>
+        <path d="M44 18 C40 12 48 6 52 12 C58 10 60 18 56 22" fill="#cfd8dc"/>${shine(22, 34, 4, 3)}`,
+    dodge: `<circle cx="20" cy="20" r="8" fill="#b0bec5" opacity="0.5"/><path d="M10 52 L10 34 C10 28 30 28 30 34 L30 52 Z" fill="#b0bec5" opacity="0.5"/><circle cx="40" cy="20" r="8" fill="#78909c"/><path d="M30 52 L30 34 C30 28 50 28 50 34 L50 52 Z" fill="#78909c"/>
+        <path d="M2 40 L22 40" stroke="#e53935" stroke-width="3"/><path d="M22 40 L16 36 M22 40 L16 44" stroke="#e53935" stroke-width="3"/>`,
+    quickHide: `<circle cx="26" cy="22" r="9" fill="#5e35b1" opacity="0.6"/><path d="M14 58 L14 38 C14 32 38 32 38 38 L38 58 Z" fill="#5e35b1" opacity="0.6"/>${boltAt(48, 30)}`,
+    longHide: `<path d="M8 40 C2 40 2 28 12 28 C12 16 28 12 34 20 C40 12 56 16 54 28 C62 30 62 40 54 40 Z" fill="#78909c"/><circle cx="32" cy="48" r="12" fill="#fff3e0"/><path d="M32 40 L32 48 L38 52" stroke-width="3"/>`,
+    // 情報
+    bounty: `<path d="M10 6 L54 6 L54 58 L10 58 Z" fill="#ffe0b2"/><path d="M18 14 L46 14" stroke="#8d6e63" stroke-width="3"/><circle cx="32" cy="32" r="10" fill="#bcaaa4"/><path d="M26 30 L30 32 M38 30 L34 32" stroke-width="2"/>
+        <path d="M18 48 L40 48" stroke="#e53935" stroke-width="4"/><circle cx="50" cy="50" r="9" fill="#ffd54f" stroke-width="2.5"/><circle cx="50" cy="50" r="4.5" stroke="#e0a82e" stroke-width="2"/>`,
+    earlyMark: `<circle cx="32" cy="34" r="22" fill="#eceff1"/><circle cx="32" cy="34" r="12" fill="#5d4037"/><circle cx="32" cy="34" r="5" fill="#1b1424" stroke="none"/>${shine(26, 28, 3, 2)}
+        <path d="M8 34 C14 22 22 16 32 12 C42 16 50 22 56 34" stroke-width="3"/>`,
+    trashLoot: `<path d="M18 26 C8 34 10 54 24 56 L40 56 C54 54 56 34 46 26 Z" fill="#8d6e63"/><path d="M22 26 L42 26 L38 18 L26 18 Z" fill="#6d4c41"/>
+        <circle cx="32" cy="42" r="7" fill="#ffd54f" stroke-width="2.5"/><path d="M48 10 L58 4 M50 18 L60 16" stroke="#ffd54f" stroke-width="3"/>`,
+    spoils: `<path d="M8 30 L56 30 L52 56 L12 56 Z" fill="#8d6e63"/><path d="M8 30 L14 18 L50 18 L56 30" fill="#a1887f"/>
+        <path d="M32 50 C24 44 20 40 22 36 C24 32 30 32 32 36 C34 32 40 32 42 36 C44 40 40 44 32 50 Z" fill="#e53935" stroke-width="2"/>`,
+    // 傳說
+    oldMan: `<path d="M14 58 L22 22 L32 8 L42 22 L50 58 Z" fill="#37474f"/><path d="M24 26 C28 32 36 32 40 26" fill="#cfd8dc"/><path d="M26 34 C28 46 36 46 38 34" fill="#eceff1"/>
+        <path d="M28 22 L30 24 M36 22 L34 24" stroke="#ffd54f" stroke-width="2.5"/><path d="M8 50 C14 44 20 46 22 52" stroke="#b39ddb" stroke-width="3"/>`,
+    pillowDagger: `<path d="M6 40 C6 30 14 26 32 26 C50 26 58 30 58 40 C58 50 50 54 32 54 C14 54 6 50 6 40 Z" fill="#e1bee7"/><path d="M14 40 C24 36 40 36 50 40" stroke="#ce93d8" stroke-width="2.5"/>
+        <path d="M34 8 L34 36" stroke-width="5"/><path d="M34 8 L34 36" stroke="#eceff1" stroke-width="2.5"/><path d="M28 10 L40 10" stroke-width="4"/><path d="M28 10 L40 10" stroke="#ffd54f" stroke-width="2"/>`,
+    fidai: `<path d="M32 6 L56 18 L50 50 L32 60 L14 50 L8 18 Z" fill="#212121"/><path d="M20 28 L28 32 M44 28 L36 32" stroke="#ff5252" stroke-width="3.5"/><path d="M8 18 L32 6 L56 18 L32 22 Z" fill="#424242"/>
+        <path d="M2 58 L14 46 M62 58 L50 46" stroke="#b39ddb" stroke-width="3"/>`,
     // 戰士的大招：兩支交叉擲出的標槍
     javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
         <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>

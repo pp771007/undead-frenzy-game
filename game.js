@@ -1021,6 +1021,7 @@ const UNIT_TYPES = {
 //   currency：{ icon, glow: [r, g, b] }，錢包與掉落物長什麼樣（吸血鬼是血）；沒有就是靈魂
 //   onSpring(relic, dt)：站在靈泉裡時取代回血（吸血鬼的聖水會燙）
 //   preventDeath()：主角血量歸零時問一次，回傳 true 就不死（職業自己把血補回來）
+//   relicChannelMult()：站在遺跡上讀條的速度倍率（刺客隱身時快三倍）
 const CLASSES = {
     necro: {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
@@ -5019,7 +5020,8 @@ function updateRelics(deltaTime) {
             if (r.pool <= 0) finishRelic(r);
             continue;
         }
-        r.progress = inside ? r.progress + deltaTime / T.channel : Math.max(0, r.progress - deltaTime * RELIC_DRAIN_PER_SEC);
+        const cls = classDef();
+        r.progress = inside ? r.progress + deltaTime * (cls.relicChannelMult ? cls.relicChannelMult() : 1) / T.channel : Math.max(0, r.progress - deltaTime * RELIC_DRAIN_PER_SEC);
         if (r.progress >= 1) finishRelic(r);
     }
     gameState.relics = gameState.relics.filter(r => r.fade > 0);
