@@ -5632,12 +5632,12 @@ function updateUI() {
     const souls = gameState.souls;
     const p = gameState.player;
     if (p) {
-        uiElements.playerHealthInfo.textContent = `${p.currentHealth}/${p.maxHealth}`;
+        setTextIfChanged(uiElements.playerHealthInfo, `${p.currentHealth}/${p.maxHealth}`);
         const ratio = p.maxHealth > 0 ? p.currentHealth / p.maxHealth : 0;
-        uiElements.hpFill.style.width = `${Math.round(ratio * 100)}%`;
+        setStyleIfChanged(uiElements.hpFill, 'width', `${Math.round(ratio * 100)}%`);
     }
 
-    uiElements.soulsInfo.textContent = formatNumberK(souls);
+    setTextIfChanged(uiElements.soulsInfo, formatNumberK(souls));
     if (souls > lastShownSouls && !uiElements.soulsInfo.classList.contains('bump')) uiElements.soulsInfo.classList.add('bump');
     lastShownSouls = souls;
     // 這一局到目前為止賺到的結晶（結束時入帳）：局外貨幣要在局內看得到，才知道是怎麼賺來的
@@ -5652,11 +5652,11 @@ function updateUI() {
     const holding = tutorial && gameState.currentWave === 0;
     const secs = Math.ceil(gameState.timeToNextWave);
     if (gameState.betweenWaves) {
-        uiElements.waveInfo.textContent = waveLabel(gameState.currentWave + 1);
-        uiElements.timerInfo.textContent = holding ? '先熟悉操作' : `${secs} 秒後開戰`;
+        setTextIfChanged(uiElements.waveInfo, waveLabel(gameState.currentWave + 1));
+        setTextIfChanged(uiElements.timerInfo, holding ? '先熟悉操作' : `${secs} 秒後開戰`);
     } else {
-        uiElements.waveInfo.textContent = waveLabel(gameState.currentWave);
-        uiElements.timerInfo.textContent = `剩餘 ${countRemainingMonsters()}`;
+        setTextIfChanged(uiElements.waveInfo, waveLabel(gameState.currentWave));
+        setTextIfChanged(uiElements.timerInfo, `剩餘 ${countRemainingMonsters()}`);
     }
     uiElements.wavePlate.classList.toggle('urgent', gameState.betweenWaves && !holding && secs <= COUNTDOWN_SECONDS);
 
@@ -5666,41 +5666,53 @@ function updateUI() {
         const level = gameState[u.levelKey];
         const summonCost = getSummonCost(u.config());
         const upgradeCost = gameState.currentCosts[u.costKey];
-        if (el.level.textContent !== String(level)) el.level.textContent = level;
+        setTextIfChanged(el.level, String(level));
         setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
-        el.count.textContent = formatNumberK(gameState[u.countKey]);
+        setTextIfChanged(el.count, formatNumberK(gameState[u.countKey]));
         setHtmlIfChanged(el.summon, priceButtonHtml('召喚', summonCost));
         setHtmlIfChanged(el.upgrade, priceButtonHtml('升級', upgradeCost));
-        el.summon.disabled = !canAct;
-        el.upgrade.disabled = !canAct;
+        if (el.summon.disabled !== !canAct) el.summon.disabled = !canAct;
+        if (el.upgrade.disabled !== !canAct) el.upgrade.disabled = !canAct;
         el.summon.classList.toggle('cant-afford', souls < summonCost);
         el.upgrade.classList.toggle('cant-afford', souls < upgradeCost);
         el.upgrade.classList.toggle('good-deal', souls >= upgradeCost && isUpgradeGoodDeal(u, level, summonCost, upgradeCost));
     }
 
-    uiElements.skipWaveBtn.style.display = gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none';
+    setStyleIfChanged(uiElements.skipWaveBtn, 'display', gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none');
     updateNovaButton();
 }
 
-// updateUI 每格都跑，innerHTML 只在內容真的變了才寫，避免每格重建 DOM
+// updateUI 每格都跑。寫進 DOM 就算內容一模一樣，瀏覽器也要重新排版、重畫那一塊 ——
+// 量過：每格無條件重寫介面，整個瀏覽器多吃約三成顆 CPU 核心，比畫整個戰場還多。所以一律變了才寫
 function setHtmlIfChanged(el, html) {
     if (el.dataset.html === html) return;
     el.innerHTML = html;
     el.dataset.html = html;
 }
+function setTextIfChanged(el, text) {
+    if (el.textContent !== text) el.textContent = text;
+}
+function setStyleIfChanged(el, prop, value) {
+    if (el.style[prop] !== value) el.style[prop] = value;
+}
 
 function updateNovaButton() {
     const btn = uiElements.novaBtn;
     const cd = gameState.novaCooldown;
-    btn.disabled = gameState.gameOver || gameState.isPaused || gameState.draftOpen;
+    const off = gameState.gameOver || gameState.isPaused || gameState.draftOpen;
+    if (btn.disabled !== off) btn.disabled = off;
     if (cd > 0) {
-        const done = (1 - cd / getNovaCooldown()) * 100;
+        // 取整數百分比：肉眼看不出差別，按鈕從每格重畫變成冷卻期間總共重畫一百次
+        const done = Math.floor((1 - cd / getNovaCooldown()) * 100);
         setHtmlIfChanged(btn, `${iconHtml('burst')}<span>${Math.ceil(cd)}</span>`);
-        btn.style.background = `conic-gradient(rgba(156, 39, 176, 0.9) ${done}%, #1d1628 ${done}%)`;
+        if (btn.dataset.cd !== String(done)) {
+            btn.dataset.cd = String(done);
+            btn.style.background = `conic-gradient(rgba(156, 39, 176, 0.9) ${done}%, #1d1628 ${done}%)`;
+        }
         btn.classList.remove('nova-ready');
     } else {
         setHtmlIfChanged(btn, `${iconHtml('burst')}<span>新星</span>`);
-        btn.style.background = '';
+        if (btn.dataset.cd) { btn.dataset.cd = ''; btn.style.background = ''; }
         btn.classList.add('nova-ready');
     }
 }
