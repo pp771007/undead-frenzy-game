@@ -69,7 +69,7 @@ const uiElements = {
     titleCurseBtn: $id('title-curse-btn'), curseScreen: $id('curse-screen'), curseList: $id('curse-list'),
     curseLevel: $id('curse-level'), curseMult: $id('curse-mult'), curseMinus: $id('curse-minus'), cursePlus: $id('curse-plus'),
     curseCloseBtn: $id('curse-close-btn'),
-    titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'),
+    titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'), achvTabs: $id('achv-tabs'),
     achvCloseBtn: $id('achv-close-btn'), achvToast: $id('achv-toast'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
@@ -739,12 +739,12 @@ const META_UPGRADES = {
 const CRYSTALS_PER_WAVE = 2;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
+    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: defaultStats(), tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
 }
 function loadMeta() {
     try {
         const m = JSON.parse(localStorage.getItem(META_KEY));
-        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) } };
+        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) } };
     } catch (e) { }
     return defaultMeta();
 }
@@ -757,85 +757,198 @@ function metaVal(id) { return META_UPGRADES[id].per * metaLv(id); }
 function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
 
 // ---------- 成就：第一次達成就給結晶（跨局保留） ----------
-// 同類遊戲都有（PokéSurvivor 149 個成就、PokeBonk 的任務）：給每一局一個「這次試試看」的目標。
-// 共鳴那一組故意每個流派一個：逼玩家去試平常不走的流派
-const ACHV_SCHOOL_ICON = { skel: 'boneBlade', eye: 'splitGaze', wraith: 'wraithBlast', mage: 'soulBlade', soul: 'soulHarvest' };
-// 自動遊玩一局的大軍最多到 1800～3500 隻：小的那個中期拿得到，大的要後期養得好
-const ACHV_ARMY_SMALL = 500, ACHV_ARMY_BIG = 2000;
-const ACHV_STREAK_SMALL = 500, ACHV_STREAK_BIG = 2000;
+// 同類遊戲的成就都是上百個（PokéSurvivor 149 個）：每一類都有「近的」與「遠的」目標，每一局都至少有幾個摸得到。
+// 條件都看目前狀態或跨局統計（meta.stats），不需要每格算；圖示見 achievement-icons.js（圖鑑那一類直接用那隻怪的立繪）。
+// 清單裡會用到稍後才宣告的 CURSES、DAILY_MUTATIONS，所以第一次用到時才建（achievements()）
+const ACHV_CATEGORIES = [
+    { id: 'journey', name: '征途' }, { id: 'endless', name: '無盡' }, { id: 'curse', name: '詛咒' }, { id: 'boss', name: '首領' },
+    { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '共鳴' }, { id: 'legend', name: '傳說' },
+    { id: 'pact', name: '契約' }, { id: 'streak', name: '連殺' }, { id: 'relic', name: '遺跡' }, { id: 'daily', name: '每日' },
+    { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'legacy', name: '傳承' },
+];
+const ACHV_JOURNEY = [[5, 'wave5', '破曉', 10], [10, 'wave10', '初陣', 15], [15, 'wave15', '老兵', 20], [20, 'wave20', '百戰', 25], [25, 'wave25', '過半', 30],
+    [30, 'wave30', '屍山', 35], [35, 'wave35', '血海', 40], [40, 'wave40', '龍門', 45], [45, 'wave45', '最後的長夜', 50]];
+const ACHV_ENDLESS = [[55, 'endless55', '無盡伊始', 60], [60, 'endless', '無盡深淵', 80], [70, 'endless70', '深淵凝視', 100], [80, 'endless80', '虛空行者', 140], [100, 'endless100', '永恆', 250]];
+// 詛咒幾級以上通關：沿用舊的 id（curseMid = 4 級、curseMax = 全開），其他級補上
+const ACHV_CURSE_IDS = ['curse1', 'curse2', 'curse3', 'curseMid', 'curse5', 'curse6', 'curse7', 'curseMax'];
+const ACHV_CURSE_NAMES = ['初嚐詛咒', '雙重枷鎖', '三重苦難', '受詛者', '五毒俱全', '六道輪迴', '七宗罪', '萬咒之王'];
+const ACHV_BOSSES = [['ColossusBoss', 'boss'], ['PlagueBoss', 'plagueBoss'], ['HunterBoss', 'hunterBoss'], ['DragonBoss', 'dragonBoss'], ['LichBoss', 'lichBoss']];
+// 圖鑑：各種怪累計打倒幾隻。自動遊玩打完一整局（50 波）每種大約打倒：血狼 2600、赤鷲 740、血牙野豬 300、腐屍 400、史萊姆 3150、
+// 蝙蝠 1900、刺客 180、投手 200、血瞳 450、石像鬼 250、吞魂者 240、巫醫 180、盾衛 180、屍蟲 100、祭司 85、墓碑 38、竊賊 3。
+// 門檻約是三局的量：一局拿不完、玩幾局會陸續解開
+const ACHV_BESTIARY = [
+    ['BasicMelee', 'basicMeleeMonster', 8000], ['FastMelee', 'fastMeleeMonster', 2000], ['ArmoredMelee', 'armoredMeleeMonster', 1000],
+    ['Bloater', 'bloaterMonster', 1200], ['Slime', 'slime', 10000], ['Bat', 'bat', 6000], ['Assassin', 'assassin', 500], ['Spitter', 'spitter', 600],
+    ['BloodEye', 'bloodEye', 1500], ['Gargoyle', 'gargoyle', 800], ['SoulDevourer', 'soulDevourer', 700], ['WitchDoctor', 'witchDoctor', 500],
+    ['ShieldGuard', 'shieldGuard', 500], ['CorpseWorm', 'corpseWorm', 300], ['GravePriest', 'gravePriest', 250], ['Tombstone', 'tombstone', 100], ['Thief', 'thief', 15],
+];
+const ACHV_ARMY = [[100, 'army100', '一支軍隊', 10], [500, 'army1', '亡者之海', 30], [1000, 'army1000', '千軍萬馬', 50], [2000, 'army2', '萬骨大軍', 80], [5000, 'army5000', '死亡天災', 150]];
+const ACHV_UNITS = [['SkeletonWarrior', 'skeletonWarriorLevel'], ['EyeMonster', 'eyeMonsterLevel'], ['Wraith', 'wraithLevel']];
+const ACHV_STREAK = [[100, 'streak100', '開葷', 10], [250, 'streak250', '殺紅了眼', 20], [500, 'streak1', '殺戮狂潮', 30], [1000, 'streak1000', '千人斬', 45], [2000, 'streak2', '屠戮之王', 60], [5000, 'streak5000', '死神親臨', 120]];
+const ACHV_CAREER = [
+    ['kills10k', '萬骨枯', '累計打倒 1 萬隻怪', 20, s => s.totalKills >= 1e4],
+    ['kills100k', '十萬亡魂', '累計打倒 10 萬隻怪', 60, s => s.totalKills >= 1e5],
+    ['kills1m', '百萬屠夫', '累計打倒 100 萬隻怪', 200, s => s.totalKills >= 1e6],
+    ['summons1k', '招魂師', '累計召喚 1000 隻', 15, s => s.summons >= 1e3],
+    ['summons10k', '亡者君主', '累計召喚 1 萬隻', 50, s => s.summons >= 1e4],
+    ['summons100k', '冥府之主', '累計召喚 10 萬隻', 150, s => s.summons >= 1e5],
+    ['souls100k', '收魂人', '累計收集 10 萬靈魂', 20, s => s.souls >= 1e5],
+    ['souls1m', '靈魂富豪', '累計收集 100 萬靈魂', 60, s => s.souls >= 1e6],
+    ['souls10m', '吞天', '累計收集 1000 萬靈魂', 200, s => s.souls >= 1e7],
+    ['runs10', '常客', '玩 10 局', 20, s => s.runs >= 10],
+    ['runs50', '不死之心', '玩 50 局', 60, s => s.runs >= 50],
+    ['runs100', '輪迴百世', '玩 100 局', 150, s => s.runs >= 100],
+    ['novas100', '新星信徒', '累計放 100 次新星', 20, s => s.novas >= 100],
+    ['novas1000', '星爆千回', '累計放 1000 次新星', 80, s => s.novas >= 1000],
+];
+const ACHV_RELICS = [
+    ['coffin1', '開棺', '打開第一座封印寶棺', 10, s => (s.relics.coffin || 0) >= 1],
+    ['coffins', '盜墓者', '累計打開 10 座封印寶棺', 30, s => (s.relics.coffin || 0) >= 10],
+    ['coffin50', '盜墓之王', '累計打開 50 座封印寶棺', 80, s => (s.relics.coffin || 0) >= 50],
+    ['altar10', '戰鼓手', '累計敲響 10 座戰鼓祭壇', 25, s => (s.relics.altar || 0) >= 10],
+    ['altar50', '戰神之鼓', '累計敲響 50 座戰鼓祭壇', 70, s => (s.relics.altar || 0) >= 50],
+    ['spring10', '泉水常客', '累計喝乾 10 座靈泉', 30, s => (s.relics.spring || 0) >= 10],
+];
+const ACHV_SPEED_WAVE = 20, ACHV_SPEED_SECONDS = 10;
+const ACHV_WEALTH = 10000;
+const ACHV_MASSACRE = 1000;
+const ACHV_NOVA_BLAST = 50;
+const ACHV_THIEVES = 5;
+const ACHV_LAST_STAND = 0.1;
+const ACHV_STEADY = 0.5;
+const ACHV_FLAWLESS_WAVE = 20;
+const ACHV_BLITZ_SECONDS = 20;
+// 前兩隻首領自動遊玩都能無傷、20 秒內打倒：這兩個挑戰從這一波的首領起才算
+const ACHV_BOSS_CHALLENGE_WAVE = 30;
 const ACHV_LEGENDS = 3;
 const ACHV_PACTS = 3;
 const ACHV_DAILY_WAVE = 20;
-const ACHV_COFFINS = 10;
-const ACHV_ENDLESS_WAVE = 60;
-const ACHV_CURSE_MID = 4;
-function legendCount() {
-    let n = 0;
-    for (const id in gameState.blessings) if (BLESSINGS[id] && BLESSINGS[id].legendary && gameState.blessings[id] > 0) n++;
-    return n;
+const ACHV_DAILY_DAYS = 7;
+const ACHV_BOSS_TOTAL = 25;
+// 精英潮一波就是幾十隻精英，一局打完會超過一千隻
+const ACHV_ELITES = [[500, 'elite500', '精英剋星', 30], [5000, 'elite5000', '王者殺手', 90]];
+
+function defaultStats() {
+    return { kills: {}, totalKills: 0, elites: 0, summons: 0, souls: 0, runs: 0, novas: 0, bosses: 0, relics: {}, legends: {}, pacts: {}, dailyDays: {} };
 }
-function bestUnitLevel() {
-    return Math.max(gameState.skeletonWarriorLevel, gameState.eyeMonsterLevel, gameState.wraithLevel);
+function stats() { return meta.stats; }
+// 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
+function emptyRunStats() {
+    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, relics: {}, flags: {} };
 }
-// 首領的成就用類別名稱記（BossMonster.die 寫進 gameState.bossKills）；名字從各自的設定拿，改名不用改這裡
-const ACHV_BOSSES = [['ColossusBoss', () => CONFIG.boss], ['PlagueBoss', () => CONFIG.plagueBoss], ['HunterBoss', () => CONFIG.hunterBoss], ['DragonBoss', () => CONFIG.dragonBoss]];
-const ACHIEVEMENTS = [
-    { id: 'wave10', icon: 'skull', name: '初陣', desc: '撐過第 10 波', reward: 20, test: () => getSurvivedWaves() >= 10 },
-    { id: 'wave25', icon: 'skull', name: '過半', desc: '撐過第 25 波', reward: 40, test: () => getSurvivedWaves() >= 25 },
-    { id: 'win', icon: 'crown', name: '凱旋', desc: '打倒最終首領', reward: 60, test: () => gameState.endless },
-    { id: 'endless', icon: 'flame', name: '無盡深淵', desc: `無盡模式撐到第 ${ACHV_ENDLESS_WAVE} 波`, reward: 100, test: () => gameState.endless && getSurvivedWaves() >= ACHV_ENDLESS_WAVE },
-    { id: 'curseMid', icon: 'warning', name: '受詛者', desc: `詛咒 ${ACHV_CURSE_MID} 以上通關`, reward: 100, test: () => gameState.endless && gameState.curse >= ACHV_CURSE_MID },
-    { id: 'curseMax', icon: 'warning', name: '萬咒之王', desc: '詛咒全開通關', reward: 200, test: () => gameState.endless && gameState.curse >= CURSES.length },
-    ...ACHV_BOSSES.map(([cls, cfg]) => ({ id: `boss_${cls}`, icon: 'crown', get name() { return `討伐${cfg().name}`; }, get desc() { return `打倒${cfg().name}`; }, reward: 20, test: () => !!gameState.bossKills[cls] })),
-    ...Object.keys(ACHV_SCHOOL_ICON).map(s => ({ id: `res_${s}`, icon: ACHV_SCHOOL_ICON[s], get name() { return SCHOOLS[s].res[1].name; }, get desc() { return `${SCHOOLS[s].name}流派疊滿 ${RESONANCE_STEPS[1]} 層`; }, reward: 30, test: () => res(s) >= 2 })),
-    { id: 'army1', icon: 'summon', name: '亡者之海', desc: `同時有 ${ACHV_ARMY_SMALL} 隻召喚物`, reward: 30, test: () => gameState.summons.length >= ACHV_ARMY_SMALL },
-    { id: 'army2', icon: 'summon', name: '萬骨大軍', desc: `同時有 ${ACHV_ARMY_BIG} 隻召喚物`, reward: 60, test: () => gameState.summons.length >= ACHV_ARMY_BIG },
-    { id: 'evolve', icon: 'arrowUp', name: '至高進化', desc: `任一兵種升到 Lv${CONFIG.evolution.levels[2]}`, reward: 40, test: () => bestUnitLevel() >= CONFIG.evolution.levels[2] },
-    { id: 'streak1', icon: 'flame', name: '殺戮狂潮', desc: `連殺 ${ACHV_STREAK_SMALL}`, reward: 30, test: () => gameState.bestStreak >= ACHV_STREAK_SMALL },
-    { id: 'streak2', icon: 'flame', name: '屠戮之王', desc: `連殺 ${ACHV_STREAK_BIG}`, reward: 60, test: () => gameState.bestStreak >= ACHV_STREAK_BIG },
-    { id: 'pacts', icon: 'flame', name: '魔鬼交易', desc: `一局立下 ${ACHV_PACTS} 份契約`, reward: 40, test: () => Object.keys(gameState.blessings).filter(id => BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0).length >= ACHV_PACTS },
-    { id: 'daily', icon: 'star', name: '異變求生', desc: `每日變異撐過第 ${ACHV_DAILY_WAVE} 波`, reward: 40, test: () => !!gameState.daily && getSurvivedWaves() >= ACHV_DAILY_WAVE },
-    { id: 'legends', icon: 'star', name: '傳說加身', desc: `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, reward: 40, test: () => legendCount() >= ACHV_LEGENDS },
-    { id: 'coffins', icon: 'lock', name: '盜墓者', desc: `累計打開 ${ACHV_COFFINS} 座封印寶棺`, reward: 30, test: () => (meta.stats.coffins || 0) >= ACHV_COFFINS },
-];
-// 每隔這麼久檢查一次（條件都是看目前狀態，不需要每格算）
+function runUnitsUsed() { return Object.keys(gameState.totalSummons).filter(k => gameState.totalSummons[k] > 0); }
+function wonOnlyWith(type) { const u = runUnitsUsed(); return gameState.endless && u.length === 1 && u[0] === type; }
+function countTaken(pred) { return Object.keys(gameState.blessings).filter(id => BLESSINGS[id] && pred(BLESSINGS[id]) && gameState.blessings[id] > 0).length; }
+
+let ACHIEVEMENTS = null;
+function achievements() { return ACHIEVEMENTS || (ACHIEVEMENTS = buildAchievements()); }
+function buildAchievements() {
+    const L = [];
+    const add = (cat, id, name, desc, reward, test, look) => L.push({ cat, id, name, desc, reward, test, look });
+    const S = stats;
+    for (const [w, id, name, r] of ACHV_JOURNEY) add('journey', id, name, `撐過第 ${w} 波`, r, () => getSurvivedWaves() >= w);
+    add('journey', 'win', '凱旋', '打倒墮落亡靈王', 60, () => gameState.endless);
+    for (const [w, id, name, r] of ACHV_ENDLESS) add('endless', id, name, `無盡模式撐到第 ${w} 波`, r, () => gameState.endless && getSurvivedWaves() >= w);
+    ACHV_CURSE_IDS.forEach((id, i) => add('curse', id, ACHV_CURSE_NAMES[i], `詛咒 ${i + 1} 以上通關（${CURSES[i].name}）`, 40 + i * 25, () => gameState.endless && gameState.curse >= i + 1));
+    for (const [cls, cfgKey] of ACHV_BOSSES) add('boss', `boss_${cls}`, `討伐${CONFIG[cfgKey].name}`, `打倒${CONFIG[cfgKey].name}`, cls === 'LichBoss' ? 60 : 20, () => !!gameState.bossKills[cls]);
+    add('boss', 'bossNoHit', '毫髮無傷', `第 ${ACHV_BOSS_CHALLENGE_WAVE} 波以後的首領波，一下都沒被打中`, 50, () => !!gameState.run.flags.bossNoHit);
+    add('boss', 'bossBlitz', '閃電戰', `第 ${ACHV_BOSS_CHALLENGE_WAVE} 波以後的首領，出場 ${ACHV_BLITZ_SECONDS} 秒內打倒`, 50, () => !!gameState.run.flags.bossBlitz);
+    add('boss', 'bossTotal', '首領屠夫', `累計打倒 ${ACHV_BOSS_TOTAL} 隻首領`, 60, () => S().bosses >= ACHV_BOSS_TOTAL);
+    for (const [type, cfgKey, n] of ACHV_BESTIARY) add('bestiary', `kill_${type}`, CONFIG[cfgKey].name, `累計打倒 ${n} 隻${CONFIG[cfgKey].name}`, 20, () => (S().kills[type] || 0) >= n, CONFIG[cfgKey]);
+    for (const [n, id, name, r] of ACHV_ELITES) add('bestiary', id, name, `累計打倒 ${n} 隻精英怪`, r, () => S().elites >= n);
+    for (const [n, id, name, r] of ACHV_ARMY) add('army', id, name, `同時有 ${n} 隻召喚物`, r, () => gameState.summons.length >= n);
+    for (const [type, levelKey] of ACHV_UNITS) CONFIG.evolution.levels.forEach((lv, t) => {
+        const name = CONFIG.evolution.names[type][t];
+        add('army', `evo_${type}_${t + 1}`, name, `升到 Lv${lv}，進化成${name}`, 15 + t * 20, () => gameState[levelKey] >= lv);
+    });
+    for (const s of Object.keys(SCHOOLS)) SCHOOLS[s].res.forEach((r, t) => add('resonance', t === 1 ? `res_${s}` : `res1_${s}`, r.name, `${SCHOOLS[s].name}流派疊到 ${RESONANCE_STEPS[t]} 層`, t === 1 ? 40 : 15, () => res(s) >= t + 1));
+    for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary)) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
+    add('legend', 'legends', '傳說加身', `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, 40, () => countTaken(b => b.legendary) >= ACHV_LEGENDS);
+    add('legend', 'legendAll', '萬古傳說', '每一張傳說祝福都拿過', 120, () => Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary).every(b => S().legends[b]));
+    for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].pact)) add('pact', `pact_${id}`, BLESSINGS[id].name, `立下「${BLESSINGS[id].name}」`, 15, () => !!S().pacts[id]);
+    add('pact', 'pacts', '魔鬼交易', `一局立下 ${ACHV_PACTS} 份契約`, 40, () => countTaken(b => b.pact) >= ACHV_PACTS);
+    add('pact', 'pactWin', '與魔共舞', `帶著 ${ACHV_PACTS} 份契約通關`, 100, () => gameState.endless && countTaken(b => b.pact) >= ACHV_PACTS);
+    for (const [n, id, name, r] of ACHV_STREAK) add('streak', id, name, `連殺 ${n}`, r, () => gameState.bestStreak >= n);
+    for (const [id, name, desc, r, t] of ACHV_RELICS) add('relic', id, name, desc, r, () => t(S()));
+    add('relic', 'relicTrio', '朝聖者', '一局內三種遺跡都用過', 40, () => Object.keys(RELIC_TYPES).every(k => gameState.run.relics[k]));
+    for (const d of DAILY_MUTATIONS) add('daily', `daily_${d.id}`, d.name, `在「${d.name}」撐過第 ${ACHV_DAILY_WAVE} 波`, 30, () => gameState.daily === d.id && getSurvivedWaves() >= ACHV_DAILY_WAVE);
+    add('daily', 'dailyWeek', '一週不缺席', `在 ${ACHV_DAILY_DAYS} 個不同的日子玩每日變異`, 60, () => Object.keys(S().dailyDays).length >= ACHV_DAILY_DAYS);
+    for (const [id, name, desc, r, t] of ACHV_CAREER) add('career', id, name, desc, r, () => t(S()));
+    add('challenge', 'noNova', '不靠新星', '一次新星都不放，通關', 100, () => gameState.endless && gameState.run.novas === 0);
+    add('challenge', 'onlySkel', '純骨之軍', '只召喚骷髏，通關', 80, () => wonOnlyWith('SkeletonWarrior'));
+    add('challenge', 'onlyEye', '千目之主', '只召喚眼魔，通關', 80, () => wonOnlyWith('EyeMonster'));
+    add('challenge', 'onlyWraith', '怨魂之王', '只召喚怨靈，通關', 120, () => wonOnlyWith('Wraith'));
+    add('challenge', 'noUpgrade', '人海戰術', '一次都不升級，撐過第 30 波', 80, () => getSurvivedWaves() >= 30 && gameState.run.upgrades === 0);
+    add('challenge', 'ascetic', '苦行者', '一張祝福都不拿，撐過第 30 波', 100, () => getSurvivedWaves() >= 30 && gameState.run.picks === 0);
+    add('challenge', 'flawless', '完美防禦', `撐過第 ${ACHV_FLAWLESS_WAVE} 波，一下都沒被打中`, 80, () => getSurvivedWaves() >= ACHV_FLAWLESS_WAVE && gameState.run.hits === 0);
+    add('challenge', 'steady', '從容', `通關，法師的血從沒低於 ${pct(ACHV_STEADY)}`, 80, () => gameState.endless && gameState.run.minHp >= ACHV_STEADY);
+    add('challenge', 'lastStand', '背水一戰', `血量低於 ${pct(ACHV_LAST_STAND)} 時撐完那一波`, 40, () => !!gameState.run.flags.lastStand);
+    add('challenge', 'massacre', '屠城', `一波內打倒 ${ACHV_MASSACRE} 隻怪`, 40, () => gameState.run.maxWaveKills >= ACHV_MASSACRE);
+    add('challenge', 'novaBlast', '星爆', `一次新星打倒 ${ACHV_NOVA_BLAST} 隻怪`, 40, () => gameState.run.novaBest >= ACHV_NOVA_BLAST);
+    add('challenge', 'speedClear', '秒殺', `第 ${ACHV_SPEED_WAVE} 波以後，${ACHV_SPEED_SECONDS} 秒內清完一波`, 40, () => !!gameState.run.flags.speedClear);
+    add('challenge', 'wealthy', '守財奴', `手上同時有 ${formatNumberK(ACHV_WEALTH)} 靈魂`, 30, () => gameState.souls >= ACHV_WEALTH);
+    add('challenge', 'thiefChase', '追財', `一局打倒 ${ACHV_THIEVES} 隻金魂竊賊`, 40, () => gameState.run.thieves >= ACHV_THIEVES);
+    add('legacy', 'metaFirst', '傳承之始', '買下第一個永久強化', 10, () => Object.values(meta.upgrades).some(v => v > 0));
+    add('legacy', 'metaMax', '登峰造極', '任一永久強化升滿', 30, () => Object.keys(META_UPGRADES).some(id => metaLv(id) >= META_UPGRADES[id].max));
+    add('legacy', 'metaAll', '大圓滿', '全部永久強化升滿', 150, () => Object.keys(META_UPGRADES).every(id => metaLv(id) >= META_UPGRADES[id].max));
+    return L;
+}
 const ACHV_CHECK_EVERY = 0.5;
 const ACHV_TOAST_MS = 2600;
 let achvCheckTimer = 0;
 const achvToastQueue = [];
 let achvToastBusy = false;
 function achvDone(id) { return !!meta.achv[id]; }
-function checkAchievements() {
-    if (appScreen !== 'playing' || !gameState.player) return;
-    for (const a of ACHIEVEMENTS) {
-        if (achvDone(a.id) || !a.test()) continue;
+// anywhere：傳承類在標題畫面買強化時也要能達成；其他只在遊戲中檢查（標題背景也是一局 gameState）
+function checkAchievements(anywhere = false) {
+    if (!anywhere && (appScreen !== 'playing' || !gameState.player)) return;
+    for (const a of achievements()) {
+        if (achvDone(a.id) || (anywhere && a.cat !== 'legacy') || !a.test()) continue;
         meta.achv[a.id] = true;
         meta.crystals += a.reward;
-        gameState.achvCrystals += a.reward;
-        gameState.achvCount++;
+        if (!anywhere) { gameState.achvCrystals += a.reward; gameState.achvCount++; }
         saveMeta();
         achvToastQueue.push(a);
         if (!achvToastBusy) showNextAchvToast();
     }
+}
+// 成就圖示：圖鑑用那隻怪的立繪（跟場上一樣染色），其他用 achievement-icons.js 裡各自的向量圖
+const ACHV_PORTRAIT_PX = 64;
+const achvPortraitCache = {};
+function achvIconHtml(a) {
+    if (!a.look) return `<span class="icon achv-icon">${ACHV_ICON_SVGS[a.id] || ''}</span>`;
+    if (!achvPortraitCache[a.id]) {
+        const look = monsterLook(a.look), img = images[look.imageName];
+        if (!img) return '<span class="icon achv-icon"></span>';
+        const k = ACHV_PORTRAIT_PX / Math.max(img.width, img.height);
+        achvPortraitCache[a.id] = getSprite(img, img.width * k / SPRITE_RES, img.height * k / SPRITE_RES, look.tint, look.tintStrength || 0.45).toDataURL();
+    }
+    return `<span class="icon achv-icon"><img src="${achvPortraitCache[a.id]}" alt=""></span>`;
 }
 function showNextAchvToast() {
     const a = achvToastQueue.shift();
     const el = uiElements.achvToast;
     if (!a) { achvToastBusy = false; el.classList.remove('show'); return; }
     achvToastBusy = true;
-    el.innerHTML = `${iconHtml('trophy')}<div class="achv-toast-text"><b>${a.name}</b><span>${a.desc}</span></div><span class="crystal-count">${iconHtml('crystal')}+${a.reward}</span>`;
+    el.innerHTML = `${achvIconHtml(a)}<div class="achv-toast-text"><b>${a.name}</b><span>${a.desc}</span></div><span class="crystal-count">${iconHtml('crystal')}+${a.reward}</span>`;
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');
     Sfx.play('comboMilestone');
     setTimeout(showNextAchvToast, ACHV_TOAST_MS);
 }
+let achvTab = ACHV_CATEGORIES[0].id;
 function renderAchievements() {
-    const done = ACHIEVEMENTS.filter(a => achvDone(a.id)).length;
-    uiElements.achvCount.textContent = `${done}/${ACHIEVEMENTS.length}`;
-    uiElements.achvList.innerHTML = ACHIEVEMENTS.map(a => {
+    const all = achievements();
+    const done = all.filter(a => achvDone(a.id)).length;
+    uiElements.achvCount.textContent = `${done}/${all.length}`;
+    uiElements.achvTabs.innerHTML = ACHV_CATEGORIES.map(c => {
+        const list = all.filter(a => a.cat === c.id), n = list.filter(a => achvDone(a.id)).length;
+        return `<button class="achv-tab${c.id === achvTab ? ' on' : ''}${n === list.length ? ' full' : ''}" data-tab="${c.id}">${c.name}<span>${n}/${list.length}</span></button>`;
+    }).join('');
+    uiElements.achvList.innerHTML = all.filter(a => a.cat === achvTab).map(a => {
         const ok = achvDone(a.id);
-        return `<div class="meta-row achv-row ${ok ? 'done' : ''}">${iconHtml(ok ? 'trophy' : a.icon)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
+        return `<div class="meta-row achv-row ${ok ? 'done' : ''}">${achvIconHtml(a)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
     }).join('');
 }
 
@@ -928,7 +1041,7 @@ let gameState = {
     hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
-    bossKills: {}, achvCrystals: 0, achvCount: 0,
+    bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(),
 };
 
 function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
@@ -1712,6 +1825,10 @@ class Player extends GameObject {
         // 單一下傷害封頂：滿血不會被一下秒掉（後期精英腐屍一爆就超過法師血量），死亡要來自看得到的壓力
         this.currentHealth -= Math.min(amount, this.maxHealth * PLAYER_MAX_HIT_RATIO);
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
+        const run = gameState.run;
+        run.hits++;
+        run.flags.waveHit = true;
+        run.minHp = Math.min(run.minHp, this.currentHealth / this.maxHealth);
         this.hitFlash = CONFIG.visuals.hitFlashDuration;
         gameState.hurtFlash = CONFIG.visuals.hurtFlashDuration;
         addShake(4);
@@ -2943,6 +3060,7 @@ function buildOrbSprites() {
 function dropSouls(x, y, amount) {
     if (amount <= 0) return;
     gameState.waveSouls += amount;
+    stats().souls += amount;
     const n = Math.min(CONFIG.orbs.maxOrbsPerDrop, amount);
     const base = Math.floor(amount / n);
     let rest = amount - base * n;
@@ -3240,6 +3358,13 @@ class Monster extends GameObject {
     die() {
         this.isAlive = false;
         registerKill();
+        const st = stats(), type = this.config.type;
+        st.kills[type] = (st.kills[type] || 0) + 1;
+        st.totalKills++;
+        if (this.isElite) st.elites++;
+        gameState.run.waveKills++;
+        gameState.run.maxWaveKills = Math.max(gameState.run.maxWaveKills, gameState.run.waveKills);
+        if (type === 'Thief') gameState.run.thieves++;
         const ev = getWaveEvent();
         const souls = this.soulValue() * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus()) * runMods().soulMult
             + gameState.soulCarry;
@@ -3349,6 +3474,7 @@ class BossMonster extends Monster {
         super(x, y, config, waveNumber, false);
         this.tier = Math.max(1, Math.floor(waveNumber / CONFIG.wave.bossEvery));
         this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult);
+        this.spawnedAt = worldTime;
     }
     applySlow(amount, duration) {
         super.applySlow(amount * (1 - this.config.slowResist), duration);
@@ -3357,6 +3483,8 @@ class BossMonster extends Monster {
     die() {
         super.die();
         gameState.bossKills[this.constructor.name] = true;
+        stats().bosses++;
+        if (gameState.currentWave >= ACHV_BOSS_CHALLENGE_WAVE && worldTime - this.spawnedAt <= ACHV_BLITZ_SECONDS) gameState.run.flags.bossBlitz = true;
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
         spawnFloatText(this.pos.x, this.pos.y - 8, `+${CRYSTALS_PER_BOSS}`, '#CE93D8', 17, 1.6, 'crystal');
@@ -4673,6 +4801,8 @@ function finishRelic(r) {
     const T = RELIC_TYPES[r.kind];
     const p = gameState.player;
     r.done = true;
+    stats().relics[r.kind] = (stats().relics[r.kind] || 0) + 1;
+    gameState.run.relics[r.kind] = true;
     spawnParticles(r.x, r.y, T.color, 30, 160, 0.7, 3);
     if (r.kind === 'altar') {
         gameState.frenzyTimer = Math.max(gameState.frenzyTimer, T.frenzy);
@@ -4686,8 +4816,6 @@ function finishRelic(r) {
         dropSouls(r.x, r.y, souls);
         // 寶棺自己噴的不算進「這一波掉了多少」，不然下一座寶棺會越滾越大
         gameState.waveSouls -= souls;
-        meta.stats.coffins = (meta.stats.coffins || 0) + 1;
-        saveMeta();
         spawnFloatText(r.x, r.y - 30, `+${formatNumberK(souls)}`, '#80DEEA', 18, 1.3, 'soul');
         if (Math.random() < T.draftChance) {
             gameState.relicDrafts++;
@@ -5035,6 +5163,9 @@ function prepareNextWave() {
     if (gameState.waveEvent) gameState.lastEventWave = waveNum;
     gameState.spawnQueue = buildWaveQueue(waveNum);
     gameState.spawnTimer = CONFIG.wave.firstSpawnDelay;
+    gameState.run.waveKills = 0;
+    gameState.run.flags.waveHit = false;
+    gameState.waveStartAt = worldTime;
     gameState.lastWaveSouls = gameState.waveSouls;
     gameState.waveSouls = 0;
     scheduleRelic(waveNum);
@@ -5077,9 +5208,16 @@ function checkWaveEndCondition() {
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
         gameState.waveEvent = null;
         bankAllOrbs();
+        const p = gameState.player;
         // 法師的血波與波之間不回：一波被咬掉的會一路帶到下一波，回血只靠靈泉、不死之軀、吸魂之軀。
         // 召喚物照樣回滿：兵是消耗品，殘血兵帶著走只會讓大軍一波比一波薄，不會比較刺激
         gameState.summons.forEach(s => { if (s.isAlive) s.currentHealth = s.maxHealth; });
+        const run = gameState.run;
+        if (p && p.isAlive && p.currentHealth < p.maxHealth * ACHV_LAST_STAND) run.flags.lastStand = true;
+        if (gameState.currentWave >= ACHV_SPEED_WAVE && worldTime - gameState.waveStartAt <= ACHV_SPEED_SECONDS) run.flags.speedClear = true;
+        if (gameState.currentWave >= ACHV_BOSS_CHALLENGE_WAVE && gameState.currentWave % CONFIG.wave.bossEvery === 0 && !run.flags.waveHit) run.flags.bossNoHit = true;
+        checkAchievements();
+        saveMeta();
         spawnCrystalText(CRYSTALS_PER_WAVE);
         queueDraftIfDue();
         settleRelicsAtWaveEnd();
@@ -5166,6 +5304,7 @@ function useNova() {
     const frost = bl('frostNova') > 0;
     const radius = c.radius * (frost ? FROST_NOVA_RADIUS_MULT : 1);
     const rSq = radius * radius;
+    let novaKills = 0;
     gameState.monsters.forEach(m => {
         if (!m.isAlive) return;
         const dSq = distanceSq(m.pos, p.pos);
@@ -5175,7 +5314,11 @@ function useNova() {
         m.knockVel = { x: dir.x * kb, y: dir.y * kb };
         m.applySlow(frost ? FROST_NOVA_SLOW : c.slowAmount, frost ? BLESSINGS.frostNova.per : c.slowDuration);
         m.takeDamage(dmg);
+        if (!m.isAlive) novaKills++;
     });
+    gameState.run.novas++;
+    gameState.run.novaBest = Math.max(gameState.run.novaBest, novaKills);
+    stats().novas++;
     gameState.frenzyTimer = c.frenzyDuration + blessVal('frenzyTime');
     for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].attracted = true;
     // 寫效果不寫招式名：「狂潮」沒人知道是什麼，「大軍狂暴」一看就懂是自己的兵變強；兵身上同時冒紫火花（挑一部分，上千隻全冒會塞爆粒子上限）
@@ -5369,6 +5512,9 @@ function pickBlessing(id) {
     if (!gameState.pendingDraft || !gameState.pendingDraft.options.includes(id)) return;
     const school = BLESSINGS[id].school, tierBefore = res(school);
     gameState.blessings[id] = bl(id) + 1;
+    gameState.run.picks++;
+    if (BLESSINGS[id].legendary) stats().legends[id] = true;
+    if (BLESSINGS[id].pact) stats().pacts[id] = true;
     refreshResonance();
     if (res(school) > tierBefore) announceResonance(school, res(school));
     if (id === 'vitality' && gameState.player) {
@@ -5598,6 +5744,7 @@ function buyMeta(id) {
     meta.crystals -= cost;
     meta.upgrades[id] = metaLv(id) + 1;
     saveMeta();
+    checkAchievements(true);
     Sfx.unlock();
     Sfx.play('upgrade');
     renderMeta();
@@ -5810,6 +5957,7 @@ function trySummon(type, combo = 0) {
                 if (gameState.giantTick % BLESSINGS.giantBones.per === 0) { summon.giant = true; summon.refreshStats(); }
             }
             gameState.summons.push(summon);
+            stats().summons++;
             spawnParticles(spawnPos.x, spawnPos.y, n ? '#FFD54F' : '#7E57C2', 12, 70, 0.5);
             if (gameState.totalSummons.hasOwnProperty(type)) {
                 gameState.totalSummons[type]++;
@@ -5872,6 +6020,7 @@ function tryUpgrade(type, combo = 0) {
         gameState[levelKey]++;
         const newTier = getTier(gameState[levelKey]);
         gameState.currentCosts[costKey] += costIncrement;
+        gameState.run.upgrades++;
         gameState.summons.forEach(s => {
             if (s.isAlive && s.config.type === type) {
                 s.levelUp();
@@ -6327,6 +6476,7 @@ function saveGameState() {
         rerollsLeft: gameState.rerollsLeft,
         waveSouls: gameState.waveSouls,
         achvCrystals: gameState.achvCrystals,
+        run: gameState.run,
         achvCount: gameState.achvCount,
         curse: gameState.curse,
         endless: gameState.endless,
@@ -6383,6 +6533,7 @@ function loadGameState() {
         gameState.waveSouls = loadedState.waveSouls ?? 0;
         gameState.achvCrystals = loadedState.achvCrystals ?? 0;
         gameState.achvCount = loadedState.achvCount ?? 0;
+        gameState.run = { ...emptyRunStats(), ...(loadedState.run || {}) };
         gameState.curse = loadedState.curse ?? 0;
         gameState.daily = loadedState.daily ?? null;
         gameState.dailyDate = loadedState.dailyDate ?? null;
@@ -6470,7 +6621,7 @@ function resetGameInternalState() {
         hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
-        bossKills: {}, achvCrystals: 0, achvCount: 0,
+        bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(),
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
 }
@@ -6495,6 +6646,9 @@ function setupNewRun(daily = null) {
 function resetGame(daily = null) {
     localStorage.removeItem(SAVE_KEY);
     setupNewRun(daily);
+    stats().runs++;
+    if (daily) stats().dailyDays[todayKey()] = true;
+    saveMeta();
     if (metaLv('headStart') > 0) queueDraft();
     updateUI();
 }
@@ -7451,6 +7605,7 @@ function init() {
     onTap(uiElements.curseCloseBtn, () => { showScreen(uiElements.curseScreen, false); refreshTitle(); });
     onTap(uiElements.titleAchvBtn, () => { renderAchievements(); showScreen(uiElements.achvScreen, true); });
     onTap(uiElements.achvCloseBtn, () => showScreen(uiElements.achvScreen, false));
+    uiElements.achvTabs.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { achvTab = b.dataset.tab; renderAchievements(); } });
     onTap(uiElements.curseMinus, () => stepCurse(-1));
     onTap(uiElements.cursePlus, () => stepCurse(1));
     onTap(uiElements.victoryContinueBtn, continueEndless);

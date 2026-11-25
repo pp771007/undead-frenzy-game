@@ -774,11 +774,12 @@
         }
 
         /* 成就達成：從狀態列下方滑進來，幾秒後自己收掉 */
+        /* 疊在所有視窗之上（確認框除外）：在標題畫面、強化畫面買強化時也會達成 */
         #achv-toast {
             position: fixed;
             top: calc(env(safe-area-inset-top) + 70px);
             left: 50%;
-            z-index: 6;
+            z-index: 16;
             display: flex;
             align-items: center;
             gap: 10px;
@@ -820,6 +821,7 @@
         }
 
         .achv-toast-text span {
+            white-space: nowrap;
             font-size: 12px;
             color: var(--bone-dim);
         }
@@ -833,6 +835,61 @@
             overflow-y: auto;
         }
 
+        /* 類別分頁：橫向一排可以滑，每頁寫拿了幾個；全拿完的那一頁變金色 */
+        #achv-tabs {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 4px;
+            scrollbar-width: none;
+        }
+
+        .achv-tab {
+            flex: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 10px;
+            border: 2px solid var(--ink);
+            background: rgba(0, 0, 0, 0.35);
+            color: var(--bone-dim);
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .achv-tab span {
+            font-family: var(--font-ui);
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .achv-tab.on {
+            color: var(--bone);
+            border-color: var(--bone-dim);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .achv-tab.full {
+            color: var(--gold);
+            border-color: rgba(233, 196, 106, 0.7);
+        }
+
+        .achv-icon {
+            width: 40px;
+            height: 40px;
+            flex: none;
+        }
+
+        .achv-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
         .achv-row {
             opacity: 0.55;
         }
@@ -843,8 +900,8 @@
         }
 
         .achv-row>.icon {
-            width: 30px;
-            height: 30px;
+            width: 40px;
+            height: 40px;
         }
 
         /* ---------- 全畫面視窗 ---------- */
@@ -1928,6 +1985,7 @@
                 <h2 class="title-text">成就</h2>
                 <span class="crystal-count" id="achv-count"></span>
             </div>
+            <div id="achv-tabs"></div>
             <div id="achv-list"></div>
             <div class="stack">
                 <button id="achv-close-btn" class="btn btn-dark">返回</button>
@@ -2063,6 +2121,7 @@
     <audio id="bgm" loop src="background.mp3"></audio>
 
     <script src="icons.js"></script>
+    <script src="achievement-icons.js"></script>
     <script src="game.js"></script>
 </body>
 

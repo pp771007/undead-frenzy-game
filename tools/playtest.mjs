@@ -115,13 +115,15 @@ const out = await page.evaluate(() => ({
     waves: window.__bot.waves, t: window.__bot.t, wave: gameState.currentWave, stuck: window.__bot.stuck,
     killedBy: gameState.killedBy && gameState.killedBy.config && gameState.killedBy.config.type,
     souls: window.__bot.src, resonance: gameState.resonance, blessings: gameState.blessings, relics: window.__bot.relics,
-    achv: Object.keys(meta.achv), maxArmy: window.__bot.maxArmy,
+    achv: Object.keys(meta.achv), maxArmy: window.__bot.maxArmy, kills: meta.stats.kills,
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
 console.log(`RESULT ${TAG} policy=${POLICY} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
 console.log('SOULS', JSON.stringify(out.souls));
 console.log('RELICS', JSON.stringify(out.relics), 'blessings', Object.values(out.blessings).reduce((a, b) => a + b, 0));
-console.log('ACHV', out.achv.join(' '), 'maxArmy', out.maxArmy);
+console.log('ACHV', out.achv.length, out.achv.join(' '), 'maxArmy', out.maxArmy);
+// 每種怪一局打倒幾隻：圖鑑成就的門檻照這個定
+console.log('KILLS', JSON.stringify(out.kills));
 console.log('RESONANCE', JSON.stringify(out.resonance), JSON.stringify(out.blessings));
 console.log('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tevent');
 for (const w of out.waves) console.log([w.wave, w.dur, w.minHp.toFixed(2), w.dmg.toFixed(2), w.peak, w.summons, w.ev || ''].join('\t'));
