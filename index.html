@@ -741,7 +741,8 @@
             100% { transform: translate(-50%, -100%) scale(1); }
         }
 
-        .hint-pulse {
+        /* #nova-btn.nova-ready 的發光動畫比這條具體，要另外寫一條才蓋得過 */
+        .hint-pulse, #nova-btn.hint-pulse {
             animation: hint 1s ease-in-out infinite;
         }
 

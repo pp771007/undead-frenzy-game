@@ -5008,6 +5008,7 @@ function useNova() {
     addShake(7);
     Sfx.play('nova');
     gameState.novaCooldown = getNovaCooldown();
+    markNovaTaught();
     ensureMusicPlaying();
     updateUI();
     return true;
@@ -5396,7 +5397,7 @@ function stepCurse(d) {
     renderCurse();
 }
 
-// ---------- 新手提示（只在第一局）：先教移動，再教召喚 ----------
+// ---------- 新手提示（只在第一局）：先教移動，再教召喚，再教按住連發；開戰後第一次被怪貼近時教新星 ----------
 const TUTORIAL_MOVE_DIST = 60;
 let tutorial = null;
 function startTutorialIfNeeded() {
@@ -5409,11 +5410,60 @@ function updateTutorial() {
         tutorial.step = 'summon';
         uiElements.summonSkeletonBtn.classList.add('hint-pulse');
     } else if (tutorial.step === 'summon' && gameState.totalSummons.SkeletonWarrior > 0) {
-        uiElements.summonSkeletonBtn.classList.remove('hint-pulse');
-        tutorial = null;
-        meta.tutorialDone = true;
-        saveMeta();
+        tutorial.step = 'hold';
+    } else if (tutorial.step === 'hold') {
+        // 按住連續成功到按鈕上方浮出「×N」就算學會。第一波開打前倒數是停住的：靈魂不夠按住連發的話不能卡在這一步
+        const learned = holdCombo >= HOLD_COMBO_SHOW_FROM && holdActionState.actionType === 'summon';
+        const broke = gameState.souls < getSummonCost(CONFIG.skeletonWarrior) * HOLD_COMBO_SHOW_FROM;
+        if (learned || broke) {
+            uiElements.summonSkeletonBtn.classList.remove('hint-pulse');
+            tutorial = null;
+            meta.tutorialDone = true;
+            saveMeta();
+        }
     }
+}
+
+// 新星提示：開戰後法師身邊第一次有好幾隻怪、新星又剛好能用時，指著按鈕講它能幹嘛；按過一次就不再出現
+const NOVA_HINT_NEAR = 3;
+let novaHint = false;
+function updateNovaHint() {
+    if (meta.novaTaught || !gameState.player || gameState.betweenWaves || gameState.currentWave < 1) { setNovaHint(false); return; }
+    if (novaHint || gameState.novaCooldown > 0) return;
+    const p = gameState.player.pos, R = CONFIG.nova.radius, rSq = R * R;
+    let near = 0;
+    for (let i = 0; i < gameState.monsters.length; i++) {
+        const m = gameState.monsters[i];
+        if (m.isAlive && !m.stealthed && distanceSq(m.pos, p) <= rSq) near++;
+    }
+    if (near >= NOVA_HINT_NEAR) setNovaHint(true);
+}
+function setNovaHint(on) {
+    if (novaHint === on) return;
+    novaHint = on;
+    uiElements.novaBtn.classList.toggle('hint-pulse', on);
+}
+function markNovaTaught() {
+    if (meta.novaTaught) return;
+    meta.novaTaught = true;
+    saveMeta();
+    setNovaHint(false);
+}
+function drawNovaHint() {
+    if (!novaHint) return;
+    const t = performance.now() / 1000;
+    const r = uiElements.novaBtn.getBoundingClientRect();
+    const x = r.left + r.width / 2, y = r.top - 8 + Math.sin(t * 5) * 4;
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = '#e9c46a';
+    ctx.strokeStyle = '#0e0a14';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y - 16); ctx.lineTo(x + 12, y - 16); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'right';
+    drawOutlinedText('新星：炸開身邊的怪、大軍狂暴', Math.min(view.cssW - 8, x + 30), y - 30, 17, '#f4ecd8');
+    ctx.restore();
 }
 function drawTutorial() {
     if (!tutorial) return;
@@ -5442,7 +5492,7 @@ function drawTutorial() {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y - 16); ctx.lineTo(x + 12, y - 16); ctx.closePath();
         ctx.fill(); ctx.stroke();
         ctx.textAlign = 'left';
-        drawOutlinedText('召喚第一隻骷髏', Math.max(8, x - 30), y - 30, 18, '#f4ecd8');
+        drawOutlinedText(tutorial.step === 'hold' ? '按住不放：連續召喚、升級' : '召喚第一隻骷髏', Math.max(8, x - 30), y - 30, 18, '#f4ecd8');
     }
     ctx.restore();
 }
@@ -6769,6 +6819,7 @@ function drawGame() {
     drawBanner();
     drawJoystick();
     drawTutorial();
+    drawNovaHint();
     if (appScreen === 'title') drawTitleWisps();
 
     if (gameState.hurtFlash > 0) {
@@ -6824,6 +6875,7 @@ function gameLoop(currentTime) {
     const workStart = performance.now();
     if (!frozen) updateGame(deltaTime);
     updateTutorial();
+    updateNovaHint();
     // 戰場停住時畫面一格都不會變（教學提示會動，所以有教學時照畫），畫一次留在畫布上就好
     if (!frozen || tutorial || !frozenFrameDrawn) drawGame();
     frozenFrameDrawn = frozen;
