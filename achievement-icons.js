@@ -369,4 +369,23 @@ Object.assign(ACHV_ICON_BODIES, {
         ${[[12, 28], [24, 22], [40, 22], [52, 28], [32, 34]].map(([x, y]) => at(x, y, 0.2, P.crown())).join('')}`,
     druid_loneOak: `<path d="M4 58 C16 52 48 52 60 58" stroke="#8d6e63" stroke-width="4"/>${at(32, 34, 0.95, OAK('#7cb342'))}${at(54, 12, 0.36, P.moon())}`,
 });
+// ---- 職業：吸血鬼（vampire.js）。母題是血與夜：血滴、血月、棺木、蝙蝠 ----
+const BAT = (fill = '#b71c1c') => `<path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="${fill}"/><circle cx="-3" cy="-2" r="1.6" fill="${C.gold}" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="${C.gold}" stroke="none"/>`;
+const VDROP = (fill = '#d32f2f') => `<path d="M0 -24 C8 -10 16 0 16 9 C16 19 8 25 0 25 C-8 25 -16 19 -16 9 C-16 0 -8 -10 0 -24 Z" fill="${fill}"/>${shine(-6, 8, 3, 5, 20)}`;
+Object.assign(ACHV_ICON_BODIES, {
+    vampire_win: `${at(32, 36, 1, P.laurel('#c62828'))}${at(32, 30, 0.62, VDROP())}${at(32, 12, 0.45, P.crown())}`,
+    vampire_speed28: `${at(24, 36, 0.9, BAT())}<path d="M44 26 L58 26 M46 36 L60 36 M44 46 L58 46" stroke="${C.sky}" stroke-width="3.5"/>`,
+    vampire_speed24: `${at(20, 44, 0.7, BAT())}${at(40, 24, 0.8, BAT())}${at(54, 50, 0.5, P.bolt())}`,
+    vampire_speed20: `<circle cx="32" cy="32" r="24" fill="#c62828"/>${at(32, 34, 1.05, BAT('#1b1424'))}${at(54, 54, 0.45, P.bolt())}${sparks([[8, 10, 4]], C.white)}`,
+    vampire_res_bloodmagic: `${rays(32, 36, 20, 30, 10, '#ff8a80', 3)}${at(32, 36, 0.75, VDROP())}`,
+    vampire_res_kin: `${[[14, 40], [50, 40], [32, 32]].map(([x, y], i) => at(x, y, i === 2 ? 0.55 : 0.45, P.ghost('#ce93d8'))).join('')}${at(32, 10, 0.4, P.crown())}`,
+    vampire_res_bats: `${at(32, 28, 0.7, P.moon())}${at(16, 46, 0.55, BAT())}${at(46, 52, 0.5, BAT())}${at(48, 14, 0.4, BAT())}`,
+    vampire_res_werewolf: `<circle cx="32" cy="28" r="20" fill="#fff3c4"/><path d="M12 60 L12 40 L8 26 L20 34 L30 26 L40 38 C46 42 46 50 42 54 L42 60 Z" fill="#455a64"/><path d="M40 38 L54 30 L50 42" fill="#455a64"/><circle cx="32" cy="38" r="2" fill="${C.gold}" stroke="none"/>`,
+    vampire_res_undying: `<path d="M22 4 L42 4 L52 18 L44 60 L20 60 L12 18 Z" fill="#4e342e"/><path d="M32 18 L32 40 M24 26 L40 26" stroke="${C.gold}" stroke-width="3.5"/>${sparks([[54, 8, 5], [8, 40, 4]], '#d1c4e9')}`,
+    vampire_boss: `${at(32, 42, 0.8, P.crown('#ce93d8'))}${at(32, 18, 0.45, VDROP())}<path d="M14 58 L50 58" stroke="#c62828" stroke-width="4"/>`,
+    vampire_horde: `${[[10, 20], [26, 14], [44, 18], [56, 30], [16, 36], [36, 32], [24, 52], [46, 48]].map(([x, y]) => at(x, y, 0.34, BAT())).join('')}`,
+    vampire_menagerie: `${[['#ce93d8', 14, 22], ['#a5d6a7', 32, 16], ['#ffcc80', 50, 22], ['#90caf9', 22, 44], ['#ef9a9a', 42, 44]].map(([c, x, y]) => at(x, y, 0.36, P.ghost(c))).join('')}`,
+    vampire_dayBoss: `${at(32, 28, 0.9, `<circle r="16" fill="#ffca28"/>`)}${rays(32, 28, 20, 28, 8, '#ffca28', 3)}${at(32, 50, 0.5, P.crown())}`,
+    vampire_reborn: `<path d="M18 8 L46 8 L56 22 L48 62 L16 62 L8 22 Z" fill="#4e342e"/><path d="M24 30 C24 18 40 18 40 30 L40 62 L24 62 Z" fill="#1b1424"/><path d="M32 36 L32 54 M26 42 L38 42" stroke="#ef9a9a" stroke-width="3"/>${sparks([[56, 6, 5], [6, 10, 4]], '#d1c4e9')}`,
+});
 const ACHV_ICON_SVGS = Object.fromEntries(Object.entries(ACHV_ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));

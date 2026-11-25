@@ -23,7 +23,11 @@ function starPath(cx, cy, rOut, rIn, points) {
     return d + 'Z';
 }
 const GHOST_PATH = 'M18 52 L18 28 C18 16 24 9 32 9 C40 9 46 16 46 28 L46 52 L41 47 L36 52 L32 47 L28 52 L23 47 Z';
-const HEART_PATH = 'M32 54 C12 41 5 28 12 17 C18 9 28 10 32 18 C36 10 46 9 52 17 C59 28 52 41 32 54 Z';
+// 小配件：右上角的月亮、太陽（晝夜相關的祝福），以 (x, y) 為中心的閃電
+function cornerMoon() { return `<path d="M60 4 C52 4 46 10 46 17 C46 24 52 29 59 28 C54 26 51 21 51 16 C51 10 55 6 60 4 Z" fill="#fff3c4" stroke-width="2.5"/>`; }
+function cornerSun() { return `<circle cx="53" cy="13" r="7" fill="#ffca28" stroke-width="2.5"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return `<path d="M${(53 + Math.cos(a) * 10).toFixed(1)} ${(13 + Math.sin(a) * 10).toFixed(1)} L${(53 + Math.cos(a) * 13).toFixed(1)} ${(13 + Math.sin(a) * 13).toFixed(1)}" stroke="#ffca28" stroke-width="2.5"/>`; }).join('')}`; }
+function boltAt(x, y) { return `<path d="M${x + 2} ${y - 14} L${x - 7} ${y + 2} L${x} ${y + 2} L${x - 3} ${y + 14} L${x + 8} ${y - 4} L${x + 1} ${y - 4} L${x + 5} ${y - 14} Z" fill="#fff176" stroke-width="2.5"/>`; }
+const HEART_PATH ='M32 54 C12 41 5 28 12 17 C18 9 28 10 32 18 C36 10 46 9 52 17 C59 28 52 41 32 54 Z';
 
 const ICON_BODIES = {
     heart: `<path d="${HEART_PATH}" fill="#e5484d"/>${shine(21, 22, 5, 3.5)}`,
@@ -195,6 +199,70 @@ const ICON_BODIES = {
     whiteBull: `<path d="M14 26 C4 22 4 10 10 6 C12 14 16 18 22 20 Z M50 26 C60 22 60 10 54 6 C52 14 48 18 42 20 Z" fill="#fff8e1"/>
         <path d="M18 22 C18 14 46 14 46 22 L48 40 C48 52 40 58 32 58 C24 58 16 52 16 40 Z" fill="#f5f5f5"/><ellipse cx="32" cy="48" rx="10" ry="7" fill="#ffcdd2"/>
         <circle cx="28" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="36" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="25" cy="32" r="2.2" fill="#1b1424" stroke="none"/><circle cx="39" cy="32" r="2.2" fill="#1b1424" stroke="none"/>`,
+    // ---- 吸血鬼（vampire.js）----
+    // 錢包：一滴血
+    blood: `<path d="M32 4 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#d32f2f"/><path d="M22 42 C22 48 26 52 32 52" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 36, 3, 6, 20)}`,
+    sun: `${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<path d="M${(32 + Math.cos(a) * 20).toFixed(1)} ${(32 + Math.sin(a) * 20).toFixed(1)} L${(32 + Math.cos(a) * 29).toFixed(1)} ${(32 + Math.sin(a) * 29).toFixed(1)}" stroke-width="5"/><path d="M${(32 + Math.cos(a) * 20).toFixed(1)} ${(32 + Math.sin(a) * 20).toFixed(1)} L${(32 + Math.cos(a) * 29).toFixed(1)} ${(32 + Math.sin(a) * 29).toFixed(1)}" stroke="#ffd54f" stroke-width="2.5"/>`; }).join('')}
+        <circle cx="32" cy="32" r="15" fill="#ffca28"/>${shine(27, 26, 4, 2.5)}`,
+    moon: `<path d="M40 6 C24 8 12 20 12 34 C12 50 26 60 40 58 C28 52 22 42 22 32 C22 20 30 10 40 6 Z" fill="#fff3c4"/>${[[46, 20, 3], [52, 38, 2.5], [40, 46, 2]].map(([x, y, r]) => `<path d="${starPath(x, y, r * 1.6, r * 0.6, 4)}" fill="#fff3c4" stroke-width="1.5"/>`).join('')}`,
+    // 大招「血月降臨」
+    bloodmoon: `<circle cx="32" cy="30" r="22" fill="#c62828"/><circle cx="24" cy="24" r="4" fill="#8e1b1b" stroke="none"/><circle cx="38" cy="34" r="5" fill="#8e1b1b" stroke="none"/><circle cx="30" cy="40" r="2.5" fill="#8e1b1b" stroke="none"/>
+        <path d="M14 52 L24 46 L32 54 L40 46 L50 52 L44 60 L20 60 Z" fill="#1b1424"/>${shine(22, 18, 5, 3)}`,
+    // 流派
+    kin: `<path d="M8 58 L8 40 C8 30 14 26 20 26 C26 26 32 30 32 40 L32 58 Z" fill="#ce93d8"/><path d="M32 58 L32 36 C32 26 38 22 44 22 C50 22 56 26 56 36 L56 58 Z" fill="#ab47bc"/>
+        <circle cx="20" cy="16" r="9" fill="#e1bee7"/><circle cx="44" cy="12" r="9" fill="#ce93d8"/><circle cx="17" cy="15" r="1.8" fill="#c62828" stroke="none"/><circle cx="23" cy="15" r="1.8" fill="#c62828" stroke="none"/><circle cx="41" cy="11" r="1.8" fill="#c62828" stroke="none"/><circle cx="47" cy="11" r="1.8" fill="#c62828" stroke="none"/>`,
+    bloodmagic: `<path d="M32 6 C40 18 48 26 48 36 C48 46 41 52 32 52 C23 52 16 46 16 36 C16 26 24 18 32 6 Z" fill="#c62828"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3 + 0.3; return `<path d="M${(32 + Math.cos(a) * 22).toFixed(1)} ${(36 + Math.sin(a) * 22).toFixed(1)} L${(32 + Math.cos(a) * 29).toFixed(1)} ${(36 + Math.sin(a) * 29).toFixed(1)}" stroke="#ff8a80" stroke-width="3"/>`; }).join('')}
+        <path d="${starPath(32, 36, 9, 4, 5)}" fill="#ffcdd2" stroke-width="2"/>`,
+    werewolf: `<path d="M12 60 L12 30 L6 8 L22 22 L42 22 L58 8 L52 30 L52 60 Z" fill="#78909c"/><path d="M22 34 L28 38 M42 34 L36 38" stroke="#ffd54f" stroke-width="3.5"/>
+        <path d="M22 48 L26 52 L30 48 L34 52 L38 48 L42 52" stroke="#eceff1" stroke-width="2.5"/>${cornerMoon()}`,
+    coffin: `<path d="M22 4 L42 4 L52 18 L44 60 L20 60 L12 18 Z" fill="#4e342e"/><path d="M22 4 L42 4 L52 18 L44 60 L20 60 L12 18 Z" fill="none" stroke="#1b1424" stroke-width="4"/>
+        <path d="M32 18 L32 40 M24 26 L40 26" stroke="#ffd54f" stroke-width="3.5"/>${shine(22, 14, 3, 5, 20)}`,
+    // 血魔法
+    bmPower: `<path d="M32 6 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#d32f2f"/>${boltAt(32, 40)}`,
+    bmRadius: `${[24, 16, 8].map((r, i) => `<circle cx="32" cy="32" r="${r + 4}" stroke="${['#ef9a9a', '#e57373', '#c62828'][i]}" stroke-width="3" ${i === 0 ? 'stroke-dasharray="5 4"' : ''}/>`).join('')}<circle cx="32" cy="32" r="6" fill="#b71c1c"/>`,
+    bmRate: `<path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke-width="7"/><path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke="#e53935" stroke-width="3.5"/>`,
+    bmLeech: `<path d="M32 10 C38 20 44 26 44 34 C44 42 38 46 32 46 C26 46 20 42 20 34 C20 26 26 20 32 10 Z" fill="#d32f2f"/>
+        <path d="M10 40 C8 54 20 60 32 58 M54 40 C56 54 44 60 32 58" stroke-width="5"/><path d="M10 40 C8 54 20 60 32 58 M54 40 C56 54 44 60 32 58" stroke="#81c784" stroke-width="2.5"/><path d="M6 44 L10 38 L14 44" stroke="#81c784" stroke-width="2.5"/>`,
+    // 眷屬
+    kinRate: `<path d="M16 62 L16 40 C16 28 24 22 32 22 C40 22 48 28 48 40 L48 62" fill="#ce93d8"/><path d="M20 26 L26 8 L32 22 L38 8 L44 26" fill="#e1bee7"/>
+        <circle cx="26" cy="36" r="3" fill="#c62828" stroke="none"/><circle cx="38" cy="36" r="3" fill="#c62828" stroke="none"/>${duoStroke('M50 18 L50 6 M44 12 L56 12', '#ffd54f', 3)}`,
+    kinCap: `${[[12, 0.7], [32, 0.9], [52, 0.7]].map(([x, s]) => `<g transform="translate(${x} 40) scale(${s})"><path d="M-10 22 L-10 0 C-10 -8 -5 -12 0 -12 C5 -12 10 -8 10 0 L10 22 Z" fill="#ce93d8"/><circle cx="-3" cy="-2" r="1.8" fill="#c62828" stroke="none"/><circle cx="3" cy="-2" r="1.8" fill="#c62828" stroke="none"/></g>`).join('')}
+        <path d="M14 12 L22 4 L32 12 L42 4 L50 12 L46 20 L18 20 Z" fill="#ffd54f"/>`,
+    kinPower: `<path d="M14 60 L14 34 C14 22 22 16 32 16 C42 16 50 22 50 34 L50 60" fill="#ab47bc"/><path d="M20 44 L44 44 M32 30 L32 58" stroke="#e1bee7" stroke-width="3"/>
+        <circle cx="25" cy="28" r="3" fill="#ffcdd2" stroke="none"/><circle cx="39" cy="28" r="3" fill="#ffcdd2" stroke="none"/>${duoStroke('M8 22 L8 8 M3 13 L8 8 L13 13', '#ffd54f', 2.5)}${duoStroke('M56 22 L56 8 M51 13 L56 8 L61 13', '#ffd54f', 2.5)}`,
+    kinLeech: `<path d="M8 50 L24 18 L40 50 Z" fill="#ce93d8"/><path d="M32 18 C38 28 44 34 44 42 C44 50 38 54 32 54 C26 54 20 50 20 42 C20 34 26 28 32 18 Z" fill="#d32f2f"/>
+        <path d="M48 52 C56 46 58 34 52 26" stroke-width="5"/><path d="M48 52 C56 46 58 34 52 26" stroke="#81c784" stroke-width="2.5"/><path d="M48 24 L52 26 L50 30" stroke="#81c784" stroke-width="2.5"/>`,
+    // 蝠群
+    batPair: `${[[20, 26, 0.9], [44, 40, 0.9]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="#b71c1c"/><circle cx="-3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/></g>`).join('')}`,
+    batFang: `<path d="M32 18 C18 4 4 10 2 24 C10 20 16 24 18 30 C24 24 28 28 32 36 C36 28 40 24 46 30 C48 24 54 20 62 24 C60 10 46 4 32 18 Z" fill="#b71c1c"/>
+        <path d="M26 36 L28 46 L30 36 M34 36 L36 46 L38 36" fill="#ffffff" stroke-width="2"/><circle cx="27" cy="26" r="2.2" fill="#ffd54f" stroke="none"/><circle cx="37" cy="26" r="2.2" fill="#ffd54f" stroke="none"/>`,
+    batDrain: `<path d="M20 22 C12 14 4 16 2 24 C8 22 10 24 12 28 C16 24 18 26 20 30 C22 26 24 24 28 28 C30 24 34 22 38 24 C36 16 28 14 20 22 Z" fill="#b71c1c"/>
+        <path d="M24 32 C30 44 40 50 52 50" stroke="#e53935" stroke-width="3" stroke-dasharray="4 3"/><path d="M52 40 C58 48 58 56 52 60 C46 56 46 48 52 40 Z" fill="#d32f2f" stroke-width="2.5"/>`,
+    batSpeed: `<path d="M38 26 C30 16 18 18 16 28 C22 26 26 28 28 32 C32 28 34 30 38 36 C42 30 44 28 48 32 C50 28 54 26 60 28 C58 18 46 16 38 26 Z" fill="#b71c1c"/>
+        <path d="M4 26 L14 26 M2 36 L14 36 M6 46 L18 46" stroke="#8fd3ff" stroke-width="3.5"/>`,
+    // 狼化
+    vwSpeed: `${[[16, 50, 0.7], [32, 36, 0.85], [50, 20, 1]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="4" rx="7" ry="6" fill="#ce93d8"/>${[[-7, -4], [-2.5, -8], [2.5, -8], [7, -4]].map(([a, b]) => `<ellipse cx="${a}" cy="${b}" rx="2.6" ry="3.4" fill="#ce93d8" stroke-width="2.5"/>`).join('')}</g>`).join('')}${cornerMoon()}`,
+    vwBite: `<path d="M6 22 C18 12 46 12 58 22 L52 32 L46 24 L40 36 L32 24 L24 36 L18 24 L12 32 Z" fill="#eceff1"/><path d="M6 44 C18 54 46 54 58 44 L52 36 L46 42 L40 32 L32 42 L24 32 L18 42 L12 36 Z" fill="#eceff1"/>
+        <path d="M40 36 C40 40 42 42 42 44 C42 46 40 47 40 47 C40 47 38 46 38 44 C38 42 40 40 40 36 Z" fill="#d32f2f" stroke-width="2"/>`,
+    vwHowl: `<path d="M14 60 L14 34 L8 16 L22 26 L30 18 L42 30 C48 34 48 44 44 50 L44 60 Z" fill="#78909c"/><path d="M42 30 L58 22 L52 34" fill="#78909c"/>
+        <path d="M50 14 C54 12 58 14 60 18 M52 6 C58 4 62 8 62 14" stroke="#e1bee7" stroke-width="3"/><circle cx="34" cy="32" r="2" fill="#ffd54f" stroke="none"/>`,
+    vwPack: `${[[16, 44], [48, 44], [32, 34]].map(([x, y]) => `<g transform="translate(${x} ${y})"><path d="M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z" fill="#78909c"/><circle cx="-5" cy="0" r="2" fill="#ce93d8" stroke="none"/><circle cx="5" cy="0" r="2" fill="#ce93d8" stroke="none"/></g>`).join('')}${cornerMoon()}`,
+    // 不死
+    mistForm: `<path d="M8 40 C8 30 18 28 22 32 C24 22 38 20 42 30 C50 26 58 32 56 40 C60 46 54 52 48 50 C44 56 32 56 28 50 C20 54 10 50 12 44 C8 44 6 42 8 40 Z" fill="#b39ddb" opacity="0.9"/>
+        <path d="M16 42 C24 38 32 46 40 42 C44 40 48 42 50 44" stroke="#ede7f6" stroke-width="3"/><path d="M40 18 L48 10 M46 22 L56 18" stroke="#ede7f6" stroke-width="3"/>`,
+    sunWard: `<path d="M30 6 C20 6 12 14 12 26 L12 58 L24 52 L32 58 L40 52 L52 58 L52 26 C52 14 44 6 34 6 Z" fill="#4a148c"/><path d="M24 12 C28 20 36 20 40 12" stroke="#c62828" stroke-width="4"/>
+        ${cornerSun()}${duoStroke('M44 6 L62 24', '#e53935', 2.5)}`,
+    nightRegen: `<path d="M34 8 C22 10 12 20 12 32 C12 46 24 56 36 54 C26 50 20 42 20 32 C20 22 26 14 34 8 Z" fill="#fff3c4"/><path d="M48 28 L48 48 M38 38 L58 38" stroke-width="7"/><path d="M48 28 L48 48 M38 38 L58 38" stroke="#81c784" stroke-width="4"/>`,
+    bloodBank: `<path d="M12 22 L52 22 L48 58 L16 58 Z" fill="#8d6e63"/><path d="M8 22 L56 22" stroke-width="5"/><path d="M8 22 L56 22" stroke="#bcaaa4" stroke-width="2.5"/>
+        <path d="M32 28 C37 36 42 40 42 46 C42 52 37 54 32 54 C27 54 22 52 22 46 C22 40 27 36 32 28 Z" fill="#d32f2f" stroke-width="2.5"/>${duoStroke('M32 4 L32 16 M27 11 L32 16 L37 11', '#ffd54f', 2.5)}`,
+    // 傳說
+    dracula: `<path d="M6 60 C8 40 16 28 32 26 C48 28 56 40 58 60 Z" fill="#1b1424"/><path d="M6 60 C8 40 16 28 32 26 C48 28 56 40 58 60" stroke="#c62828" stroke-width="3"/>
+        <path d="M20 26 L20 12 C20 6 44 6 44 12 L44 26 C40 32 24 32 20 26 Z" fill="#eceff1"/><path d="M20 12 L32 20 L44 12" fill="#1b1424" stroke-width="2.5"/>
+        <path d="M27 28 L29 33 L31 28 M33 28 L35 33 L37 28" fill="#fff" stroke-width="1.8"/><circle cx="27" cy="19" r="1.8" fill="#c62828" stroke="none"/><circle cx="37" cy="19" r="1.8" fill="#c62828" stroke="none"/><path d="M22 6 L26 0 L32 4 L38 0 L42 6 Z" fill="#ffd54f" stroke-width="2.5"/>`,
+    countess: `<path d="M10 22 L18 10 L26 20 L32 6 L38 20 L46 10 L54 22 L50 30 L14 30 Z" fill="#ffd54f"/><circle cx="32" cy="20" r="3" fill="#c62828" stroke-width="2"/>
+        <path d="M18 34 C12 46 18 58 32 58 C46 58 52 46 46 34 Z" fill="#c62828"/><path d="M22 40 C24 50 40 50 42 40" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 40, 3, 5, 20)}`,
+    garlic: `<path d="M32 12 C22 14 10 24 12 40 C14 54 26 60 32 60 C38 60 50 54 52 40 C54 24 42 14 32 12 Z" fill="#fff8e1"/><path d="M32 14 C26 26 26 48 32 60 M32 14 C38 26 38 48 32 60 M20 22 C16 34 18 50 26 58 M44 22 C48 34 46 50 38 58" stroke="#d7ccc8" stroke-width="2.5"/>
+        <path d="M32 12 C30 6 34 2 38 4" stroke="#9ccc65" stroke-width="4"/>${duoStroke('M8 8 L56 56', '#e53935', 3)}`,
     // 戰士的大招：兩支交叉擲出的標槍
     javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
         <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>
@@ -376,3 +444,5 @@ function preloadIconImages() {
     })));
 }
 function getIconImage(name) { return iconImages[name] || null; }
+// 底部卡片的頭像要一個網址：沒有立繪的卡（血魔法、武僧的拳）用圖示
+function iconDataUrl(name) { return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ICON_SVGS[name] || '')}`; }

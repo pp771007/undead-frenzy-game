@@ -139,8 +139,8 @@ Object.assign(UNIT_TYPES, {
         // 種在德魯伊腳下（不是身後）：據點要種在自己選的位置
         summon: (level) => plantOak(level),
     },
-    Wolf: { cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', capLabel: '林地不足', cap: () => beastRoom('Wolf') },
-    Bear: { cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', capLabel: '林地不足', cap: () => beastRoom('Bear') },
+    Wolf: { cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', capLabel: '缺林地', cap: () => beastRoom('Wolf') },
+    Bear: { cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', capLabel: '缺林地', cap: () => beastRoom('Bear') },
 });
 
 CLASSES.druid = {

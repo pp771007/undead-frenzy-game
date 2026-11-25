@@ -989,7 +989,7 @@ function getNovaDamage() {
 // 兵種：底部卡片召喚／升級的單位。Cls 用函式包起來：類別宣告在後面
 // 以下選填（職業檔裡用）：
 //   upgradeOnly：這張卡只有「修練」，等級是主角自己的能力（武僧的拳、精靈的箭術）；upgradeLabel／summonLabel：按鈕上的字
-//   cap()：這種兵自己的上限（德魯伊的野獸看林地）；capLabel：到上限時按鈕上的字
+//   cap()：這種兵自己的上限（德魯伊的野獸看林地）；capLabel：召不了時按鈕上的字（可以是函式）
 //   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（付完費之後呼叫，要自己把 count 加上去）
 const UNIT_TYPES = {
     SkeletonWarrior: { cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
@@ -1018,6 +1018,9 @@ const UNIT_TYPES = {
 //   heroHidden()：主角這一格怪看不到（刺客隱身）
 //   targetableSummons()：怪找目標時看得到的召喚物（沒有就是全部）；德魯伊離得太遠的橡樹會沉睡、怪不理
 //   drawWorld(ctx)：世界座標、畫在特效之後；drawScreen(ctx)：螢幕座標、畫在介面之前
+//   currency：{ icon, glow: [r, g, b] }，錢包與掉落物長什麼樣（吸血鬼是血）；沒有就是靈魂
+//   onSpring(relic, dt)：站在靈泉裡時取代回血（吸血鬼的聖水會燙）
+//   preventDeath()：主角血量歸零時問一次，回傳 true 就不死（職業自己把血補回來）
 const CLASSES = {
     necro: {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
@@ -1055,6 +1058,8 @@ function payCost(cost) {
     return true;
 }
 // 換主角的立繪（德魯伊化身巨熊）：寬度照原本，高度照新圖比例
+// 錢包的圖示（底部卡片的價格、上方的數字旁邊）
+function currencyIcon() { return (classDef().currency && classDef().currency.icon) || 'soul'; }
 function setHeroImage(p, name) {
     const img = images[name];
     if (!img || p.image === img) return;
@@ -1933,7 +1938,7 @@ class Player extends GameObject {
         gameState.hurtFlash = CONFIG.visuals.hurtFlashDuration;
         addShake(4);
         Sfx.play('hurt');
-        if (this.currentHealth <= 0) {
+        if (this.currentHealth <= 0 && !(cls.preventDeath && cls.preventDeath())) {
             gameState.killedBy = source;
             this.die();
         }
@@ -3124,7 +3129,7 @@ class SoulOrb {
         }
     }
     draw(ctx) {
-        if (!orbSprite) buildOrbSprites();
+        if (!orbSprite || orbSpriteFor !== currencyIcon()) buildOrbSprites();
         const flying = this.attracted && this.pullTime > 0;
         // 越靠近法師越小，像被吸進身體裡
         const shrink = flying ? Math.max(0.35, Math.min(1, this.dist / 45)) : 1;
@@ -3162,9 +3167,12 @@ const ORB_SIZE_BONUS_MAX = 8;
 const ORB_SPRITE_PX = 48;
 const ORB_TRAIL_GHOSTS = 3;
 const ORB_TRAIL_STEP = 0.014;
-let orbSprite = null, orbGlowSprite = null;
+let orbSprite = null, orbGlowSprite = null, orbSpriteFor = null;
+const SOUL_ORB_GLOW = [77, 208, 225];
 function buildOrbSprites() {
-    const icon = getIconImage('soul');
+    orbSpriteFor = currencyIcon();
+    const icon = getIconImage(orbSpriteFor);
+    const [cr, cg, cb] = (classDef().currency && classDef().currency.glow) || SOUL_ORB_GLOW;
     orbSprite = document.createElement('canvas');
     orbSprite.width = orbSprite.height = ORB_SPRITE_PX;
     const g = orbSprite.getContext('2d');
@@ -3175,9 +3183,9 @@ function buildOrbSprites() {
     const gg = orbGlowSprite.getContext('2d');
     const r = ORB_SPRITE_PX / 2;
     const grad = gg.createRadialGradient(r, r, 0, r, r, r);
-    grad.addColorStop(0, 'rgba(128, 222, 234, 0.9)');
-    grad.addColorStop(0.4, 'rgba(77, 208, 225, 0.35)');
-    grad.addColorStop(1, 'rgba(77, 208, 225, 0)');
+    grad.addColorStop(0, `rgba(${Math.min(255, cr + 50)}, ${Math.min(255, cg + 14)}, ${Math.min(255, cb + 9)}, 0.9)`);
+    grad.addColorStop(0.4, `rgba(${cr}, ${cg}, ${cb}, 0.35)`);
+    grad.addColorStop(1, `rgba(${cr}, ${cg}, ${cb}, 0)`);
     gg.fillStyle = grad;
     gg.fillRect(0, 0, ORB_SPRITE_PX, ORB_SPRITE_PX);
 }
@@ -4991,7 +4999,8 @@ function updateRelics(deltaTime) {
         const inside = p && p.isAlive && distanceSq(p.pos, r) <= rSq;
         if (r.kind === 'spring') {
             r.healTextTimer -= deltaTime;
-            if (inside && p.currentHealth < p.maxHealth) {
+            if (inside && classDef().onSpring) classDef().onSpring(r, deltaTime);
+            else if (inside && p.currentHealth < p.maxHealth) {
                 r.healFrac += Math.min(p.maxHealth * T.healPerSec * deltaTime, r.pool * p.maxHealth);
                 const whole = Math.min(Math.floor(r.healFrac), p.maxHealth - p.currentHealth);
                 if (whole > 0) {
@@ -6468,6 +6477,7 @@ let UNIT_UI = [];
 let builtCardsFor = null;
 function buildUnitCards() {
     const cards = classDef().cards;
+    $id('currency-icon').innerHTML = ICON_SVGS[currencyIcon()] || '';
     const key = cards.join(',');
     if (builtCardsFor === key) return;
     builtCardsFor = key;
@@ -6537,14 +6547,15 @@ function starsHtml(tier) {
 }
 
 function priceButtonHtml(label, cost) {
-    return `<span>${label}</span><span class="price">${iconHtml('soul')}${formatNumberK(cost)}</span>`;
+    return `<span>${label}</span><span class="price">${iconHtml(currencyIcon())}${formatNumberK(cost)}</span>`;
 }
 
 function updateUI() {
     const souls = gameState.souls;
     const p = gameState.player;
     if (p) {
-        setTextIfChanged(uiElements.playerHealthInfo, `${p.currentHealth}/${p.maxHealth}`);
+        // 持續回血、曬傷是一格一格的小數：顯示時進位（還沒歸零就不會顯示 0）
+        setTextIfChanged(uiElements.playerHealthInfo, `${Math.ceil(p.currentHealth)}/${Math.round(p.maxHealth)}`);
         const ratio = p.maxHealth > 0 ? p.currentHealth / p.maxHealth : 0;
         setStyleIfChanged(uiElements.hpFill, 'width', `${Math.round(ratio * 100)}%`);
     }
@@ -6583,7 +6594,8 @@ function updateUI() {
         setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
         setTextIfChanged(el.count, formatNumberK(unit.count));
         const capped = summonBlocked(u.type);
-        setHtmlIfChanged(el.summon, capped ? `<span>${U.capLabel || '滿編'}</span>` : priceButtonHtml(U.summonLabel || '召喚', summonCost));
+        const capLabel = typeof U.capLabel === 'function' ? U.capLabel() : U.capLabel;
+        setHtmlIfChanged(el.summon, capped ? `<span>${capLabel || '滿編'}</span>` : priceButtonHtml(U.summonLabel || '召喚', summonCost));
         setHtmlIfChanged(el.upgrade, priceButtonHtml(U.upgradeLabel || '升級', upgradeCost));
         const allowed = unitAllowed(u.type);
         if (el.summon.disabled !== !(canAct && allowed && !capped)) el.summon.disabled = !(canAct && allowed && !capped);

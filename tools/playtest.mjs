@@ -46,7 +46,14 @@ for (;;) {
     r = await page.evaluate((steps) => {
         const B = window.__bot, DT = 1 / 30, REACT = 0.4, DECIDE = 0.15, STUCK_SECONDS = 240, MAX_SECONDS = 3600;
         // 各職業三張卡的召喚比例
-        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3] };
+        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0] };
+        // 吸血鬼可以拿自己的血付錢；機器人血量 BOT_VAMP_SPEND_HP 以上才拿血付（真人也不會一路把自己放到剩四分之一血）
+        const BOT_VAMP_SPEND_HP = 0.7;
+        // 收尾時走到離最後幾隻怪這麼近；只能修練的卡等級跟著波數走（BOT_TRAIN_PER_WAVE 級／波），不要一開局就把錢全砸進去
+        const BOT_FINISH_DIST = 110, BOT_TRAIN_PER_WAVE = 0.8;
+        const botTrainOk = (U, unit) => !U.upgradeOnly || classDef().cards.every(t => UNIT_TYPES[t].upgradeOnly) || unit.level < Math.max(1, gameState.currentWave) * BOT_TRAIN_PER_WAVE;
+        const botAfford = (cost) => runClass() !== 'vampire' || gameState.souls >= cost ? canAfford(cost)
+            : gameState.player.currentHealth > gameState.player.maxHealth * BOT_VAMP_SPEND_HP && canAfford(cost);
         // 德魯伊：沒有要閃的東西時，離林地（最近一棵橡樹）超過這麼遠就走回去
         const BOT_GROVE_RETURN = 110, BOT_GROVE_PLANT = 90;
         const noticed = (o) => { if (!B.seen.has(o)) B.seen.set(o, B.t); return B.t - B.seen.get(o) >= REACT; };
@@ -101,7 +108,14 @@ for (;;) {
                         oak = eldestOak(); od = oak ? distanceSq(oak.pos, p.pos) : Infinity;
                         if (oak && od > BOT_GROVE_RETURN * BOT_GROVE_RETURN) { hx = oak.pos.x - p.pos.x; hy = oak.pos.y - p.pos.y; }
                     }
-                    const relic = Math.hypot(hx, hy) < 0.1 && gameState.relics.find(x => !x.done && noticed(x));
+                    // 只剩最後幾隻、而且沒有要閃的東西：走過去收尾。站在原地的話，停在射程外的遠程怪（血瞳 190）永遠打不到，這一波收不掉
+                    if (gameState.straggling && Math.hypot(hx, hy) < 0.1) {
+                        let nm = null, nd = Infinity;
+                        for (const m of gameState.monsters) { if (!m.isAlive || m.stealthed) continue; const d = distanceSq(m.pos, p.pos); if (d < nd) { nd = d; nm = m; } }
+                        if (nm && nd > BOT_FINISH_DIST * BOT_FINISH_DIST) { hx = nm.pos.x - p.pos.x; hy = nm.pos.y - p.pos.y; }
+                    }
+                    // 吸血鬼不去聖水（靈泉會燙）
+                    const relic = Math.hypot(hx, hy) < 0.1 && gameState.relics.find(x => !x.done && noticed(x) && !(runClass() === 'vampire' && x.kind === 'spring'));
                     if (relic) { hx = relic.x - p.pos.x; hy = relic.y - p.pos.y; }
                     else if (Math.hypot(hx, hy) < 0.1) { let best = null, bd = 1e9; for (const o of gameState.orbs) { const d = distanceSq(o.pos, p.pos); if (d < bd) { bd = d; best = o; } } if (best && bd < 250 * 250) { hx = (best.pos.x - p.pos.x) * 0.01; hy = (best.pos.y - p.pos.y) * 0.01; } }
                     const mag = Math.hypot(hx, hy);
@@ -117,7 +131,7 @@ for (;;) {
                 B.spendTimer = 0.5;
                 for (let g = 0; g < 50; g++) {
                     let did = false;
-                    for (const u of UNIT_UI) { const U = UNIT_TYPES[u.type], unit = gameState.units[u.type], uc = getUpgradeCost(u.type); if ((unit.count > 0 || U.upgradeOnly) && canAfford(uc) && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(U.cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
+                    for (const u of UNIT_UI) { const U = UNIT_TYPES[u.type], unit = gameState.units[u.type], uc = getUpgradeCost(u.type); if ((unit.count > 0 || U.upgradeOnly) && botTrainOk(U, unit) && botAfford(uc) && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(U.cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
                     // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%；戰士：盾兵 40%、長槍 30%、弩手 30%）。只能修練的卡比例是 0
                     const share = BOT_MIX[runClass()] || [1, 1, 1];
                     // 亡靈法師隨機抽；其他職業補最缺的那種（照比例），不然死得快的那種永遠補不回來、整隊漸漸變成同一種
@@ -127,7 +141,7 @@ for (;;) {
                     else if (open.length) pick = open.map(o => ({ type: o.type, k: gameState.units[o.type].count / share[o.i] })).sort((a, b) => a.k - b.k)[0].type;
                     // 德魯伊：橡樹種在林地裡（離最近一棵 BOT_GROVE_PLANT 內），不要邊走邊種、種得東一棵西一棵
                     if (pick === 'SacredOak' && eldestOak() && distanceSq(eldestOak().pos, p.pos) > BOT_GROVE_PLANT * BOT_GROVE_PLANT) pick = null;
-                    if (!did && pick) did = trySummon(pick);
+                    if (!did && pick && botAfford(getSummonCost(UNIT_TYPES[pick].cfg()))) did = trySummon(pick);
                     if (!did) break;
                 }
             }
