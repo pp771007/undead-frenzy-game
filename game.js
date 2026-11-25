@@ -758,7 +758,7 @@ const ACHV_CATEGORIES = [
     { id: 'journey', name: '征途' }, { id: 'endless', name: '無盡' }, { id: 'curse', name: '詛咒' }, { id: 'boss', name: '首領' },
     { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '共鳴' }, { id: 'legend', name: '傳說' },
     { id: 'pact', name: '契約' }, { id: 'streak', name: '連殺' }, { id: 'relic', name: '遺跡' }, { id: 'daily', name: '每日' },
-    { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'legacy', name: '傳承' },
+    { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'class', name: '職業' }, { id: 'legacy', name: '傳承' },
 ];
 const ACHV_JOURNEY = [[5, 'wave5', '破曉', 10], [10, 'wave10', '初陣', 15], [15, 'wave15', '老兵', 20], [20, 'wave20', '百戰', 25], [25, 'wave25', '過半', 30],
     [30, 'wave30', '屍山', 35], [35, 'wave35', '血海', 40], [40, 'wave40', '龍門', 45], [45, 'wave45', '最後的長夜', 50]];
@@ -831,7 +831,8 @@ function defaultStats() {
 function stats() { return meta.stats; }
 // 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
 function emptyRunStats() {
-    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, relics: {}, flags: {} };
+    // recruits：自己按卡片召喚了幾次（開局就帶的兵、免費送的不算）
+    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, recruits: 0, relics: {}, flags: {} };
 }
 function runUnitsUsed() { return Object.keys(gameState.totalSummons).filter(k => gameState.totalSummons[k] > 0); }
 function wonOnlyWith(type) { const u = runUnitsUsed(); return gameState.endless && u.length === 1 && u[0] === type; }
@@ -841,7 +842,8 @@ let ACHIEVEMENTS = null;
 function achievements() { return ACHIEVEMENTS || (ACHIEVEMENTS = buildAchievements()); }
 function buildAchievements() {
     const L = [];
-    const add = (cat, id, name, desc, reward, test, look) => L.push({ cat, id, name, desc, reward, test, look });
+    const add = (cat, id, name, desc, reward, test, look, cls) => L.push({ cat, id, name, desc, reward, test, look, cls });
+    const necro = () => runClass() === DEFAULT_CLASS;
     const S = stats;
     for (const [w, id, name, r] of ACHV_JOURNEY) add('journey', id, name, `撐過第 ${w} 波`, r, () => getSurvivedWaves() >= w);
     add('journey', 'win', '凱旋', '打倒墮落亡靈王', 60, () => gameState.endless);
@@ -872,25 +874,36 @@ function buildAchievements() {
     for (const d of DAILY_MUTATIONS) add('daily', `daily_${d.id}`, d.name, `在「${d.name}」撐過第 ${ACHV_DAILY_WAVE} 波`, 30, () => gameState.daily === d.id && getSurvivedWaves() >= ACHV_DAILY_WAVE);
     add('daily', 'dailyWeek', '一週不缺席', `在 ${ACHV_DAILY_DAYS} 個不同的日子玩每日變異`, 60, () => Object.keys(S().dailyDays).length >= ACHV_DAILY_DAYS);
     for (const [id, name, desc, r, t] of ACHV_CAREER) add('career', id, name, desc, r, () => t(S()));
-    add('challenge', 'noNova', '不靠新星', '一次新星都不放，通關', 100, () => gameState.endless && gameState.run.novas === 0);
+    add('challenge', 'noNova', '不靠新星', '一次新星都不放，通關', 100, () => necro() && gameState.endless && gameState.run.novas === 0);
     add('challenge', 'onlySkel', '純骨之軍', '只召喚骷髏，通關', 80, () => wonOnlyWith('SkeletonWarrior'));
     add('challenge', 'onlyEye', '千目之主', '只召喚眼魔，通關', 80, () => wonOnlyWith('EyeMonster'));
     add('challenge', 'onlyWraith', '怨魂之王', '只召喚怨靈，通關', 120, () => wonOnlyWith('Wraith'));
     add('challenge', 'noUpgrade', '人海戰術', '一次都不升級，撐過第 30 波', 80, () => getSurvivedWaves() >= 30 && gameState.run.upgrades === 0);
     add('challenge', 'ascetic', '苦行者', '一張祝福都不拿，撐過第 30 波', 100, () => getSurvivedWaves() >= 30 && gameState.run.picks === 0);
     add('challenge', 'flawless', '完美防禦', `撐過第 ${ACHV_FLAWLESS_WAVE} 波，一下都沒被打中`, 80, () => getSurvivedWaves() >= ACHV_FLAWLESS_WAVE && gameState.run.hits === 0);
-    add('challenge', 'steady', '從容', `通關，法師的血從沒低於 ${pct(ACHV_STEADY)}`, 80, () => gameState.endless && gameState.run.minHp >= ACHV_STEADY);
+    add('challenge', 'steady', '從容', `通關，血量從沒低於 ${pct(ACHV_STEADY)}`, 80, () => gameState.endless && gameState.run.minHp >= ACHV_STEADY);
     add('challenge', 'lastStand', '背水一戰', `血量低於 ${pct(ACHV_LAST_STAND)} 時撐完那一波`, 40, () => !!gameState.run.flags.lastStand);
     add('challenge', 'massacre', '屠城', `一波內打倒 ${ACHV_MASSACRE} 隻怪`, 40, () => gameState.run.maxWaveKills >= ACHV_MASSACRE);
-    add('challenge', 'novaBlast', '星爆', `一次新星打倒 ${ACHV_NOVA_BLAST} 隻怪`, 40, () => gameState.run.novaBest >= ACHV_NOVA_BLAST);
+    add('challenge', 'novaBlast', '星爆', `一次新星打倒 ${ACHV_NOVA_BLAST} 隻怪`, 40, () => necro() && gameState.run.novaBest >= ACHV_NOVA_BLAST);
     add('challenge', 'speedClear', '秒殺', `第 ${ACHV_SPEED_WAVE} 波以後，${ACHV_SPEED_SECONDS} 秒內清完一波`, 40, () => !!gameState.run.flags.speedClear);
     add('challenge', 'wealthy', '守財奴', `手上同時有 ${formatNumberK(ACHV_WEALTH)} 靈魂`, 30, () => gameState.souls >= ACHV_WEALTH);
     add('challenge', 'thiefChase', '追財', `一局打倒 ${ACHV_THIEVES} 隻金魂竊賊`, 40, () => gameState.run.thieves >= ACHV_THIEVES);
+    // 職業：亡靈法師以外的每個職業一組——通關、三檔速通、五個流派各疊滿、再加職業自己定義的 feats
+    for (const [cid, c] of Object.entries(CLASSES)) {
+        if (!c.achv) continue;
+        const mine = () => runClass() === cid, A = c.achv;
+        add('class', `${cid}_win`, A.win, `以${c.name}通關`, ACHV_CLASS_WIN, () => mine() && gameState.endless, null, cid);
+        ACHV_SPEED.forEach(([min, , , r], i) => add('class', `${cid}_speed${min}`, A.speed[i], `以${c.name}在 ${min} 分鐘內通關`, r,
+            () => mine() && gameState.endless && gameState.run.clearTime > 0 && gameState.run.clearTime <= min * 60, null, cid));
+        for (const s of c.schools) if (s !== 'soul') add('class', `${cid}_res_${s}`, SCHOOLS[s].res[1].name, `${c.name}的「${SCHOOLS[s].name}」疊到 ${RESONANCE_STEPS[1]} 層`, ACHV_CLASS_RES, () => mine() && res(s) >= 2, null, cid);
+        for (const [id, name, desc, r, test] of A.feats) add('class', `${cid}_${id}`, name, desc, r, () => mine() && test(), null, cid);
+    }
     add('legacy', 'metaFirst', '傳承之始', '買下第一個永久強化', 10, () => Object.values(meta.upgrades).some(v => v > 0));
     add('legacy', 'metaMax', '登峰造極', '任一永久強化升滿', 30, () => Object.keys(META_UPGRADES).some(id => metaLv(id) >= META_UPGRADES[id].max));
     add('legacy', 'metaAll', '大圓滿', '全部永久強化升滿', 150, () => Object.keys(META_UPGRADES).every(id => metaLv(id) >= META_UPGRADES[id].max));
     return L;
 }
+const ACHV_CLASS_WIN = 80, ACHV_CLASS_RES = 40;
 const ACHV_CHECK_EVERY = 0.5;
 const ACHV_TOAST_MS = 2600;
 let achvCheckTimer = 0;
@@ -944,9 +957,12 @@ function renderAchievements() {
         const list = all.filter(a => a.cat === c.id), n = list.filter(a => achvDone(a.id)).length;
         return `<button class="achv-tab${c.id === achvTab ? ' on' : ''}${n === list.length ? ' full' : ''}" data-tab="${c.id}">${c.name}<span>${n}/${list.length}</span></button>`;
     }).join('');
+    let group = null;
     uiElements.achvList.innerHTML = all.filter(a => a.cat === achvTab).map(a => {
         const ok = achvDone(a.id);
-        return `<div class="meta-row achv-row ${ok ? 'done' : ''}">${achvIconHtml(a)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
+        // 職業分頁：每個職業前面一條標題
+        const head = a.cls && a.cls !== group ? `<div class="achv-group">${CLASSES[(group = a.cls)].name} · ${CLASSES[a.cls].title}</div>` : '';
+        return `${head}<div class="meta-row achv-row ${ok ? 'done' : ''}">${achvIconHtml(a)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
     }).join('');
 }
 
@@ -990,7 +1006,8 @@ const UNIT_TYPES = {
 //   onRunStart()：開新局（不是讀檔）時跑一次，例如開局就帶的兵
 //   blockBolt(bolt)：射向主角的血彈飛行途中每格問一次，回傳 true 就被擋下（戰士的盾兵）
 //   onUpgrade(type)：底部卡片升級成功之後；upgradeCostMult()：升級費用倍率
-//   onWaveStart()：每一波開始時
+//   onWaveStart()／onWaveEnd()：每一波開始時、清完時
+//   onBossKill(boss)：打倒首領時；onRelic(relic)：遺跡讀條完成時，回傳 true 就取代預設效果
 const CLASSES = {
     necro: {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
@@ -3537,6 +3554,7 @@ class BossMonster extends Monster {
         super.die();
         gameState.bossKills[this.constructor.name] = true;
         stats().bosses++;
+        if (classDef().onBossKill) classDef().onBossKill(this);
         if (gameState.currentWave >= ACHV_BOSS_CHALLENGE_WAVE && worldTime - this.spawnedAt <= ACHV_BLITZ_SECONDS) gameState.run.flags.bossBlitz = true;
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
@@ -4873,6 +4891,7 @@ function finishRelic(r) {
     stats().relics[r.kind] = (stats().relics[r.kind] || 0) + 1;
     gameState.run.relics[r.kind] = true;
     spawnParticles(r.x, r.y, T.color, 30, 160, 0.7, 3);
+    if (classDef().onRelic && classDef().onRelic(r)) return;
     if (r.kind === 'altar') {
         gameState.frenzyTimer = Math.max(gameState.frenzyTimer, T.frenzy);
         spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'burst');
@@ -5294,6 +5313,7 @@ function checkWaveEndCondition() {
         if (p && p.isAlive && p.currentHealth < p.maxHealth * ACHV_LAST_STAND) run.flags.lastStand = true;
         if (gameState.currentWave >= ACHV_SPEED_WAVE && worldTime - gameState.waveStartAt <= ACHV_SPEED_SECONDS) run.flags.speedClear = true;
         if (gameState.currentWave >= ACHV_BOSS_CHALLENGE_WAVE && gameState.currentWave % CONFIG.wave.bossEvery === 0 && !run.flags.waveHit) run.flags.bossNoHit = true;
+        if (classDef().onWaveEnd) classDef().onWaveEnd();
         checkAchievements();
         saveMeta();
         spawnCrystalText(CRYSTALS_PER_WAVE);
@@ -6093,7 +6113,9 @@ function trySummon(type, combo = 0) {
         gameState.souls -= cost;
         // 傳說「雙生召喚」：有機率多送一隻，多送的那隻冒金光
         const twin = bl('twinSummon') > 0 && Math.random() < BLESSINGS.twinSummon.per;
+        gameState.run.recruits++;
         for (let n = 0; n < (twin ? 2 : 1); n++) {
+            if (n && troopCapped()) break;
             const spawnPos = gameState.player.getSummonPosition();
             const summon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
             // 傳說「巨骨」：骷髏每第 N 隻是巨人
@@ -6142,32 +6164,32 @@ function getUpgradeCost(type) {
 function tryUpgrade(type, combo = 0) {
     if (!UNIT_TYPES[type] || !unitAllowed(type)) return false;
     if (gameState.draftOpen) return false;
-    const unit = gameState.units[type];
     const cost = getUpgradeCost(type);
-
-    if (gameState.souls >= cost) {
-        gameState.souls -= cost;
-        const oldTier = getTier(unit.level);
-        unit.level++;
-        const newTier = getTier(unit.level);
-        unit.upgradeCost += UNIT_TYPES[type].cfg().upgradeCostInc;
-        if (classDef().onUpgrade) classDef().onUpgrade(type);
-        gameState.run.upgrades++;
-        gameState.summons.forEach(s => {
-            if (s.isAlive && s.config.type === type) {
-                s.levelUp();
-                spawnParticles(s.pos.x, s.pos.y, '#FFD54F', 5, 50, 0.4);
-            }
-        });
-        Sfx.play(combo ? 'upgradeCombo' : 'upgrade', combo);
-        popLevelBadge(type);
-        if (newTier > oldTier) announceEvolution(type, newTier);
-        updateUI();
-        ensureMusicPlaying();
-        return true;
-    } else {
-        return false;
-    }
+    if (gameState.souls < cost) return false;
+    gameState.souls -= cost;
+    gameState.run.upgrades++;
+    levelUpUnit(type);
+    Sfx.play(combo ? 'upgradeCombo' : 'upgrade', combo);
+    updateUI();
+    ensureMusicPlaying();
+    return true;
+}
+// 某個兵種升一級：花費由呼叫端處理（卡片付靈魂；戰士開寶棺拿到的軍餉免費）
+function levelUpUnit(type) {
+    const unit = gameState.units[type];
+    const oldTier = getTier(unit.level);
+    unit.level++;
+    const newTier = getTier(unit.level);
+    unit.upgradeCost += UNIT_TYPES[type].cfg().upgradeCostInc;
+    if (classDef().onUpgrade) classDef().onUpgrade(type);
+    gameState.summons.forEach(s => {
+        if (s.isAlive && s.config.type === type) {
+            s.levelUp();
+            spawnParticles(s.pos.x, s.pos.y, '#FFD54F', 5, 50, 0.4);
+        }
+    });
+    popLevelBadge(type);
+    if (newTier > oldTier) announceEvolution(type, newTier);
 }
 
 

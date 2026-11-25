@@ -128,6 +128,8 @@ Object.assign(BLESSINGS, {
     aquila: { school: 'shieldwall', name: '鷹旗', legendary: true, max: 1, per: 0.3, desc: b => `戰士身邊的士兵受致命傷時，每波撐住一次（留 ${pct(b.per)} 血）` },
     spartans: { school: 'phalanx', name: '三百壯士', legendary: true, max: 1, per: 2.5, desc: b => `人數上限減半，每個士兵血量與攻擊 ×${b.per}` },
 });
+// 戰士專屬成就的門檻
+const WAR_ACHV = { veterans: 10, noLossWave: 20, javelinKills: 50, noRecruitWave: 10 };
 // 共鳴與傳說的細部數值（說明文字只講會影響選擇的那個數）
 const RES_TURTLE_TAKEN = 0.7;
 const RES_IRONWALL_BLOCK = 2;
@@ -156,6 +158,7 @@ CLASSES.warrior = {
     onWaveStart: () => {
         for (const s of gameState.summons) if (s instanceof Soldier) s.aquilaUsed = false;
         const w = warState(), p = gameState.player;
+        w.waveLosses = 0;
         while (w.fallen.length && troopCount() < warTroopCap()) {
             const f = w.fallen.shift();
             const pos = p.getSummonPosition();
@@ -182,6 +185,45 @@ CLASSES.warrior = {
             gameState.units[type].count++;
             gameState.totalSummons[type]++;
         }
+    },
+    onWaveEnd: () => {
+        if (gameState.currentWave >= WAR_ACHV.noLossWave && troopCount() > 0 && warState().waveLosses === 0) gameState.run.flags.warNoLoss = true;
+    },
+    onBossKill: () => { if (warState().berserkT > 0) gameState.run.flags.warBerserkBoss = true; },
+    // 戰場遺跡：戰鼓祭壇＝全軍衝鋒＋怒氣灌滿；封印寶棺開出軍餉，每個兵種免費升一級
+    onRelic: (r) => {
+        const p = gameState.player, w = warState();
+        if (r.kind === 'altar') {
+            gameState.frenzyTimer = Math.max(gameState.frenzyTimer, RELIC_TYPES.altar.frenzy);
+            w.chargeT = WARRIOR.javelin.chargeTime;
+            w.exhaustT = 0;
+            addRage(WARRIOR.rageMax);
+            spawnFloatText(p.pos.x, p.pos.y - 34, '衝鋒！', '#FF8A80', 18, 1.1, 'rage');
+            addShake(5);
+            Sfx.play('nova');
+            return true;
+        }
+        if (r.kind === 'coffin') {
+            for (const type of CLASSES.warrior.cards) levelUpUnit(type);
+            spawnFloatText(r.x, r.y - 30, '軍餉：全軍升一級', '#FFE082', 16, 1.4, 'coin');
+            addShake(4);
+            Sfx.play('upgrade');
+            updateUI();
+            return true;
+        }
+        return false;
+    },
+    // 成就（通關、速通、流派共鳴由 game.js 照職業產生；這裡只列戰士自己做得到的事）
+    achv: {
+        win: '軍團凱旋', speed: ['強行軍', '閃電突擊', '神兵天降'],
+        feats: [
+            ['veterans', '百戰精兵', `陣型裡同時有 ${WAR_ACHV.veterans} 個百戰老兵`, 60,
+                () => gameState.summons.filter(s => s.isAlive && s instanceof Soldier && s.vet >= WARRIOR.vetKills.length).length >= WAR_ACHV.veterans],
+            ['noLoss', '寸土不讓', `第 ${WAR_ACHV.noLossWave} 波以後，一整波沒有任何士兵陣亡`, 40, () => !!gameState.run.flags.warNoLoss],
+            ['berserkBoss', '血怒弒王', '狂怒中打倒首領', 40, () => !!gameState.run.flags.warBerserkBoss],
+            ['javelin', '投槍如雨', `一次標槍齊射打倒 ${WAR_ACHV.javelinKills} 隻`, 50, () => gameState.run.novaBest >= WAR_ACHV.javelinKills],
+            ['noRecruit', '原班人馬', `一個兵都不招募，撐過第 ${WAR_ACHV.noRecruitWave} 波`, 60, () => getSurvivedWaves() >= WAR_ACHV.noRecruitWave && gameState.run.recruits === 0],
+        ],
     },
     heroSpeedMult: () => warState().berserkT > 0 ? WARRIOR.berserkSpeed : warState().exhaustT > 0 ? WARRIOR.exhaustSpeed : 1,
     heroDamageTakenMult: () => WARRIOR.armorTaken * (warState().berserkT > 0 ? WARRIOR.berserkTaken : 1) * turtleTaken(),
@@ -236,7 +278,7 @@ CLASSES.warrior = {
 
 // drills：這一局一共升級了幾次（軍團長跟著部下一起操練變強）；fallen：英靈殿要讓下一波歸隊的老兵；
 // still：戰士這一格有沒有站著不動（龜甲陣）；lastStand：最後一線生效中；spearT／rainT：槍林、箭雨的計時
-function newWarState() { return { rage: 0, berserkT: 0, exhaustT: 0, fx: 1, fy: 0, swingT: 0, chargeT: 0, tauntT: 0, drills: 0, fallen: [], still: false, lastStand: false, spearT: 0, rainT: 0 }; }
+function newWarState() { return { waveLosses: 0, rage: 0, berserkT: 0, exhaustT: 0, fx: 1, fy: 0, swingT: 0, chargeT: 0, tauntT: 0, drills: 0, fallen: [], still: false, lastStand: false, spearT: 0, rainT: 0 }; }
 function warState() { return gameState.war || (gameState.war = newWarState()); }
 function troopCount() { return classDef().cards.reduce((n, t) => n + gameState.units[t].count, 0); }
 function warTroopCap() {
@@ -629,6 +671,7 @@ class Soldier extends SummonUnit {
         if (!this.isAlive) return;
         this.isAlive = false;
         gameState.units[this.config.type].count--;
+        warState().waveLosses++;
         // 英靈殿：有星星的老兵下一波歸隊
         if (bl('valhalla') && this.vet > 0) warState().fallen.push({ type: this.config.type, kills: this.kills });
         onSummonDeath(this);

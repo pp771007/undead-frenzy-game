@@ -297,4 +297,51 @@ Object.assign(ACHV_ICON_BODIES, {
     metaMax: `${at(20, 44, 0.55, P.gem())}${at(44, 44, 0.55, P.gem())}${at(32, 26, 0.85, P.gem('#d1c4e9'))}${sparks([[54, 8, 5]], '#e1bee7')}`,
     metaAll: `${at(32, 40, 0.95, P.crown('#b388ff'))}${at(32, 16, 0.5, P.gem('#ede7f6'))}${sparks([[8, 10, 4], [56, 10, 4]], '#e1bee7')}`,
 });
+// ---- 職業：戰士（warrior.js）。母題是羅馬軍團：紅冠頭盔、方盾、標槍 ----
+const WAR_RED = '#c62828', WAR_RED_DARK = '#8e1b1b';
+// 紅冠頭盔，畫在 ±28 的範圍
+const HELM = (crest = WAR_RED) => `<path d="M-18 -10 C-22 -16 -10 -30 0 -30 C10 -30 22 -16 18 -10 C10 -16 -10 -16 -18 -10 Z" fill="${crest}"/>
+    <path d="M-20 4 C-20 -14 20 -14 20 4 L20 14 L12 14 L12 22 L-12 22 L-12 14 L-20 14 Z" fill="${C.steel}"/>
+    <path d="M-12 6 L12 6 M0 6 L0 20" stroke-width="3"/><path d="M-22 14 L-12 14 M12 14 L22 14" stroke="${C.goldDark}" stroke-width="3"/>${shine(-10, -4, 3, 5, 20)}`;
+// 羅馬方盾（scutum），畫在 ±28 的範圍
+const SCUTUM = (fill = WAR_RED) => `<path d="M-16 -26 C-20 -12 -20 12 -16 26 L16 26 C20 12 20 -12 16 -26 Z" fill="${fill}"/>
+    <circle r="6" fill="${C.goldDark}"/><path d="M0 -22 L0 -8 M0 8 L0 22 M-14 0 L-8 0 M8 0 L14 0" stroke="${C.gold}" stroke-width="3"/>`;
+const JAVELIN = (len = 40) => `<path d="M0 ${len / 2} L0 ${-len / 2 + 8}" stroke-width="5"/><path d="M0 ${len / 2} L0 ${-len / 2 + 8}" stroke="${C.wood}" stroke-width="2.5"/>
+    <path d="M0 ${-len / 2} L4 ${-len / 2 + 9} L-4 ${-len / 2 + 9} Z" fill="${C.steel}" stroke-width="2"/>`;
+Object.assign(ACHV_ICON_BODIES, {
+    warrior_win: `${at(32, 36, 1, P.laurel(C.gold))}${at(32, 30, 0.72, HELM())}${sparks([[10, 10, 4], [54, 10, 4]])}`,
+    // 速通三檔：行軍的靴子 → 加上閃電 → 長了翅膀的頭盔
+    warrior_speed28: `<path d="M22 8 L36 8 L36 38 L52 44 C58 46 58 56 50 56 L22 56 Z" fill="${C.wood}"/><path d="M22 46 L54 46 M22 30 L36 30" stroke-width="3"/>
+        <path d="M26 60 L28 56 M34 60 L36 56 M42 60 L44 56" stroke-width="3"/><path d="M4 22 L16 22 M2 32 L14 32 M4 42 L16 42" stroke="${C.sky}" stroke-width="3.5"/>`,
+    warrior_speed24: `<path d="M16 8 L30 8 L30 38 L46 44 C52 46 52 56 44 56 L16 56 Z" fill="${C.wood}"/><path d="M16 46 L48 46 M16 30 L30 30" stroke-width="3"/>
+        ${at(50, 20, 0.62, P.bolt())}<path d="M2 26 L10 26 M2 36 L10 36" stroke="${C.sky}" stroke-width="3.5"/>`,
+    warrior_speed20: `<path d="M12 30 C2 22 4 10 12 6 C12 14 16 20 22 22 Z M52 30 C62 22 60 10 52 6 C52 14 48 20 42 22 Z" fill="${C.white}"/>
+        ${at(32, 36, 0.8, HELM())}${at(54, 50, 0.4, P.bolt())}${sparks([[8, 50, 4], [32, 4, 3]], C.white)}`,
+    // 五個流派疊滿：各畫那段共鳴的景象
+    warrior_res_shieldwall: `${at(14, 34, 0.62, SCUTUM())}${at(50, 34, 0.62, SCUTUM())}${at(32, 32, 0.72, SCUTUM(WAR_RED_DARK))}<path d="M2 58 L62 58" stroke-width="4"/>`,
+    warrior_res_phalanx: `${[10, 20, 30, 40, 50].map((x, i) => `<g transform="translate(${x + 6} ${26 - i % 2 * 4}) rotate(35)">${JAVELIN(48)}</g>`).join('')}
+        <path d="M4 46 L60 46 L60 58 L4 58 Z" fill="${C.steelDark}"/>${[12, 26, 40, 54].map(x => `<circle cx="${x}" cy="52" r="3" fill="${C.gold}" stroke-width="2"/>`).join('')}`,
+    warrior_res_crossbow: `<path d="M10 20 C4 20 4 10 12 10 C14 2 28 2 30 8 C36 2 48 4 48 12 C58 12 58 22 50 22 Z" fill="#90a4ae"/>
+        ${[[14, 34], [27, 40], [40, 34], [53, 40], [20, 52], [46, 52]].map(([x, y]) => `<g transform="translate(${x} ${y}) rotate(180)">${JAVELIN(18)}</g>`).join('')}
+        <path d="M4 62 L60 62" stroke-width="4"/>`,
+    // 熊皮戰士：火焰前面一顆披著的熊頭
+    warrior_res_berserk: `${at(14, 30, 0.7, P.flame(C.red, C.orange), -20)}${at(50, 30, 0.7, P.flame(C.red, C.orange), 20)}${at(32, 22, 0.8, P.flame(C.red, C.orange))}
+        <circle cx="18" cy="26" r="7" fill="${C.woodDark}"/><circle cx="46" cy="26" r="7" fill="${C.woodDark}"/><circle cx="18" cy="26" r="3" fill="${C.wood}" stroke="none"/><circle cx="46" cy="26" r="3" fill="${C.wood}" stroke="none"/>
+        <path d="M14 40 C14 26 22 22 32 22 C42 22 50 26 50 40 C50 52 42 58 32 58 C22 58 14 52 14 40 Z" fill="${C.woodDark}"/>
+        <ellipse cx="32" cy="48" rx="9" ry="7" fill="${C.wood}"/><ellipse cx="32" cy="44" rx="4" ry="3" fill="${C.ink}" stroke="none"/>
+        <path d="M21 36 L27 39 M43 36 L37 39" stroke="${C.gold}" stroke-width="3.5"/>`,
+    warrior_res_legion: `<path d="M6 16 L58 16 M6 30 L58 30" stroke="${C.steelDark}" stroke-width="5"/><path d="M6 44 L58 44" stroke="${WAR_RED}" stroke-width="7"/>
+        ${at(32, 40, 0.62, P.sword(), 0)}<path d="M2 58 L62 58" stroke-width="4"/>${sparks([[52, 52, 4]])}`,
+    // 戰士自己做得到的事
+    warrior_veterans: `${at(32, 40, 0.86, HELM())}${[16, 32, 48].map(x => `<path d="${starPath(x, 10, 7, 3, 5)}" fill="${C.gold}" stroke-width="2"/>`).join('')}`,
+    warrior_noLoss: `<path d="M2 50 L62 50" stroke-width="4"/>${at(26, 30, 0.86, SCUTUM())}
+        ${at(50, 46, 0.32, P.skull())}<circle cx="50" cy="46" r="12" stroke="${C.red}" stroke-width="3.5"/><path d="M42 54 L58 38" stroke="${C.red}" stroke-width="3.5"/>`,
+    warrior_berserkBoss: `${rays(32, 32, 18, 30, 12, C.red, 3)}${at(32, 40, 0.78, P.crown())}${at(32, 26, 0.9, P.sword(), 180)}
+        <path d="M30 46 C30 50 28 52 28 54 C28 56 32 56 32 54 C32 52 30 50 30 46 Z" fill="${C.blood}" stroke-width="1.5"/>`,
+    warrior_javelin: `${[-36, -20, -4, 12, 28].map((r, i) => `<g transform="translate(${14 + i * 9} ${30 + Math.abs(i - 2) * 4}) rotate(${r + 160})">${JAVELIN(40)}</g>`).join('')}
+        ${at(32, 54, 0.3, P.skull())}${at(16, 56, 0.24, P.skull())}${at(48, 56, 0.24, P.skull())}`,
+    // 開局那四個人：兩個盾兵、一個長槍兵、一個弩手，頭盔冠毛顏色照兵種
+    warrior_noRecruit: `<rect x="4" y="6" width="56" height="54" rx="8" fill="${C.goldDark}"/>
+        ${[[19, 21, WAR_RED], [45, 21, WAR_RED], [19, 46, C.steelDark], [45, 46, C.wood]].map(([x, y, c]) => at(x, y, 0.44, HELM(c))).join('')}`,
+});
 const ACHV_ICON_SVGS = Object.fromEntries(Object.entries(ACHV_ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
