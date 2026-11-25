@@ -986,6 +986,10 @@ function getNovaDamage() {
 
 // ---------- 兵種與職業 ----------
 // 兵種：底部卡片召喚／升級的單位。Cls 用函式包起來：類別宣告在後面
+// 以下選填（職業檔裡用）：
+//   upgradeOnly：這張卡只有「修練」，等級是主角自己的能力（武僧的拳、精靈的箭術）；upgradeLabel／summonLabel：按鈕上的字
+//   cap()：這種兵自己的上限（德魯伊的野獸看林地）；capLabel：到上限時按鈕上的字
+//   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（付完費之後呼叫，要自己把 count 加上去）
 const UNIT_TYPES = {
     SkeletonWarrior: { cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
     Wraith: { cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
@@ -1008,6 +1012,10 @@ const UNIT_TYPES = {
 //   onUpgrade(type)：底部卡片升級成功之後；upgradeCostMult()：升級費用倍率
 //   onWaveStart()／onWaveEnd()：每一波開始時、清完時
 //   onBossKill(boss)：打倒首領時；onRelic(relic)：遺跡讀條完成時，回傳 true 就取代預設效果
+//   canAfford(cost)／pay(cost)：用什麼付召喚與升級（吸血鬼可以拿自己的血付）；onOrbCollect(value)：撿到靈魂時，回傳要存進錢包的量
+//   soulMult(monster)：這隻怪掉的靈魂倍率；onMonsterKill(monster)：怪死掉時
+//   heroHidden()：主角這一格怪看不到（刺客隱身）
+//   drawWorld(ctx)：世界座標、畫在特效之後；drawScreen(ctx)：螢幕座標、畫在介面之前
 const CLASSES = {
     necro: {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
@@ -1027,6 +1035,31 @@ function selectedClass() { return classUnlocked(meta.classSel) ? meta.classSel :
 function troopCapped() {
     const c = classDef();
     return !!c.troopCap && c.cards.reduce((n, t) => n + gameState.units[t].count, 0) >= c.troopCap();
+}
+// 這種兵現在召不了：總人數滿了、自己的上限滿了、或是職業說現在不行
+function summonBlocked(type) {
+    const U = UNIT_TYPES[type];
+    return troopCapped() || (!!U.cap && gameState.units[type].count >= U.cap()) || (!!U.canSummon && !U.canSummon());
+}
+function canAfford(cost) {
+    const c = classDef();
+    return c.canAfford ? c.canAfford(cost) : gameState.souls >= cost;
+}
+function payCost(cost) {
+    const c = classDef();
+    if (c.pay) return c.pay(cost);
+    if (gameState.souls < cost) return false;
+    gameState.souls -= cost;
+    return true;
+}
+// 換主角的立繪（德魯伊化身巨熊）：寬度照原本，高度照新圖比例
+function setHeroImage(p, name) {
+    const img = images[name];
+    if (!img || p.image === img) return;
+    p.image = img;
+    p.imageHeight = p.imageWidth * (img.naturalHeight / img.naturalWidth);
+    p._spriteW = null;
+    p._flashSprites = null;
 }
 // 每種兵在場上幾隻、幾級、下一級升級多少錢。所有兵種都有一格（祝福可能叫出不在卡片上的兵），新局歸零
 function emptyUnits() {
@@ -3054,7 +3087,8 @@ class SoulOrb {
         if (this.age > c.attractDelay && dist < player.radius + c.pickupPadding) {
             this.isAlive = false;
             if (!this.banked) {
-                gameState.souls += this.value;
+                const cls = classDef();
+                gameState.souls += cls.onOrbCollect ? cls.onOrbCollect(this.value) : this.value;
                 if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${this.value}`, '#80DEEA');
                 updateUI();
             }
@@ -3140,7 +3174,7 @@ function dropSouls(x, y, amount) {
 
 function bankAllOrbs() {
     gameState.orbs.forEach(o => {
-        if (!o.banked) { gameState.souls += o.value; o.banked = true; }
+        if (!o.banked) { const cls = classDef(); gameState.souls += cls.onOrbCollect ? cls.onOrbCollect(o.value) : o.value; o.banked = true; }
     });
 }
 
@@ -3378,12 +3412,13 @@ class Monster extends GameObject {
         let closestTarget = null;
         let minDistanceSq = Infinity;
 
-        if (player.isAlive) {
+        if (player.isAlive && !heroHiddenNow) {
             minDistanceSq = distanceSq(this.pos, player.pos);
             closestTarget = player;
         }
         // 只需要找比法師近的召喚物：搜尋半徑就是到法師的距離（沒有上限的話，離大軍很遠的怪要一圈圈查上千格）
         const nearestSummon = summonCoarseGrid.nearest(this.pos, Math.min(Math.sqrt(minDistanceSq), MONSTER_SEEK_MAX));
+        if (this.target === player && heroHiddenNow) this.target = null;
         if (nearestSummon && distanceSq(this.pos, nearestSummon.pos) < minDistanceSq) closestTarget = nearestSummon;
         this.target = closestTarget;
     }
@@ -3436,7 +3471,9 @@ class Monster extends GameObject {
         gameState.run.maxWaveKills = Math.max(gameState.run.maxWaveKills, gameState.run.waveKills);
         if (type === 'Thief') gameState.run.thieves++;
         const ev = getWaveEvent();
-        const souls = this.soulValue() * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus()) * runMods().soulMult
+        const cls = classDef();
+        if (cls.onMonsterKill) cls.onMonsterKill(this);
+        const souls = this.soulValue() * (cls.soulMult ? cls.soulMult(this) : 1) * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus()) * runMods().soulMult
             + gameState.soulCarry;
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
@@ -5955,7 +5992,8 @@ function stepCurse(d) {
 const TUTORIAL_MOVE_DIST = 60;
 let tutorial = null;
 function startTutorialIfNeeded() {
-    if (meta.tutorialDone || gameState.currentWave > 0 || !gameState.player) return;
+    // 新手教學教的是亡靈法師（第一次玩一定是它，其他職業要解鎖）
+    if (meta.tutorialDone || gameState.currentWave > 0 || !gameState.player || runClass() !== DEFAULT_CLASS) return;
     tutorial = { step: 'move', start: { ...gameState.player.pos } };
 }
 function updateTutorial() {
@@ -6104,18 +6142,29 @@ function showMessage(msg, duration = 2000) {
 
 // combo：長按連段的第幾下（0 = 單點），連段時換成會往上爬的音效
 function trySummon(type, combo = 0) {
-    if (!UNIT_TYPES[type] || !unitAllowed(type) || troopCapped()) return false;
-    const config = UNIT_TYPES[type].cfg(), SummonClass = UNIT_TYPES[type].Cls(), unit = gameState.units[type];
+    const U = UNIT_TYPES[type];
+    if (!U || U.upgradeOnly || !unitAllowed(type) || summonBlocked(type)) return false;
+    const config = U.cfg(), SummonClass = U.Cls(), unit = gameState.units[type];
     const level = unit.level;
     const cost = getSummonCost(config);
     if (gameState.draftOpen) return false;
-    if (gameState.souls >= cost) {
-        gameState.souls -= cost;
+    if (U.summon) {
+        if (!payCost(cost)) return false;
+        gameState.run.recruits++;
+        stats().summons++;
+        U.summon(level);
+        gameState.totalSummons[type]++;
+        Sfx.play(combo ? 'summonCombo' : 'summon', combo);
+        updateUI();
+        ensureMusicPlaying();
+        return true;
+    }
+    if (payCost(cost)) {
         // 傳說「雙生召喚」：有機率多送一隻，多送的那隻冒金光
         const twin = bl('twinSummon') > 0 && Math.random() < BLESSINGS.twinSummon.per;
         gameState.run.recruits++;
         for (let n = 0; n < (twin ? 2 : 1); n++) {
-            if (n && troopCapped()) break;
+            if (n && summonBlocked(type)) break;
             const spawnPos = gameState.player.getSummonPosition();
             const summon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
             // 傳說「巨骨」：骷髏每第 N 隻是巨人
@@ -6165,8 +6214,7 @@ function tryUpgrade(type, combo = 0) {
     if (!UNIT_TYPES[type] || !unitAllowed(type)) return false;
     if (gameState.draftOpen) return false;
     const cost = getUpgradeCost(type);
-    if (gameState.souls < cost) return false;
-    gameState.souls -= cost;
+    if (!payCost(cost)) return false;
     gameState.run.upgrades++;
     levelUpUnit(type);
     Sfx.play(combo ? 'upgradeCombo' : 'upgrade', combo);
@@ -6401,7 +6449,7 @@ function buildUnitCards() {
     builtCardsFor = key;
     uiElements.unitCards.innerHTML = cards.map(type => {
         const U = UNIT_TYPES[type];
-        return `<div class="unit-card panel" data-unit="${type}">
+        return `<div class="unit-card panel${U.upgradeOnly ? ' upgrade-only' : ''}" data-unit="${type}">
             <div class="unit-head">
                 <div class="portrait"><img src="${U.img}" alt=""><span class="unit-count">0</span><span class="lv-badge">0</span></div>
                 <div class="unit-info"><span class="unit-name">${U.name}</span><span class="unit-stars"></span></div>
@@ -6452,7 +6500,7 @@ function setupHoldableButton(button, actionType, unitType) {
 // 升一級 = 場上每隻同種兵都 +upgradeBonus，等於多出 upgradeBonus × 隻數 隻兵；
 // 拿同樣的錢去召喚只買得到 升級價 ÷ 召喚價 隻。前者比較多就是划算。下一級剛好進化（解鎖新能力）也算
 function isUpgradeGoodDeal(type, level, summonCost, upgradeCost) {
-    if (CONFIG.evolution.levels.includes(level + 1) || troopCapped()) return true;
+    if (UNIT_TYPES[type].upgradeOnly || CONFIG.evolution.levels.includes(level + 1) || summonBlocked(type)) return true;
     return UNIT_TYPES[type].cfg().upgradeBonus * gameState.units[type].count * summonCost >= upgradeCost;
 }
 
@@ -6504,21 +6552,23 @@ function updateUI() {
     for (const u of UNIT_UI) {
         const el = u.el, unit = gameState.units[u.type];
         const level = unit.level;
-        const summonCost = getSummonCost(UNIT_TYPES[u.type].cfg());
+        const U = UNIT_TYPES[u.type];
+        const summonCost = getSummonCost(U.cfg());
         const upgradeCost = getUpgradeCost(u.type);
         setTextIfChanged(el.level, String(level));
         setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
         setTextIfChanged(el.count, formatNumberK(unit.count));
-        const capped = troopCapped();
-        setHtmlIfChanged(el.summon, capped ? '<span>滿編</span>' : priceButtonHtml('召喚', summonCost));
-        setHtmlIfChanged(el.upgrade, priceButtonHtml('升級', upgradeCost));
+        const capped = summonBlocked(u.type);
+        setHtmlIfChanged(el.summon, capped ? `<span>${U.capLabel || '滿編'}</span>` : priceButtonHtml(U.summonLabel || '召喚', summonCost));
+        setHtmlIfChanged(el.upgrade, priceButtonHtml(U.upgradeLabel || '升級', upgradeCost));
         const allowed = unitAllowed(u.type);
         if (el.summon.disabled !== !(canAct && allowed && !capped)) el.summon.disabled = !(canAct && allowed && !capped);
         if (el.upgrade.disabled !== !(canAct && allowed)) el.upgrade.disabled = !(canAct && allowed);
         el.summon.closest('.unit-card').classList.toggle('daily-locked', !allowed);
-        el.summon.classList.toggle('cant-afford', souls < summonCost);
-        el.upgrade.classList.toggle('cant-afford', souls < upgradeCost);
-        el.upgrade.classList.toggle('good-deal', souls >= upgradeCost && isUpgradeGoodDeal(u.type, level, summonCost, upgradeCost));
+        const affordSummon = canAfford(summonCost), affordUpgrade = canAfford(upgradeCost);
+        el.summon.classList.toggle('cant-afford', !affordSummon);
+        el.upgrade.classList.toggle('cant-afford', !affordUpgrade);
+        el.upgrade.classList.toggle('good-deal', affordUpgrade && isUpgradeGoodDeal(u.type, level, summonCost, upgradeCost));
     }
 
     setStyleIfChanged(uiElements.skipWaveBtn, 'display', gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none');
@@ -6797,6 +6847,7 @@ function resetGameInternalState() {
     visualEffectPool.length = 0;
     tutorial = null;
     for (const u of UNIT_UI) u.el.summon.classList.remove('hint-pulse');
+    heroHiddenNow = false;
 
     const musicWasStarted = gameState.musicStarted;
 
@@ -6891,6 +6942,8 @@ function leaveToTitleFromPause() {
 }
 
 
+// 這一格主角是不是隱身（怪找目標時每隻都要問，所以每格算一次存起來）
+let heroHiddenNow = false;
 function updateGame(deltaTime) {
     frameNo++;
     worldTime += deltaTime;
@@ -6918,6 +6971,7 @@ function updateGame(deltaTime) {
 
     const cls = classDef();
     if (cls.update && gameState.player) cls.update(deltaTime);
+    heroHiddenNow = !!(cls.heroHidden && cls.heroHidden());
     const moveVec = getMoveVector();
     if (gameState.player) gameState.player.update(deltaTime, moveVec);
     updateCamera(deltaTime, moveVec);
@@ -7403,6 +7457,8 @@ function drawGame() {
     for (let i = 0; i < gameState.visualEffects.length; i++) {
         if (gameState.visualEffects[i].isAlive) gameState.visualEffects[i].draw(ctx);
     }
+    const drawCls = classDef();
+    if (drawCls.drawWorld && gameState.player && appScreen !== 'title') drawCls.drawWorld(ctx);
     const ps = gameState.particles;
     for (let i = 0; i < ps.length; i++) {
         const p = ps[i];
@@ -7425,6 +7481,7 @@ function drawGame() {
     setScreenTransform();
     drawEventOverlay();
     drawFrenzyOverlay();
+    if (drawCls.drawScreen && gameState.player && appScreen !== 'title') drawCls.drawScreen(ctx);
     drawBossBar();
     drawStreak();
     drawOffscreenPointers();

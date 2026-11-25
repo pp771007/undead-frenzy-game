@@ -631,6 +631,12 @@
             gap: 4px;
         }
 
+        /* 只有「修練」的卡（等級是主角自己的能力）：沒有召喚鈕、沒有數量 */
+        .unit-card.upgrade-only [data-act="summon"],
+        .unit-card.upgrade-only .unit-count {
+            display: none;
+        }
+
         .unit-btns .btn {
             flex: 1;
             min-width: 0;

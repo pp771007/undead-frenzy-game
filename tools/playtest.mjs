@@ -45,6 +45,8 @@ let r;
 for (;;) {
     r = await page.evaluate((steps) => {
         const B = window.__bot, DT = 1 / 30, REACT = 0.4, DECIDE = 0.15, STUCK_SECONDS = 240, MAX_SECONDS = 3600;
+        // 各職業三張卡的召喚比例
+        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3] };
         const noticed = (o) => { if (!B.seen.has(o)) B.seen.set(o, B.t); return B.t - B.seen.get(o) >= REACT; };
         for (let i = 0; i < steps; i++) {
             if (gameState.gameOver) return { over: true };
@@ -107,15 +109,15 @@ for (;;) {
                 B.spendTimer = 0.5;
                 for (let g = 0; g < 50; g++) {
                     let did = false;
-                    for (const u of UNIT_UI) { const unit = gameState.units[u.type], uc = getUpgradeCost(u.type); if (unit.count > 0 && gameState.souls >= uc && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(UNIT_TYPES[u.type].cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
-                    // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%；戰士：盾兵 40%、長槍 30%、弩手 30%）
-                    const MIX = { necro: [0.55, 0.15], warrior: [0.4, 0.3] }[runClass()] || [0.34, 0.33];
-                    // 有人數上限的職業：補最缺的那種（照比例），不然死得快的後排永遠補不回來、整隊漸漸變成同一兵種
-                    const share = [MIX[0], MIX[1], 1 - MIX[0] - MIX[1]];
-                    const pick = classDef().troopCap
-                        ? UNIT_UI.map((u, i) => ({ i, k: gameState.units[u.type].count / share[i] })).sort((a, b) => a.k - b.k)[0].i
-                        : (x => x < MIX[0] ? 0 : x < MIX[0] + MIX[1] ? 1 : 2)(Math.random());
-                    if (!did) did = trySummon(UNIT_UI[pick].type);
+                    for (const u of UNIT_UI) { const U = UNIT_TYPES[u.type], unit = gameState.units[u.type], uc = getUpgradeCost(u.type); if ((unit.count > 0 || U.upgradeOnly) && canAfford(uc) && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(U.cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
+                    // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%；戰士：盾兵 40%、長槍 30%、弩手 30%）。只能修練的卡比例是 0
+                    const share = BOT_MIX[runClass()] || [1, 1, 1];
+                    // 亡靈法師隨機抽；其他職業補最缺的那種（照比例），不然死得快的那種永遠補不回來、整隊漸漸變成同一種
+                    const open = UNIT_UI.map((u, i) => ({ i, type: u.type })).filter(o => share[o.i] > 0 && !UNIT_TYPES[o.type].upgradeOnly && !summonBlocked(o.type));
+                    let pick = null;
+                    if (open.length && runClass() === 'necro') { const x = Math.random(); pick = UNIT_UI[x < share[0] ? 0 : x < share[0] + share[1] ? 1 : 2].type; }
+                    else if (open.length) pick = open.map(o => ({ type: o.type, k: gameState.units[o.type].count / share[o.i] })).sort((a, b) => a.k - b.k)[0].type;
+                    if (!did && pick) did = trySummon(pick);
                     if (!did) break;
                 }
             }
