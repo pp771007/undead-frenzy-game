@@ -91,8 +91,9 @@ for (;;) {
                 B.spendTimer = 0.5;
                 for (let g = 0; g < 50; g++) {
                     let did = false;
-                    for (const u of UNIT_UI) { const uc = gameState.currentCosts[u.costKey]; if (gameState[u.countKey] > 0 && gameState.souls >= uc && isUpgradeGoodDeal(u, gameState[u.levelKey], getSummonCost(u.config()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
-                    if (!did) { const x = Math.random(); did = trySummon(x < 0.55 ? 'SkeletonWarrior' : x < 0.85 ? 'EyeMonster' : 'Wraith'); }
+                    for (const u of UNIT_UI) { const unit = gameState.units[u.type], uc = unit.upgradeCost; if (unit.count > 0 && gameState.souls >= uc && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(UNIT_TYPES[u.type].cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
+                    // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%）
+                    if (!did) { const x = Math.random(); did = trySummon(UNIT_UI[x < 0.55 ? 0 : x < 0.7 ? 1 : 2].type); }
                     if (!did) break;
                 }
             }

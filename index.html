@@ -1922,38 +1922,8 @@
                 <button id="skip-wave-btn" class="btn btn-blue"><span class="btn-icon" data-icon="fastForward"></span>開戰</button>
                 <button id="nova-btn"></button>
             </div>
-            <div id="unit-cards">
-                <div class="unit-card panel">
-                    <div class="unit-head">
-                        <div class="portrait"><img src="skeleton_warrior.png" alt=""><span class="unit-count" id="skel-count">0</span><span class="lv-badge" id="skel-level">0</span></div>
-                        <div class="unit-info"><span class="unit-name">骷髏</span><span class="unit-stars" id="skel-stars"></span></div>
-                    </div>
-                    <div class="unit-btns">
-                        <button id="summon-skeleton-btn" class="btn btn-green"></button>
-                        <button id="upgrade-skeleton-btn" class="btn btn-gold"></button>
-                    </div>
-                </div>
-                <div class="unit-card panel">
-                    <div class="unit-head">
-                        <div class="portrait"><img src="wraith.png" alt=""><span class="unit-count" id="wraith-count">0</span><span class="lv-badge" id="wraith-level">0</span></div>
-                        <div class="unit-info"><span class="unit-name">怨靈</span><span class="unit-stars" id="wraith-stars"></span></div>
-                    </div>
-                    <div class="unit-btns">
-                        <button id="summon-wraith-btn" class="btn btn-green"></button>
-                        <button id="upgrade-wraith-btn" class="btn btn-gold"></button>
-                    </div>
-                </div>
-                <div class="unit-card panel">
-                    <div class="unit-head">
-                        <div class="portrait"><img src="eye_monster.png" alt=""><span class="unit-count" id="eye-monster-count">0</span><span class="lv-badge" id="eye-monster-level">0</span></div>
-                        <div class="unit-info"><span class="unit-name">眼魔</span><span class="unit-stars" id="eye-monster-stars"></span></div>
-                    </div>
-                    <div class="unit-btns">
-                        <button id="summon-eye-monster-btn" class="btn btn-green"></button>
-                        <button id="upgrade-eye-monster-btn" class="btn btn-gold"></button>
-                    </div>
-                </div>
-            </div>
+            <!-- 兵種卡照這一局的職業產生（game.js 的 buildUnitCards） -->
+            <div id="unit-cards"></div>
         </div>
     </div>
 
@@ -2077,11 +2047,7 @@
             <div id="pause-resonance" class="bless-detail"></div>
             <div id="pause-blessings" class="bless-detail"></div>
             <div class="section-title">召喚</div>
-            <div class="stat-grid cols-3">
-                <div class="stat-cell"><img src="skeleton_warrior.png" alt=""><b id="stat-summon-skel">0</b></div>
-                <div class="stat-cell"><img src="wraith.png" alt=""><b id="stat-summon-wraith">0</b></div>
-                <div class="stat-cell"><img src="eye_monster.png" alt=""><b id="stat-summon-eye">0</b></div>
-            </div>
+            <div class="stat-grid cols-3" id="pause-summon-stats"></div>
             <div class="section-title">音量</div>
             <div class="setting-row"><span data-icon="music"></span><input type="range" id="pause-volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
             <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="pause-sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>

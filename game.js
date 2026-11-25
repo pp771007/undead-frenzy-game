@@ -77,12 +77,7 @@ const uiElements = {
     crystalsInfo: $id('crystals-info'),
     playerHealthInfo: $id('player-health-info'),
     hpFill: $id('hp-fill'),
-    skelLevel: $id('skel-level'), skelStars: $id('skel-stars'), skelCount: $id('skel-count'),
-    summonSkeletonBtn: $id('summon-skeleton-btn'), upgradeSkeletonBtn: $id('upgrade-skeleton-btn'),
-    eyeMonsterLevel: $id('eye-monster-level'), eyeMonsterStars: $id('eye-monster-stars'), eyeMonsterCount: $id('eye-monster-count'),
-    summonEyeMonsterBtn: $id('summon-eye-monster-btn'), upgradeEyeMonsterBtn: $id('upgrade-eye-monster-btn'),
-    wraithLevel: $id('wraith-level'), wraithStars: $id('wraith-stars'), wraithCount: $id('wraith-count'),
-    summonWraithBtn: $id('summon-wraith-btn'), upgradeWraithBtn: $id('upgrade-wraith-btn'),
+    unitCards: $id('unit-cards'),
     pauseResumeBtn: $id('pause-resume-btn'),
     skipWaveBtn: $id('skip-wave-btn'),
     holdCombo: $id('hold-combo'),
@@ -118,9 +113,7 @@ const uiElements = {
     resumeGameBtn: $id('resume-game-btn'),
     pauseTitleBtn: $id('pause-title-btn'),
     restartGameBtn: $id('restart-game-btn'),
-    statSummonSkel: $id('stat-summon-skel'),
-    statSummonEye: $id('stat-summon-eye'),
-    statSummonWraith: $id('stat-summon-wraith'),
+    pauseSummonStats: $id('pause-summon-stats'),
     gameOverScreen: $id('game-over-screen'),
     finalWaveText: $id('final-wave-text'),
     bestWaveText: $id('best-wave-text'),
@@ -786,7 +779,7 @@ const ACHV_BESTIARY = [
 ];
 // 召喚費用隨數量變貴（SUMMON_COST_STEP）之後，自動遊玩一局的大軍最多 150～480 隻
 const ACHV_ARMY = [[50, 'army50', '一支軍隊', 10], [150, 'army150', '亡者之海', 30], [300, 'army300', '千軍萬馬', 50], [450, 'army450', '萬骨大軍', 80], [600, 'army600', '死亡天災', 150]];
-const ACHV_UNITS = [['SkeletonWarrior', 'skeletonWarriorLevel'], ['EyeMonster', 'eyeMonsterLevel'], ['Wraith', 'wraithLevel']];
+const ACHV_UNITS = ['SkeletonWarrior', 'EyeMonster', 'Wraith'];
 const ACHV_STREAK = [[100, 'streak100', '開葷', 10], [250, 'streak250', '殺紅了眼', 20], [500, 'streak1', '殺戮狂潮', 30], [1000, 'streak1000', '千人斬', 45], [2000, 'streak2', '屠戮之王', 60], [5000, 'streak5000', '死神親臨', 120]];
 const ACHV_CAREER = [
     ['kills10k', '萬骨枯', '累計打倒 1 萬隻怪', 20, s => s.totalKills >= 1e4],
@@ -861,9 +854,9 @@ function buildAchievements() {
     for (const [type, cfgKey, n] of ACHV_BESTIARY) add('bestiary', `kill_${type}`, CONFIG[cfgKey].name, `累計打倒 ${n} 隻${CONFIG[cfgKey].name}`, 20, () => (S().kills[type] || 0) >= n, CONFIG[cfgKey]);
     for (const [n, id, name, r] of ACHV_ELITES) add('bestiary', id, name, `累計打倒 ${n} 隻精英怪`, r, () => S().elites >= n);
     for (const [n, id, name, r] of ACHV_ARMY) add('army', id, name, `同時有 ${n} 隻召喚物`, r, () => gameState.summons.length >= n);
-    for (const [type, levelKey] of ACHV_UNITS) CONFIG.evolution.levels.forEach((lv, t) => {
+    for (const type of ACHV_UNITS) CONFIG.evolution.levels.forEach((lv, t) => {
         const name = CONFIG.evolution.names[type][t];
-        add('army', `evo_${type}_${t + 1}`, name, `升到 Lv${lv}，進化成${name}`, 15 + t * 20, () => gameState[levelKey] >= lv);
+        add('army', `evo_${type}_${t + 1}`, name, `升到 Lv${lv}，進化成${name}`, 15 + t * 20, () => gameState.units[type].level >= lv);
     });
     for (const s of Object.keys(SCHOOLS)) SCHOOLS[s].res.forEach((r, t) => add('resonance', t === 1 ? `res_${s}` : `res1_${s}`, r.name, `${SCHOOLS[s].name}流派疊到 ${RESONANCE_STEPS[t]} 層`, t === 1 ? 40 : 15, () => res(s) >= t + 1));
     for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary)) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
@@ -960,9 +953,8 @@ function renderAchievements() {
 // 費用固定的話一局 5～10 萬靈魂能堆出兩三千隻兵，怪物再強也碰不到法師；變貴之後大軍停在幾百隻，
 // 「多召喚」與「升級」要取捨，壓力也才漏得到法師身上
 const SUMMON_COST_STEP = 25;
-const UNIT_COUNT_KEY = { SkeletonWarrior: 'skeletonWarriorCount', EyeMonster: 'eyeMonsterCount', Wraith: 'wraithCount' };
 function getSummonCost(config) {
-    const n = gameState[UNIT_COUNT_KEY[config.type]] || 0;
+    const n = gameState.units[config.type].count;
     return Math.max(1, Math.round(config.summonCost * (1 + n / SUMMON_COST_STEP) * (1 - blessVal('pact')) * runMods().costMult));
 }
 function getMagnetRadius() {
@@ -975,17 +967,27 @@ function getNovaDamage() {
     return Math.round(CONFIG.nova.baseDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('novaPower')));
 }
 
-CONFIG.upgradeCosts = {
-    skeletonWarrior: CONFIG.skeletonWarrior.upgradeCostBase,
-    eyeMonster: CONFIG.eyeMonster.upgradeCostBase,
-    wraith: CONFIG.wraith.upgradeCostBase,
+// ---------- 兵種與職業 ----------
+// 兵種：底部卡片召喚／升級的單位。Cls 用函式包起來：類別宣告在後面
+const UNIT_TYPES = {
+    SkeletonWarrior: { cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
+    Wraith: { cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
+    EyeMonster: { cfg: () => CONFIG.eyeMonster, Cls: () => EyeMonster, name: '眼魔', img: 'eye_monster.png' },
 };
-
-CONFIG.upgradeCostIncrements = {
-    skeletonWarrior: CONFIG.skeletonWarrior.upgradeCostInc,
-    eyeMonster: CONFIG.eyeMonster.upgradeCostInc,
-    wraith: CONFIG.wraith.upgradeCostInc,
+// 職業：這一局的底部三張卡是哪三種兵、有哪幾個流派（祝福池跟著流派走）。
+// 規劃見 docs/characters.md；目前只有亡靈法師，普攻與大招還寫死在 Player.shootBolt 與 useNova
+const CLASSES = {
+    necro: { name: '亡靈法師', cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'soul'] },
 };
+const DEFAULT_CLASS = 'necro';
+function runClass() { return gameState.classId || DEFAULT_CLASS; }
+function classDef() { return CLASSES[runClass()]; }
+// 每種兵在場上幾隻、幾級、下一級升級多少錢。所有兵種都有一格（祝福可能叫出不在卡片上的兵），新局歸零
+function emptyUnits() {
+    const u = {};
+    for (const type in UNIT_TYPES) u[type] = { count: 0, level: 0, upgradeCost: UNIT_TYPES[type].cfg().upgradeCostBase };
+    return u;
+}
 
 const projectilePool = [];
 const visualEffectPool = [];
@@ -1037,9 +1039,7 @@ let gameState = {
     timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
     gameOver: false, lastTime: 0, messageTimeout: null,
     isPaused: false,
-    skeletonWarriorLevel: 0, eyeMonsterLevel: 0, wraithLevel: 0,
-    skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
-    currentCosts: { ...CONFIG.upgradeCosts },
+    units: emptyUnits(), classId: DEFAULT_CLASS,
     imagesLoaded: false,
     bgmVolume: meta.bgmVolume,
     musicStarted: false,
@@ -1054,7 +1054,7 @@ let gameState = {
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
 };
 
-function emptySummonStats() { return { SkeletonWarrior: 0, EyeMonster: 0, Wraith: 0 }; }
+function emptySummonStats() { return Object.fromEntries(Object.keys(UNIT_TYPES).map(t => [t, 0])); }
 function emptyKillStats() { return { BasicMelee: 0, FastMelee: 0, Bloater: 0, ArmoredMelee: 0, Boss: 0 }; }
 
 let holdActionState = {
@@ -1077,7 +1077,8 @@ const MOVE_KEYS = {
     KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1],
     KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0],
 };
-const UNIT_HOTKEYS = { Digit1: 'SkeletonWarrior', Digit2: 'Wraith', Digit3: 'EyeMonster' };
+// 數字鍵 1／2／3 對應底部第幾張卡（哪一種兵看職業）
+const UNIT_HOTKEYS = { Digit1: 0, Digit2: 1, Digit3: 2 };
 
 function getMoveVector() {
     let x = 0, y = 0;
@@ -2426,8 +2427,8 @@ class SummonUnit extends GameObject {
         if (this.config.type === 'SkeletonWarrior' && bl('boneBurst')) boneBurst(this);
         if (bl('deathPact') && Math.random() < BLESSINGS.deathPact.per) dropSouls(this.pos.x, this.pos.y, 1);
         switch (this.config.type) {
-            case 'SkeletonWarrior': gameState.skeletonWarriorCount--; break;
-            case 'EyeMonster': gameState.eyeMonsterCount--; break;
+            case 'SkeletonWarrior': gameState.units.SkeletonWarrior.count--; break;
+            case 'EyeMonster': gameState.units.EyeMonster.count--; break;
             case 'Wraith': break;
         }
         if (this.config.type !== 'Wraith') {
@@ -2528,12 +2529,12 @@ class Wraith extends SummonUnit {
         Sfx.play('explode');
 
         this.isAlive = false;
-        gameState.wraithCount--;
+        gameState.units.Wraith.count--;
         onSummonDeath(this);
         if (Math.random() < blessVal('rebirth') && gameState.player && gameState.player.isAlive) {
             const pos = gameState.player.getSummonPosition();
-            gameState.summons.push(new Wraith(pos.x, pos.y, gameState.wraithLevel, gameState.player));
-            gameState.wraithCount++;
+            gameState.summons.push(new Wraith(pos.x, pos.y, gameState.units.Wraith.level, gameState.player));
+            gameState.units.Wraith.count++;
             spawnParticles(pos.x, pos.y, '#4DB6AC', 14, 80, 0.6);
             spawnFloatText(pos.x, pos.y - 16, '輪迴', '#80CBC4', 13);
             Sfx.play('raise');
@@ -3389,8 +3390,8 @@ class Monster extends GameObject {
             spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 14, 110, 0.6, 3);
         }
         if (!(this instanceof BossMonster) && Math.random() < blessVal('raiseDead') && gameState.player) {
-            gameState.summons.push(new SkeletonWarrior(this.pos.x, this.pos.y, gameState.skeletonWarriorLevel, gameState.player));
-            gameState.skeletonWarriorCount++;
+            gameState.summons.push(new SkeletonWarrior(this.pos.x, this.pos.y, gameState.units.SkeletonWarrior.level, gameState.player));
+            gameState.units.SkeletonWarrior.count++;
             gameState.totalSummons.SkeletonWarrior++;
             spawnParticles(this.pos.x, this.pos.y, '#B39DDB', 14, 90, 0.6);
             spawnFloatText(this.pos.x, this.pos.y - 16, '復甦', '#B39DDB', 13);
@@ -5269,8 +5270,6 @@ function checkWaveEndCondition() {
 // ---------- 通關 ----------
 // ---------- 通關時間：每個職業各自的最快紀錄（同 PokeBonk 的計時獎牌）：有紀錄可破，打贏的局才有再打一次的理由 ----------
 // 計的是遊戲裡實際經過的時間（暫停、選祝福時不算），開戰前的倒數也算：提早開戰就是在搶時間
-const DEFAULT_CLASS = 'necro';
-function runClass() { return gameState.classId || DEFAULT_CLASS; }
 function formatClock(sec) {
     const s = Math.floor(sec);
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -5417,9 +5416,14 @@ function draftOptionCount() {
     return CONFIG.draft.optionCount + metaVal('extraChoice');
 }
 // exclude：這次不能出的（放逐換卡時，畫面上已有的那幾張）
+// 這個職業抽得到的祝福：自己的流派，加上全軍通用的（契約另外由 pactPool 抽，各職業共用）
+function blessingInClass(id) {
+    const s = BLESSINGS[id].school;
+    return s === ARMY_SCHOOL || classDef().schools.includes(s);
+}
 function draftPool(legendary, exclude = []) {
     return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && !BLESSINGS[id].legendary === !legendary
-        && !BLESSINGS[id].pact && !gameState.banished.includes(id) && !exclude.includes(id));
+        && !BLESSINGS[id].pact && blessingInClass(id) && !gameState.banished.includes(id) && !exclude.includes(id));
 }
 function pactPool(exclude = []) {
     return Object.keys(BLESSINGS).filter(id => BLESSINGS[id].pact && bl(id) < BLESSINGS[id].max && !gameState.banished.includes(id) && !exclude.includes(id));
@@ -5855,15 +5859,15 @@ function updateTutorial() {
     if (!tutorial || !gameState.player) return;
     if (tutorial.step === 'move' && distanceSq(gameState.player.pos, tutorial.start) > TUTORIAL_MOVE_DIST * TUTORIAL_MOVE_DIST) {
         tutorial.step = 'summon';
-        uiElements.summonSkeletonBtn.classList.add('hint-pulse');
-    } else if (tutorial.step === 'summon' && gameState.totalSummons.SkeletonWarrior > 0) {
+        UNIT_UI[0].el.summon.classList.add('hint-pulse');
+    } else if (tutorial.step === 'summon' && gameState.totalSummons[UNIT_UI[0].type] > 0) {
         tutorial.step = 'hold';
     } else if (tutorial.step === 'hold') {
         // 按住連續成功到按鈕上方浮出「×N」就算學會。第一波開打前倒數是停住的：靈魂不夠按住連發的話不能卡在這一步
         const learned = holdCombo >= HOLD_COMBO_SHOW_FROM && holdActionState.actionType === 'summon';
-        const broke = gameState.souls < getSummonCost(CONFIG.skeletonWarrior) * HOLD_COMBO_SHOW_FROM;
+        const broke = gameState.souls < getSummonCost(UNIT_TYPES[UNIT_UI[0].type].cfg()) * HOLD_COMBO_SHOW_FROM;
         if (learned || broke) {
-            uiElements.summonSkeletonBtn.classList.remove('hint-pulse');
+            UNIT_UI[0].el.summon.classList.remove('hint-pulse');
             tutorial = null;
             meta.tutorialDone = true;
             saveMeta();
@@ -5930,8 +5934,8 @@ function drawTutorial() {
         drawOutlinedText('按住畫面拖曳移動', cx, cy - JOYSTICK_RADIUS - 18, 20, '#f4ecd8');
     } else {
         // 卡片是蓋在畫布上的 HTML，提示要畫在卡片上緣之上才看得到
-        const r = uiElements.summonSkeletonBtn.getBoundingClientRect();
-        const card = uiElements.summonSkeletonBtn.closest('.unit-card').getBoundingClientRect();
+        const r = UNIT_UI[0].el.summon.getBoundingClientRect();
+        const card = UNIT_UI[0].el.summon.closest('.unit-card').getBoundingClientRect();
         const x = r.left + r.width / 2, y = card.top - 6 + Math.sin(t * 5) * 4;
         ctx.fillStyle = '#e9c46a';
         ctx.strokeStyle = '#0e0a14';
@@ -5939,14 +5943,15 @@ function drawTutorial() {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y - 16); ctx.lineTo(x + 12, y - 16); ctx.closePath();
         ctx.fill(); ctx.stroke();
         ctx.textAlign = 'left';
-        drawOutlinedText(tutorial.step === 'hold' ? '按住不放：連續召喚、升級' : '召喚第一隻骷髏', Math.max(8, x - 30), y - 30, 18, '#f4ecd8');
+        drawOutlinedText(tutorial.step === 'hold' ? '按住不放：連續召喚、升級' : `召喚第一隻${UNIT_TYPES[UNIT_UI[0].type].name}`, Math.max(8, x - 30), y - 30, 18, '#f4ecd8');
     }
     ctx.restore();
 }
 
 function popLevelBadge(type) {
-    const el = { SkeletonWarrior: uiElements.skelLevel, EyeMonster: uiElements.eyeMonsterLevel, Wraith: uiElements.wraithLevel }[type];
-    if (!el) return;
+    const card = UNIT_UI.find(u => u.type === type);
+    if (!card) return;
+    const el = card.el.level;
     el.classList.remove('pop');
     void el.offsetWidth;
     el.classList.add('pop');
@@ -5994,29 +5999,10 @@ function showMessage(msg, duration = 2000) {
 
 // combo：長按連段的第幾下（0 = 單點），連段時換成會往上爬的音效
 function trySummon(type, combo = 0) {
-    if (!unitAllowed(type)) return false;
-    let config, cost, currentCount, level, SummonClass, unitName;
-
-    switch (type) {
-        case 'SkeletonWarrior':
-            config = CONFIG.skeletonWarrior; cost = config.summonCost; unitName = "骷髏戰士";
-            currentCount = gameState.skeletonWarriorCount; level = gameState.skeletonWarriorLevel;
-            SummonClass = SkeletonWarrior;
-            break;
-        case 'EyeMonster':
-            config = CONFIG.eyeMonster; cost = config.summonCost; unitName = "眼魔";
-            currentCount = gameState.eyeMonsterCount; level = gameState.eyeMonsterLevel;
-            SummonClass = EyeMonster;
-            break;
-        case 'Wraith':
-            config = CONFIG.wraith; cost = config.summonCost; unitName = "怨靈";
-            currentCount = gameState.wraithCount; level = gameState.wraithLevel;
-            SummonClass = Wraith;
-            break;
-        default: return false;
-    }
-
-    cost = getSummonCost(config);
+    if (!UNIT_TYPES[type] || !unitAllowed(type)) return false;
+    const config = UNIT_TYPES[type].cfg(), SummonClass = UNIT_TYPES[type].Cls(), unit = gameState.units[type];
+    const level = unit.level;
+    const cost = getSummonCost(config);
     if (gameState.draftOpen) return false;
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
@@ -6033,14 +6019,8 @@ function trySummon(type, combo = 0) {
             gameState.summons.push(summon);
             stats().summons++;
             spawnParticles(spawnPos.x, spawnPos.y, n ? '#FFD54F' : '#7E57C2', 12, 70, 0.5);
-            if (gameState.totalSummons.hasOwnProperty(type)) {
-                gameState.totalSummons[type]++;
-            }
-            switch (type) {
-                case 'SkeletonWarrior': gameState.skeletonWarriorCount++; break;
-                case 'EyeMonster': gameState.eyeMonsterCount++; break;
-                case 'Wraith': gameState.wraithCount++; break;
-            }
+            gameState.totalSummons[type]++;
+            unit.count++;
         }
         Sfx.play(combo ? 'summonCombo' : 'summon', combo);
         updateUI();
@@ -6069,31 +6049,17 @@ function announceEvolution(type, tier) {
 }
 
 function tryUpgrade(type, combo = 0) {
-    if (!unitAllowed(type)) return false;
-    let cost, costIncrement, costKey, levelKey, unitName;
-    switch (type) {
-        case 'SkeletonWarrior':
-            costKey = 'skeletonWarrior'; levelKey = 'skeletonWarriorLevel'; unitName = "骷髏戰士";
-            break;
-        case 'EyeMonster':
-            costKey = 'eyeMonster'; levelKey = 'eyeMonsterLevel'; unitName = "眼魔";
-            break;
-        case 'Wraith':
-            costKey = 'wraith'; levelKey = 'wraithLevel'; unitName = "怨靈";
-            break;
-        default: return false;
-    }
-
+    if (!UNIT_TYPES[type] || !unitAllowed(type)) return false;
     if (gameState.draftOpen) return false;
-    cost = gameState.currentCosts[costKey];
-    costIncrement = CONFIG.upgradeCostIncrements[costKey];
+    const unit = gameState.units[type];
+    const cost = unit.upgradeCost;
 
     if (gameState.souls >= cost) {
         gameState.souls -= cost;
-        const oldTier = getTier(gameState[levelKey]);
-        gameState[levelKey]++;
-        const newTier = getTier(gameState[levelKey]);
-        gameState.currentCosts[costKey] += costIncrement;
+        const oldTier = getTier(unit.level);
+        unit.level++;
+        const newTier = getTier(unit.level);
+        unit.upgradeCost += UNIT_TYPES[type].cfg().upgradeCostInc;
         gameState.run.upgrades++;
         gameState.summons.forEach(s => {
             if (s.isAlive && s.config.type === type) {
@@ -6246,7 +6212,7 @@ function bumpHoldCombo(actionType, unitType) {
     const n = el.querySelector('.hc-n');
     n.textContent = holdCombo;
     if (holdCombo === HOLD_COMBO_SHOW_FROM) {
-        const btn = UNIT_UI.find(u => u.type === unitType).el()[actionType];
+        const btn = UNIT_UI.find(u => u.type === unitType).el[actionType];
         // 召喚畫那個單位、升級畫向上箭頭：跟按鈕上的意思一樣，不用另外寫字
         el.querySelector('.hc-art').innerHTML = actionType === 'summon'
             ? `<img src="${btn.closest('.unit-card').querySelector('.portrait img').src}" alt="">`
@@ -6311,18 +6277,69 @@ function stopHoldAction(actionType, unitType) {
 
 let lastShownSouls = 0;
 let lastShownCrystals = 0;
-const UNIT_UI = [
-    { type: 'SkeletonWarrior', config: () => CONFIG.skeletonWarrior, countKey: 'skeletonWarriorCount', levelKey: 'skeletonWarriorLevel', costKey: 'skeletonWarrior', el: () => ({ level: uiElements.skelLevel, stars: uiElements.skelStars, count: uiElements.skelCount, summon: uiElements.summonSkeletonBtn, upgrade: uiElements.upgradeSkeletonBtn }) },
-    { type: 'EyeMonster', config: () => CONFIG.eyeMonster, countKey: 'eyeMonsterCount', levelKey: 'eyeMonsterLevel', costKey: 'eyeMonster', el: () => ({ level: uiElements.eyeMonsterLevel, stars: uiElements.eyeMonsterStars, count: uiElements.eyeMonsterCount, summon: uiElements.summonEyeMonsterBtn, upgrade: uiElements.upgradeEyeMonsterBtn }) },
-    { type: 'Wraith', config: () => CONFIG.wraith, countKey: 'wraithCount', levelKey: 'wraithLevel', costKey: 'wraith', el: () => ({ level: uiElements.wraithLevel, stars: uiElements.wraithStars, count: uiElements.wraithCount, summon: uiElements.summonWraithBtn, upgrade: uiElements.upgradeWraithBtn }) },
-];
+// 底部的兵種卡：照這一局職業的 cards 產生（buildUnitCards），每張記著是哪種兵與自己的元素
+let UNIT_UI = [];
+let builtCardsFor = null;
+function buildUnitCards() {
+    const cards = classDef().cards;
+    const key = cards.join(',');
+    if (builtCardsFor === key) return;
+    builtCardsFor = key;
+    uiElements.unitCards.innerHTML = cards.map(type => {
+        const U = UNIT_TYPES[type];
+        return `<div class="unit-card panel" data-unit="${type}">
+            <div class="unit-head">
+                <div class="portrait"><img src="${U.img}" alt=""><span class="unit-count">0</span><span class="lv-badge">0</span></div>
+                <div class="unit-info"><span class="unit-name">${U.name}</span><span class="unit-stars"></span></div>
+            </div>
+            <div class="unit-btns">
+                <button class="btn btn-green" data-act="summon"></button>
+                <button class="btn btn-gold" data-act="upgrade"></button>
+            </div>
+        </div>`;
+    }).join('');
+    UNIT_UI = cards.map((type, i) => {
+        const card = uiElements.unitCards.children[i];
+        const el = {
+            level: card.querySelector('.lv-badge'), stars: card.querySelector('.unit-stars'), count: card.querySelector('.unit-count'),
+            summon: card.querySelector('[data-act="summon"]'), upgrade: card.querySelector('[data-act="upgrade"]'),
+        };
+        setupHoldableButton(el.summon, 'summon', type);
+        setupHoldableButton(el.upgrade, 'upgrade', type);
+        return { type, el };
+    });
+}
+// 長按連發：按下開始、放開／滑出／被打斷就停
+function setupHoldableButton(button, actionType, unitType) {
+    button.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        button.setPointerCapture(e.pointerId);
+        // 一樣開始長按：按著等靈魂進帳，夠了就會自動買下去
+        if (button.classList.contains('cant-afford')) denyFeedback(button);
+        startHoldAction(actionType, unitType);
+        ensureMusicPlaying();
+    });
+    const stop = (e) => {
+        stopHoldAction(actionType, unitType);
+        if (button.hasPointerCapture(e.pointerId)) {
+            try { button.releasePointerCapture(e.pointerId); } catch (err) { }
+        }
+    };
+    button.addEventListener('pointerup', stop);
+    button.addEventListener('pointerleave', (e) => {
+        if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
+    });
+    button.addEventListener('pointercancel', (e) => {
+        if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
+    });
+}
 
 // 升級什麼時候划算，玩家用看的就知道（升級鈕發光），不用自己算：
 // 升一級 = 場上每隻同種兵都 +upgradeBonus，等於多出 upgradeBonus × 隻數 隻兵；
 // 拿同樣的錢去召喚只買得到 升級價 ÷ 召喚價 隻。前者比較多就是划算。下一級剛好進化（解鎖新能力）也算
-function isUpgradeGoodDeal(u, level, summonCost, upgradeCost) {
+function isUpgradeGoodDeal(type, level, summonCost, upgradeCost) {
     if (CONFIG.evolution.levels.includes(level + 1)) return true;
-    return u.config().upgradeBonus * gameState[u.countKey] * summonCost >= upgradeCost;
+    return UNIT_TYPES[type].cfg().upgradeBonus * gameState.units[type].count * summonCost >= upgradeCost;
 }
 
 function starsHtml(tier) {
@@ -6371,13 +6388,13 @@ function updateUI() {
 
     const canAct = !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen;
     for (const u of UNIT_UI) {
-        const el = u.el();
-        const level = gameState[u.levelKey];
-        const summonCost = getSummonCost(u.config());
-        const upgradeCost = gameState.currentCosts[u.costKey];
+        const el = u.el, unit = gameState.units[u.type];
+        const level = unit.level;
+        const summonCost = getSummonCost(UNIT_TYPES[u.type].cfg());
+        const upgradeCost = unit.upgradeCost;
         setTextIfChanged(el.level, String(level));
         setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
-        setTextIfChanged(el.count, formatNumberK(gameState[u.countKey]));
+        setTextIfChanged(el.count, formatNumberK(unit.count));
         setHtmlIfChanged(el.summon, priceButtonHtml('召喚', summonCost));
         setHtmlIfChanged(el.upgrade, priceButtonHtml('升級', upgradeCost));
         const allowed = unitAllowed(u.type);
@@ -6386,7 +6403,7 @@ function updateUI() {
         el.summon.closest('.unit-card').classList.toggle('daily-locked', !allowed);
         el.summon.classList.toggle('cant-afford', souls < summonCost);
         el.upgrade.classList.toggle('cant-afford', souls < upgradeCost);
-        el.upgrade.classList.toggle('good-deal', souls >= upgradeCost && isUpgradeGoodDeal(u, level, summonCost, upgradeCost));
+        el.upgrade.classList.toggle('good-deal', souls >= upgradeCost && isUpgradeGoodDeal(u.type, level, summonCost, upgradeCost));
     }
 
     setStyleIfChanged(uiElements.skipWaveBtn, 'display', gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none');
@@ -6516,9 +6533,9 @@ function showGameOver(reason = 'died') {
 const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
 // 跟存檔分開放：遊戲結束會刪存檔，紀錄要留著
 const BEST_WAVE_KEY = 'undeadFrenzy_bestWave';
-const SAVE_VERSION = 17;
-// v16 是祝福系統之前的存檔，缺的欄位讀取時補預設值即可
-const COMPATIBLE_SAVE_VERSIONS = [16, 17];
+const SAVE_VERSION = 18;
+// v16 是祝福系統之前的存檔，缺的欄位讀取時補預設值即可；v18 起兵種狀態收進 units、多了 classId
+const COMPATIBLE_SAVE_VERSIONS = [16, 17, 18];
 
 
 function saveGameState() {
@@ -6532,13 +6549,8 @@ function saveGameState() {
         betweenWaves: gameState.betweenWaves,
         playerCurrentHealth: gameState.player.currentHealth,
         playerMaxHealth: gameState.player.maxHealth,
-        skeletonWarriorLevel: gameState.skeletonWarriorLevel,
-        eyeMonsterLevel: gameState.eyeMonsterLevel,
-        wraithLevel: gameState.wraithLevel,
-        skeletonWarriorCount: gameState.skeletonWarriorCount,
-        eyeMonsterCount: gameState.eyeMonsterCount,
-        wraithCount: gameState.wraithCount,
-        currentCosts: gameState.currentCosts,
+        classId: gameState.classId,
+        units: gameState.units,
         totalSummons: gameState.totalSummons,
         totalKills: gameState.totalKills,
         blessings: gameState.blessings,
@@ -6586,14 +6598,20 @@ function loadGameState() {
         gameState.currentWave = loadedState.currentWave ?? 0;
         gameState.timeToNextWave = loadedState.timeToNextWave ?? CONFIG.wave.betweenTime;
         gameState.betweenWaves = loadedState.betweenWaves ?? true;
-        gameState.currentCosts = loadedState.currentCosts ?? { ...CONFIG.upgradeCosts };
-
-        gameState.skeletonWarriorLevel = loadedState.skeletonWarriorLevel ?? 0;
-        gameState.eyeMonsterLevel = loadedState.eyeMonsterLevel ?? 0;
-        gameState.wraithLevel = loadedState.wraithLevel ?? 0;
-        gameState.skeletonWarriorCount = loadedState.skeletonWarriorCount ?? 0;
-        gameState.eyeMonsterCount = loadedState.eyeMonsterCount ?? 0;
-        gameState.wraithCount = loadedState.wraithCount ?? 0;
+        gameState.classId = CLASSES[loadedState.classId] ? loadedState.classId : DEFAULT_CLASS;
+        gameState.units = emptyUnits();
+        if (loadedState.units) {
+            for (const type in loadedState.units) if (gameState.units[type]) Object.assign(gameState.units[type], loadedState.units[type]);
+        } else {
+            // v17 之前的存檔：三種兵各有自己的欄位
+            const legacy = { SkeletonWarrior: ['skeletonWarrior', 'skeletonWarriorLevel', 'skeletonWarriorCount'], EyeMonster: ['eyeMonster', 'eyeMonsterLevel', 'eyeMonsterCount'], Wraith: ['wraith', 'wraithLevel', 'wraithCount'] };
+            for (const type in legacy) {
+                const [costKey, levelKey, countKey] = legacy[type], u = gameState.units[type];
+                u.level = loadedState[levelKey] ?? 0;
+                u.count = loadedState[countKey] ?? 0;
+                if (loadedState.currentCosts && loadedState.currentCosts[costKey] != null) u.upgradeCost = loadedState.currentCosts[costKey];
+            }
+        }
 
         gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
@@ -6639,20 +6657,12 @@ function restoreSummonsFromLoad() {
     if (!gameState.player) return;
     gameState.summons = [];
 
-    for (let i = 0; i < gameState.skeletonWarriorCount; i++) {
-        const spawnPos = getRandomSpawnPosNearPlayer(40);
-        const summon = new SkeletonWarrior(spawnPos.x, spawnPos.y, gameState.skeletonWarriorLevel, gameState.player);
-        gameState.summons.push(summon);
-    }
-    for (let i = 0; i < gameState.eyeMonsterCount; i++) {
-        const spawnPos = getRandomSpawnPosNearPlayer(40);
-        const summon = new EyeMonster(spawnPos.x, spawnPos.y, gameState.eyeMonsterLevel, gameState.player);
-        gameState.summons.push(summon);
-    }
-    for (let i = 0; i < gameState.wraithCount; i++) {
-        const spawnPos = getRandomSpawnPosNearPlayer(40);
-        const summon = new Wraith(spawnPos.x, spawnPos.y, gameState.wraithLevel, gameState.player);
-        gameState.summons.push(summon);
+    for (const type in gameState.units) {
+        const unit = gameState.units[type], Cls = UNIT_TYPES[type].Cls();
+        for (let i = 0; i < unit.count; i++) {
+            const spawnPos = getRandomSpawnPosNearPlayer(40);
+            gameState.summons.push(new Cls(spawnPos.x, spawnPos.y, unit.level, gameState.player));
+        }
     }
 }
 
@@ -6664,7 +6674,7 @@ function resetGameInternalState() {
     projectilePool.length = 0;
     visualEffectPool.length = 0;
     tutorial = null;
-    uiElements.summonSkeletonBtn.classList.remove('hint-pulse');
+    for (const u of UNIT_UI) u.el.summon.classList.remove('hint-pulse');
 
     const musicWasStarted = gameState.musicStarted;
 
@@ -6679,13 +6689,7 @@ function resetGameInternalState() {
         timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
         gameOver: false, isPaused: false,
         messageTimeout: null,
-        skeletonWarriorLevel: 0, eyeMonsterLevel: 0, wraithLevel: 0,
-        skeletonWarriorCount: 0, eyeMonsterCount: 0, wraithCount: 0,
-        currentCosts: {
-            skeletonWarrior: CONFIG.skeletonWarrior.upgradeCostBase,
-            eyeMonster: CONFIG.eyeMonster.upgradeCostBase,
-            wraith: CONFIG.wraith.upgradeCostBase,
-        },
+        units: emptyUnits(), classId: DEFAULT_CLASS,
         imagesLoaded: gameState.imagesLoaded,
         bgmVolume: meta.bgmVolume,
         musicStarted: musicWasStarted,
@@ -6730,9 +6734,8 @@ function resetGame(daily = null) {
 }
 
 function updatePauseMenuStats() {
-    uiElements.statSummonSkel.textContent = formatNumberK(gameState.totalSummons.SkeletonWarrior);
-    uiElements.statSummonEye.textContent = formatNumberK(gameState.totalSummons.EyeMonster);
-    uiElements.statSummonWraith.textContent = formatNumberK(gameState.totalSummons.Wraith);
+    uiElements.pauseSummonStats.innerHTML = classDef().cards.map(type =>
+        `<div class="stat-cell"><img src="${UNIT_TYPES[type].img}" alt=""><b>${formatNumberK(gameState.totalSummons[type])}</b></div>`).join('');
     renderResonance(uiElements.pauseResonance);
     renderBlessingDetail(uiElements.pauseBlessings);
     uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('crystal')}+${getRunReward()}`;
@@ -7630,35 +7633,7 @@ function init() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('popstate', handleBackButton);
 
-    const setupHoldableButton = (button, actionType, unitType) => {
-        button.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            button.setPointerCapture(e.pointerId);
-            // 一樣開始長按：按著等靈魂進帳，夠了就會自動買下去
-            if (button.classList.contains('cant-afford')) denyFeedback(button);
-            startHoldAction(actionType, unitType);
-            ensureMusicPlaying();
-        });
-        const stop = (e) => {
-            stopHoldAction(actionType, unitType);
-            if (button.hasPointerCapture(e.pointerId)) {
-                try { button.releasePointerCapture(e.pointerId); } catch (err) { }
-            }
-        };
-        button.addEventListener('pointerup', stop);
-        button.addEventListener('pointerleave', (e) => {
-            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
-        });
-        button.addEventListener('pointercancel', (e) => {
-            if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
-        });
-    };
-    setupHoldableButton(uiElements.summonSkeletonBtn, 'summon', 'SkeletonWarrior');
-    setupHoldableButton(uiElements.summonEyeMonsterBtn, 'summon', 'EyeMonster');
-    setupHoldableButton(uiElements.summonWraithBtn, 'summon', 'Wraith');
-    setupHoldableButton(uiElements.upgradeSkeletonBtn, 'upgrade', 'SkeletonWarrior');
-    setupHoldableButton(uiElements.upgradeEyeMonsterBtn, 'upgrade', 'EyeMonster');
-    setupHoldableButton(uiElements.upgradeWraithBtn, 'upgrade', 'Wraith');
+    buildUnitCards();
 
     // 按鍵音統一在這裡：任何按鈕一按下就響（按下不是放開，手感才即時；召喚、新星這些也有）。
     // 按不了的鈕：停用的放「不行」；買不起的召喚鈕由 denyFeedback 放，這裡不再疊一聲
@@ -7731,8 +7706,8 @@ function init() {
         if (gameState.isPaused || gameState.gameOver) return;
         if (e.code === 'Space') { e.preventDefault(); useNova(); return; }
         if (MOVE_KEYS[e.code]) { keysDown.add(e.code); e.preventDefault(); ensureMusicPlaying(); return; }
-        const unit = UNIT_HOTKEYS[e.code];
-        if (unit) { e.shiftKey ? tryUpgrade(unit) : trySummon(unit); }
+        const card = UNIT_UI[UNIT_HOTKEYS[e.code]];
+        if (card) { e.shiftKey ? tryUpgrade(card.type) : trySummon(card.type); }
     });
     window.addEventListener('keyup', (e) => keysDown.delete(e.code));
     window.addEventListener('blur', () => keysDown.clear());
