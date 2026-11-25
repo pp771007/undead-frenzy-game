@@ -69,7 +69,7 @@ const uiElements = {
     titleCurseBtn: $id('title-curse-btn'), curseScreen: $id('curse-screen'), curseList: $id('curse-list'),
     curseLevel: $id('curse-level'), curseMult: $id('curse-mult'), curseMinus: $id('curse-minus'), cursePlus: $id('curse-plus'),
     curseCloseBtn: $id('curse-close-btn'),
-    titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'), achvTabs: $id('achv-tabs'),
+    titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'), achvTabs: $id('achv-tabs'), achvSubtabs: $id('achv-subtabs'),
     achvCloseBtn: $id('achv-close-btn'), achvToast: $id('achv-toast'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
@@ -959,6 +959,7 @@ function showNextAchvToast() {
     setTimeout(showNextAchvToast, ACHV_TOAST_MS);
 }
 let achvTab = ACHV_CATEGORIES[0].id;
+let achvClassTab = null;
 function renderAchievements() {
     const all = achievements();
     const done = all.filter(a => achvDone(a.id)).length;
@@ -967,12 +968,18 @@ function renderAchievements() {
         const list = all.filter(a => a.cat === c.id), n = list.filter(a => achvDone(a.id)).length;
         return `<button class="achv-tab${c.id === achvTab ? ' on' : ''}${n === list.length ? ' full' : ''}" data-tab="${c.id}">${c.name}<span>${n}/${list.length}</span></button>`;
     }).join('');
-    let group = null;
-    uiElements.achvList.innerHTML = all.filter(a => a.cat === achvTab).map(a => {
+    // 職業分頁底下再分一排職業；第一次打開停在標題畫面選的那個職業
+    const byClass = achvTab === 'class';
+    const classIds = Object.keys(CLASSES).filter(id => all.some(a => a.cls === id));
+    if (!classIds.includes(achvClassTab)) achvClassTab = classIds.includes(selectedClass()) ? selectedClass() : classIds[0];
+    uiElements.achvSubtabs.classList.toggle('hidden', !byClass);
+    if (byClass) uiElements.achvSubtabs.innerHTML = classIds.map(id => {
+        const list = all.filter(a => a.cls === id), n = list.filter(a => achvDone(a.id)).length;
+        return `<button class="achv-tab achv-subtab${id === achvClassTab ? ' on' : ''}${n === list.length ? ' full' : ''}" data-cls="${id}"><img src="${CLASSES[id].portrait}" alt=""><div>${CLASSES[id].name}<span>${n}/${list.length}</span></div></button>`;
+    }).join('');
+    uiElements.achvList.innerHTML = all.filter(a => a.cat === achvTab && (!byClass || a.cls === achvClassTab)).map(a => {
         const ok = achvDone(a.id);
-        // 職業分頁：每個職業前面一條標題
-        const head = a.cls && a.cls !== group ? `<div class="achv-group">${CLASSES[(group = a.cls)].name} · ${CLASSES[a.cls].title}</div>` : '';
-        return `${head}<div class="meta-row achv-row ${ok ? 'done' : ''}">${achvIconHtml(a)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
+        return `<div class="meta-row achv-row ${ok ? 'done' : ''}">${achvIconHtml(a)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
     }).join('');
 }
 
@@ -8108,6 +8115,7 @@ function init() {
     onTap(uiElements.titleAchvBtn, () => { renderAchievements(); showScreen(uiElements.achvScreen, true); });
     onTap(uiElements.achvCloseBtn, () => showScreen(uiElements.achvScreen, false));
     uiElements.achvTabs.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { achvTab = b.dataset.tab; renderAchievements(); } });
+    uiElements.achvSubtabs.addEventListener('click', (e) => { const b = e.target.closest('[data-cls]'); if (b) { achvClassTab = b.dataset.cls; renderAchievements(); } });
     onTap(uiElements.curseMinus, () => stepCurse(-1));
     onTap(uiElements.cursePlus, () => stepCurse(1));
     onTap(uiElements.victoryContinueBtn, continueEndless);

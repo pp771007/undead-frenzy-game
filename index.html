@@ -848,7 +848,8 @@
         }
 
         /* 類別分頁：橫向一排可以滑，每頁寫拿了幾個；全拿完的那一頁變金色 */
-        #achv-tabs {
+        #achv-tabs,
+        #achv-subtabs {
             display: flex;
             gap: 6px;
             overflow-x: auto;
@@ -906,18 +907,23 @@
             opacity: 0.55;
         }
 
-        /* 職業分頁裡每個職業的標題 */
-        .achv-group {
-            margin: 14px 0 6px;
-            font-family: var(--font-display);
-            font-weight: 900;
-            font-size: 15px;
-            color: var(--gold);
-            text-align: left;
+        /* 職業分頁底下再分一排：每個職業一格，頭像在左 */
+        .achv-subtab {
+            flex-direction: row;
+            gap: 6px;
+            padding: 3px 10px 3px 4px;
         }
 
-        .achv-group:first-child {
-            margin-top: 0;
+        .achv-subtab img {
+            width: 30px;
+            height: 30px;
+            object-fit: contain;
+        }
+
+        .achv-subtab div {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
         }
 
         .achv-row.done {
@@ -2149,6 +2155,7 @@
                 <span class="crystal-count" id="achv-count"></span>
             </div>
             <div id="achv-tabs"></div>
+            <div id="achv-subtabs" class="hidden"></div>
             <div id="achv-list"></div>
             <div class="stack">
                 <button id="achv-close-btn" class="btn btn-dark">返回</button>
