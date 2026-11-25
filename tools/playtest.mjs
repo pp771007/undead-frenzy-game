@@ -1,6 +1,7 @@
 // 自動遊玩：在無頭瀏覽器裡快轉打完整局（手動呼叫 updateGame，不等畫面），印出每一波的數據。
 // 用法：node tools/playtest.mjs <遊戲網址> [human|still] [標籤] > logs/xxx.log
-//   human：像真人 —— 地上的預警圈、首領蓄力、血彈要 REACT 秒後才反應，每 DECIDE 秒重新決定往哪走，打得正熱就放新星
+//   human：像真人 —— 地上的預警圈、首領蓄力、血彈要 REACT 秒後才反應，每 DECIDE 秒重新決定往哪走，打得正熱就放新星；
+//          沒有要閃的東西時走去拿戰場遺跡（祭壇／靈泉／寶棺），再來才是撿靈魂
 //   still：站著不動，只有被包圍才放新星（量「不會走位的玩家」撐到哪）
 // 兩種都每 0.5 秒把錢花光（升級鈕發光就升級，否則隨機召喚），祝福隨機挑、有傳說先拿傳說 —— 花錢和選卡比真人有效率，勝率會偏高。
 // 需要 playwright（npm i playwright）；遊戲要先用任何靜態伺服器跑起來，例如 python -m http.server 8765。
@@ -25,6 +26,9 @@ await page.evaluate((policy) => {
     window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, seen: new WeakMap(), decide: 0, src: {} };
     // 記每種怪一共掉了多少靈魂：經濟有沒有被哪隻怪放大（吞魂者第一版就是這樣抓到的）
     const B = window.__bot;
+    B.relics = {};
+    const origFinish = window.finishRelic;
+    window.finishRelic = function (r) { B.relics[r.kind] = (B.relics[r.kind] || 0) + 1; return origFinish(r); };
     const origDie = Monster.prototype.die;
     Monster.prototype.die = function () { window.__dying = this.config.type; try { origDie.call(this); } finally { window.__dying = null; } };
     const origDrop = window.dropSouls;
@@ -68,7 +72,9 @@ for (;;) {
                     }
                     for (const h of gameState.hazards) { if (!noticed(h)) continue; const dx = p.pos.x - h.x, dy = p.pos.y - h.y, d = Math.hypot(dx, dy) || 1; if (d < h.r + 12) { hx += dx / d * 3; hy += dy / d * 3; } }
                     for (const bo of gameState.enemyBolts) { if (!noticed(bo)) continue; const tx = p.pos.x - bo.pos.x, ty = p.pos.y - bo.pos.y, along = tx * bo.dir.x + ty * bo.dir.y; if (along < 0) continue; const perp = tx * -bo.dir.y + ty * bo.dir.x; if (Math.abs(perp) < 30 && along < 200) { const s = perp >= 0 ? 1 : -1; hx += -bo.dir.y * s * 3; hy += bo.dir.x * s * 3; } }
-                    if (Math.hypot(hx, hy) < 0.1) { let best = null, bd = 1e9; for (const o of gameState.orbs) { const d = distanceSq(o.pos, p.pos); if (d < bd) { bd = d; best = o; } } if (best && bd < 250 * 250) { hx = (best.pos.x - p.pos.x) * 0.01; hy = (best.pos.y - p.pos.y) * 0.01; } }
+                    const relic = Math.hypot(hx, hy) < 0.1 && gameState.relics.find(x => !x.done && noticed(x));
+                    if (relic) { hx = relic.x - p.pos.x; hy = relic.y - p.pos.y; }
+                    else if (Math.hypot(hx, hy) < 0.1) { let best = null, bd = 1e9; for (const o of gameState.orbs) { const d = distanceSq(o.pos, p.pos); if (d < bd) { bd = d; best = o; } } if (best && bd < 250 * 250) { hx = (best.pos.x - p.pos.x) * 0.01; hy = (best.pos.y - p.pos.y) * 0.01; } }
                     const mag = Math.hypot(hx, hy);
                     inputState.movementVector = mag > 0 ? { x: hx / mag * Math.min(1, mag), y: hy / mag * Math.min(1, mag) } : { x: 0, y: 0 };
                 }
@@ -107,11 +113,12 @@ for (;;) {
 const out = await page.evaluate(() => ({
     waves: window.__bot.waves, t: window.__bot.t, wave: gameState.currentWave, stuck: window.__bot.stuck,
     killedBy: gameState.killedBy && gameState.killedBy.config && gameState.killedBy.config.type,
-    souls: window.__bot.src, resonance: gameState.resonance, blessings: gameState.blessings,
+    souls: window.__bot.src, resonance: gameState.resonance, blessings: gameState.blessings, relics: window.__bot.relics,
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
 console.log(`RESULT ${TAG} policy=${POLICY} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
 console.log('SOULS', JSON.stringify(out.souls));
+console.log('RELICS', JSON.stringify(out.relics), 'blessings', Object.values(out.blessings).reduce((a, b) => a + b, 0));
 console.log('RESONANCE', JSON.stringify(out.resonance), JSON.stringify(out.blessings));
 console.log('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tevent');
 for (const w of out.waves) console.log([w.wave, w.dur, w.minHp.toFixed(2), w.dmg.toFixed(2), w.peak, w.summons, w.ev || ''].join('\t'));
