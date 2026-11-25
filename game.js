@@ -4816,7 +4816,7 @@ function getNewcomer(wave) {
         { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，靠骷髏近戰', icon: 'boneArmor', color: '#B0BEC5' },
         { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', icon: 'plague', color: POISON_LIGHT },
         { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'crown', color: '#FFD54F' },
-        { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '地面裂開就散開', icon: 'warning', color: '#BCAAA4' },
+        { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '會從地底鑽出，紅圈出現就走開', icon: 'warning', color: '#BCAAA4' },
         { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的召喚物變成敵人，先殺牠', icon: 'skull', color: '#69F0AE' },
     ];
     const hit = list.find(n => n.wave === wave);

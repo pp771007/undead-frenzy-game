@@ -74,7 +74,7 @@
   <tr>
     <td align="center"><img src="bat.png" width="72" alt="" /><br/><b>吸血蝙蝠群</b><br/><sub>直撲法師</sub></td>
     <td align="center"><img src="shield_guard.png" width="72" alt="" /><br/><b>骨盾衛兵</b><br/><sub>盾牌擋飛彈，要靠骷髏近戰</sub></td>
-    <td align="center"><img src="corpse_worm.png" width="72" alt="" /><br/><b>屍蟲</b><br/><sub>從地底竄出，地面裂開就散開</sub></td>
+    <td align="center"><img src="corpse_worm.png" width="72" alt="" /><br/><b>屍蟲</b><br/><sub>從地底鑽出，紅圈出現就走開</sub></td>
   </tr>
   <tr>
     <td align="center"><img src="grave_priest.png" width="72" alt="" /><br/><b>墓地祭司</b><br/><sub>把陣亡的召喚物變成敵人</sub></td>
