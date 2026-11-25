@@ -82,7 +82,7 @@ const uiElements = {
     skipWaveBtn: $id('skip-wave-btn'),
     holdCombo: $id('hold-combo'),
     finalKiller: $id('final-killer'),
-    novaBtn: $id('nova-btn'),
+    ultBtn: $id('nova-btn'),
     messageArea: $id('message-area'),
     titleScreen: $id('title-screen'),
     titleContinueBtn: $id('title-continue-btn'),
@@ -974,10 +974,18 @@ const UNIT_TYPES = {
     Wraith: { cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
     EyeMonster: { cfg: () => CONFIG.eyeMonster, Cls: () => EyeMonster, name: '眼魔', img: 'eye_monster.png' },
 };
-// 職業：這一局的底部三張卡是哪三種兵、有哪幾個流派（祝福池跟著流派走）。
-// 規劃見 docs/characters.md；目前只有亡靈法師，普攻與大招還寫死在 Player.shootBolt 與 useNova
+// 職業：這一局的底部三張卡是哪三種兵、有哪幾個流派（祝福池跟著流派走）、主角的立繪與基本數值、普攻、大招。規劃見 docs/characters.md
+//   hero：imageName（images 的鍵）、baseHealth、moveSpeed
+//   attack(player, dt)：主角每格的普攻
+//   ultimate：右下大招按鈕。use() 成功回傳 true；cooldown() 是滿的冷卻秒數；hint 是第一次教玩家時的那句話，
+//             hintRadius() 內有好幾隻怪時才教（這時候按下去最有感）
 const CLASSES = {
-    necro: { name: '亡靈法師', cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'soul'] },
+    necro: {
+        name: '亡靈法師', cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'soul'],
+        hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
+        attack: (p, dt) => p.shootBolt(dt),
+        ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', hintRadius: () => CONFIG.nova.radius, cooldown: () => getNovaCooldown(), use: () => useNova() },
+    },
 };
 const DEFAULT_CLASS = 'necro';
 function runClass() { return gameState.classId || DEFAULT_CLASS; }
@@ -1046,7 +1054,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
     hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -1770,11 +1778,11 @@ const ABSORB_GLOW_DECAY = 2.5;
 const boltTargets = [];
 class Player extends GameObject {
     constructor(x, y) {
-        const config = CONFIG.player;
-        super(x, y, config.radius, config.color, config.imageName, config.imgScaleMultiplier);
-        this.maxHealth = config.baseHealth;
+        const config = CONFIG.player, H = classDef().hero;
+        super(x, y, config.radius, config.color, H.imageName, config.imgScaleMultiplier);
+        this.maxHealth = H.baseHealth;
         this.currentHealth = this.maxHealth;
-        this.moveSpeed = config.baseMoveSpeed;
+        this.moveSpeed = H.moveSpeed;
         this.hpTrail = 1;
         this.absorbGlow = 0;
         this.boltT = 0;
@@ -1823,7 +1831,7 @@ class Player extends GameObject {
         const ratio = this.currentHealth / this.maxHealth;
         this.hpTrail = ratio > this.hpTrail ? ratio : Math.max(ratio, this.hpTrail - PLAYER_HP_TRAIL_SPEED * deltaTime);
         this.absorbGlow = Math.max(0, this.absorbGlow - ABSORB_GLOW_DECAY * deltaTime);
-        this.moveSpeed = CONFIG.player.baseMoveSpeed * (1 + blessVal('shadowStep'));
+        this.moveSpeed = classDef().hero.moveSpeed * (1 + blessVal('shadowStep'));
         this.castGlow = Math.max(0, this.castGlow - CAST_GLOW_DECAY * deltaTime);
         const moveX = moveVec.x * this.moveSpeed * deltaTime;
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
@@ -1831,7 +1839,7 @@ class Player extends GameObject {
         this.pos.y += moveY;
 
         this.updateFacingDirection(moveVec.x);
-        this.shootBolt(deltaTime);
+        classDef().attack(this, deltaTime);
     }
     // source：打這一下的怪（毒池則是丟毒的那隻），陣亡畫面要寫是誰殺的
     takeDamage(amount, source = null) {
@@ -3402,8 +3410,8 @@ class Monster extends GameObject {
             spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 16, 120, 0.7, 3);
             spawnFloatText(this.pos.x, this.pos.y - 18, '精英擊破', '#FFD54F', 13);
             // 傳說「精英獵手」：新星馬上又能放
-            if (bl('eliteHunter') && gameState.novaCooldown > 0) {
-                gameState.novaCooldown = 0;
+            if (bl('eliteHunter') && gameState.ultCooldown > 0) {
+                gameState.ultCooldown = 0;
                 if (gameState.player) spawnParticles(gameState.player.pos.x, gameState.player.pos.y, '#CE93D8', 16, 90, 0.5, 3);
             }
             Sfx.play('elite');
@@ -5346,9 +5354,17 @@ class NovaEffect extends TimedEffect {
     }
 }
 
+// 右下的大招按鈕、空白鍵：交給這一局職業的大招
+function useUltimate() {
+    const p = gameState.player;
+    if (!p || !p.isAlive || gameState.ultCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
+    if (!classDef().ultimate.use()) return false;
+    markUltTaught();
+    return true;
+}
+
 function useNova() {
     const p = gameState.player;
-    if (!p || !p.isAlive || gameState.novaCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
     const c = CONFIG.nova;
     const dmg = getNovaDamage();
     // 傳說「寒冰新星」：範圍變大、緩速加強到幾乎凍住
@@ -5380,8 +5396,7 @@ function useNova() {
     spawnParticles(p.pos.x, p.pos.y, frost ? '#B3E5FC' : '#CE93D8', 36, 260, 0.5, 3);
     addShake(7);
     Sfx.play('nova');
-    gameState.novaCooldown = getNovaCooldown();
-    markNovaTaught();
+    gameState.ultCooldown = getNovaCooldown();
     ensureMusicPlaying();
     updateUI();
     return true;
@@ -5875,35 +5890,37 @@ function updateTutorial() {
     }
 }
 
-// 新星提示：開戰後法師身邊第一次有好幾隻怪、新星又剛好能用時，指著按鈕講它能幹嘛；按過一次就不再出現
-const NOVA_HINT_NEAR = 3;
-let novaHint = false;
-function updateNovaHint() {
-    if (meta.novaTaught || !gameState.player || gameState.betweenWaves || gameState.currentWave < 1) { setNovaHint(false); return; }
-    if (novaHint || gameState.novaCooldown > 0) return;
-    const p = gameState.player.pos, R = CONFIG.nova.radius, rSq = R * R;
+// 大招提示：開戰後主角身邊第一次有好幾隻怪、大招又剛好能用時，指著按鈕講它能幹嘛；每個職業按過一次就不再出現
+const ULT_HINT_NEAR = 3;
+let ultHint = false;
+// 亡靈法師的舊紀錄存在 meta.novaTaught
+function ultTaught() { return !!((meta.ultTaught || {})[runClass()] || (runClass() === 'necro' && meta.novaTaught)); }
+function updateUltHint() {
+    if (ultTaught() || !gameState.player || gameState.betweenWaves || gameState.currentWave < 1) { setUltHint(false); return; }
+    if (ultHint || gameState.ultCooldown > 0) return;
+    const p = gameState.player.pos, R = classDef().ultimate.hintRadius(), rSq = R * R;
     let near = 0;
     for (let i = 0; i < gameState.monsters.length; i++) {
         const m = gameState.monsters[i];
         if (m.isAlive && !m.stealthed && distanceSq(m.pos, p) <= rSq) near++;
     }
-    if (near >= NOVA_HINT_NEAR) setNovaHint(true);
+    if (near >= ULT_HINT_NEAR) setUltHint(true);
 }
-function setNovaHint(on) {
-    if (novaHint === on) return;
-    novaHint = on;
-    uiElements.novaBtn.classList.toggle('hint-pulse', on);
+function setUltHint(on) {
+    if (ultHint === on) return;
+    ultHint = on;
+    uiElements.ultBtn.classList.toggle('hint-pulse', on);
 }
-function markNovaTaught() {
-    if (meta.novaTaught) return;
-    meta.novaTaught = true;
+function markUltTaught() {
+    if (ultTaught()) return;
+    meta.ultTaught = { ...(meta.ultTaught || {}), [runClass()]: true };
     saveMeta();
-    setNovaHint(false);
+    setUltHint(false);
 }
-function drawNovaHint() {
-    if (!novaHint) return;
+function drawUltHint() {
+    if (!ultHint) return;
     const t = performance.now() / 1000;
-    const r = uiElements.novaBtn.getBoundingClientRect();
+    const r = uiElements.ultBtn.getBoundingClientRect();
     const x = r.left + r.width / 2, y = r.top - 8 + Math.sin(t * 5) * 4;
     ctx.save();
     ctx.lineJoin = 'round';
@@ -5913,7 +5930,7 @@ function drawNovaHint() {
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y - 16); ctx.lineTo(x + 12, y - 16); ctx.closePath();
     ctx.fill(); ctx.stroke();
     ctx.textAlign = 'right';
-    drawOutlinedText('新星：炸開身邊的怪、大軍狂暴', Math.min(view.cssW - 8, x + 30), y - 30, 17, '#f4ecd8');
+    drawOutlinedText(classDef().ultimate.hint, Math.min(view.cssW - 8, x + 30), y - 30, 17, '#f4ecd8');
     ctx.restore();
 }
 function drawTutorial() {
@@ -5961,7 +5978,7 @@ function updateTimers(deltaTime) {
     // 新手提示還沒走完前，第一波不開始倒數
     if (tutorial && gameState.currentWave === 0) return;
     updateSpawner(deltaTime);
-    gameState.novaCooldown = Math.max(0, gameState.novaCooldown - deltaTime);
+    gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
     gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
     achvCheckTimer -= deltaTime;
     if (achvCheckTimer <= 0) { achvCheckTimer = ACHV_CHECK_EVERY; checkAchievements(); }
@@ -6407,7 +6424,7 @@ function updateUI() {
     }
 
     setStyleIfChanged(uiElements.skipWaveBtn, 'display', gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none');
-    updateNovaButton();
+    updateUltButton();
 }
 
 // updateUI 每格都跑。寫進 DOM 就算內容一模一樣，瀏覽器也要重新排版、重畫那一塊 ——
@@ -6424,22 +6441,23 @@ function setStyleIfChanged(el, prop, value) {
     if (el.style[prop] !== value) el.style[prop] = value;
 }
 
-function updateNovaButton() {
-    const btn = uiElements.novaBtn;
-    const cd = gameState.novaCooldown;
+function updateUltButton() {
+    const btn = uiElements.ultBtn;
+    const cd = gameState.ultCooldown;
+    const U = classDef().ultimate;
     const off = gameState.gameOver || gameState.isPaused || gameState.draftOpen;
     if (btn.disabled !== off) btn.disabled = off;
     if (cd > 0) {
         // 取整數百分比：肉眼看不出差別，按鈕從每格重畫變成冷卻期間總共重畫一百次
-        const done = Math.floor((1 - cd / getNovaCooldown()) * 100);
-        setHtmlIfChanged(btn, `${iconHtml('burst')}<span>${Math.ceil(cd)}</span>`);
+        const done = Math.floor((1 - cd / U.cooldown()) * 100);
+        setHtmlIfChanged(btn, `${iconHtml(U.icon)}<span>${Math.ceil(cd)}</span>`);
         if (btn.dataset.cd !== String(done)) {
             btn.dataset.cd = String(done);
             btn.style.background = `conic-gradient(rgba(156, 39, 176, 0.9) ${done}%, #1d1628 ${done}%)`;
         }
         btn.classList.remove('nova-ready');
     } else {
-        setHtmlIfChanged(btn, `${iconHtml('burst')}<span>新星</span>`);
+        setHtmlIfChanged(btn, `${iconHtml(U.icon)}<span>${U.name}</span>`);
         if (btn.dataset.cd) { btn.dataset.cd = ''; btn.style.background = ''; }
         btn.classList.add('nova-ready');
     }
@@ -6642,9 +6660,9 @@ function loadGameState() {
 
         gameState.player = new Player(0, 0);
         snapCamera();
-        gameState.player.maxHealth = loadedState.playerMaxHealth ?? CONFIG.player.baseHealth;
+        gameState.player.maxHealth = loadedState.playerMaxHealth ?? classDef().hero.baseHealth;
         gameState.player.currentHealth = loadedState.playerCurrentHealth ?? gameState.player.maxHealth;
-        gameState.player.maxHealth = Math.max(CONFIG.player.baseHealth, Math.round(gameState.player.maxHealth));
+        gameState.player.maxHealth = Math.max(1, Math.round(gameState.player.maxHealth));
         gameState.player.currentHealth = Math.min(gameState.player.maxHealth, Math.max(0, Math.round(gameState.player.currentHealth)));
 
         return true;
@@ -6696,7 +6714,7 @@ function resetGameInternalState() {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, novaCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
         hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -6714,7 +6732,7 @@ function setupNewRun(daily = null) {
     gameState.curse = daily ? 0 : Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     invalidateRunMods();
     gameState.player = new Player(0, 0);
-    gameState.player.maxHealth = Math.round((CONFIG.player.baseHealth + metaVal('mageHp')) * runMods().mageHpMult);
+    gameState.player.maxHealth = Math.round((classDef().hero.baseHealth + metaVal('mageHp')) * runMods().mageHpMult);
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
     gameState.banishLeft = metaVal('banish');
@@ -7304,7 +7322,7 @@ function drawGame() {
     drawBanner();
     drawJoystick();
     drawTutorial();
-    drawNovaHint();
+    drawUltHint();
     if (appScreen === 'title') drawTitleWisps();
 
     if (gameState.hurtFlash > 0) {
@@ -7360,7 +7378,7 @@ function gameLoop(currentTime) {
     const workStart = performance.now();
     if (!frozen) updateGame(deltaTime);
     updateTutorial();
-    updateNovaHint();
+    updateUltHint();
     // 戰場停住時畫面一格都不會變（教學提示會動，所以有教學時照畫），畫一次留在畫布上就好
     if (!frozen || tutorial || !frozenFrameDrawn) drawGame();
     frozenFrameDrawn = frozen;
@@ -7690,9 +7708,9 @@ function init() {
     uiElements.soulsInfo.addEventListener('animationend', () => uiElements.soulsInfo.classList.remove('bump'));
     uiElements.crystalsInfo.addEventListener('animationend', () => uiElements.crystalsInfo.classList.remove('bump'));
 
-    uiElements.novaBtn.addEventListener('pointerdown', (e) => {
+    uiElements.ultBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
-        if (!useNova() && gameState.novaCooldown > 0 && !gameState.isPaused) denyFeedback(uiElements.novaBtn);
+        if (!useUltimate() && gameState.ultCooldown > 0 && !gameState.isPaused) denyFeedback(uiElements.ultBtn);
     });
 
     window.addEventListener('keydown', (e) => {
@@ -7704,7 +7722,7 @@ function init() {
         if (appScreen !== 'playing') return;
         if (e.code === 'Escape' || e.code === 'KeyP') { togglePause(); return; }
         if (gameState.isPaused || gameState.gameOver) return;
-        if (e.code === 'Space') { e.preventDefault(); useNova(); return; }
+        if (e.code === 'Space') { e.preventDefault(); useUltimate(); return; }
         if (MOVE_KEYS[e.code]) { keysDown.add(e.code); e.preventDefault(); ensureMusicPlaying(); return; }
         const card = UNIT_UI[UNIT_HOTKEYS[e.code]];
         if (card) { e.shiftKey ? tryUpgrade(card.type) : trySummon(card.type); }

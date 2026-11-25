@@ -81,10 +81,10 @@ for (;;) {
                     const mag = Math.hypot(hx, hy);
                     inputState.movementVector = mag > 0 ? { x: hx / mag * Math.min(1, mag), y: hy / mag * Math.min(1, mag) } : { x: 0, y: 0 };
                 }
-                if ((near >= 4 || fight >= 8) && gameState.novaCooldown <= 0) useNova();
+                if ((near >= 4 || fight >= 8) && gameState.ultCooldown <= 0) useUltimate();
             } else {
                 inputState.movementVector = { x: 0, y: 0 };
-                if (near >= 4 && gameState.novaCooldown <= 0) useNova();
+                if (near >= 4 && gameState.ultCooldown <= 0) useUltimate();
             }
             B.spendTimer -= DT;
             if (B.spendTimer <= 0) {
