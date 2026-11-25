@@ -651,15 +651,15 @@ const BLESSINGS = {
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
     deathPact: { school: 'soul', name: '殘魂回收', legendary: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
     // ---- 契約（同 PokeBonk 生存模式的 pact）：好處很大、壞處跟著整局。一般波次偶爾出一張（PACT_CHANCE），每種一局只能立一次。
-    // 效果寫在 mods，跟詛咒共用 runMods() 的乘數；icon 借用意思相近的祝福圖示
-    bloodPact: { school: PACT_SCHOOL, pact: true, icon: 'lifesteal', name: '血祭契約', max: 1, mods: { summonDmgMult: 1.5, mageHpMult: 0.7 }, desc: b => runModsHtml(b.mods) },
-    greedPact: { school: PACT_SCHOOL, pact: true, icon: 'midas', name: '貪婪契約', max: 1, mods: { soulMult: 1.5, hpMult: 1.25 }, desc: b => runModsHtml(b.mods) },
-    furyPact: { school: PACT_SCHOOL, pact: true, icon: 'frenzyEye', name: '戰狂契約', max: 1, mods: { summonAtkSpeedMult: 1.3, atkMult: 1.3 }, desc: b => runModsHtml(b.mods) },
-    flamePact: { school: PACT_SCHOOL, pact: true, icon: 'soulfire', name: '魂焰契約', max: 1, mods: { boltDmgMult: 2.5, speedMult: 1.15 }, desc: b => runModsHtml(b.mods) },
-    swarmPact: { school: PACT_SCHOOL, pact: true, icon: 'twinSummon', name: '群聚契約', max: 1, mods: { costMult: 0.7, eliteMult: 2 }, desc: b => runModsHtml(b.mods) },
-    stormPact: { school: PACT_SCHOOL, pact: true, icon: 'novaPower', name: '雷鳴契約', max: 1, mods: { novaCdMult: 0.6, bossHpMult: 1.4 }, desc: b => runModsHtml(b.mods) },
+    // 效果寫在 mods，跟詛咒共用 runMods() 的乘數；圖示是 icons.js 的 pact_*
+    bloodPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_blood', name: '血祭契約', max: 1, mods: { summonDmgMult: 1.5, mageHpMult: 0.7 }, desc: b => runModsHtml(b.mods) },
+    greedPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_greed', name: '貪婪契約', max: 1, mods: { soulMult: 1.5, hpMult: 1.25 }, desc: b => runModsHtml(b.mods) },
+    furyPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_fury', name: '戰狂契約', max: 1, mods: { summonAtkSpeedMult: 1.3, atkMult: 1.3 }, desc: b => runModsHtml(b.mods) },
+    flamePact: { school: PACT_SCHOOL, pact: true, icon: 'pact_flame', name: '魂焰契約', max: 1, mods: { boltDmgMult: 2.5, speedMult: 1.15 }, desc: b => runModsHtml(b.mods) },
+    swarmPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_swarm', name: '群聚契約', max: 1, mods: { costMult: 0.7, eliteMult: 2 }, desc: b => runModsHtml(b.mods) },
+    stormPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_storm', name: '雷鳴契約', max: 1, mods: { novaCdMult: 0.6, bossHpMult: 1.4 }, desc: b => runModsHtml(b.mods) },
 };
-// 卡片、暫停選單、飄字的圖示：契約借用別張祝福的圖示，其他就是祝福自己的 id
+// 卡片、暫停選單、飄字的圖示：契約寫在 icon，其他就是祝福自己的 id
 function blessIcon(id) { return BLESSINGS[id].icon || id; }
 
 // ---------- 流派共鳴：同一流派的祝福累積到 RESONANCE_STEPS 的層數，各觸發一次共鳴 ----------
@@ -4826,14 +4826,14 @@ const VICTORY_CRYSTALS = 100;
 const DAILY_MS = 86400000;
 const DAILY_CRYSTAL_MULT = 2;
 const DAILY_MUTATIONS = [
-    { id: 'glass', icon: 'heart', name: '玻璃之軀', mods: { mageHpMult: 0.25, summonDmgMult: 2, boltDmgMult: 2 } },
-    { id: 'giants', icon: 'claws', name: '巨獸橫行', mods: { hpMult: 2, atkMult: 1.5, speedMult: 0.85, soulMult: 1.6 } },
-    { id: 'eyes', icon: 'splitGaze', name: '千眼之日', rule: '只能召喚眼魔', onlyUnit: 'EyeMonster', mods: { summonDmgMult: 1.3 } },
-    { id: 'bloodMoon', icon: 'bloodMoon', name: '永夜血月', rule: '每一波都是血月' , forceEvent: 'bloodMoon' },
-    { id: 'feast', icon: 'soul', name: '靈魂盛宴', mods: { soulMult: 2, hpMult: 1.5, atkMult: 1.25 } },
-    { id: 'bones', icon: 'boneBlade', name: '白骨之日', rule: '只能召喚骷髏', onlyUnit: 'SkeletonWarrior', mods: { summonAtkSpeedMult: 1.3 } },
-    { id: 'market', icon: 'flame', name: '魔鬼市集', rule: '每次選祝福都有一張契約', pactAlways: true },
-    { id: 'storm', icon: 'burst', name: '新星風暴', mods: { novaCdMult: 0.4, speedMult: 1.25 } },
+    { id: 'glass', icon: 'mut_glass', name: '玻璃之軀', mods: { mageHpMult: 0.25, summonDmgMult: 2, boltDmgMult: 2 } },
+    { id: 'giants', icon: 'mut_giants', name: '巨獸橫行', mods: { hpMult: 2, atkMult: 1.5, speedMult: 0.85, soulMult: 1.6 } },
+    { id: 'eyes', icon: 'mut_eyes', name: '千眼之日', rule: '只能召喚眼魔', onlyUnit: 'EyeMonster', mods: { summonDmgMult: 1.3 } },
+    { id: 'bloodMoon', icon: 'mut_bloodMoon', name: '永夜血月', rule: '每一波都是血月' , forceEvent: 'bloodMoon' },
+    { id: 'feast', icon: 'mut_feast', name: '靈魂盛宴', mods: { soulMult: 2, hpMult: 1.5, atkMult: 1.25 } },
+    { id: 'bones', icon: 'mut_bones', name: '白骨之日', rule: '只能召喚骷髏', onlyUnit: 'SkeletonWarrior', mods: { summonAtkSpeedMult: 1.3 } },
+    { id: 'market', icon: 'mut_market', name: '魔鬼市集', rule: '每次選祝福都有一張契約', pactAlways: true },
+    { id: 'storm', icon: 'mut_storm', name: '新星風暴', mods: { novaCdMult: 0.4, speedMult: 1.25 } },
 ];
 function localDayNumber() {
     const now = new Date();

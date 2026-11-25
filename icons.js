@@ -153,9 +153,59 @@ const ICON_BODIES = {
         <rect x="34" y="16" width="22" height="32" rx="3" fill="#f1ead6" transform="rotate(15 45 32)"/>
         <rect x="21" y="12" width="22" height="32" rx="3" fill="#e9c46a"/>${shine(27, 18, 2.5, 1.5)}` +
         duoStroke('M32 49 L32 61 M26 55 L38 55', '#81c784', 3),
+
+    // ---- 契約：每份契約一張自己的圖（好處那一半畫成主體，壞處那一半畫成點綴） ----
+    // 血祭：滴著血的骷髏聖杯（召喚物變強、法師流血）
+    pact_blood: `<path d="M14 10 L50 10 C50 28 42 36 32 36 C22 36 14 28 14 10 Z" fill="#c9a227"/><path d="M17 14 L47 14 C46 26 40 32 32 32 C24 32 18 26 17 14 Z" fill="#b71c1c" stroke-width="2.5"/>
+        <rect x="29" y="36" width="6" height="12" fill="#c9a227"/><path d="M18 56 C18 50 46 50 46 56 Z" fill="#c9a227"/>
+        <path d="M44 20 C46 26 46 30 44 33 C42 30 42 26 44 20 Z" fill="#e5484d" stroke-width="2"/><circle cx="26" cy="21" r="2.6" fill="#1b1424" stroke="none"/><circle cx="37" cy="21" r="2.6" fill="#1b1424" stroke="none"/>${shine(21, 15, 2.5, 1.5)}`,
+    // 貪婪：長了惡魔角的錢袋，金幣往外滿出來
+    pact_greed: `<path d="M18 26 C10 34 10 54 22 58 L42 58 C54 54 54 34 46 26 Z" fill="#a1887f"/><path d="M22 26 L42 26 L38 18 L26 18 Z" fill="#8d6e63"/>
+        <path d="M24 18 C20 8 14 6 12 8 C16 10 18 14 20 20 Z M40 18 C44 8 50 6 52 8 C48 10 46 14 44 20 Z" fill="#b71c1c"/>
+        <circle cx="32" cy="42" r="8" fill="#ffd54f"/><path d="M32 37 L32 47 M29 39 L35 39 M29 45 L35 45" stroke-width="2"/>
+        <circle cx="16" cy="56" r="5" fill="#ffd54f" stroke-width="2.5"/><circle cx="50" cy="54" r="4" fill="#ffd54f" stroke-width="2.5"/>`,
+    // 戰狂：握緊的拳頭冒著紅色怒氣、額頭兩根角
+    pact_fury: `<path d="M16 30 C16 22 22 20 26 22 C26 16 32 14 36 18 C38 14 44 14 46 20 C50 20 52 24 50 30 L48 46 C46 54 38 58 30 58 C22 58 16 52 16 44 Z" fill="#ef9a9a"/>
+        <path d="M26 22 L26 32 M36 18 L36 30 M46 20 L46 30" stroke-width="3"/>
+        <path d="M10 18 C4 12 6 4 12 2 C12 8 16 12 20 14 Z M54 18 C60 12 58 4 52 2 C52 8 48 12 44 14 Z" fill="#b71c1c"/>
+        <path d="M6 40 L12 38 M4 50 L12 48 M58 40 L52 38 M60 50 L52 48" stroke="#ff7043" stroke-width="3.5"/>`,
+    // 魂焰：藍色火焰裡的骷髏（法師的靈魂彈）
+    pact_flame: `<path d="M32 60 C16 60 8 48 14 34 C18 26 18 16 14 4 C26 10 32 18 32 26 C36 20 38 14 38 6 C50 16 56 32 50 46 C46 56 40 60 32 60 Z" fill="#4fc3f7"/>
+        <path d="M32 26 C24 26 20 32 20 38 C20 42 22 45 25 46 L25 52 L39 52 L39 46 C42 45 44 42 44 38 C44 32 40 26 32 26 Z" fill="#e1f5fe"/>
+        <ellipse cx="27" cy="38" rx="3.2" ry="3.8" fill="#1b1424" stroke="none"/><ellipse cx="37" cy="38" rx="3.2" ry="3.8" fill="#1b1424" stroke="none"/>`,
+    // 群聚：一堆擠在一起的小骷髏，上面一個打折的價籤
+    pact_swarm: `<circle cx="18" cy="44" r="10" fill="#f1ead6"/><circle cx="46" cy="44" r="10" fill="#f1ead6"/><circle cx="32" cy="48" r="11" fill="#f1ead6"/><circle cx="32" cy="30" r="9" fill="#f1ead6"/>
+        <circle cx="15" cy="43" r="2.2" fill="#1b1424" stroke="none"/><circle cx="21" cy="43" r="2.2" fill="#1b1424" stroke="none"/><circle cx="43" cy="43" r="2.2" fill="#1b1424" stroke="none"/><circle cx="49" cy="43" r="2.2" fill="#1b1424" stroke="none"/>
+        <circle cx="28" cy="47" r="2.6" fill="#1b1424" stroke="none"/><circle cx="36" cy="47" r="2.6" fill="#1b1424" stroke="none"/><circle cx="29" cy="29" r="2.2" fill="#1b1424" stroke="none"/><circle cx="35" cy="29" r="2.2" fill="#1b1424" stroke="none"/>
+        <path d="M40 6 L58 6 L58 18 L52 24 L40 18 Z" fill="#81c784" stroke-width="3"/><circle cx="46" cy="12" r="2" fill="#1b1424" stroke="none"/>`,
+    // 雷鳴：雷雲劈下紫色閃電
+    pact_storm: `<path d="M14 34 C6 34 4 24 12 22 C12 12 24 8 30 14 C34 6 50 8 50 18 C58 18 60 30 52 34 Z" fill="#78909c"/>
+        <path d="M34 30 L24 46 L32 46 L26 60 L42 40 L34 40 L40 30 Z" fill="#ce93d8"/><path d="M18 40 L14 50 M48 40 L52 48" stroke="#90caf9" stroke-width="3"/>`,
+
+    // ---- 每日變異：每條規則一張 ----
+    mut_glass: `<path d="M32 54 C12 41 5 28 12 17 C18 9 28 10 32 18 C36 10 46 9 52 17 C59 28 52 41 32 54 Z" fill="#b3e5fc"/>
+        <path d="M32 18 L28 28 L36 32 L30 44" stroke-width="2.5"/><path d="M14 24 L22 26 M44 22 L50 30" stroke-width="2"/>${shine(20, 22, 5, 3)}${shine(44, 20, 2.5, 1.5)}`,
+    mut_giants: `<ellipse cx="32" cy="40" rx="16" ry="18" fill="#795548"/><ellipse cx="14" cy="18" rx="6" ry="8" fill="#795548" transform="rotate(-20 14 18)"/>
+        <ellipse cx="27" cy="12" rx="6" ry="8" fill="#795548"/><ellipse cx="41" cy="12" rx="6" ry="8" fill="#795548"/><ellipse cx="52" cy="19" rx="6" ry="8" fill="#795548" transform="rotate(20 52 19)"/>
+        <path d="M24 40 L40 40 M26 48 L38 48" stroke="#4e342e" stroke-width="3"/>`,
+    mut_eyes: `<path d="M32 4 L32 12 M32 52 L32 60 M4 32 L12 32 M52 32 L60 32 M12 12 L18 18 M46 46 L52 52 M12 52 L18 46 M46 18 L52 12" stroke="#f48fb1" stroke-width="4"/>
+        <path d="M10 32 C18 18 46 18 54 32 C46 46 18 46 10 32 Z" fill="#ffffff"/><circle cx="32" cy="32" r="10" fill="#f06292"/><circle cx="32" cy="32" r="4.5" fill="#1b1424" stroke="none"/>${shine(28, 27, 2.5, 1.8)}`,
+    mut_bloodMoon: `<circle cx="32" cy="28" r="22" fill="#c62828"/><circle cx="24" cy="22" r="5" fill="#b71c1c" stroke-width="2.5"/><circle cx="40" cy="32" r="4" fill="#b71c1c" stroke-width="2.5"/>
+        <path d="M22 48 C22 54 26 56 26 60 C26 56 30 54 30 48 M38 49 C38 53 41 55 41 58 C41 55 44 53 44 49" fill="#e53935" stroke-width="2.5"/>${shine(20, 14, 4, 2.5)}`,
+    mut_feast: `<path d="M6 36 L58 36 C58 50 46 58 32 58 C18 58 6 50 6 36 Z" fill="#8d6e63"/><path d="M6 36 L58 36" stroke-width="4"/>
+        <path d="M20 36 C12 30 16 20 20 14 C22 22 26 24 26 30 C30 24 30 18 28 10 C38 18 40 28 36 36 Z" fill="#62dbe2"/>
+        <path d="M38 36 C36 30 40 24 44 22 C44 28 48 30 46 36 Z" fill="#62dbe2"/><path d="M14 44 C24 48 40 48 50 44" stroke="#5d4037" stroke-width="2.5"/>`,
+    mut_bones: `<circle cx="32" cy="32" r="12" fill="#fff59d"/><path d="M32 6 L32 14 M32 50 L32 58 M6 32 L14 32 M50 32 L58 32" stroke="#fff59d" stroke-width="4"/>
+        <path d="M10 50 C6 46 10 40 14 44 L44 14 C40 10 46 6 50 10 C54 6 60 12 54 16 C58 20 52 26 48 22 L18 52 C22 56 16 60 12 56 C8 60 2 54 6 50 C2 46 6 40 10 44 Z" fill="#f1ead6" transform="translate(64 0) scale(-1 1)"/>
+        <path d="M10 50 C6 46 10 40 14 44 L44 14 C40 10 46 6 50 10 C54 6 60 12 54 16 C58 20 52 26 48 22 L18 52 C22 56 16 60 12 56 C8 60 2 54 6 50 C2 46 6 40 10 44 Z" fill="#f1ead6"/>`,
+    mut_market: `<path d="M32 10 L32 52 M18 56 L46 56 M10 22 L54 22" stroke-width="4"/><path d="M8 22 L2 38 L18 38 Z" fill="#ffd54f"/><path d="M56 22 L46 38 L62 38 Z" fill="#ffd54f"/>
+        <path d="M2 38 C2 44 18 44 18 38 Z M46 38 C46 44 62 44 62 38 Z" fill="#ffd54f"/>
+        <path d="M24 12 C20 4 14 4 12 6 C16 8 18 10 20 14 Z M40 12 C44 4 50 4 52 6 C48 8 46 10 44 14 Z" fill="#b71c1c"/><circle cx="32" cy="10" r="5" fill="#e5484d"/>`,
+    mut_storm: `<path d="M10 14 L54 14 C50 20 44 22 36 22 C44 24 48 28 46 32 C40 30 32 32 28 34 C34 36 38 40 36 44 C32 42 26 44 24 48 C28 50 30 54 28 58 C22 50 18 42 22 34 C14 32 12 24 18 22 C12 20 10 18 10 14 Z" fill="#9575cd"/>
+        <path d="${starPath(46, 46, 12, 5, 8)}" fill="#c06bf5" stroke-width="3"/><circle cx="46" cy="46" r="3.5" fill="#f6dcff" stroke-width="2"/>`,
 };
 
-const ICON_SVGS = Object.fromEntries(Object.entries(ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
+const ICON_SVGS =Object.fromEntries(Object.entries(ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
 
 function iconHtml(name, cls = 'icon') {
     return `<span class="${cls}" aria-hidden="true">${ICON_SVGS[name] || ''}</span>`;
