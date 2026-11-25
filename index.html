@@ -1482,6 +1482,58 @@
             cursor: pointer;
         }
 
+        /* 設定開關（省電模式） */
+        .setting-toggle {
+            cursor: pointer;
+        }
+
+        .setting-toggle .setting-label {
+            flex: 1;
+            text-align: left;
+            font-weight: 700;
+            font-size: 17px;
+            color: var(--bone);
+            text-shadow: var(--text-outline);
+        }
+
+        .switch {
+            -webkit-appearance: none;
+            appearance: none;
+            position: relative;
+            flex-shrink: 0;
+            width: 52px;
+            height: 28px;
+            margin: 0;
+            border-radius: 14px;
+            background: #120d18;
+            border: 2px solid var(--ink);
+            box-shadow: inset 0 0 0 1px var(--gold-deep);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .switch::before {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(#f2cf73, #c4913a);
+            border: 2px solid var(--ink);
+            box-sizing: border-box;
+            transition: transform 0.15s;
+        }
+
+        .switch:checked {
+            background: #4f7a2a;
+        }
+
+        .switch:checked::before {
+            transform: translateX(24px);
+        }
+
         /* 統計 */
         .stat-grid {
             display: grid;
@@ -1784,6 +1836,7 @@
             <h2 class="title-text">設定</h2>
             <div class="setting-row"><span data-icon="music"></span><input type="range" id="volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
             <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
+            <label class="setting-row setting-toggle"><span data-icon="battery"></span><span class="setting-label">省電模式</span><input type="checkbox" id="saver-toggle" class="switch"></label>
             <div class="stack">
                 <button id="settings-close-btn" class="btn btn-dark">返回</button>
             </div>
@@ -1814,6 +1867,8 @@
             <div class="section-title">音量</div>
             <div class="setting-row"><span data-icon="music"></span><input type="range" id="pause-volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
             <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="pause-sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
+            <div class="section-title">畫面</div>
+            <label class="setting-row setting-toggle"><span data-icon="battery"></span><span class="setting-label">省電模式</span><input type="checkbox" id="pause-saver-toggle" class="switch"></label>
             <div class="stack">
                 <button id="resume-game-btn" class="btn btn-green btn-big"><span class="btn-icon" data-icon="play"></span>繼續</button>
                 <div class="btn-row" style="margin-top:0">

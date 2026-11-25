@@ -54,6 +54,8 @@ const ICON_BODIES = {
         <path d="M18 15 C8 15 8 29 19 30 M46 15 C56 15 56 29 45 30" stroke-width="4"/>
         <rect x="27" y="40" width="10" height="8" fill="#e0a82e"/><rect x="18" y="48" width="28" height="8" rx="2" fill="#e0a82e"/>${shine(25, 18, 3, 6, 0)}`,
     crystal: `<path d="M32 6 L50 24 L32 58 L14 24 Z" fill="#b388ff"/><path d="M14 24 L50 24 M32 6 L26 24 L32 58 M32 6 L38 24 L32 58" stroke-width="2.5"/>${shine(24, 18, 3, 6, 30)}`,
+    battery: `<rect x="4" y="14" width="50" height="36" rx="6" fill="#f1ead6"/><rect x="54" y="24" width="7" height="16" rx="2" fill="#f1ead6"/>
+        <rect x="10" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/><rect x="25" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/>`,
     gear: `<path d="${starPath(32, 32, 26, 20, 8)}" fill="#b0bec5"/><circle cx="32" cy="32" r="8" fill="#37474f"/>`,
     music: duoStroke('M25 46 L25 16 M51 40 L51 10', '#f1ead6', 4) + `<path d="M23 10 L53 3 L53 15 L23 22 Z" fill="#f1ead6"/>
         <ellipse cx="17" cy="47" rx="10" ry="7.5" fill="#f1ead6" transform="rotate(-20 17 47)"/><ellipse cx="43" cy="41" rx="10" ry="7.5" fill="#f1ead6" transform="rotate(-20 43 41)"/>`,

@@ -5,7 +5,11 @@ const ctx = canvas.getContext('2d');
 // 不管手機直拿還是電腦橫放，畫面裡看得到的世界面積都差不多是 VIEW_AREA（世界單位²），
 // 單位大小不會因為螢幕形狀忽大忽小
 const VIEW_AREA = 600 * 400 * 1.5;
-const MAX_DPR = 2;
+// 解析度上限：同類網頁遊戲都沒開到 2 倍（PokéSurvivor、RO 倖存者 1.5 倍，PokeBonk 手機 1.25 倍）。
+// 手機顯示晶片卡在要填的像素數，1.5 倍只要填 2 倍時的 56%，肉眼幾乎看不出差別
+const MAX_DPR = 1.5;
+// 省電模式：解析度 1 倍＋每秒 30 格（見 SLOW_FRAME_MS）
+const SAVER_DPR = 1;
 const CAMERA_FOLLOW = 6;
 // 鏡頭往移動方向多帶 CAMERA_LEAD 世界單位：只跟著法師的話，走起來法師反而偏到前進那一側，前面看得比後面少
 const CAMERA_LEAD = 70;
@@ -17,7 +21,7 @@ function resizeCanvas() {
     const vv = window.visualViewport;
     const cssW = Math.max(1, Math.round(vv ? vv.width : window.innerWidth));
     const cssH = Math.max(1, Math.round(vv ? vv.height : window.innerHeight));
-    const dpr = Math.min(MAX_DPR, window.devicePixelRatio || 1);
+    const dpr = Math.min(meta.powerSaver ? SAVER_DPR : MAX_DPR, window.devicePixelRatio || 1) * dynRes.scale;
     canvas.width = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
     canvas.style.width = `${cssW}px`;
@@ -101,6 +105,8 @@ const uiElements = {
     sfxSlider: $id('sfx-slider'),
     pauseVolumeSlider: $id('pause-volume-slider'),
     pauseSfxSlider: $id('pause-sfx-slider'),
+    saverToggle: $id('saver-toggle'),
+    pauseSaverToggle: $id('pause-saver-toggle'),
     draftScreen: $id('draft-screen'),
     draftCards: $id('draft-cards'),
     rerollBtn: $id('reroll-btn'),
@@ -688,7 +694,7 @@ const META_UPGRADES = {
 const CRYSTALS_PER_WAVE = 2;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume };
+    return { crystals: 0, upgrades: {}, tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
 }
 function loadMeta() {
     try {
@@ -6003,7 +6009,7 @@ function togglePause() {
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
         stopHoldAction();
-        syncVolumeSliders();
+        syncSettingControls();
         updatePauseMenuStats();
         showScreen(uiElements.pauseMenu, true);
         pauseMusic();
@@ -6571,6 +6577,11 @@ let loopLastTime = 0;
 const TITLE_DRIFT_SPEED = 14;
 // 120Hz 螢幕上 rAF 一秒叫 120 次；畫面 60 fps 就夠順，多出來那一半只是讓手機發燙
 const TARGET_FRAME_MS = 1000 / 60;
+// 標題畫面背景只是緩緩飄動、省電模式寧可少畫幾格：都用每秒 30 格
+const SLOW_FRAME_MS = 1000 / 30;
+function frameIntervalMs() {
+    return appScreen === 'title' || meta.powerSaver ? SLOW_FRAME_MS : TARGET_FRAME_MS;
+}
 // rAF 的時間戳會抖，60Hz 螢幕偶爾 16.4ms 就來；不留餘裕的話會被當成太早而整格跳掉
 const FRAME_EARLY_TOLERANCE_MS = 2;
 let nextFrameAt = 0;
@@ -6580,8 +6591,9 @@ function gameLoop(currentTime) {
     animationFrameId = requestAnimationFrame(gameLoop);
     if (currentTime < nextFrameAt - FRAME_EARLY_TOLERANCE_MS) return;
     // 落後（慢手機跑不到 60）就從現在重新對齊，不連續補畫
-    nextFrameAt = Math.max(nextFrameAt + TARGET_FRAME_MS, currentTime);
-    const deltaTime = Math.min(0.1, Math.max(0, (currentTime - loopLastTime) / 1000));
+    nextFrameAt = Math.max(nextFrameAt + frameIntervalMs(), currentTime);
+    const elapsed = Math.max(0, (currentTime - loopLastTime) / 1000);
+    const deltaTime = Math.min(0.1, elapsed);
     loopLastTime = currentTime;
 
     // 圖片載完後還在等字型時也要繼續畫，不然進度條會停在半途
@@ -6593,15 +6605,68 @@ function gameLoop(currentTime) {
         return;
     }
     document.body.classList.toggle('world-frozen', appScreen === 'playing' && (isWorldFrozen() || gameState.isPaused || gameState.gameOver));
-    if (appScreen !== 'playing' || gameState.isPaused || gameState.gameOver) return;
+    if (appScreen !== 'playing' || gameState.isPaused || gameState.gameOver) { resetDynResWindow(); return; }
 
     const frozen = isWorldFrozen();
+    const workStart = performance.now();
     if (!frozen) updateGame(deltaTime);
     updateTutorial();
     // 戰場停住時畫面一格都不會變（教學提示會動，所以有教學時照畫），畫一次留在畫布上就好
     if (!frozen || tutorial || !frozenFrameDrawn) drawGame();
     frozenFrameDrawn = frozen;
     updateUI();
+    if (frozen) resetDynResWindow();
+    else sampleDynRes(elapsed, performance.now() - workStart, currentTime);
+}
+
+// ---------- 自動降解析度（做法參考 PokeBonk） ----------
+// 每 DYN_RES_WINDOW_S 秒看一次實際格數：太卡就把解析度降一階，順了再慢慢升回來。
+// 只在遊戲程式本身沒吃滿時間時才降 —— 卡在遊戲邏輯的話，少畫幾個像素也不會變順
+const DYN_RES_WINDOW_S = 2;
+const DYN_RES_STEP = 0.1;
+const DYN_RES_MIN = 0.6;
+// 門檻跟著目標格數走：60 格時低於 45 降、55 以上升；省電模式 30 格時低於約 23 降
+const DYN_RES_LOW_RATIO = 0.75;
+const DYN_RES_HIGH_RATIO = 0.92;
+// 一格的時間有七成以上花在遊戲程式裡 = 卡在邏輯，不是卡在畫圖
+const DYN_RES_JS_BOUND = 0.7;
+// 相隔這麼久以上的一格（切到背景、卡頓）不算進順暢度
+const DYN_RES_MAX_GAP_S = 0.25;
+// 升上去之後很快又降回來，下次升級要等的視窗數就加倍，免得在兩階之間來回跳
+const DYN_RES_UP_WAIT_START = 2;
+const DYN_RES_UP_WAIT_MAX = 30;
+const DYN_RES_BOUNCE_MS = 25000;
+const dynRes = { scale: 1, t: 0, frames: 0, work: 0, good: 0, wait: DYN_RES_UP_WAIT_START, lastUp: -Infinity };
+function resetDynResWindow() {
+    dynRes.t = 0; dynRes.frames = 0; dynRes.work = 0;
+}
+function sampleDynRes(elapsedS, workMs, now) {
+    if (elapsedS > DYN_RES_MAX_GAP_S) { resetDynResWindow(); return; }
+    dynRes.t += elapsedS; dynRes.frames++; dynRes.work += workMs;
+    if (dynRes.t < DYN_RES_WINDOW_S) return;
+    const fps = dynRes.frames / dynRes.t;
+    const jsShare = dynRes.work / 1000 / dynRes.t;
+    resetDynResWindow();
+    const target = 1000 / frameIntervalMs();
+    if (fps < target * DYN_RES_LOW_RATIO && jsShare < DYN_RES_JS_BOUND && dynRes.scale > DYN_RES_MIN) {
+        if (now - dynRes.lastUp < DYN_RES_BOUNCE_MS) dynRes.wait = Math.min(DYN_RES_UP_WAIT_MAX, dynRes.wait * 2);
+        dynRes.good = 0;
+        setDynResScale(dynRes.scale - DYN_RES_STEP);
+    } else if (fps >= target * DYN_RES_HIGH_RATIO && dynRes.scale < 1) {
+        if (++dynRes.good >= dynRes.wait) {
+            dynRes.good = 0;
+            dynRes.lastUp = now;
+            setDynResScale(dynRes.scale + DYN_RES_STEP);
+        }
+    } else {
+        dynRes.good = 0;
+    }
+}
+function setDynResScale(s) {
+    s = Math.round(Math.max(DYN_RES_MIN, Math.min(1, s)) * 100) / 100;
+    if (s === dynRes.scale) return;
+    dynRes.scale = s;
+    resizeCanvas();
 }
 
 // 選祝福、凱旋畫面打開時戰場停住，背景要看得到，但只畫停住的那一格；暫停與結束則連畫都停
@@ -6707,20 +6772,35 @@ function setSfxVolume(volume) {
     Sfx.setVolume(gameState.sfxVolume);
 }
 
-// 標題的設定頁與暫停選單各有一組滑桿，數值同一份（存在永久資料裡）
-function syncVolumeSliders() {
+// 標題的設定頁與暫停選單各有一組控制項，數值同一份（存在永久資料裡）
+function syncSettingControls() {
     uiElements.volumeSlider.value = uiElements.pauseVolumeSlider.value = meta.bgmVolume;
     uiElements.sfxSlider.value = uiElements.pauseSfxSlider.value = meta.sfxVolume;
+    uiElements.saverToggle.checked = uiElements.pauseSaverToggle.checked = !!meta.powerSaver;
+}
+function bindSaverToggles() {
+    [uiElements.saverToggle, uiElements.pauseSaverToggle].forEach(t => {
+        t.addEventListener('change', e => {
+            meta.powerSaver = e.target.checked;
+            saveMeta();
+            syncSettingControls();
+            resetDynResWindow();
+            nextFrameAt = 0;
+            resizeCanvas();
+            // 暫停中迴圈不畫圖，改了解析度畫布會被清空，背後的戰場要補畫一次
+            if (appScreen === 'playing') drawGame();
+        });
+    });
 }
 function bindVolumeSliders() {
     [uiElements.volumeSlider, uiElements.pauseVolumeSlider].forEach(s => {
-        s.addEventListener('input', e => { setMusicVolume(parseFloat(e.target.value)); syncVolumeSliders(); });
+        s.addEventListener('input', e => { setMusicVolume(parseFloat(e.target.value)); syncSettingControls(); });
         s.addEventListener('change', saveMeta);
     });
     [uiElements.sfxSlider, uiElements.pauseSfxSlider].forEach(s => {
         s.addEventListener('input', e => {
             setSfxVolume(parseFloat(e.target.value));
-            syncVolumeSliders();
+            syncSettingControls();
             Sfx.unlock();
             Sfx.play('orb');
         });
@@ -6790,8 +6870,9 @@ function init() {
     if (window.visualViewport) window.visualViewport.addEventListener('resize', resizeCanvas);
     setMusicVolume(meta.bgmVolume);
     setSfxVolume(meta.sfxVolume);
-    syncVolumeSliders();
+    syncSettingControls();
     bindVolumeSliders();
+    bindSaverToggles();
 
     canvas.addEventListener('pointerdown', handleCanvasPointerDown);
     canvas.addEventListener('pointermove', handleCanvasPointerMove);
@@ -6845,7 +6926,7 @@ function init() {
     onTap(uiElements.titleStartBtn, startNewRun);
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
-    onTap(uiElements.titleSettingsBtn, () => { syncVolumeSliders(); showScreen(uiElements.settingsScreen, true); });
+    onTap(uiElements.titleSettingsBtn, () => { syncSettingControls(); showScreen(uiElements.settingsScreen, true); });
     onTap(uiElements.settingsCloseBtn, () => { saveMeta(); showScreen(uiElements.settingsScreen, false); });
     onTap(uiElements.metaCloseBtn, closeMeta);
     onTap(uiElements.metaRefundBtn, () => showConfirm('全部退還？', '結晶全數退回，可以重新分配', '退還', refundMeta));
