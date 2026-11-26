@@ -13,6 +13,9 @@ const URL = process.argv[2];
 const POLICY = process.argv[3] || 'human';
 const TAG = process.argv[4] || '-';
 const CLASS = process.argv[5] || 'necro';
+// 環境變數 PICK=smart|random|first：祝福怎麼挑（見迴圈裡的說明）；META=zero|half|max：開局的局外強化（half = 數值類各買一半、一次買斷的不買）
+const PICK = process.env.PICK || 'smart';
+const META = process.env.META || 'zero';
 if (!URL) { console.error('usage: node tools/playtest.mjs <url> [human|still] [tag]'); process.exit(1); }
 
 const browser = await chromium.launch({ headless: true });
@@ -21,14 +24,16 @@ page.on('pageerror', e => console.log('PAGEERROR', e.message));
 await page.goto(URL);
 await page.waitForFunction(() => typeof appScreen !== 'undefined' && appScreen === 'title', null, { timeout: 30000 });
 
-await page.evaluate(([policy, cls]) => {
+await page.evaluate(([policy, cls, pick, metaLvl]) => {
     cancelAnimationFrame(animationFrameId); animationFrameId = -1;
     meta.tutorialDone = true; Sfx.play = () => {};
     // 直接把那個職業的解鎖條件打開
     if (CLASSES[cls].unlock) meta.achv[CLASSES[cls].unlock] = true;
     meta.classSel = cls;
+    const metaLvOf = (m) => metaLvl === 'max' ? m.max : metaLvl === 'half' && m.max > 1 ? Math.round(m.max / 2) : 0;
+    for (const id in META_UPGRADES) meta.upgrades[id] = metaLvOf(META_UPGRADES[id]);
     resetGame(); enterPlaying(); tutorial = null;
-    window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, seen: new WeakMap(), decide: 0, src: {} };
+    window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, pick, seen: new WeakMap(), decide: 0, src: {} };
     // 記每種怪一共掉了多少靈魂：經濟有沒有被哪隻怪放大（吞魂者第一版就是這樣抓到的）
     const B = window.__bot;
     B.relics = {};
@@ -38,7 +43,7 @@ await page.evaluate(([policy, cls]) => {
     Monster.prototype.die = function () { window.__dying = this.config.type; try { origDie.call(this); } finally { window.__dying = null; } };
     const origDrop = window.dropSouls;
     window.dropSouls = function (x, y, a) { const k = window.__dying || 'other'; B.src[k] = (B.src[k] || 0) + a; return origDrop(x, y, a); };
-}, [POLICY, CLASS]);
+}, [POLICY, CLASS, PICK, META]);
 
 const SIM_SECONDS_PER_CALL = 30;
 let r;
@@ -72,7 +77,10 @@ for (;;) {
                 if (gameState.player.currentHealth < gameState.player.maxHealth * BOT_HEAL_BELOW) { healDraft(); continue; }
                 // 像真人一樣挑：傳說先拿；否則挑自己已經在疊的流派（衝共鳴），全軍通用的算中等，契約最後才拿。
                 // 完全亂挑的話同一個設定兩局可以差三十波（有一局剛好疊成、有一局全是雜牌），拿來比較職業強弱全是雜訊
+                // PICK=random：完全亂挑（像不懂搭配的新手）；PICK=first：永遠拿第一張。拿來量「選擇有沒有意義」
                 const opts = gameState.pendingDraft.options; const leg = opts.find(id => BLESSINGS[id].legendary);
+                if (B.pick === 'random') { pickBlessing(opts[Math.floor(Math.random() * opts.length)]); continue; }
+                if (B.pick === 'first') { pickBlessing(opts[0]); continue; }
                 const BOT_ARMY_SCORE = 1.5, BOT_PACT_SCORE = -1, BOT_JITTER = 0.5;
                 const score = (id) => { const B = BLESSINGS[id]; return (B.pact ? BOT_PACT_SCORE : B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + Math.random() * BOT_JITTER; };
                 pickBlessing(leg || opts.reduce((a, b) => score(b) > score(a) ? b : a)); continue;
@@ -191,6 +199,10 @@ for (;;) {
             updateGame(DT);
             B.t += DT;
             if (B.cur && p.currentHealth < h0) B.cur.dmg += (h0 - p.currentHealth) / p.maxHealth;
+            // 最近 BURST_SECONDS 秒的血量：死的時候看是不是「半血以上幾秒內就歸零」（被秒殺，玩家來不及反應）
+            const BURST_SECONDS = 3;
+            (B.hpHist ||= []).push([B.t, p.currentHealth / p.maxHealth]);
+            while (B.hpHist.length && B.hpHist[0][0] < B.t - BURST_SECONDS) B.hpHist.shift();
             if (B.cur && !gameState.betweenWaves) { B.cur.minHp = Math.min(B.cur.minHp, p.currentHealth / p.maxHealth); B.cur.peak = Math.max(B.cur.peak, gameState.monsters.length); }
             B.maxArmy = Math.max(B.maxArmy || 0, gameState.summons.length);
             // 一波打超過 STUCK_SECONDS 秒當成卡關：記下場上剩什麼、離法師多遠、在打誰
@@ -223,9 +235,14 @@ const out = await page.evaluate(() => ({
     achv: Object.keys(meta.achv), maxArmy: window.__bot.maxArmy, kills: meta.stats.kills,
     units: Object.fromEntries(Object.entries(gameState.units).filter(([, u]) => u.count || u.level).map(([t, u]) => [t, `${u.count}@L${u.level}`])),
     hero: Math.round(gameState.player.maxHealth),
+    // 這一局主力是哪個流派（層數最多的；全軍通用與契約不算）
+    build: Object.keys(SCHOOLS).map(s => [s, schoolPoints(s)]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none',
+    burst: !gameState.player.isAlive && (window.__bot.hpHist || []).some(([, f]) => f >= 0.5),
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
-console.log(`RESULT ${TAG} policy=${POLICY} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
+console.log(`RESULT ${TAG} policy=${POLICY} pick=${PICK} meta=${META} class=${CLASS} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
+console.log('BUILD', out.build);
+if (!r.won) console.log('BURST', out.burst);
 console.log('SOULS', JSON.stringify(out.souls));
 console.log('UNITS', JSON.stringify(out.units), 'heroMaxHp', out.hero);
 console.log('RELICS', JSON.stringify(out.relics), 'blessings', Object.values(out.blessings).reduce((a, b) => a + b, 0));
