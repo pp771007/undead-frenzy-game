@@ -307,7 +307,7 @@ const CONFIG = {
     },
     assassin: {
         type: 'Assassin', name: '暗影刺客', baseHealth: 40, baseAttack: 0, radius: 11,
-        imageName: 'fast_melee', art: 'assassin', imgScaleMultiplier: 3, artScale: 3.5, tint: '#5E35B1', tintStrength: 0.6,
+        imageName: 'fast_melee', art: 'assassin', imgScaleMultiplier: 3, artScale: 4.2, tint: '#5E35B1', tintStrength: 0.6,
         // attackRange 只用來決定她在法師身邊多遠停下來等瞬移，她本身不普攻
         attackRange: 90, attackSpeed: 1, moveSpeed: 68, color: '#5E35B1',
         soulDrop: 6, waveSpeedIncreaseFactor: 0.006,
