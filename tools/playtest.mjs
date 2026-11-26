@@ -57,7 +57,9 @@ await page.evaluate(([policy, cls, pick, metaLvl]) => {
         const h0 = this.currentHealth;
         const ret = origHurt.call(this, amount, source);
         const lost = (h0 - this.currentHealth) / this.maxHealth;
-        if (lost > 0) B.hits.push([B.t, (source && source.config && source.config.type) || 'other', lost]);
+        // 首領照最近出的那一招分開記（Boss:dash、Boss:knives…）：看是哪一招在磨主角
+        const type = (source && source.config && source.config.type) || 'other';
+        if (lost > 0) B.hits.push([B.t, type === 'Boss' ? `Boss:${source.lastMove || 'melee'}` : type, lost]);
         return ret;
     };
 }, [POLICY, CLASS, PICK, META]);

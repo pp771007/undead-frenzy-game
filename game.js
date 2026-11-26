@@ -300,11 +300,12 @@ const CONFIG = {
             // 孕育：鼓脹幾下，身邊冒出一圈自爆怪
             brood: { cd: 8, windup: 0.8, countBase: 3, countPerTier: 1, radius: 40, recover: 0.4 },
             // 毒雨：朝天噴一口，毒團落在主角身邊（同瘟疫投手的毒，飛行中地上有預警），第一團落在主角腳下
-            rain: { cd: 7, windup: 0.6, count: 5, countPhase2: 8, spread: 90, recover: 0.4 },
+            // 毒池會留在地上，加上膿爆留的一圈，第二階段地上很快被鋪滿：毒雨團數、膿爆與彈幕的扣血都比其他首領保守
+            rain: { cd: 7, windup: 0.6, count: 5, countPhase2: 6, spread: 90, recover: 0.4 },
             // 膿包爆裂：先畫出彈道，鼓起來後噴一整圈毒彈（飛過大軍、只打主角），從空隙鑽過去；半血後錯開半格再噴一圈
-            burst: { cd: 8, windup: 1.0, count: 12, speed: 120, range: 360, hp: 0.08, again: 0.45, recover: 0.9 },
+            burst: { cd: 8, windup: 1.0, count: 12, speed: 120, range: 360, hp: 0.06, again: 0.45, recover: 0.9 },
             // 膿爆：身邊一大圈紅圈，炸開後四周留下一圈毒池
-            erupt: { cd: 11, phase2: true, windup: 1.2, radius: 110, dmg: 1.5, hp: 0.2, pools: 6, recover: 1.3 },
+            erupt: { cd: 11, phase2: true, windup: 1.2, radius: 110, dmg: 1.5, hp: 0.15, pools: 6, recover: 1.3 },
         },
     },
     hunterBoss: {
@@ -316,11 +317,12 @@ const CONFIG = {
         moveGap: 1.3, phase2Speed: 1.3,
         moves: {
             // 疾影衝刺：紅線預警，沿線衝過去；半血後衝完立刻轉向主角再衝，一輪三次（後兩次預警短）
-            dash: { cd: 4.5, reach: 300, windup: 0.8, chainWindup: 0.45, chain: 3, length: 260, width: 28, travel: 0.15, dmg: 1.5, hp: 0.15, recover: 0.7 },
+            // 主角扣血比其他首領輕：獵手一輪招最密（連衝＋兩排飛刀＋影十字），照一般首領的比例算，第 30 波幾乎每個職業都掉到兩成血以下
+            dash: { cd: 4.5, reach: 300, windup: 0.8, chainWindup: 0.55, chain: 3, length: 260, width: 28, travel: 0.15, dmg: 1.5, hp: 0.12, recover: 0.7 },
             // 影刃：先畫出扇形彈道，再甩一排飛刀（只打主角）；半血後連甩兩排
-            knives: { cd: 5, minRange: 120, reach: 420, windup: 0.55, count: 5, spread: 0.6, speed: 230, range: 420, hp: 0.07, again: 0.4, recover: 0.3 },
+            knives: { cd: 5, minRange: 120, reach: 420, windup: 0.55, count: 5, spread: 0.6, speed: 230, range: 420, hp: 0.05, again: 0.4, recover: 0.3 },
             // 影十字：遁入陰影，主角腳下交錯三道紅線，斬下後現身在交會處
-            cross: { cd: 9, reach: 420, windup: 1.1, lines: 3, length: 440, width: 20, dmg: 1.3, hp: 0.18, recover: 1.0 },
+            cross: { cd: 9, reach: 420, windup: 1.1, lines: 3, length: 440, width: 20, dmg: 1.3, hp: 0.14, recover: 1.0 },
         },
     },
     dragonBoss: {
@@ -332,7 +334,7 @@ const CONFIG = {
         moveGap: 1.6, phase2Speed: 1.3,
         moves: {
             // 吐息：朝主角畫一塊扇形預警，蓄力後整塊噴下去（大軍擠在前面會被燒一大片，主角要閃出扇形）；半血後連噴三口、左右掃
-            breath: { cd: 6, reach: 280, windup: 1.0, range: 240, angle: Math.PI / 3.5, dmg: 2.5, hp: 0.22, sweep: 0.9, sweepEvery: 0.4, recover: 0.8 },
+            breath: { cd: 6, reach: 280, windup: 1.0, range: 240, angle: Math.PI / 3.5, dmg: 2.5, hp: 0.17, sweep: 0.9, sweepEvery: 0.4, recover: 0.8 },
             // 飛撲：飛上天（打不到）、地上紅圈標出主角起飛時站的位置，砸下來
             fly: { cd: 11, flight: 1.6, height: 120, radius: 100, dmg: 2, hp: 0.25, recover: 1.2 },
             // 骨火雨：仰天一吼，火球一顆接一顆砸在主角身邊（第一顆砸在主角腳下）
@@ -4362,6 +4364,9 @@ const BOSS_MARK_HOT_TIME = 0.25;
 const BOSS_MARK_LINE_SPARK_STEP = 28;
 const BOSS_FALL_HEIGHT = 300;
 const BOSS_LOB_ARC = 110;
+// 打召喚物打折：有護甲與三階段之後首領戰變長好幾倍，照「幾秒就倒」設計的傷害累積起來，
+// 死靈法師的大軍在第 10 波首領被打光不只一輪（176 秒、損失 129%），輸出掉下來戰鬥更長，越拖越慘
+const BOSS_SUMMON_HIT = 0.5;
 const BOSS_DODGE_TEXT = '閃過！';
 const BOSS_DODGE_COLOR = '#80DEEA';
 function addBossMark(m, cast) {
@@ -4389,7 +4394,7 @@ function bossMarkReach(m) {
 function fireBossMark(m) {
     const cast = m.cast, { c, r } = bossMarkReach(m);
     summonGrid.forEachInRadius(c, r, s => {
-        if (s.isAlive && !cast.hit.has(s) && bossMarkHits(m, s.pos)) { cast.hit.add(s); s.takeDamage(m.dmg); }
+        if (s.isAlive && !cast.hit.has(s) && bossMarkHits(m, s.pos)) { cast.hit.add(s); s.takeDamage(m.dmg * BOSS_SUMMON_HIT); }
     });
     const p = gameState.player;
     if (p && p.isAlive && !cast.hit.has(p) && bossMarkHits(m, p.pos)) { cast.hit.add(p); p.takeDamage(p.maxHealth * m.hp * heroPenaltyScale(), m.source); }
