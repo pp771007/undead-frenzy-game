@@ -437,6 +437,10 @@ function useBloodMoon() {
     gameState.frenzyTimer = Math.max(gameState.frenzyTimer, M.duration);
     spawnFloatText(p.pos.x, p.pos.y - 40, '血月降臨！', '#FF8A80', 18, 1.3, 'bloodmoon');
     spawnParticles(p.pos.x, p.pos.y, '#B71C1C', 36, 200, 0.7, 3);
+    // 兩圈血色衝擊波，一群血蝙蝠從身上往四面八方飛散
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 20, r1: 200, life: 0.7, color: '#D50000', width: 10 });
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 10, r1: 120, life: 0.5, color: '#FF8A80', width: 5, delay: 0.12 });
+    addWorldFx({ kind: 'sprites', image: 'blood_bat', x: p.pos.x, y: p.pos.y, size: 26, life: 0.9, list: Array.from({ length: MOON_BATS }, (_, i) => { const a = i / MOON_BATS * Math.PI * 2 + Math.random() * 0.4, s = 160 + Math.random() * 120; return { vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.7 }; }) });
     addShake(7);
     Sfx.play('boss');
     gameState.ultCooldown = M.cooldown;
@@ -667,4 +671,39 @@ function drawVampSky(ctx) {
     const v = vampState();
     ctx.fillStyle = v.moonT > 0 ? 'rgba(90, 0, 10, 0.22)' : v.night ? 'rgba(10, 6, 40, 0.24)' : 'rgba(255, 196, 110, 0.07)';
     ctx.fillRect(0, 0, view.cssW, view.cssH);
+    if (v.moonT > 0) drawBloodMoon(ctx, v);
+}
+// 血月：畫面右上方升起一輪巨大的紅月，背後幾道慢慢轉的紅光，快結束時淡掉
+const MOON_R = 46, MOON_RISE = 0.7, MOON_FADE = 1, MOON_RAYS = 9, MOON_BATS = 12;
+const MOON_LIGHT = '#FF5252', MOON_DARK = '#7F0000', MOON_CRATER = 'rgba(90, 0, 0, 0.2)';
+const MOON_CRATERS = [[-0.35, -0.2, 0.2], [0.28, 0.18, 0.26], [0.08, -0.48, 0.1], [-0.22, 0.42, 0.13], [0.45, -0.25, 0.08], [-0.55, 0.15, 0.07]];
+function drawBloodMoon(ctx, v) {
+    const since = VAMPIRE.bloodMoon.duration - v.moonT;
+    const rise = Math.min(1, Math.max(0, since) / MOON_RISE), ease = 1 - (1 - rise) * (1 - rise);
+    const alpha = Math.min(1, v.moonT / MOON_FADE) * ease;
+    const cx = view.cssW * 0.72, cy = hudTop + 110 - (1 - ease) * 80;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    // 光芒
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(worldTime * 0.15);
+    ctx.fillStyle = 'rgba(255, 82, 82, 0.09)';
+    for (let i = 0; i < MOON_RAYS; i++) {
+        ctx.rotate(Math.PI * 2 / MOON_RAYS);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-14, -MOON_R * 4.5); ctx.lineTo(14, -MOON_R * 4.5); ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalAlpha = alpha * (0.75 + 0.25 * Math.sin(worldTime * 2));
+    const gs = MOON_R * 5;
+    ctx.drawImage(getGlowSprite('#D50000'), cx - gs / 2, cy - gs / 2, gs, gs);
+    ctx.globalAlpha = alpha;
+    const g = ctx.createRadialGradient(cx - MOON_R * 0.3, cy - MOON_R * 0.3, MOON_R * 0.1, cx, cy, MOON_R);
+    g.addColorStop(0, MOON_LIGHT);
+    g.addColorStop(1, MOON_DARK);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, MOON_R, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = MOON_CRATER;
+    for (const [x, y, r] of MOON_CRATERS) { ctx.beginPath(); ctx.arc(cx + x * MOON_R, cy + y * MOON_R, r * MOON_R, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
 }

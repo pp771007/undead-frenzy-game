@@ -191,6 +191,13 @@ function elfUpdate(dt) {
     if (e.rainT > 0) {
         e.rainT -= dt; e.rainTick -= dt;
         if (e.rainTick <= 0) { e.rainTick = ELF.rain.tick; rainVolley(); }
+        // 沒有打到怪的箭也照樣落滿整個畫面：「箭雨」要看起來像一場雨，不是只有打中的那幾支
+        e.rainFx = (e.rainFx || 0) + dt * RAIN_AMBIENT_PER_SEC;
+        while (e.rainFx >= 1) {
+            e.rainFx--;
+            if (gameState.visualEffects.length >= MAX_AMBIENT_EFFECTS) break;
+            gameState.visualEffects.push(new FallingArrowEffect({ x: camera.x + Math.random() * view.w, y: camera.y + Math.random() * view.h }));
+        }
         if (e.rainT <= 0) { gameState.run.novaBest = Math.max(gameState.run.novaBest, e.rainKills); }
     }
     // 月光箭
@@ -439,13 +446,32 @@ function rainVolley() {
         gameState.visualEffects.push(new FallingArrowEffect(m.pos));
     }
 }
+// 箭雨的一支箭：地上的影子越來越大 → 從斜上方插下來（跟平射同一支箭）→ 揚起一點塵土、插在地上一會兒再淡掉
+const RAIN_FALL = 0.28, RAIN_STUCK = 0.55, RAIN_HEIGHT = 140, RAIN_DRIFT = 30, RAIN_AMBIENT_PER_SEC = 45;
+const RAIN_DUST = '#BCAAA4', RAIN_SHADOW = 'rgba(0, 0, 0, 0.3)';
 class FallingArrowEffect extends TimedEffect {
-    constructor(pos) { super(pos, 0.22); }
+    constructor(pos) { super(pos, RAIN_FALL + RAIN_STUCK); this.landed = false; }
+    update(dt) {
+        super.update(dt);
+        if (!this.landed && this.duration - this.life >= RAIN_FALL) {
+            this.landed = true;
+            if (inView(this.pos)) spawnParticles(this.pos.x, this.pos.y, RAIN_DUST, 3, 40, 0.35, 2.5);
+        }
+    }
     draw(ctx) {
-        const k = 1 - this.life / this.duration;
-        // 箭雨：從斜上方插下來（跟平射同一支箭）
-        const y = this.pos.y - (1 - k) * 80;
-        drawShaped('arrow', this.pos.x - (1 - k) * 18, y - 8, FALLING_ARROW_ANGLE, 0);
+        if (!inView(this.pos)) return;
+        const t = this.duration - this.life, k = Math.min(1, t / RAIN_FALL);
+        const dx = Math.cos(FALLING_ARROW_ANGLE), dy = Math.sin(FALLING_ARROW_ANGLE);
+        if (!this.landed) {
+            ctx.fillStyle = RAIN_SHADOW;
+            ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y, 2 + 5 * k, 1 + 2 * k, 0, 0, Math.PI * 2); ctx.fill();
+            drawShaped('arrow', this.pos.x - dx * 12 - (1 - k) * RAIN_DRIFT, this.pos.y - dy * 12 - (1 - k) * RAIN_HEIGHT, FALLING_ARROW_ANGLE, 0);
+            return;
+        }
+        // 插在地上：箭頭埋進土裡，只露出後半截
+        ctx.globalAlpha = Math.min(1, this.life / (RAIN_STUCK * 0.5));
+        drawShaped('arrow', this.pos.x - dx * 9, this.pos.y - dy * 9, FALLING_ARROW_ANGLE, 0);
+        ctx.globalAlpha = 1;
     }
 }
 

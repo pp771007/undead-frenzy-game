@@ -1257,7 +1257,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-    hazards: [], enemyBolts: [], bossMarks: [], bossFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -3998,7 +3998,7 @@ class BossMonster extends Monster {
         this.enraged = true;
         spawnFloatText(this.pos.x, this.pos.y - 40, '狂怒', '#FF8A80', 20, 1.4);
         spawnParticles(this.pos.x, this.pos.y, this.auraColor, 30, 160, 0.7, 4);
-        addBossFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 160, life: 0.7, color: this.auraColor, width: 8 });
+        addWorldFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 160, life: 0.7, color: this.auraColor, width: 8 });
         addShake(8);
         Sfx.play('boss');
     }
@@ -4112,7 +4112,7 @@ class BossMonster extends Monster {
         if (classDef().onBossKill) classDef().onBossKill(this);
         if (gameState.currentWave >= ACHV_BOSS_CHALLENGE_WAVE && worldTime - this.spawnedAt <= ACHV_BLITZ_SECONDS) gameState.run.flags.bossBlitz = true;
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
-        addBossFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 220, life: 0.9, color: '#E1BEE7', width: 10 });
+        addWorldFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 220, life: 0.9, color: '#E1BEE7', width: 10 });
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
         spawnFloatText(this.pos.x, this.pos.y - 8, `+${CRYSTALS_PER_BOSS}`, '#CE93D8', 17, 1.6, 'crystal');
         gameState.rerollsLeft += REROLLS_PER_BOSS;
@@ -4181,10 +4181,10 @@ function fireBossMark(m) {
     if (p && p.isAlive && !cast.hit.has(p) && bossMarkHits(m, p.pos)) { cast.hit.add(p); p.takeDamage(p.maxHealth * m.hp, m.source); }
     const color = m.color;
     if (m.shape === 'line') {
-        addBossFx({ kind: 'beam', x: m.x, y: m.y, dx: m.dx, dy: m.dy, len: m.len, w: m.w, life: 0.35, color });
+        addWorldFx({ kind: 'beam', x: m.x, y: m.y, dx: m.dx, dy: m.dy, len: m.len, w: m.w, life: 0.35, color });
         for (let d = 0; d <= m.len; d += BOSS_MARK_LINE_SPARK_STEP) spawnParticles(m.x + m.dx * d, m.y + m.dy * d, color, 2, 80, 0.4, 3);
     } else if (m.shape === 'cone') {
-        addBossFx({ kind: 'cone', x: m.x, y: m.y, a: m.a, range: m.range, half: m.half, life: 0.4, color });
+        addWorldFx({ kind: 'cone', x: m.x, y: m.y, a: m.a, range: m.range, half: m.half, life: 0.4, color });
         for (let i = 0; i < 40; i++) {
             const ang = m.a + (Math.random() * 2 - 1) * m.half, rr = Math.random() * m.range;
             spawnParticles(m.x + Math.cos(ang) * rr, m.y + Math.sin(ang) * rr, color, 1, 50, 0.5, 4);
@@ -4193,8 +4193,8 @@ function fireBossMark(m) {
         const effect = getVisualEffectFromPool(ExplosionEffect);
         if (effect) { effect.init(m, m.r); gameState.visualEffects.push(effect); }
         spawnParticles(m.x, m.y, color, 12, 130, 0.5, 3);
-        if (m.fx === 'ring' || m.fx === 'both') addBossFx({ kind: 'ring', x: m.x, y: m.y, r0: m.r * 0.6, r1: m.r * 1.6, life: 0.45, color, width: 7 });
-        if (m.fx === 'spikes' || m.fx === 'both') addBossFx({ kind: 'spikes', x: m.x, y: m.y, r: m.r, life: 0.5, seed: Math.random() * 10 });
+        if (m.fx === 'ring' || m.fx === 'both') addWorldFx({ kind: 'ring', x: m.x, y: m.y, r0: m.r * 0.6, r1: m.r * 1.6, life: 0.45, color, width: 7 });
+        if (m.fx === 'spikes' || m.fx === 'both') addWorldFx({ kind: 'spikes', x: m.x, y: m.y, r: m.r, life: 0.5, seed: Math.random() * 10 });
     }
     addShake(m.shake || 4);
     if (m.sfx) Sfx.play(m.sfx);
@@ -4285,20 +4285,66 @@ function drawLobbedBone(m, k) {
     ctx.restore();
 }
 
-// ---------- 首領招式的特效（不會傷人，只是好看）：震波、骨刺、光束殘影、扇形火焰 ----------
-function addBossFx(f) {
-    gameState.bossFx.push({ ...f, max: f.life });
+// ---------- 世界上的特效（不會傷人，只是好看）：首領招式、職業大招共用 ----------
+// kind：ring 震波、spikes 骨刺、beam 光束殘影、cone 扇形火焰、slash 弧形刀光、leaves 落葉旋風、sprites 一群圖往外飛（蝙蝠之類）。
+// delay：幾秒後才出現（連斬一刀接一刀）
+function addWorldFx(f) {
+    gameState.worldFx.push({ delay: 0, ...f, max: f.life });
 }
-function updateBossFx(deltaTime) {
-    if (!gameState.bossFx.length) return;
-    for (const f of gameState.bossFx) f.life -= deltaTime;
-    gameState.bossFx = gameState.bossFx.filter(f => f.life > 0);
+function updateWorldFx(deltaTime) {
+    if (!gameState.worldFx.length) return;
+    for (const f of gameState.worldFx) {
+        if (f.delay > 0) { f.delay -= deltaTime; continue; }
+        f.life -= deltaTime;
+    }
+    gameState.worldFx = gameState.worldFx.filter(f => f.life > 0);
 }
 const SPIKE_COUNT = 6;
-function drawBossFx() {
-    for (const f of gameState.bossFx) {
+const LEAF_FILL = '#9CCC65', LEAF_EDGE = '#33691E';
+function drawWorldFx() {
+    for (const f of gameState.worldFx) {
+        if (f.delay > 0) continue;
         const k = 1 - f.life / f.max;
         ctx.save();
+        if (f.kind === 'slash') {
+            // 弧形刀光：一刀從起點掃到終點，前端粗、尾端細，白芯＋顏色外框，掃完很快淡掉
+            const sweep = Math.min(1, k * 3), fade = k < 0.35 ? 1 : 1 - (k - 0.35) / 0.65;
+            const a0 = f.a - f.arc / 2, a1 = a0 + f.arc * sweep;
+            ctx.globalAlpha = fade;
+            ctx.lineCap = 'round';
+            for (const [col, wid] of [[f.color, f.width], [BOSS_MARK_HOT, f.width * 0.4]]) {
+                ctx.strokeStyle = col;
+                const steps = 8;
+                for (let i = 0; i < steps; i++) {
+                    const s0 = a0 + (a1 - a0) * i / steps, s1 = a0 + (a1 - a0) * (i + 1) / steps;
+                    ctx.lineWidth = wid * (0.25 + 0.75 * (i + 1) / steps);
+                    ctx.beginPath(); ctx.arc(f.x, f.y, f.r, s0, s1); ctx.stroke();
+                }
+            }
+        } else if (f.kind === 'leaves') {
+            // 落葉繞著中心轉、一邊往外飄
+            ctx.globalAlpha = 1 - k * k;
+            ctx.fillStyle = LEAF_FILL; ctx.strokeStyle = LEAF_EDGE; ctx.lineWidth = 1.5;
+            for (let i = 0; i < f.count; i++) {
+                const ang = f.seed + i * Math.PI * 2 / f.count + k * f.spin, rr = f.r * (0.3 + 0.7 * k) * (0.8 + 0.4 * ((i * 0.618) % 1));
+                const lx = f.x + Math.cos(ang) * rr, ly = f.y + Math.sin(ang) * rr * 0.7 - k * 20;
+                ctx.save(); ctx.translate(lx, ly); ctx.rotate(ang * 2);
+                ctx.beginPath(); ctx.moveTo(-6, 0); ctx.quadraticCurveTo(0, -5, 6, 0); ctx.quadraticCurveTo(0, 5, -6, 0); ctx.fill(); ctx.stroke();
+                ctx.restore();
+            }
+        } else if (f.kind === 'sprites') {
+            const img = images[f.image];
+            if (img) {
+                ctx.globalAlpha = 1 - k;
+                for (const s of f.list) {
+                    const x = f.x + s.vx * k * f.max, y = f.y + s.vy * k * f.max - k * k * 40;
+                    const w = f.size * (0.7 + 0.5 * k), h = img.naturalWidth ? w * img.naturalHeight / img.naturalWidth : w;
+                    ctx.save(); ctx.translate(x, y); if (s.vx < 0) ctx.scale(-1, 1);
+                    ctx.drawImage(img, -w / 2, -h / 2 + Math.sin(worldTime * 25 + s.vx) * 2, w, h);
+                    ctx.restore();
+                }
+            }
+        }
         if (f.kind === 'ring') {
             const r = f.r0 + (f.r1 - f.r0) * (1 - (1 - k) * (1 - k));
             ctx.globalAlpha = 1 - k;
@@ -4520,7 +4566,7 @@ class PlagueBoss extends BossMonster {
         this.drawScale = 1;
         fireBossBolts(this, angles, { speed: M.speed, range: M.range, hp: M.hp, style: 'plague' });
         spawnParticles(this.pos.x, this.pos.y, PLAGUE_GREEN, 24, 150, 0.5, 3);
-        addBossFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: this.radius * 3, life: 0.4, color: PLAGUE_GREEN, width: 6 });
+        addWorldFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: this.radius * 3, life: 0.4, color: PLAGUE_GREEN, width: 6 });
         addShake(5);
         Sfx.play('splat');
     }
@@ -4619,7 +4665,7 @@ class HunterBoss extends BossMonster {
                 spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 16, 90, 0.4, 3);
                 this.pos.x = cx; this.pos.y = cy;
                 spawnParticles(cx, cy, HUNTER_SHADOW, 24, 140, 0.5, 3);
-                addBossFx({ kind: 'ring', x: cx, y: cy, r0: 10, r1: 90, life: 0.4, color: HUNTER_SHADOW, width: 6 });
+                addWorldFx({ kind: 'ring', x: cx, y: cy, r0: 10, r1: 90, life: 0.4, color: HUNTER_SHADOW, width: 6 });
             },
         };
     }
@@ -4811,9 +4857,9 @@ function landBoss(e) {
     };
     for (const s of gameState.summons) if (s.isAlive) push(s);
     if (gameState.player) push(gameState.player);
-    addBossFx({ kind: 'ring', x: e.x, y: e.y, r0: 20, r1: BOSS_LAND_RADIUS * 1.8, life: 0.7, color: b.auraColor, width: 12 });
-    addBossFx({ kind: 'ring', x: e.x, y: e.y, r0: 10, r1: BOSS_LAND_RADIUS, life: 0.5, color: '#FFFFFF', width: 6 });
-    addBossFx({ kind: 'spikes', x: e.x, y: e.y, r: BOSS_LAND_RADIUS * 0.7, life: 0.8, seed: Math.random() * 10 });
+    addWorldFx({ kind: 'ring', x: e.x, y: e.y, r0: 20, r1: BOSS_LAND_RADIUS * 1.8, life: 0.7, color: b.auraColor, width: 12 });
+    addWorldFx({ kind: 'ring', x: e.x, y: e.y, r0: 10, r1: BOSS_LAND_RADIUS, life: 0.5, color: '#FFFFFF', width: 6 });
+    addWorldFx({ kind: 'spikes', x: e.x, y: e.y, r: BOSS_LAND_RADIUS * 0.7, life: 0.8, seed: Math.random() * 10 });
     spawnParticles(e.x, e.y, COLOSSUS_DUST, 40, 220, 0.8, 4);
     gameState.screenFlash = BOSS_LAND_FLASH;
     addShake(16);
@@ -6283,7 +6329,7 @@ function prepareNextWave() {
     gameState.hazards = [];
     gameState.enemyBolts = [];
     gameState.bossMarks = [];
-    gameState.bossFx = [];
+    gameState.worldFx = [];
     gameState.bossEntrance = null;
     gameState.projectiles.forEach(returnProjectileToPool);
     gameState.projectiles = [];
@@ -6360,7 +6406,7 @@ function checkWaveEndCondition() {
         gameState.hazards = [];
         gameState.enemyBolts = [];
         gameState.bossMarks = [];
-        gameState.bossFx = [];
+        gameState.worldFx = [];
         const won = isFinalWave(gameState.currentWave) && !gameState.endless;
         if (won) gameState.endless = true;
         saveGameState();
@@ -8264,7 +8310,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-        hazards: [], enemyBolts: [], bossMarks: [], bossFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -8387,7 +8433,7 @@ function updateGame(deltaTime) {
     }
     updateHazards(deltaTime);
     updateBossMarks(deltaTime);
-    updateBossFx(deltaTime);
+    updateWorldFx(deltaTime);
     updateBossEntrance(deltaTime);
     updateRelics(deltaTime);
     updateEnemyBolts(deltaTime);
@@ -8857,7 +8903,7 @@ function drawGame() {
     drawLobs();
     drawBossEntrance();
     drawBossMarks();
-    drawBossFx();
+    drawWorldFx();
     drawEnemyBolts();
     // 標題畫面上法師是 HTML 立繪，畫布這邊只留地面
     if (gameState.player && gameState.player.isAlive && appScreen !== 'title') gameState.player.draw(ctx);

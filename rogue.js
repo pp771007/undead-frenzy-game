@@ -400,14 +400,22 @@ function useBehead() {
     }
     const main = victims[0];
     spawnParticles(p.pos.x, p.pos.y, '#4527A0', 16, 90, 0.4, 3);
-    p.pos.x = main.pos.x - 14; p.pos.y = main.pos.y;
+    // 瞬移：從原地到目標身邊留一道紫色殘影
+    const fromX = p.pos.x, fromY = p.pos.y, toX = main.pos.x - 14, toY = main.pos.y, dist = Math.hypot(toX - fromX, toY - fromY) || 1;
+    addWorldFx({ kind: 'beam', x: fromX, y: fromY, dx: (toX - fromX) / dist, dy: (toY - fromY) / dist, len: dist, w: 7, life: 0.45, color: BEHEAD_SHADOW });
+    p.pos.x = toX; p.pos.y = toY;
     let kills = 0;
-    for (const v of victims) {
+    victims.forEach((v, vi) => {
         const hits = v === main ? B.hits : 1;
         for (let i = 0; i < hits && v.isAlive; i++) { v.lastHitWasOneShot = false; v.takeDamage(dmg * (r.targets.includes(v) && res('assassination') >= 1 ? RES_MARKED_TAKEN : 1)); knifeHit(v); }
         if (!v.isAlive) kills++;
-        gameState.visualEffects.push(new SlashBurstEffect(v.pos));
-    }
+        // 刀光：主目標連砍幾刀交錯成米字，其他的一人一刀、一個接一個
+        const base = Math.random() * Math.PI, R = Math.max(BEHEAD_SLASH_R, v.imageWidth * 0.5);
+        for (let i = 0; i < hits; i++) {
+            addWorldFx({ kind: 'slash', x: v.pos.x, y: v.pos.y, a: base + i * Math.PI / hits * 1.6, arc: Math.PI * 0.9, r: R, width: BEHEAD_SLASH_W, life: 0.32, color: i % 2 ? BEHEAD_SLASH_ALT : BEHEAD_SLASH, delay: (vi + i) * BEHEAD_SLASH_GAP });
+        }
+        spawnParticles(v.pos.x, v.pos.y, BEHEAD_SLASH, 10, 120, 0.4, 3);
+    });
     enterHide();
     gameState.run.novaBest = Math.max(gameState.run.novaBest, kills);
     spawnFloatText(p.pos.x, p.pos.y - 40, '斬首！', '#FF8A80', 18, 1.1, 'behead');
@@ -418,20 +426,8 @@ function useBehead() {
     stats().novas++;
     return true;
 }
-class SlashBurstEffect extends TimedEffect {
-    constructor(pos) { super(pos, 0.3); this.a = Math.random() * Math.PI; }
-    draw(ctx) {
-        const k = 1 - this.life / this.duration;
-        ctx.save();
-        ctx.globalAlpha = 1 - k;
-        ctx.strokeStyle = '#FF5252'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-        for (let i = 0; i < 3; i++) {
-            const a = this.a + i * Math.PI / 3, r = 14 + k * 10;
-            ctx.beginPath(); ctx.moveTo(this.pos.x - Math.cos(a) * r, this.pos.y - Math.sin(a) * r); ctx.lineTo(this.pos.x + Math.cos(a) * r, this.pos.y + Math.sin(a) * r); ctx.stroke();
-        }
-        ctx.restore();
-    }
-}
+const BEHEAD_SHADOW = '#7E57C2', BEHEAD_SLASH = '#FF5252', BEHEAD_SLASH_ALT = '#E1BEE7';
+const BEHEAD_SLASH_R = 22, BEHEAD_SLASH_W = 8, BEHEAD_SLASH_GAP = 0.06;
 
 // ---------- 畫面：隱身時半透明、目標的準星、畫面外的箭頭、煙 ----------
 function drawRogueHud(ctx, p) {

@@ -126,6 +126,7 @@ const RES_HOWL_EVERY = 10, RES_HOWL_TIME = 4, RES_HOWL_RATE = 1.4;
 const RES_KING_EVERY = 6, RES_KING_MULT = 2, RES_KING_RADIUS = 100, RES_KING_RATE = 1.25, RES_KING_SCALE = 1.35;
 const RES_BEARHIDE_RADIUS = 60, RES_BEARHIDE_EVERY = 0.5, RES_BEARHIDE_TIME = 1.2;
 const RES_BEARSPIRIT_MULT = 1.6, RES_BEARSPIRIT_HEAL = 0.3;
+const BEAR_LEAVES = 16;   // 變身時捲起的落葉片數
 const RES_THORNPATCH_TIME = 3, RES_THORNPATCH_TICK = 0.5, RES_THORNPATCH_SHARE = 0.25;
 const RES_CROWN_RADIUS = 70, RES_CROWN_EVERY = 1, RES_CROWN_SHARE = 0.5;
 const RES_TREANT_LEASH = 200;
@@ -514,6 +515,10 @@ function useBearForm() {
     // 熊靈：所有熊一起狂暴、回一截血
     if (res('bear') >= 2) for (const s of gameState.summons) if (s.isAlive && s instanceof Bear) { s.currentHealth = Math.min(s.maxHealth, s.currentHealth + s.maxHealth * RES_BEARSPIRIT_HEAL); spawnParticles(s.pos.x, s.pos.y, '#FFAB91', 8, 70, 0.5, 3); }
     spawnParticles(p.pos.x, p.pos.y, '#A1887F', 30, 180, 0.6, 3);
+    // 變身：落葉繞著身體捲成一陣旋風往外散，同時一聲咆哮震開兩圈
+    addWorldFx({ kind: 'leaves', x: p.pos.x, y: p.pos.y, r: B.radius * 1.6, count: BEAR_LEAVES, spin: Math.PI * 3, seed: Math.random() * 6, life: 0.9 });
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 20, r1: B.radius * 2.2, life: 0.6, color: '#8D6E63', width: 10 });
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 10, r1: B.radius * 1.4, life: 0.45, color: '#C5E1A5', width: 5, delay: 0.12 });
     spawnFloatText(p.pos.x, p.pos.y - 40, '野性化身！', '#FFCC80', 18, 1.2, 'bearform');
     addShake(7);
     Sfx.play('boss');

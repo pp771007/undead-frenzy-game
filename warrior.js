@@ -344,6 +344,10 @@ function warriorUpdate(dt) {
     }
     else if (w.exhaustT > 0) w.exhaustT = Math.max(0, w.exhaustT - dt);
     w.chargeT = Math.max(0, w.chargeT - dt);
+    // 衝鋒中：全軍腳下揚起塵土
+    if (w.chargeT > 0 && gameState.particles.length < CONFIG.visuals.maxParticles) {
+        for (const s of gameState.summons) if (s.isAlive && s instanceof Soldier && Math.random() < CHARGE_DUST_CHANCE) spawnParticles(s.pos.x - w.fx * 8, s.pos.y + 8 - w.fy * 8, CHARGE_DUST, 1, 30, 0.5, 4);
+    }
     // 面向慢慢轉向移動方向（鐵律：快一倍）
     const mv = getMoveVector();
     w.still = Math.hypot(mv.x, mv.y) <= 0.1;
@@ -458,6 +462,9 @@ function useJavelin() {
     gameState.frenzyTimer = Math.max(gameState.frenzyTimer, J.chargeTime);
     gameState.ultCooldown = J.cooldown;
     spawnFloatText(p.pos.x, p.pos.y - 34, '衝鋒！', '#FFCC80', 18, 1.1, 'javelin');
+    // 戰吼：從戰士身上衝出兩圈橘紅衝擊波
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 20, r1: 160, life: 0.55, color: '#FF7043', width: 9 });
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 10, r1: 100, life: 0.4, color: '#FFCC80', width: 5, delay: 0.1 });
     addShake(6);
     Sfx.play('nova');
     gameState.run.novas++;
@@ -465,26 +472,54 @@ function useJavelin() {
     return true;
 }
 
+// 一排標槍：沿拋物線飛出（地上的影子跟著走、槍頭跟著弧線轉）→ 落地揚起塵土 → 插在地上一會兒再淡掉
+const JAVELIN_ARC = 30, JAVELIN_STUCK = 0.7, CHARGE_DUST = '#A1887F', CHARGE_DUST_CHANCE = 0.35;
+const JAVELIN_SHADOW = 'rgba(0, 0, 0, 0.3)', JAVELIN_DUST = '#BCAAA4';
 class JavelinEffect extends TimedEffect {
     constructor(starts, fx, fy, length, flight) {
-        super(starts[0], flight + 0.25);
-        this.starts = starts; this.fx = fx; this.fy = fy; this.length = length; this.flight = flight;
+        super(starts[0], flight + JAVELIN_STUCK);
+        this.starts = starts; this.fx = fx; this.fy = fy; this.length = length; this.flight = flight; this.landed = false;
+    }
+    update(dt) {
+        super.update(dt);
+        if (this.landed || this.duration - this.life < this.flight) return;
+        this.landed = true;
+        for (const s of this.starts) spawnParticles(s.x + this.fx * this.length, s.y + this.fy * this.length, JAVELIN_DUST, 4, 60, 0.45, 3);
+        addShake(3);
     }
     draw(ctx) {
         const t = this.duration - this.life, k = Math.min(1, t / this.flight);
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.globalAlpha = Math.min(1, this.life * 4);
+        const ang = Math.atan2(this.fy, this.fx);
+        // 弧線的切線：上升時槍頭朝上、落下時朝下
+        const lift = Math.cos(k * Math.PI) * JAVELIN_ARC * Math.PI / this.length;
+        const tilt = Math.atan2(this.fy - lift, this.fx);
+        ctx.globalAlpha = this.landed ? Math.min(1, this.life / (JAVELIN_STUCK * 0.5)) : 1;
         for (const s of this.starts) {
-            const hx = s.x + this.fx * this.length * k, hy = s.y + this.fy * this.length * k - Math.sin(k * Math.PI) * 30;
-            ctx.strokeStyle = '#4E342E'; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(hx - this.fx * 18, hy - this.fy * 18); ctx.lineTo(hx, hy); ctx.stroke();
-            ctx.strokeStyle = '#CFD8DC'; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(hx - this.fx * 4, hy - this.fy * 4); ctx.lineTo(hx + this.fx * 5, hy + this.fy * 5); ctx.stroke();
+            const gx = s.x + this.fx * this.length * k, gy = s.y + this.fy * this.length * k;
+            if (!this.landed) {
+                ctx.fillStyle = JAVELIN_SHADOW;
+                ctx.beginPath(); ctx.ellipse(gx, gy + 4, 9, 3, ang, 0, Math.PI * 2); ctx.fill();
+            }
+            drawShaped('javelin', gx, gy - Math.sin(k * Math.PI) * JAVELIN_ARC - (this.landed ? 6 : 0), this.landed ? Math.atan2(this.fy + 0.9, this.fx) : tilt, 0);
         }
-        ctx.restore();
+        ctx.globalAlpha = 1;
     }
 }
+// 標槍：細長木桿、葉形鐵槍頭、槍頭下綁一截紅布
+SHAPE_SPRITES.javelin = {
+    len: 36, wid: 7, spin: 0, streak: 0,
+    draw(g) {
+        g.lineWidth = 1.5; g.strokeStyle = SHAPE_OUTLINE;
+        g.fillStyle = '#6D4C41';
+        g.beginPath(); g.rect(-17, -1, 26, 2); g.fill(); g.stroke();
+        g.fillStyle = '#C62828';
+        g.beginPath(); g.moveTo(7, -1); g.lineTo(3, -3.2); g.lineTo(4, 0); g.lineTo(3, 3.2); g.lineTo(7, 1); g.closePath(); g.fill(); g.stroke();
+        g.fillStyle = '#CFD8DC';
+        g.beginPath(); g.moveTo(8.5, 0); g.quadraticCurveTo(12, -3, 17.5, 0); g.quadraticCurveTo(12, 3, 8.5, 0); g.closePath(); g.fill(); g.stroke();
+        g.strokeStyle = '#FFFFFF'; g.lineWidth = 0.8;
+        g.beginPath(); g.moveTo(10, -0.6); g.lineTo(15.5, -0.3); g.stroke();
+    },
+};
 
 // ---------- 戰士頭上：怒氣條、狂怒的紅光 ----------
 const RAGE_BAR_W = 38, RAGE_BAR_H = 4;
