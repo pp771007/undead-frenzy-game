@@ -707,7 +707,7 @@ const BLESSINGS = {
     frenzyTime: { school: 'mage', name: '狂潮延長', max: 3, per: 1.5, desc: b => `新星的大軍狂暴多 ${b.per} 秒` },
     soulHarvest: { school: 'soul', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
     magnet: { school: 'soul', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
-    pact: { school: 'soul', name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
+    pact: { school: 'soul', icon: 'summonDiscount', name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
     // ---- 傳說：首領波的三選一固定佔一張、一般波次偶爾出現（LEGEND_CHANCE_NORMAL），每種一局只能拿一次；改變打法，不只是加數字 ----
     boneBurst: { school: 'skel', name: '骸骨爆裂', legendary: true, max: 1, per: 3, desc: () => '骷髏陣亡時炸傷周圍的怪' },
     giantBones: { school: 'skel', name: '巨骨', legendary: true, max: 1, per: 8, desc: b => `每 ${b.per} 隻骷髏出一隻巨人` },
