@@ -4528,6 +4528,17 @@ function updateWorldFx(deltaTime) {
     gameState.worldFx = gameState.worldFx.filter(f => f.life > 0);
 }
 const SPIKE_COUNT = 6;
+const SPIKE_DIRT = 'rgba(62, 39, 35, 0.55)', SPIKE_SHADE = 'rgba(141, 110, 99, 0.45)';
+const SHARD_GRAVITY = 420;
+// 一團往外炸開的骨片（worldFx 'shards'）：n 根，速度 speed 左右，往上偏一點
+function boneShards(x, y, n, speed, life) {
+    const list = [];
+    for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2, v = speed * (0.5 + Math.random() * 0.6);
+        list.push({ vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.7 - speed * 0.5, rot: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 18, len: 6 + Math.random() * 3 });
+    }
+    addWorldFx({ kind: 'shards', x, y, list, life });
+}
 const LEAF_FILL = '#9CCC65', LEAF_EDGE = '#33691E';
 function drawWorldFx() {
     for (const f of gameState.worldFx) {
@@ -4583,16 +4594,58 @@ function drawWorldFx() {
             ctx.lineWidth = Math.max(1, f.width * 0.3 * (1 - k));
             ctx.stroke();
         } else if (f.kind === 'spikes') {
-            // 骨刺：一下竄出來、再慢慢縮回地裡
-            const h = f.r * 1.3 * Math.min(1, k * 5) * (1 - k * 0.7);
+            // 骨刺：彎曲的骨頭從地面竄出（一邊亮一邊暗、中段一道骨節、底部隆起一圈土），再慢慢縮回地裡。
+            // 由後往前畫（y 小的先畫），前面的骨刺蓋住後面的
+            const grow = Math.min(1, k * 5) * (1 - k * 0.6);
             ctx.globalAlpha = 1 - k * k;
-            ctx.fillStyle = BONE_FILL;
-            ctx.strokeStyle = BONE_EDGE;
-            ctx.lineWidth = 2;
+            const spikes = [];
             for (let i = 0; i < SPIKE_COUNT; i++) {
                 const ang = f.seed + i * 2.4, rr = f.r * 0.55 * ((i * 0.37 + f.seed) % 1);
-                const bx = f.x + Math.cos(ang) * rr, by = f.y + Math.sin(ang) * rr * 0.6, hw = f.r * 0.16, hh = h * (0.6 + 0.4 * ((i * 0.53) % 1));
-                ctx.beginPath(); ctx.moveTo(bx - hw, by); ctx.lineTo(bx + (i % 2 ? 3 : -3), by - hh); ctx.lineTo(bx + hw, by); ctx.closePath(); ctx.fill(); ctx.stroke();
+                spikes.push({ x: f.x + Math.cos(ang) * rr, y: f.y + Math.sin(ang) * rr * 0.6, h: f.r * 1.25 * grow * (0.6 + 0.4 * ((i * 0.53) % 1)), lean: (i % 2 ? 1 : -1) * (0.25 + 0.25 * ((i * 0.71) % 1)), w: f.r * 0.13 });
+            }
+            spikes.sort((a, b) => a.y - b.y);
+            for (const s of spikes) {
+                if (s.h < 2) continue;
+                ctx.fillStyle = SPIKE_DIRT;
+                ctx.beginPath(); ctx.ellipse(s.x, s.y, s.w * 1.6, s.w * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+                const tx = s.x + s.lean * s.h, ty = s.y - s.h, mx = s.x + s.lean * s.h * 0.35, my = s.y - s.h * 0.55;
+                // 外形：底寬、往上彎成尖
+                ctx.beginPath();
+                ctx.moveTo(s.x - s.w, s.y);
+                ctx.quadraticCurveTo(mx - s.w * 0.7, my, tx, ty);
+                ctx.quadraticCurveTo(mx + s.w * 0.7, my, s.x + s.w, s.y);
+                ctx.closePath();
+                ctx.fillStyle = BONE_FILL; ctx.fill();
+                // 背光那一半
+                ctx.save(); ctx.clip();
+                ctx.fillStyle = SPIKE_SHADE;
+                ctx.beginPath(); ctx.moveTo(s.x + s.w * 0.15, s.y); ctx.quadraticCurveTo(mx + s.w * 0.2, my, tx, ty); ctx.lineTo(s.x + s.w * 1.5, s.y); ctx.closePath(); ctx.fill();
+                ctx.restore();
+                ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(s.x - s.w, s.y);
+                ctx.quadraticCurveTo(mx - s.w * 0.7, my, tx, ty);
+                ctx.quadraticCurveTo(mx + s.w * 0.7, my, s.x + s.w, s.y);
+                ctx.stroke();
+                // 骨節
+                const jy = s.y - s.h * 0.38, jx = s.x + s.lean * s.h * 0.2;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(jx - s.w * 0.75, jy + 1); ctx.quadraticCurveTo(jx, jy - 2, jx + s.w * 0.75, jy + 1); ctx.stroke();
+            }
+        } else if (f.kind === 'shards') {
+            // 骨片四散：一根根小骨頭（兩頭骨節）邊轉邊往外飛，受重力落下再淡掉
+            ctx.globalAlpha = k < 0.6 ? 1 : (1 - k) / 0.4;
+            ctx.fillStyle = BONE_FILL; ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.2;
+            const t = k * f.max;
+            for (const s of f.list) {
+                const x = f.x + s.vx * t, y = f.y + s.vy * t + SHARD_GRAVITY * t * t / 2;
+                ctx.save(); ctx.translate(x, y); ctx.rotate(s.rot + s.spin * t);
+                const L = s.len, R = s.len * 0.32;
+                ctx.beginPath();
+                ctx.rect(-L, -R * 0.55, L * 2, R * 1.1);
+                for (const sx of [-L, L]) for (const sy of [-R * 0.6, R * 0.6]) { ctx.moveTo(sx + R, sy); ctx.arc(sx, sy, R, 0, Math.PI * 2); }
+                ctx.fill(); ctx.stroke();
+                ctx.restore();
             }
         } else if (f.kind === 'beam') {
             const ex = f.x + f.dx * f.len, ey = f.y + f.dy * f.len;
@@ -6113,7 +6166,7 @@ const BONE_PILE = {
     armorShred: 0.08,                 // 每堆削掉首領最大護甲的幾成：十幾堆炸在首領身上就破防（大軍死光的那一發要能翻盤）
     chainDelay: 0.004,                // 每離主角 1 單位晚幾秒炸：從主角往外一圈一圈炸開
 };
-const BONE_PILE_GLOW = '#B39DDB', BONE_BLAST_LIGHT = '#EDE7F6';
+const BONE_PILE_GLOW = '#B39DDB', BONE_BLAST_LIGHT = '#EDE7F6', BONE_BLAST_SHARDS = 7;
 function boneReach() { return CONFIG.nova.radius * (bl('frostNova') > 0 ? FROST_NOVA_RADIUS_MULT : 1) * BONE_PILE.reachMult; }
 function leaveBonePile(pos) {
     const piles = gameState.bonePiles;
@@ -6151,7 +6204,7 @@ function explodeBonePile(e) {
         m.takeDamage(dmg);
     });
     addWorldFx({ kind: 'ring', x: e.x, y: e.y, r0: 8, r1: R * 1.2, life: 0.35, color: BONE_PILE_GLOW, width: 6 });
-    addWorldFx({ kind: 'spikes', x: e.x, y: e.y, r: R * 0.7, life: 0.4, seed: Math.random() * 10 });
+    boneShards(e.x, e.y, BONE_BLAST_SHARDS, 170, 0.6);
     spawnParticles(e.x, e.y, BONE_BLAST_LIGHT, 8, 140, 0.45, 3);
     spawnParticles(e.x, e.y, BONE_PILE_GLOW, 6, 90, 0.4, 3);
     addShake(2);
