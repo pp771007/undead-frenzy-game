@@ -420,15 +420,102 @@ function updateTraps(dt) {
         if ((res('trapper') >= 2 || tier >= 3) && t.scale >= 1) e.traps.push({ x: t.x, y: t.y, kind: TRAP_KINDS[e.trapKind++ % 3], scale: RES_HUNTGROUND_SCALE, life: T.life, lureT: 99 });
     }
 }
-const TRAP_COLORS = { blast: '#FF7043', slow: '#4FC3F7', root: '#9CCC65' };
+// 陷阱的顏色：爆炸金橘、冰霜淺藍、荊棘綠（我方的東西不用紅，見專案 CLAUDE.md）
+const TRAP_COLORS = { blast: '#FFB300', slow: '#4FC3F7', root: '#9CCC65' };
+// 陷阱長得像陷阱：爆炸是一顆帶尖刺的鐵地雷、中間一圈金色符文；冰霜是地上一個六角冰晶符印；荊棘是一圈帶刺的藤蔓套索。
+// 平常微微發光、一亮一暗（看得出「埋好了、還沒觸發」）；每種事先畫好一張，直接貼
+const TRAP_PX = 3, TRAP_SIZE = 26;
+const trapSprites = {};
+const TRAP_DRAW = {
+    blast(g) {
+        g.fillStyle = '#455A64'; g.strokeStyle = SHAPE_OUTLINE; g.lineWidth = 1.6;
+        for (let i = 0; i < 8; i++) {
+            const a = i * Math.PI / 4;
+            g.beginPath(); g.moveTo(Math.cos(a - 0.22) * 7, Math.sin(a - 0.22) * 7); g.lineTo(Math.cos(a) * 11, Math.sin(a) * 11); g.lineTo(Math.cos(a + 0.22) * 7, Math.sin(a + 0.22) * 7); g.closePath(); g.fill(); g.stroke();
+        }
+        g.fillStyle = '#546E7A';
+        g.beginPath(); g.arc(0, 0, 7.5, 0, Math.PI * 2); g.fill(); g.stroke();
+        g.strokeStyle = '#FFB300'; g.lineWidth = 1.4;
+        g.beginPath(); g.arc(0, 0, 4.2, 0, Math.PI * 2); g.stroke();
+        g.fillStyle = '#FFE082';
+        g.beginPath(); g.arc(0, 0, 1.8, 0, Math.PI * 2); g.fill();
+    },
+    slow(g) {
+        g.strokeStyle = SHAPE_OUTLINE; g.lineWidth = 3.2;
+        const hex = () => { g.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + Math.PI / 6; if (i) g.lineTo(Math.cos(a) * 9, Math.sin(a) * 9); else g.moveTo(Math.cos(a) * 9, Math.sin(a) * 9); } g.closePath(); };
+        hex(); g.stroke();
+        g.strokeStyle = '#81D4FA'; g.lineWidth = 1.6; hex(); g.stroke();
+        for (let i = 0; i < 3; i++) {
+            const a = i * Math.PI / 3;
+            g.strokeStyle = SHAPE_OUTLINE; g.lineWidth = 3;
+            g.beginPath(); g.moveTo(Math.cos(a) * -7, Math.sin(a) * -7); g.lineTo(Math.cos(a) * 7, Math.sin(a) * 7); g.stroke();
+            g.strokeStyle = '#E1F5FE'; g.lineWidth = 1.4;
+            g.beginPath(); g.moveTo(Math.cos(a) * -7, Math.sin(a) * -7); g.lineTo(Math.cos(a) * 7, Math.sin(a) * 7); g.stroke();
+        }
+    },
+    root(g) {
+        g.strokeStyle = SHAPE_OUTLINE; g.lineWidth = 4;
+        g.beginPath(); g.arc(0, 0, 8, 0, Math.PI * 2); g.stroke();
+        g.strokeStyle = '#7CB342'; g.lineWidth = 2.4;
+        g.beginPath(); g.arc(0, 0, 8, 0, Math.PI * 2); g.stroke();
+        g.fillStyle = '#C5E1A5'; g.strokeStyle = SHAPE_OUTLINE; g.lineWidth = 1.2;
+        for (let i = 0; i < 7; i++) {
+            const a = i * Math.PI * 2 / 7;
+            g.beginPath(); g.moveTo(Math.cos(a - 0.2) * 8, Math.sin(a - 0.2) * 8); g.lineTo(Math.cos(a) * 3.5, Math.sin(a) * 3.5); g.lineTo(Math.cos(a + 0.2) * 8, Math.sin(a + 0.2) * 8); g.closePath(); g.fill(); g.stroke();
+        }
+    },
+};
+function trapSprite(kind) {
+    if (trapSprites[kind]) return trapSprites[kind];
+    const c = document.createElement('canvas');
+    c.width = c.height = TRAP_SIZE * TRAP_PX;
+    const g = c.getContext('2d');
+    g.translate(c.width / 2, c.height / 2); g.scale(TRAP_PX, TRAP_PX);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    TRAP_DRAW[kind](g);
+    return (trapSprites[kind] = c);
+}
+// 觸發：爆炸是金橘火球＋碎片、冰霜是一圈冰晶往外炸、荊棘是藤蔓從地面竄出來纏住
 class TrapBurstEffect extends TimedEffect {
-    constructor(pos, r, kind) { super(pos, 0.3); this.r = r; this.kind = kind; }
+    constructor(pos, r, kind) {
+        super(pos, 0.45); this.r = r; this.kind = kind;
+        const col = TRAP_COLORS[kind];
+        if (kind === 'blast') { spawnParticles(pos.x, pos.y, col, 18, 160, 0.5, 3); spawnParticles(pos.x, pos.y, '#90A4AE', 8, 110, 0.6, 3); addShake(3); }
+        else if (kind === 'slow') spawnParticles(pos.x, pos.y, '#E1F5FE', 14, 120, 0.5, 3);
+        else spawnParticles(pos.x, pos.y, col, 10, 70, 0.5, 3);
+    }
     draw(ctx) {
-        const k = 1 - this.life / this.duration;
+        const k = 1 - this.life / this.duration, col = TRAP_COLORS[this.kind], x = this.pos.x, y = this.pos.y;
         ctx.save();
-        ctx.globalAlpha = (1 - k) * 0.8;
-        ctx.strokeStyle = TRAP_COLORS[this.kind]; ctx.lineWidth = 6 * (1 - k) + 2;
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.r * (0.5 + 0.5 * k), 0, Math.PI * 2); ctx.stroke();
+        if (this.kind === 'blast') {
+            const g = this.r * 2.4 * (0.4 + 0.6 * k);
+            ctx.globalAlpha = (1 - k) * 0.9;
+            ctx.drawImage(getGlowSprite(col), x - g / 2, y - g / 2, g, g);
+            ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 6 * (1 - k) + 1;
+            ctx.beginPath(); ctx.arc(x, y, this.r * (0.3 + 0.8 * k), 0, Math.PI * 2); ctx.stroke();
+        } else if (this.kind === 'slow') {
+            ctx.globalAlpha = 1 - k;
+            ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.fillStyle = '#E1F5FE';
+            for (let i = 0; i < 8; i++) {
+                const a = i * Math.PI / 4, rr = this.r * (0.3 + 0.7 * k);
+                const cx = x + Math.cos(a) * rr, cy = y + Math.sin(a) * rr;
+                ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * 6, cy + Math.sin(a) * 6); ctx.lineTo(cx + Math.cos(a + 1.7) * 3, cy + Math.sin(a + 1.7) * 3); ctx.lineTo(cx - Math.cos(a) * 4, cy - Math.sin(a) * 4); ctx.lineTo(cx + Math.cos(a - 1.7) * 3, cy + Math.sin(a - 1.7) * 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+            }
+            ctx.globalAlpha = (1 - k) * 0.35; ctx.fillStyle = col;
+            ctx.beginPath(); ctx.arc(x, y, this.r * (0.5 + 0.5 * k), 0, Math.PI * 2); ctx.fill();
+        } else {
+            // 藤蔓從中心往外竄、再縮回去（同德魯伊種子落地）
+            const grow = Math.min(1, k * 2.5);
+            ctx.globalAlpha = k < 0.7 ? 1 : (1 - k) / 0.3;
+            ctx.strokeStyle = '#558B2F'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
+            for (let i = 0; i < 7; i++) {
+                const a = i / 7 * Math.PI * 2, rr = this.r * grow;
+                ctx.beginPath(); ctx.moveTo(x, y);
+                ctx.quadraticCurveTo(x + Math.cos(a + 0.7) * rr * 0.6, y + Math.sin(a + 0.7) * rr * 0.6 - 8, x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.6);
+                ctx.stroke();
+            }
+            ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+        }
         ctx.restore();
     }
 }
@@ -542,11 +629,11 @@ function drawElfWorld(ctx) {
     const e = elfState();
     for (const t of e.traps) {
         if (!inView(t)) continue;
-        const r = 7 * t.scale;
-        ctx.fillStyle = 'rgba(27, 20, 36, 0.8)';
-        ctx.beginPath(); ctx.arc(t.x, t.y, r + 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = TRAP_COLORS[t.kind];
-        ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.fill();
+        const s = TRAP_SIZE * t.scale, pulse = 0.5 + 0.5 * Math.sin(worldTime * 3 + t.x);
+        ctx.globalAlpha = 0.25 + 0.25 * pulse;
+        ctx.drawImage(getGlowSprite(TRAP_COLORS[t.kind]), t.x - s * 0.8, t.y - s * 0.8, s * 1.6, s * 1.6);
+        ctx.globalAlpha = 1;
+        ctx.drawImage(trapSprite(t.kind), t.x - s / 2, t.y - s / 2, s, s);
     }
     for (const b of e.beams) {
         ctx.save();
