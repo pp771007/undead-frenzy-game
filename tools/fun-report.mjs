@@ -35,8 +35,15 @@ const RANGES = {
     choiceGap: 0.1,
     classSpread: 0.15,
     topKiller: 0.5,
-    burst: 0.2,
+    // 被重擊打死：玩家看不出危險在哪（Juul 的「失敗要能歸因到自己」）；被一大群圍住幾秒內倒下看得到，不算在這裡
+    heavyDeath: 0.1,
+    // 通關一局幾分鐘：遊戲標的是約 25 分鐘，怪太多、打不完會拖成拖棚
+    winMinutes: [20, 35],
 };
+// 單下扣到最大生命這個比例以上算重擊；3 秒內倒下、而且一半以上的血是重擊打掉的，算「被重擊打死」
+// （log 只有每種來源的加總與單下最大，所以單下最大到重擊的那種來源，整筆都算重擊）
+const HEAVY_HIT = 0.2;
+const HEAVY_SHARE = 0.5;
 
 function files(args) {
     const out = [];
@@ -58,10 +65,11 @@ function parse(f) {
     });
     const build = (txt.match(/^BUILD (\S+)/m) || [])[1] || null;
     const burst = (txt.match(/^BURST (\S+)/m) || [])[1];
+    const lastHits = JSON.parse((txt.match(/^BURST \S+ (\{.*\})$/m) || [])[1] || '{}');
     return {
         file: f, cls: kv.class || '?', pick: kv.pick || 'smart', meta: kv.meta || 'zero',
-        won: kv.won === 'true', wave: +kv.wave, killer: kv.killedBy, stuck: /^STUCK/m.test(txt),
-        rows, build, burst: burst == null ? null : burst === 'true',
+        won: kv.won === 'true', wave: +kv.wave, killer: kv.killedBy, stuck: /^STUCK/m.test(txt), minutes: parseFloat(kv.t),
+        rows, build, burst: burst == null ? null : burst === 'true', lastHits,
     };
 }
 
@@ -120,7 +128,9 @@ for (const [key, g] of Object.entries(groups)) {
     const cyc = g.reduce((a, r) => a + r.cycles, 0), pk = g.reduce((a, r) => a + r.peaks, 0);
     lines.push(`${flag(cyc && pk / cyc < RANGES.bossPeak)} 首領是那一輪的高峰 ${cyc ? pct(pk / cyc) : '-'}（${pk}/${cyc} 輪）　目標 ≥ ${pct(RANGES.bossPeak)}`);
     if (wins.length) {
-        const drama = wins.filter(r => r.nearDeath).length / wins.length;
+        const wm = median(wins.map(r => r.minutes));
+        lines.push(`${flag(wm < RANGES.winMinutes[0] || wm > RANGES.winMinutes[1])} 通關一局 中位數 ${wm.toFixed(0)} 分鐘　目標 ${RANGES.winMinutes.join('–')} 分鐘　最久 ${Math.max(...wins.map(r => r.minutes)).toFixed(0)}`);
+        const drama =wins.filter(r => r.nearDeath).length / wins.length;
         lines.push(`${flag(drama < RANGES.drama[0] || drama > RANGES.drama[1])} 贏的局有驚險（掉到 ${pct(NEAR_DEATH_HP)} 以下）${pct(drama)}　目標 ${RANGES.drama.map(pct).join('–')}`);
     }
     // 職業平衡：各職業破關率最高減最低（每職業局數少時只看得出大差距）
@@ -138,8 +148,19 @@ for (const [key, g] of Object.entries(groups)) {
         lines.push(`${flag(top[0][1] / losses.length > RANGES.topKiller)} 死因最集中 ${top[0][0]} ${pct(top[0][1] / losses.length)}　目標 ≤ ${pct(RANGES.topKiller)}　${top.map(([k, n]) => `${k}×${n}`).join(' ')}`);
         const bursts = losses.filter(r => r.burst != null);
         if (bursts.length) {
-            const b = bursts.filter(r => r.burst).length / bursts.length;
-            lines.push(`${flag(b > RANGES.burst)} 被秒殺（3 秒內從半血以上歸零）${pct(b)}　目標 ≤ ${pct(RANGES.burst)}`);
+            const burstRuns = bursts.filter(r => r.burst);
+            const heavyShare = r => {
+                const all = Object.values(r.lastHits), tot = all.reduce((a, s) => a + s.f, 0);
+                return tot ? all.filter(s => s.max >= HEAVY_HIT).reduce((a, s) => a + s.f, 0) / tot : 0;
+            };
+            const heavy = burstRuns.filter(r => heavyShare(r) >= HEAVY_SHARE).length / bursts.length;
+            lines.push(`${flag(heavy > RANGES.heavyDeath)} 被重擊打死（3 秒內從半血以上歸零、一半以上是單下 ${pct(HEAVY_HIT)} 以上）${pct(heavy)}　目標 ≤ ${pct(RANGES.heavyDeath)}`);
+            lines.push(`  被一群圍死（3 秒內從半血以上歸零、多半是小傷害）${pct((burstRuns.length / bursts.length) - heavy)}`);
+            // 3 秒內倒下的那幾局，死前 3 秒誰打掉多少血（平均每局佔最大生命幾成、一共幾下、單下最多）
+            const src = {};
+            for (const r of burstRuns) for (const [k, a] of Object.entries(r.lastHits)) { const s = src[k] ||= { f: 0, n: 0, max: 0 }; s.f += a.f; s.n += a.n; s.max = Math.max(s.max, a.max); }
+            const srcList = Object.entries(src).sort((a, b) => b[1].f - a[1].f);
+            if (srcList.length) lines.push(`  3 秒內倒下時誰在打${srcList.map(([k, s]) => `${k} 平均${pct(s.f / burstRuns.length)}／${s.n}下／單下最多${pct(s.max)}`).join('　')}`);
         }
     }
     const builds = wins.map(r => r.build).filter(Boolean);

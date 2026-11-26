@@ -43,6 +43,16 @@ await page.evaluate(([policy, cls, pick, metaLvl]) => {
     Monster.prototype.die = function () { window.__dying = this.config.type; try { origDie.call(this); } finally { window.__dying = null; } };
     const origDrop = window.dropSouls;
     window.dropSouls = function (x, y, a) { const k = window.__dying || 'other'; B.src[k] = (B.src[k] || 0) + a; return origDrop(x, y, a); };
+    // 主角每一下掉多少血、誰打的（佔最大生命的比例）：被秒殺時看是一隻怪一下很痛，還是好幾隻同時打中
+    B.hits = [];
+    const origHurt = Player.prototype.takeDamage;
+    Player.prototype.takeDamage = function (amount, source) {
+        const h0 = this.currentHealth;
+        const ret = origHurt.call(this, amount, source);
+        const lost = (h0 - this.currentHealth) / this.maxHealth;
+        if (lost > 0) B.hits.push([B.t, (source && source.config && source.config.type) || 'other', lost]);
+        return ret;
+    };
 }, [POLICY, CLASS, PICK, META]);
 
 const SIM_SECONDS_PER_CALL = 30;
@@ -116,6 +126,8 @@ for (;;) {
                         }
                         if (m.windup > 0 && !(m instanceof BloodEyeMonster) && noticed(m)) { const R = (m.config.novaRadius || m.config.slamRadius || 80) + 20; if (d < R) { hx += dx / d * 3; hy += dy / d * 3; } }
                     }
+                    // 吸血鬼站進靈泉（聖水）會燙：當成地上的危險圈走出去
+                    if (runClass() === 'vampire') for (const rl of gameState.relics) { if (rl.done || rl.kind !== 'spring') continue; const dx = p.pos.x - rl.x, dy = p.pos.y - rl.y, d = Math.hypot(dx, dy) || 1; if (d < RELIC_RADIUS + 12) { hx += dx / d * 3; hy += dy / d * 3; } }
                     for (const h of gameState.hazards) { if (!noticed(h)) continue; const dx = p.pos.x - h.x, dy = p.pos.y - h.y, d = Math.hypot(dx, dy) || 1; if (d < h.r + 12) { hx += dx / d * 3; hy += dy / d * 3; } }
                     for (const bo of gameState.enemyBolts) { if (!noticed(bo)) continue; const tx = p.pos.x - bo.pos.x, ty = p.pos.y - bo.pos.y, along = tx * bo.dir.x + ty * bo.dir.y; if (along < 0) continue; const perp = tx * -bo.dir.y + ty * bo.dir.x; if (Math.abs(perp) < 30 && along < 200) { const s = perp >= 0 ? 1 : -1; hx += -bo.dir.y * s * 3; hy += bo.dir.x * s * 3; } }
                     // 戰士：沒有要閃的東西時迎上去打（陣型面向走的方向，逃跑等於把背後讓給怪），走到 BOT_WAR_HOLD 內就站定讓陣型接戰。
@@ -238,11 +250,20 @@ const out = await page.evaluate(() => ({
     // 這一局主力是哪個流派（層數最多的；全軍通用與契約不算）
     build: Object.keys(SCHOOLS).map(s => [s, schoolPoints(s)]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])[0]?.[0] || 'none',
     burst: !gameState.player.isAlive && (window.__bot.hpHist || []).some(([, f]) => f >= 0.5),
+    // 死前 3 秒：每種來源打掉幾成血、打了幾下、單下最多幾成
+    lastHits: (() => {
+        const B = window.__bot, BURST_SECONDS = 3, agg = {};
+        for (const [t, k, f] of B.hits) if (t >= B.t - BURST_SECONDS) { const a = agg[k] ||= { f: 0, n: 0, max: 0 }; a.f += f; a.n++; a.max = Math.max(a.max, f); }
+        return Object.fromEntries(Object.entries(agg).map(([k, a]) => [k, { f: +a.f.toFixed(2), n: a.n, max: +a.max.toFixed(2) }]));
+    })(),
+    // 整局主角被誰打掉最多血（佔最大生命的比例加總）
+    hurt: Object.fromEntries(Object.entries(window.__bot.hits.reduce((o, [, k, f]) => (o[k] = (o[k] || 0) + f, o), {})).map(([k, f]) => [k, +f.toFixed(2)])),
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
 console.log(`RESULT ${TAG} policy=${POLICY} pick=${PICK} meta=${META} class=${CLASS} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
 console.log('BUILD', out.build);
-if (!r.won) console.log('BURST', out.burst);
+if (!r.won) console.log('BURST', out.burst, JSON.stringify(out.lastHits));
+console.log('HURT', JSON.stringify(out.hurt));
 console.log('SOULS', JSON.stringify(out.souls));
 console.log('UNITS', JSON.stringify(out.units), 'heroMaxHp', out.hero);
 console.log('RELICS', JSON.stringify(out.relics), 'blessings', Object.values(out.blessings).reduce((a, b) => a + b, 0));
