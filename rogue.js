@@ -253,7 +253,7 @@ function targetDown(m) {
     stats().rogueTargets = (stats().rogueTargets || 0) + 1;
     if (m.markedFullHp && m.lastHitWasOneShot) gameState.run.flags.rogueOneShot = true;
     if (bl('spoils') && p) p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * blessVal('spoils'));
-    if (res('intel') >= 2 && r.firstTargetThisWave) { gameState.relicDrafts++; spawnFloatText(m.pos.x, m.pos.y - 52, '祝福 +1', '#FFD54F', 16, 1.6, 'star'); }
+    if (res('intel') >= 2 && r.firstTargetThisWave) { gameState.relicDrafts++; spawnFloatText(m.pos.x, m.pos.y - 52, '祝福 +1', '#FFD54F', 16, 1.6, 'draft'); }
     r.firstTargetThisWave = false;
     // 身邊的怪潰散逃跑（山中老人：其中幾隻倒戈成影子）
     let turned = 0;

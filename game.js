@@ -465,7 +465,7 @@ const CONFIG = {
         startWave: 6, chance: 0.3,
         list: {
             bloodMoon: { icon: 'bloodMoon', name: '血月', desc: '怪物 ×1.6、靈魂 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
-            eliteTide: { icon: 'crown', name: '精英潮', desc: '精英怪大量出現', eliteMult: 4, eliteMax: 0.6, color: '#FFD54F' },
+            eliteTide: { icon: 'evEliteTide', name: '精英潮', desc: '精英怪大量出現', eliteMult: 4, eliteMax: 0.6, color: '#FFD54F' },
             frenzy: { icon: 'claws', name: '狂暴', desc: '怪物更快、靈魂 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
             plague: { icon: 'plague', name: '腐屍狂潮', desc: '腐屍 ×3', bloaterMult: 3, color: '#AED581' },
             treasure: { icon: 'sack', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量靈魂', thieves: 3, color: '#FFE082' },
@@ -682,7 +682,7 @@ const SCHOOLS = {
     eye: { name: '眼魔', img: 'eye_monster.png', color: '#F48FB1', res: [{ name: '連環凝視', desc: '眼魔的彈多彈射 1 次' }, { name: '千眼', desc: '眼魔每次多射 1 發' }] },
     wraith: { name: '怨靈', img: 'wraith.png', color: '#80CBC4', res: [{ name: '冥域', desc: '怨靈光環範圍 +30%' }, { name: '哀嚎', desc: '怨靈每 3 秒脈衝，傷害 ×2' }] },
     mage: { name: '法師', img: 'player.png', color: '#80DEEA', res: [{ name: '魂彈連發', desc: '法師射速 +40%' }, { name: '新星湧動', desc: '新星冷卻 -35%' }] },
-    soul: { name: '靈魂', icon: 'soul', color: '#B2EBF2', res: [{ name: '引魂', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '靈魂掉落 +30%' }] },
+    soul: { name: '靈魂', icon: 'soulSchool', color: '#B2EBF2', res: [{ name: '引魂', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '靈魂掉落 +30%' }] },
 };
 const RESONANCE_STEPS = [3, 6];
 // 共鳴的實際數值（SCHOOLS 的說明文字跟著這裡寫）
@@ -744,18 +744,18 @@ const META_KEY = 'undeadFrenzy_meta';
 // 價格：第 n 級是 costBase × n，第一級一局就買得起
 // total(m, lv)：買了 lv 級時合計的效果，強化畫面寫「目前 …」
 const META_UPGRADES = {
-    might: { icon: 'claws', name: '亡者之力', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    might: { icon: 'might', name: '亡者之力', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     mageHp: { icon: 'heart', name: '主角體魄', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    boneMarrow: { icon: 'boneArmor', name: '軍團體魄', max: 6, per: 0.1, costBase: 35, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    ultMastery: { icon: 'burst', name: '大招精通', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
-    soulAffinity: { icon: 'soulHarvest', name: '靈魂親和', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    boneMarrow: { icon: 'boneMarrow', name: '軍團體魄', max: 6, per: 0.1, costBase: 35, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    ultMastery: { icon: 'ultMastery', name: '大招精通', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
+    soulAffinity: { icon: 'soulAffinity', name: '靈魂親和', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
-    revive: { icon: 'rebirth', name: '不死執念', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
+    revive: { icon: 'revive', name: '不死執念', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
     freeReroll: { icon: 'reroll', name: '先知之眼', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
     // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑
     banish: { icon: 'banish', name: '斷念', max: 3, per: 1, costBase: 60, desc: m => `每局可放逐 ${m.per} 張祝福（整局不再出現）`, total: (m, lv) => `${lv} 張` },
     extraChoice: { icon: 'extraChoice', name: '多一條路', max: 1, per: 1, costBase: 250, desc: () => '祝福多一張可選' },
-    headStart: { icon: 'star', name: '開局祝福', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
+    headStart: { icon: 'draft', name: '開局祝福', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
 };
 // 強化表換過一次（數值類改成百分比、加了傷害與復活）：舊存檔買過的全部退還結晶，照新表重新買
 const META_TABLE_VERSION = 2;
@@ -2047,7 +2047,7 @@ class Player extends GameObject {
             m.pos.y += dy / d * REVIVE_PUSH_DIST;
         }
         gameState.visualEffects.push(new NovaEffect({ x: this.pos.x, y: this.pos.y }, REVIVE_PUSH_RADIUS, REVIVE_EFFECT_COLORS));
-        gameState.banner = { text: META_UPGRADES.revive.name, sub: '倒下了，又站了起來', color: '#FFE082', life: CONFIG.wave.bannerDuration, icon: 'rebirth' };
+        gameState.banner = { text: META_UPGRADES.revive.name, sub: '倒下了，又站了起來', color: '#FFE082', life: CONFIG.wave.bannerDuration, icon: 'revive' };
         addShake(10);
         Sfx.play('victory');
         return true;
@@ -5017,7 +5017,7 @@ const LOB_PATH_DOTS = 12;
 function drawHazards() {
     if (!poisonGlowSprite) buildPoisonGlow();
     const t = worldTime;
-    const skull = getIconImage('skull');
+    const poisonMark = getIconImage('poisonPool');
     for (const h of gameState.hazards) {
         if (h.flight > 0 || !inView(h)) continue;
         const fade = Math.min(1, h.life * 2);
@@ -5041,7 +5041,7 @@ function drawHazards() {
             ctx.beginPath(); ctx.arc(bx, by - ph * 26, 2.5 + ph * 4, 0, Math.PI * 2); ctx.fill();
         }
         ctx.globalAlpha = fade * 0.9;
-        if (skull) ctx.drawImage(skull, h.x - 11, h.y - 11, 22, 22);
+        if (poisonMark) ctx.drawImage(poisonMark, h.x - 11, h.y - 11, 22, 22);
         ctx.globalAlpha = 1;
     }
 }
@@ -5051,7 +5051,7 @@ function drawLobs() {
     if (!gameState.hazards.length) return;
     if (!poisonGlowSprite) buildPoisonGlow();
     const lob = CONFIG.spitter.lobTime;
-    const skull = getIconImage('skull');
+    const poisonMark = getIconImage('poisonPool');
     for (const h of gameState.hazards) {
         if (h.flight <= 0) continue;
         const k = 1 - h.flight / lob;
@@ -5062,7 +5062,7 @@ function drawLobs() {
             ctx.strokeStyle = 'rgba(255, 82, 82, 0.9)';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2); ctx.stroke();
-            if (skull) { ctx.globalAlpha = 0.85; ctx.drawImage(skull, h.x - 10, h.y - 10, 20, 20); ctx.globalAlpha = 1; }
+            if (poisonMark) { ctx.globalAlpha = 0.85; ctx.drawImage(poisonMark, h.x - 10, h.y - 10, 20, 20); ctx.globalAlpha = 1; }
         }
         // 剩下要飛的那段拋物線畫成虛線：看得出是哪一隻丟的、會掉在哪
         ctx.beginPath();
@@ -5116,11 +5116,11 @@ const RELIC_HEAL_TEXT_EVERY = 0.6;
 const RELIC_SPRING_NEED_WEIGHT = 2.5;
 // art／artW：立繪與畫出來的寬（世界單位，法師約 48），高照圖的比例
 const RELIC_TYPES = {
-    altar: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'burst', art: 'relic_altar', artW: 62, color: '#E1BEE7', glow: '186, 104, 200', channel: 2, frenzy: 12, weight: 1 },
+    altar: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'altar', art: 'relic_altar', artW: 62, color: '#E1BEE7', glow: '186, 104, 200', channel: 2, frenzy: 12, weight: 1 },
     // pool：一座泉總共回多少（× 法師血量上限），回完就乾
-    spring: { name: '靈泉', hint: '站在裡面回血', icon: 'heart', art: 'relic_spring', artW: 72, color: '#A5D6A7', glow: '67, 160, 71', healPerSec: 0.15, pool: 0.6 },
+    spring: { name: '靈泉', hint: '站在裡面回血', icon: 'spring', art: 'relic_spring', artW: 72, color: '#A5D6A7', glow: '67, 160, 71', healPerSec: 0.15, pool: 0.6 },
     // 靈魂 = 上一波全部掉落的 soulShare 倍：跟著當下的經濟成長，不用另外調每一波的數字
-    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'lock', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, draftChance: 0.35, weight: 1 },
+    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'coffinRelic', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, draftChance: 0.35, weight: 1 },
 };
 // 物件的底邊落在範圍圈中心往下這麼多：看起來是「放在圈裡」，法師走進圈時站在物件前面
 const RELIC_ART_BASE = 16;
@@ -5209,7 +5209,7 @@ function finishRelic(r) {
     if (classDef().onRelic && classDef().onRelic(r)) return;
     if (r.kind === 'altar') {
         gameState.frenzyTimer = Math.max(gameState.frenzyTimer, T.frenzy);
-        spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'burst');
+        spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'armyFrenzy');
         const live = gameState.summons, step = Math.max(1, Math.floor(live.length / FRENZY_SPARK_SUMMONS));
         for (let i = 0; i < live.length; i += step) if (live[i].isAlive) spawnParticles(live[i].pos.x, live[i].pos.y, FRENZY_SPARK_COLOR, 3, 60, 0.5, 3);
         addShake(5);
@@ -5222,7 +5222,7 @@ function finishRelic(r) {
         spawnFloatText(r.x, r.y - 30, `+${formatNumberK(souls)}`, '#80DEEA', 18, 1.3, 'soul');
         if (Math.random() < T.draftChance) {
             gameState.relicDrafts++;
-            spawnFloatText(r.x, r.y - 52, '祝福 +1', '#FFD54F', 18, 1.6, 'star');
+            spawnFloatText(r.x, r.y - 52, '祝福 +1', '#FFD54F', 18, 1.6, 'draft');
         }
         addShake(4);
         Sfx.play('pick');
@@ -5376,7 +5376,7 @@ const FRENZY_CHIP_COLOR = '#E1BEE7';
 const buffPeak = {};
 function activeBuffs() {
     const list = [];
-    if (gameState.frenzyTimer > 0) list.push({ icon: 'burst', t: gameState.frenzyTimer, color: FRENZY_CHIP_COLOR });
+    if (gameState.frenzyTimer > 0) list.push({ icon: 'armyFrenzy', t: gameState.frenzyTimer, color: FRENZY_CHIP_COLOR });
     const cls = classDef();
     if (cls.buffs) list.push(...cls.buffs());
     return list;
@@ -5409,14 +5409,14 @@ function drawBuffChips() {
 }
 
 const CURSES = [
-    { icon: 'claws', name: '兇暴', desc: '怪物血量 +25%', hpMult: 1.25 },
-    { icon: 'warning', name: '暗殺令', desc: '刺客提早出現、數量加倍', assassinEarly: true },
-    { icon: 'fastForward', name: '疾行', desc: '怪物移速 +15%', speedMult: 1.15 },
-    { icon: 'soul', name: '貧瘠', desc: '靈魂掉落 -20%', soulMult: 0.8 },
-    { icon: 'crown', name: '精英橫行', desc: '精英怪機率 ×2', eliteMult: 2 },
-    { icon: 'skull', name: '暴君', desc: '首領血量 +50%', bossHpMult: 1.5 },
-    { icon: 'heart', name: '脆弱', desc: '法師血量 -30%', mageHpMult: 0.7 },
-    { icon: 'flame', name: '血債', desc: '怪物攻擊 +30%', atkMult: 1.3 },
+    { icon: 'curseBrutal', name: '兇暴', desc: '怪物血量 +25%', hpMult: 1.25 },
+    { icon: 'curseAssassin', name: '暗殺令', desc: '刺客提早出現、數量加倍', assassinEarly: true },
+    { icon: 'curseSwift', name: '疾行', desc: '怪物移速 +15%', speedMult: 1.15 },
+    { icon: 'curseBarren', name: '貧瘠', desc: '靈魂掉落 -20%', soulMult: 0.8 },
+    { icon: 'curseElite', name: '精英橫行', desc: '精英怪機率 ×2', eliteMult: 2 },
+    { icon: 'curseTyrant', name: '暴君', desc: '首領血量 +50%', bossHpMult: 1.5 },
+    { icon: 'curseFrail', name: '脆弱', desc: '法師血量 -30%', mageHpMult: 0.7 },
+    { icon: 'curseBloodDebt', name: '血債', desc: '怪物攻擊 +30%', atkMult: 1.3 },
 ];
 const CURSE_CRYSTAL_STEP = 0.3;
 const ASSASSIN_EARLY_WAVE = 6;
@@ -5584,19 +5584,19 @@ function getNewcomer(wave) {
     const assassinWave = runMods().assassinEarly ? ASSASSIN_EARLY_WAVE : CONFIG.assassin.minWave;
     // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
     const list = [
-        { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', icon: 'warning', color: '#EF9A9A' },
-        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝法師射血彈，走動就躲得掉', icon: 'warning', color: '#FF8A80' },
-        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快撿或放新星吸走', icon: 'soul', color: '#80DEEA' },
-        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，骷髏打不到，靠眼魔與法師', icon: 'claws', color: '#B0BEC5' },
-        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒小怪，帶大軍去拆有大獎', icon: 'skull', color: '#A5D6A7' },
-        { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', icon: 'plague', color: '#E6EE9C' },
-        { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', icon: 'raiseDead', color: '#AED581' },
-        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲法師，邊走邊放新星', icon: 'claws', color: '#BCAAA4' },
-        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，靠骷髏近戰', icon: 'boneArmor', color: '#B0BEC5' },
-        { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', icon: 'plague', color: POISON_LIGHT },
-        { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'crown', color: '#FFD54F' },
-        { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '會從地底鑽出，紅圈出現就走開', icon: 'warning', color: '#BCAAA4' },
-        { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的召喚物變成敵人，先殺牠', icon: 'skull', color: '#69F0AE' },
+        { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', color: '#EF9A9A' },
+        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝法師射血彈，走動就躲得掉', color: '#FF8A80' },
+        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快撿或放新星吸走', color: '#80DEEA' },
+        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，骷髏打不到，靠眼魔與法師', color: '#B0BEC5' },
+        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒小怪，帶大軍去拆有大獎', color: '#A5D6A7' },
+        { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', color: '#E6EE9C' },
+        { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', color: '#AED581' },
+        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲法師，邊走邊放新星', color: '#BCAAA4' },
+        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，靠骷髏近戰', color: '#B0BEC5' },
+        { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', color: POISON_LIGHT },
+        { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'eliteAffix', color: '#FFD54F' },
+        { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '會從地底鑽出，紅圈出現就走開', color: '#BCAAA4' },
+        { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的召喚物變成敵人，先殺牠', color: '#69F0AE' },
     ];
     const hit = list.find(n => n.wave === wave);
     if (!hit) return null;
@@ -5647,10 +5647,10 @@ function prepareNextWave() {
     const ev = getWaveEvent();
     if (isBossWave) {
         if (isFinalWave(waveNum)) {
-            gameState.banner = { text: '最終決戰', sub: `${CONFIG.lichBoss.name}降臨`, color: '#FF8A65', life: CONFIG.wave.bannerDuration * 1.5, icon: 'crown' };
+            gameState.banner = { text: '最終決戰', sub: `${CONFIG.lichBoss.name}降臨`, color: '#FF8A65', life: CONFIG.wave.bannerDuration * 1.5, icon: 'boss' };
         } else {
             const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
-            gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'warning' };
+            gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
         }
     } else if (waveNum === 1 && dailyDef()) {
         const d = dailyDef();
@@ -5872,7 +5872,7 @@ function lbSplitTarget(w) {
 function lbNextTargetHtml(run) {
     if (gameState.daily) return '';
     const board = lbBoard(LB_ALL), place = lbPlace(run, LB_ALL);
-    if (place === 1) return `${iconHtml('crown')}綜合榜第一`;
+    if (place === 1) return `${iconHtml('podium')}綜合榜第一`;
     const t = board[Math.min(place, board.length + 1) - 2];
     if (!t) return '';
     const who = escapeHtml(t.name);
@@ -5919,7 +5919,7 @@ function renderLeaderboard() {
     const board = lbBoard(lbTab);
     uiElements.lbList.innerHTML = board.length === 0 ? `<span class="empty-note">撐過第 ${LB_MIN_WAVE} 波就能上榜</span>` : board.map((e, i) => {
         const sub = (e.won ? `<span>${iconHtml('crown')}通關</span>` : `<span>${iconHtml('skull')}第 ${e.wave} 波</span>`) +
-            (e.curse > 0 ? `<span>${iconHtml('flame')}詛咒 ${e.curse}</span>` : '') +
+            (e.curse > 0 ? `<span>${iconHtml('curse')}詛咒 ${e.curse}</span>` : '') +
             (e.rival ? '<span class="lb-tag">對手</span>' : '');
         return `<button class="lb-row${e.id === lbMineId ? ' mine' : ''}${e.rival ? ' rival' : ''}" data-lb="${e.id}"><span class="lb-no">${i + 1}</span>${lbClassImg(e.cls)}` +
             `<span class="lb-who"><div class="lb-name">${escapeHtml(e.name)}</div><div class="lb-sub">${sub}</div></span>` +
@@ -5936,9 +5936,9 @@ function openLbDetail(id) {
     uiElements.lbDetailBody.innerHTML =
         `<div class="lb-detail-head">${lbClassImg(e.cls)}<div><div class="lb-name">${escapeHtml(e.name)}</div>` +
         `<div class="lb-sub">${C ? (C.title === C.name ? C.name : `${C.name} · ${C.title}`) : ''}${e.date ? `<span>${new Date(e.date).toLocaleDateString('zh-TW')}</span>` : ''}</div></div></div>` +
-        `<div class="lb-ranks">${lbRanksHtml(e)}${e.curse > 0 ? `<span>${iconHtml('flame')}詛咒<b>${e.curse}</b></span>` : ''}</div>` +
+        `<div class="lb-ranks">${lbRanksHtml(e)}${e.curse > 0 ? `<span>${iconHtml('curse')}詛咒<b>${e.curse}</b></span>` : ''}</div>` +
         lbResultHtml(e) +
-        (e.rival ? `<p class="lb-motto">「${e.motto}」</p><div class="lb-sub lb-beaten">${lbBeaten(e, lbOwnBest()) ? `${iconHtml('crown')}已經超越` : e.won ? `${formatClock(e.time)} 內通關就能超越` : `撐過第 ${e.wave + 1} 波就能超越`}</div>` : '') +
+        (e.rival ? `<p class="lb-motto">「${e.motto}」</p><div class="lb-sub lb-beaten">${lbBeaten(e, lbOwnBest()) ? `${iconHtml('podium')}已經超越` : e.won ? `${formatClock(e.time)} 內通關就能超越` : `撐過第 ${e.wave + 1} 波就能超越`}</div>` : '') +
         (e.kills == null ? '' : `<div class="result-stats">${stat(formatNumberK(e.kills), '擊殺')}${stat(formatNumberK(e.summons), '召喚')}${stat(formatNumberK(e.streak), '最高連殺')}${stat(e.bosses, '首領')}</div>`) +
         (e.blessings ? `<div class="bless-list">${blessingChipsHtml(e.blessings)}</div>` : '');
     showScreen(uiElements.lbDetail, true);
@@ -6039,7 +6039,7 @@ function useNova() {
     gameState.frenzyTimer = c.frenzyDuration + blessVal('frenzyTime');
     for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].attracted = true;
     // 寫效果不寫招式名：「狂潮」沒人知道是什麼，「大軍狂暴」一看就懂是自己的兵變強；兵身上同時冒紫火花（挑一部分，上千隻全冒會塞爆粒子上限）
-    spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'burst');
+    spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'armyFrenzy');
     const live = gameState.summons, step = Math.max(1, Math.floor(live.length / FRENZY_SPARK_SUMMONS));
     for (let i = 0; i < live.length; i += step) if (live[i].isAlive) spawnParticles(live[i].pos.x, live[i].pos.y, FRENZY_SPARK_COLOR, 3, 60, 0.5, 3);
     gameState.visualEffects.push(new NovaEffect(p.pos, radius));
@@ -6134,7 +6134,7 @@ function resonancePipsHtml(school, preview) {
 function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
-    if (school === PACT_SCHOOL) return `<span class="school-chip pact-chip">${iconHtml('flame', 'icon school-img')}<span>契約</span></span>`;
+    if (school === PACT_SCHOOL) return `<span class="school-chip pact-chip">${iconHtml('pact', 'icon school-img')}<span>契約</span></span>`;
     const S = SCHOOLS[school];
     // 這張選下去剛好湊滿一段：整個標籤亮起來
     const willResonate = RESONANCE_STEPS.includes(schoolPoints(school) + 1);
@@ -6244,7 +6244,7 @@ function banishBlessing(id) {
 
 function announceResonance(school, tier) {
     const S = SCHOOLS[school], R = S.res[tier - 1];
-    gameState.banner = { text: `${S.name}共鳴 · ${R.name}`, sub: R.desc, color: S.color, life: CONFIG.wave.bannerDuration * 1.4, icon: 'star' };
+    gameState.banner = { text: `${S.name}共鳴 · ${R.name}`, sub: R.desc, color: S.color, life: CONFIG.wave.bannerDuration * 1.4, icon: 'resonance' };
     addShake(4);
     Sfx.play('evolve');
 }
@@ -6371,7 +6371,7 @@ function refreshTitle() {
     const wins = meta.wins || 0;
     renderClassPicker();
     const fastest = bestClearOf(selectedClass());
-    uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('trophy')}最佳 ${best} 波　` : '') +
+    uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('record')}最佳 ${best} 波　` : '') +
         (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         (fastest ? `${iconHtml('clock')}最快 ${formatClock(fastest.time)}　` : '') +
         `<span class="crystal-count">${iconHtml('crystal')}${meta.crystals}</span>`;
@@ -6505,7 +6505,7 @@ function refundMeta() {
 
 function renderMeta() {
     uiElements.metaCrystals.innerHTML = `${iconHtml('crystal')}${meta.crystals}`;
-    uiElements.metaEarn.innerHTML = `<span>${iconHtml('skull')}每撐過 1 波 +${CRYSTALS_PER_WAVE}</span><span>${iconHtml('crown')}首領 +${CRYSTALS_PER_BOSS}</span><span>${iconHtml('trophy')}通關 +${VICTORY_CRYSTALS}</span>`;
+    uiElements.metaEarn.innerHTML = `<span>${iconHtml('skull')}每撐過 1 波 +${CRYSTALS_PER_WAVE}</span><span>${iconHtml('boss')}首領 +${CRYSTALS_PER_BOSS}</span><span>${iconHtml('crown')}通關 +${VICTORY_CRYSTALS}</span>`;
     uiElements.metaRefundBtn.disabled = !Object.keys(META_UPGRADES).some(id => metaLv(id) > 0);
     uiElements.metaList.innerHTML = Object.entries(META_UPGRADES).map(([id, m]) => {
         const lv = metaLv(id), maxed = lv >= m.max, cost = metaCost(id);
@@ -7186,8 +7186,8 @@ function getSurvivedWaves() {
 function renderRewardDetail(survived) {
     const bosses = gameState.totalKills.Boss || 0, mult = curseCrystalMult();
     let html = `<span>${iconHtml('skull')}${survived} 波 ×${CRYSTALS_PER_WAVE}<b>+${survived * CRYSTALS_PER_WAVE}</b></span>`;
-    if (bosses > 0) html += `<span>${iconHtml('crown')}首領 ${bosses} 隻 ×${CRYSTALS_PER_BOSS}<b>+${bosses * CRYSTALS_PER_BOSS}</b></span>`;
-    if (mult > 1) html += `<span>${iconHtml('flame')}詛咒<b>×${mult.toFixed(1)}</b></span>`;
+    if (bosses > 0) html += `<span>${iconHtml('boss')}首領 ${bosses} 隻 ×${CRYSTALS_PER_BOSS}<b>+${bosses * CRYSTALS_PER_BOSS}</b></span>`;
+    if (mult > 1) html += `<span>${iconHtml('curse')}詛咒<b>×${mult.toFixed(1)}</b></span>`;
     if (dailyCrystalMult() > 1) html += `<span>${iconHtml(dailyDef().icon)}每日變異<b>×${DAILY_CRYSTAL_MULT}</b></span>`;
     // 成就的結晶達成當下就入帳了，這裡只是列出來，不算進 getRunReward
     if (gameState.achvCount > 0) html += `<span>${iconHtml('trophy')}成就 ${gameState.achvCount} 個<b>+${gameState.achvCrystals}</b></span>`;
@@ -7240,7 +7240,7 @@ function showGameOver(reason = 'died') {
         try { SaveStore.set(BEST_WAVE_KEY, String(survived)); } catch (e) { }
     }
     uiElements.finalWaveText.textContent = survived;
-    uiElements.bestWaveText.innerHTML = isRecord ? `${iconHtml('trophy')}新紀錄` : `最佳 ${best} 波`;
+    uiElements.bestWaveText.innerHTML = isRecord ? `${iconHtml('record')}新紀錄` : `最佳 ${best} 波`;
     uiElements.bestWaveText.classList.toggle('new-record', isRecord);
     const kills = Object.values(gameState.totalKills).reduce((a, b) => a + b, 0);
     const summons = Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
@@ -7760,7 +7760,7 @@ function drawBossBar() {
     const w = Math.min(view.cssW * 0.46, 300), h = 12;
     const x = (view.cssW - w) / 2, y = hudTop + 26;
     ctx.save();
-    drawIconLabel('skull', `${boss.config.name}  Lv${boss.tier}`, view.cssW / 2, y - 6, 14, '#E1BEE7');
+    drawIconLabel('boss', `${boss.config.name}  Lv${boss.tier}`, view.cssW / 2, y - 6, 14, '#E1BEE7');
     // 外框：深色粗框 + 暗金細框，跟介面面板同一套
     ctx.fillStyle = TEXT_OUTLINE;
     roundRect(x - 3, y - 3, w + 6, h + 6, 8); ctx.fill();
@@ -7823,7 +7823,7 @@ function drawOffscreenPointers() {
         const isTomb = m instanceof TombstoneMonster;
         if (isThief || isTomb || m instanceof BossMonster) {
             bounds = bounds || pointerBounds();
-            const icon = getIconImage(isThief ? 'sack' : 'skull');
+            const icon = getIconImage(isThief ? 'sack' : isTomb ? 'tombstone' : 'boss');
             drawEdgePointer(sx, sy, isThief ? POINTER_THIEF_COLOR : isTomb ? POINTER_TOMB_COLOR : POINTER_BOSS_COLOR, bounds, icon, 24, 24);
             continue;
         }

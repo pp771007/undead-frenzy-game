@@ -215,7 +215,7 @@ CLASSES.vampire = {
         const p = gameState.player, v = vampState();
         p.currentHealth = p.maxHealth;
         v.moonT = Math.max(v.moonT, VAMPIRE.bloodMoon.duration);
-        spawnFloatText(p.pos.x, p.pos.y - 34, '棺中長眠：血全滿、入夜', '#D1C4E9', 15, 1.6, 'coffin');
+        spawnFloatText(p.pos.x, p.pos.y - 34, '棺中長眠：血全滿、入夜', '#D1C4E9', 15, 1.6, 'coffinRelic');
         spawnParticles(p.pos.x, p.pos.y, '#9575CD', 30, 140, 0.7, 3);
         Sfx.play('pick');
         updateUI();

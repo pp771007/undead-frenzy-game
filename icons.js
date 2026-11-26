@@ -484,7 +484,131 @@ const ICON_BODIES = {
         <path d="M32 24 C21 24 13 31 13 40 C13 46 16 50 21 52 L21 60 L43 60 L43 52 C48 50 51 46 51 40 C51 31 43 24 32 24 Z" fill="#ffcdd2"/>
         <path d="M18 36 L29 41 L28 47 L19 45 Z" fill="#ffd54f" stroke-width="3"/><path d="M46 36 L35 41 L36 47 L45 45 Z" fill="#ffd54f" stroke-width="3"/>
         <path d="M32 48 L29.5 53 L34.5 53 Z" fill="${ICON_OUTLINE}" stroke="none"/><path d="M27 60 L27 56 M32 60 L32 56 M37 60 L37 56" stroke-width="2.5"/>`,
-    warning: `<path d="M32 7 L59 54 L5 54 Z" fill="#ff5252"/><path d="M32 22 L32 38" stroke="#fff" stroke-width="6"/><circle cx="32" cy="46" r="3.5" fill="#fff" stroke="none"/>`,
+    // ---- 首領、遺跡、戰鬥中的狀態 ----
+    // 首領（首領來襲、最終決戰、首領血條、畫面邊的箭頭、打倒幾隻）：長角的紫骷髏
+    boss: `<path d="M16 22 C8 18 4 8 8 2 C10 12 16 14 22 16 Z" fill="#8d6e63"/><path d="M48 22 C56 18 60 8 56 2 C54 12 48 14 42 16 Z" fill="#8d6e63"/>
+        <path d="M32 12 C19 12 12 21 12 32 C12 40 16 45 21 47 L21 58 L43 58 L43 47 C48 45 52 40 52 32 C52 21 45 12 32 12 Z" fill="#b39ddb"/>
+        <path d="M19 30 L29 34 L27 41 L19 39 Z" fill="#e040fb" stroke-width="3"/><path d="M45 30 L35 34 L37 41 L45 39 Z" fill="#e040fb" stroke-width="3"/>
+        <path d="M32 42 L29 48 L35 48 Z" fill="${ICON_OUTLINE}" stroke="none"/><path d="M27 58 L27 53 M32 58 L32 53 M37 58 L37 53" stroke-width="2.5"/>`,
+    // 招魂墓碑：冒綠火的墓碑
+    tombstone: `<path d="M14 58 L14 24 C14 12 22 6 32 6 C42 6 50 12 50 24 L50 58 Z" fill="#90a4ae"/><path d="M8 58 L56 58" stroke-width="5"/>
+        <path d="M32 18 L32 42 M24 26 L40 26" stroke="#607d8b" stroke-width="4"/>
+        <path d="M52 30 C46 26 46 20 50 14 C50 20 56 22 56 28 C56 32 54 34 52 34 Z" fill="#69f0ae" stroke-width="2.5"/>${shine(22, 16, 3, 5, 20)}`,
+    // 地上的毒池：綠骷髏加交叉骨
+    poisonPool: duoStroke('M12 48 L52 60 M52 48 L12 60', '#c5e1a5', 4) + `<path d="M32 6 C20 6 13 14 13 25 C13 32 16 36 21 39 L21 47 L43 47 L43 39 C48 36 51 32 51 25 C51 14 44 6 32 6 Z" fill="#9ccc65"/>
+        <ellipse cx="25" cy="26" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="39" cy="26" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><path d="M32 32 L29 38 L35 38 Z" fill="${ICON_OUTLINE}" stroke="none"/>`,
+    // 精英詞綴（第一次出現的橫幅）：精英腳下的金圈，一邊分裂光球、一邊暴走的火
+    eliteAffix: `<ellipse cx="32" cy="50" rx="26" ry="9" stroke-width="9"/><ellipse cx="32" cy="50" rx="26" ry="9" stroke="#ffd54f" stroke-width="4"/>
+        <circle cx="19" cy="30" r="11" fill="#9ccc65"/>${shine(15, 26, 3, 2)}
+        <path d="M44 46 C35 46 32 38 35 31 C37 26 41 24 41 16 C47 21 49 26 49 30 C51 28 52 25 51 21 C57 27 58 36 55 41 C53 44 49 46 44 46 Z" fill="#ff8a3d"/>`,
+    // 波次事件「精英潮」：金色浪頭
+    evEliteTide: `<path d="M4 54 L4 40 C10 40 12 30 20 24 C28 18 40 18 46 26 C40 26 36 30 38 36 C42 30 52 30 58 36 L60 54 Z" fill="#ffd54f"/>
+        <path d="M10 46 C16 44 20 46 26 44 M34 48 C40 46 46 48 52 46" stroke="#e0a82e" stroke-width="3"/>${shine(26, 26, 5, 2.5, -20)}
+        <circle cx="50" cy="14" r="3" fill="#fff59d" stroke-width="2.5"/><circle cx="58" cy="22" r="2" fill="#fff59d" stroke-width="2"/>`,
+    // 遺跡「戰鼓祭壇」：紫色戰鼓與鼓棒
+    altar: `<path d="M10 22 L10 48 C10 53 20 56 32 56 C44 56 54 53 54 48 L54 22" fill="#8e24aa"/>
+        <ellipse cx="32" cy="22" rx="22" ry="8" fill="#f1ead6"/><path d="M14 32 L22 50 L32 32 L42 50 L50 32" stroke="#ffd54f" stroke-width="3"/>
+        <path d="M18 2 L28 16 M46 2 L36 16" stroke-width="7"/><path d="M18 2 L28 16 M46 2 L36 16" stroke="#d7965a" stroke-width="3.5"/>`,
+    // 遺跡「靈泉」：石盆裡的綠水，上面一滴
+    spring: `<path d="M8 36 L56 36 L50 56 L14 56 Z" fill="#90a4ae"/><ellipse cx="32" cy="36" rx="24" ry="7" fill="#66bb6a"/><path d="M18 47 L46 47" stroke="#607d8b" stroke-width="2.5"/>
+        <path d="M32 4 C26 12 22 17 22 22 C22 28 27 31 32 31 C37 31 42 28 42 22 C42 17 38 12 32 4 Z" fill="#a5d6a7"/>${shine(28, 20, 2.5, 4, 20)}`,
+    // 遺跡「封印寶棺」：被鐵鍊綁住的寶箱（吸血鬼的不死流派是直立的棺材 coffin，別混）
+    coffinRelic: `<path d="M6 30 L58 30 L54 56 L10 56 Z" fill="#a1887f"/><path d="M6 30 C6 16 18 10 32 10 C46 10 58 16 58 30 Z" fill="#8d6e63"/>
+        <path d="M6 30 L58 30" stroke-width="4"/><path d="M8 14 L56 54 M56 14 L8 54" stroke-width="7"/><path d="M8 14 L56 54 M56 14 L8 54" stroke="#b0bec5" stroke-width="3"/>
+        <rect x="24" y="24" width="16" height="16" rx="3" fill="#ffca28"/><circle cx="32" cy="31" r="2.5" fill="${ICON_OUTLINE}" stroke="none"/>`,
+    // 大軍狂暴（新星、戰鼓祭壇給的狀態）：紫光裡的交叉雙劍
+    armyFrenzy: `<circle cx="32" cy="32" r="26" fill="#7b1fa2"/>
+        <path d="M14 14 L44 44 M50 14 L20 44" stroke-width="10"/><path d="M14 14 L44 44 M50 14 L20 44" stroke="#f1ead6" stroke-width="5"/>
+        <path d="M40 48 L48 40 M24 48 L16 40" stroke-width="9"/><path d="M40 48 L48 40 M24 48 L16 40" stroke="#ffd54f" stroke-width="4"/>
+        <path d="M46 46 L54 54 M18 46 L10 54" stroke-width="9"/><path d="M46 46 L54 54 M18 46 L10 54" stroke="#6d4c41" stroke-width="4"/>`,
+    // 祝福（多一次三選一）：打開的書，上面一顆星
+    draft: `<path d="M6 22 C16 18 26 20 32 26 C38 20 48 18 58 22 L58 54 C48 50 38 52 32 58 C26 52 16 50 6 54 Z" fill="#f1ead6"/><path d="M32 26 L32 58" stroke-width="3"/>
+        <path d="M12 30 C18 28 22 29 26 31 M12 38 C18 36 22 37 26 39 M38 31 C42 29 46 28 52 30 M38 39 C42 37 46 36 52 38" stroke="#a1887f" stroke-width="2.5"/>
+        <path d="${starPath(32, 11, 9, 4, 5)}" fill="#ffd54f" stroke-width="2.5"/>`,
+    // 流派共鳴：兩個扣在一起的環
+    resonance: `<circle cx="24" cy="32" r="15" stroke-width="9"/><circle cx="40" cy="32" r="15" stroke-width="9"/>
+        <circle cx="24" cy="32" r="15" stroke="#80deea" stroke-width="4"/><circle cx="40" cy="32" r="15" stroke="#ce93d8" stroke-width="4"/>
+        <path d="${starPath(32, 32, 9, 3.5, 4)}" fill="#fff59d" stroke-width="2"/>`,
+    // 靈魂流派：環裡的靈魂（靈魂本身＝錢包是 soul）
+    soulSchool: `<circle cx="32" cy="32" r="26" stroke-width="9"/><circle cx="32" cy="32" r="26" stroke="#80deea" stroke-width="4"/>
+        <path d="M32 52 C23 52 19 44 23 37 C26 32 27 26 25 18 C32 22 35 28 35 33 C37 30 38 27 38 22 C45 29 46 38 43 44 C41 49 37 52 32 52 Z" fill="#62dbe2"/>`,
+    // ---- 詛咒 ----
+    // 詛咒本身（詛咒等級、詛咒按鈕）：紫色符印
+    curse: `<circle cx="32" cy="32" r="25" fill="#6a1b9a"/><circle cx="32" cy="32" r="19" stroke="#ce93d8" stroke-width="2.5"/>
+        <path d="${starPath(32, 33, 16, 6.5, 5)}" fill="#e1bee7" stroke-width="2.5"/><circle cx="32" cy="33" r="3" fill="#6a1b9a" stroke-width="2"/>`,
+    // 兇暴（怪物血量）：長刺的綠皮怪
+    curseBrutal: `<path d="${starPath(32, 33, 27, 19, 9)}" fill="#558b2f"/><circle cx="32" cy="33" r="15" fill="#9ccc65"/>
+        <path d="M22 27 L30 31 M42 27 L34 31" stroke-width="3.5"/><circle cx="26.5" cy="34" r="2.5" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="37.5" cy="34" r="2.5" fill="${ICON_OUTLINE}" stroke="none"/>
+        <path d="M26 42 L38 42" stroke-width="3"/>`,
+    // 暗殺令（刺客提早出現）：紅色標靶上插一把紫柄匕首
+    curseAssassin: `<circle cx="30" cy="34" r="22" stroke-width="10"/><circle cx="30" cy="34" r="22" stroke="#e53935" stroke-width="5"/><circle cx="30" cy="34" r="8" fill="#e53935"/>
+        <path d="M54 6 L60 12 L36 36 L30 30 Z" fill="#cfd8dc"/><path d="M28 32 L34 38" stroke-width="10"/><path d="M28 32 L34 38" stroke="#7e57c2" stroke-width="5"/>`,
+    // 疾行（怪物移速）：紅色飛靴
+    curseSwift: `<path d="M22 8 L40 8 L40 34 C40 38 44 40 50 42 C58 44 59 55 52 57 L22 57 C19 57 18 55 18 53 L18 12 C18 10 20 8 22 8 Z" fill="#c62828"/>
+        <rect x="15" y="6" width="28" height="9" rx="3" fill="#ffd54f"/><path d="M18 49 L57 49" stroke-width="3"/>
+        <path d="M18 22 C8 14 2 18 4 24 C0 27 2 33 8 33 C4 37 8 42 14 40 C12 44 16 47 18 44 Z" fill="#f1ead6"/>`,
+    // 貧瘠（靈魂掉落）：裂開的灰色靈魂，旁邊往下的箭頭
+    curseBarren: `<path d="M26 58 C14 58 9 47 14 38 C17 32 18 25 16 15 C24 20 28 26 28 32 C31 28 32 24 32 18 C40 26 42 37 38 46 C36 53 31 58 26 58 Z" fill="#90a4ae"/>
+        <path d="M21 32 L26 39 L22 45 L27 51" stroke-width="2.5"/>
+        <path d="M49 8 L49 36" stroke-width="10"/><path d="M49 8 L49 36" stroke="#e53935" stroke-width="5"/><path d="M39 34 L49 50 L59 34 Z" fill="#e53935"/>`,
+    // 精英橫行（精英機率）：金圈裡站著兩隻長角的紫怪
+    curseElite: `<ellipse cx="32" cy="52" rx="27" ry="8" stroke-width="9"/><ellipse cx="32" cy="52" rx="27" ry="8" stroke="#ffd54f" stroke-width="4"/>
+        <path d="M12 28 L9 13 L18 23 Z M32 28 L34 13 L26 23 Z" fill="#ffca28" stroke-width="2.5"/><circle cx="22" cy="36" r="12" fill="#8e24aa"/>
+        <path d="M33 23 L31 8 L40 18 Z M53 23 L55 8 L46 18 Z" fill="#ffca28" stroke-width="2.5"/><circle cx="43" cy="31" r="12" fill="#ab47bc"/>
+        <circle cx="18" cy="36" r="2.2" fill="#ffd54f" stroke="none"/><circle cx="26" cy="36" r="2.2" fill="#ffd54f" stroke="none"/><circle cx="39" cy="31" r="2.2" fill="#ffd54f" stroke="none"/><circle cx="47" cy="31" r="2.2" fill="#ffd54f" stroke="none"/>`,
+    // 暴君（首領血量）：尖刺王座
+    curseTyrant: `<path d="M16 42 L16 14 L22 4 L27 12 L32 2 L37 12 L42 4 L48 14 L48 42 Z" fill="#7f0000"/>
+        <path d="M21 18 L43 18 L43 38 L21 38 Z" fill="#c62828" stroke-width="3"/>
+        <rect x="5" y="30" width="11" height="16" rx="2" fill="#7f0000"/><rect x="48" y="30" width="11" height="16" rx="2" fill="#7f0000"/>
+        <path d="M14 48 L14 60 M50 48 L50 60" stroke-width="6"/><path d="M8 40 L56 40 L52 49 L12 49 Z" fill="#ffca28"/>`,
+    // 脆弱（主角血量）：裂成兩半的心
+    curseFrail: `<path d="M32 54 C12 41 5 28 12 17 C18 9 28 10 32 18 L28 28 L34 36 L29 44 Z" fill="#b23a3a" transform="translate(-3 0)"/>
+        <path d="M32 18 C36 10 46 9 52 17 C59 28 52 41 32 54 L29 44 L34 36 L28 28 Z" fill="#b23a3a" transform="translate(3 0)"/>${shine(18, 22, 4, 3)}`,
+    // 血債（怪物攻擊）：滴血的匕首
+    curseBloodDebt: `<path d="M26 4 L38 4 L38 12 L26 12 Z" fill="#6d4c41"/><path d="M18 12 L46 12 L46 18 L18 18 Z" fill="#8d6e63"/>
+        <path d="M26 18 L38 18 L38 44 L32 56 L26 44 Z" fill="#cfd8dc"/><path d="M26 34 L38 34 L38 44 L32 56 L26 44 Z" fill="#c62828"/>
+        <path d="M44 42 C44 48 48 50 48 50 C48 50 52 48 52 42 C52 38 48 34 48 34 C48 34 44 38 44 42 Z" fill="#e53935" stroke-width="3"/>`,
+    // ---- 契約、結算、選單 ----
+    // 契約（流派標籤；每一種契約另有自己的 pact_*）：蓋紅蠟封的羊皮紙
+    pact: `<path d="M12 8 L44 8 L52 16 L52 58 L12 58 Z" fill="#f1ead6"/><path d="M44 8 L44 16 L52 16" stroke-width="3"/>
+        <path d="M19 22 L44 22 M19 30 L44 30 M19 38 L34 38" stroke="#a1887f" stroke-width="3"/>
+        <circle cx="41" cy="47" r="9" fill="#c62828"/><path d="M37 47 L45 47 M41 43 L41 51" stroke="#ffcdd2" stroke-width="2.5"/>`,
+    // 挑戰無盡：無限符號
+    endless: duoStroke('M32 32 C26 22 12 20 10 32 C8 44 26 42 32 32 C38 22 56 20 54 32 C52 44 38 42 32 32', '#ef5350', 7),
+    // 結算（通關後收工）：方格終點旗
+    settle: `<path d="M14 6 L14 60" stroke-width="7"/><path d="M14 6 L14 60" stroke="#8d6e63" stroke-width="3"/>
+        <rect x="16" y="8" width="38" height="26" fill="#f1ead6"/>
+        <path d="M16 8 h9.5 v6.5 h-9.5 Z M35 8 h9.5 v6.5 h-9.5 Z M25.5 14.5 h9.5 v6.5 h-9.5 Z M44.5 14.5 h9.5 v6.5 h-9.5 Z M16 21 h9.5 v6.5 h-9.5 Z M35 21 h9.5 v6.5 h-9.5 Z M25.5 27.5 h9.5 v6.5 h-9.5 Z M44.5 27.5 h9.5 v6.5 h-9.5 Z" fill="${ICON_OUTLINE}" stroke="none"/>
+        <rect x="16" y="8" width="38" height="26" stroke-width="3"/>`,
+    // 最佳紀錄、新紀錄：月桂葉圍著往上的箭頭（成就是獎盃 trophy）
+    record: duoStroke('M20 56 C8 48 6 32 14 16', '#7cb342', 4) + duoStroke('M44 56 C56 48 58 32 50 16', '#7cb342', 4) +
+        `<ellipse cx="9" cy="40" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(-60 9 40)"/><ellipse cx="9" cy="26" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(-80 9 26)"/>
+        <ellipse cx="55" cy="40" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(60 55 40)"/><ellipse cx="55" cy="26" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(80 55 26)"/>
+        <path d="M32 10 L44 24 L37 24 L37 50 L27 50 L27 24 L20 24 Z" fill="#ffd54f"/>`,
+    // 永久強化「全部退還」：結晶加一個往回的箭頭
+    refund: `<path d="M40 12 L56 28 L40 58 L24 28 Z" fill="#b388ff"/><path d="M24 28 L56 28" stroke-width="2.5"/>` +
+        duoStroke('M28 10 C16 10 8 18 8 30', '#8fd3ff', 5) + `<path d="M1 26 L8 40 L15 26 Z" fill="#8fd3ff"/>`,
+    // ---- 永久強化（跟祝福長得像的那幾個各自一張）----
+    // 亡者之力（全軍傷害）：骨白色的拳頭
+    might: `<rect x="16" y="22" width="34" height="26" rx="8" fill="#f1ead6"/><path d="M24 22 L24 32 M32 22 L32 32 M40 22 L40 32" stroke-width="3"/>
+        <path d="M18 36 C8 36 8 24 18 24" fill="#f1ead6"/><rect x="22" y="48" width="22" height="12" fill="#7e57c2"/>
+        <path d="M10 10 L16 16 M32 3 L32 12 M54 10 L48 16" stroke="#ffd54f" stroke-width="3.5"/>`,
+    // 大招精通（大招冷卻）：紫色爆光前的沙漏
+    ultMastery: `<path d="${starPath(32, 32, 30, 21, 10)}" fill="#c06bf5"/>
+        <path d="M20 10 L44 10 L44 14 C44 24 36 28 36 32 C36 36 44 40 44 50 L44 54 L20 54 L20 50 C20 40 28 36 28 32 C28 28 20 24 20 14 Z" fill="#f1ead6"/>
+        <path d="M24 50 L40 50 L32 42 Z M26 16 L38 16 L32 24 Z" fill="#ffd54f" stroke="none"/>`,
+    // 軍團體魄（召喚物血量）：骨頭加一顆心
+    boneMarrow: `<path d="M12 44 C6 40 10 32 16 36 L40 12 C36 6 44 2 48 8 C54 6 58 14 52 18 L28 42 C32 48 24 52 20 46 C16 52 8 48 12 44 Z" fill="#f1ead6"/>
+        <path d="M45 61 C32 53 28 45 32 38 C36 33 42 34 45 39 C48 34 54 33 58 38 C62 45 58 53 45 61 Z" fill="#e5484d"/>`,
+    // 靈魂親和（靈魂掉落）：滿出靈魂的豐饒角
+    soulAffinity: `<path d="M4 10 C8 30 22 44 42 46 L46 30 C30 28 18 20 4 10 Z" fill="#d7965a"/><ellipse cx="44" cy="38" rx="5" ry="9" fill="#8d6e63" transform="rotate(15 44 38)"/>
+        <circle cx="54" cy="48" r="6" fill="#62dbe2"/><circle cx="44" cy="56" r="4.5" fill="#62dbe2"/><circle cx="57" cy="34" r="4" fill="#62dbe2"/>${shine(52, 46, 2, 1.5)}`,
+    // 不死執念（倒下時復活一次；祝福「重生」是 rebirth）：金色生命十字
+    revive: `<ellipse cx="32" cy="17" rx="10" ry="12" stroke-width="11"/><ellipse cx="32" cy="17" rx="10" ry="12" stroke="#ffd54f" stroke-width="5"/>
+        <path d="M12 33 L52 33 M32 30 L32 60" stroke-width="12"/><path d="M12 33 L52 33 M32 30 L32 60" stroke="#ffd54f" stroke-width="6"/>`,
+    // 戰士遺跡「軍餉」：一枚金幣
+    coin: `<circle cx="32" cy="32" r="24" fill="#ffca28"/><circle cx="32" cy="32" r="17" stroke="#e0a82e" stroke-width="3"/>
+        <path d="M32 20 L32 44 M26 24 L36 24 C40 24 40 31 36 31 L28 31 C24 31 24 40 28 40 L38 40" stroke="#b8860b" stroke-width="3.5"/>${shine(22, 20, 4, 2.5)}`,
     close: duoStroke('M16 16 L48 48 M48 16 L16 48', '#f1ead6', 6),
     // ---- 祝福 ----
     boneBlade: `<path d="M44 8 L56 8 L56 20 L28 46 L18 36 Z" fill="#e3eaee"/><path d="M48 13 L24 39" stroke-width="2" stroke="#9fb0ba"/>
@@ -503,7 +627,10 @@ const ICON_BODIES = {
         `<path d="${GHOST_PATH}" fill="#e1f5fe" transform="translate(12.8 18) scale(0.6)"/><circle cx="29" cy="34" r="2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="35" cy="34" r="2" fill="${ICON_OUTLINE}" stroke="none"/>`,
     frostAura: duoStroke('M32 6 L32 58 M9.5 19 L54.5 45 M9.5 45 L54.5 19', '#b3e5fc', 5) +
         duoStroke('M25 10 L32 17 L39 10 M25 54 L32 47 L39 54 M8 28 L17 27 L14 18 M56 36 L47 37 L50 46 M8 36 L17 37 L14 46 M56 28 L47 27 L50 18', '#b3e5fc', 3.5),
-    raiseDead: `<path d="M22 6 L42 6 L50 18 L44 58 L20 58 L14 18 Z" fill="#8d6e63"/><path d="M32 16 L32 44 M24 25 L40 25" stroke-width="8"/><path d="M32 16 L32 44 M24 25 L40 25" stroke="#d7ccc8" stroke-width="4"/>`,
+    // 亡者復甦：土堆裡伸出的骷髏手（吸血鬼的不死流派是棺材 coffin）
+    raiseDead: duoStroke('M32 50 L32 30', '#f1ead6', 7) + `<path d="M23 31 C23 23 41 23 41 31 L39 35 L25 35 Z" fill="#f1ead6"/>` +
+        duoStroke('M26 25 L23 11 M31 23 L30 7 M36 23 L38 8 M40 27 L47 16 M23 31 L15 25', '#f1ead6', 4) +
+        `<path d="M4 60 C10 48 22 44 32 44 C42 44 54 48 60 60 Z" fill="#6d4c41"/><circle cx="18" cy="54" r="2" fill="#4e342e" stroke="none"/><circle cx="44" cy="52" r="2.5" fill="#4e342e" stroke="none"/>`,
     soulHarvest: `<path d="M14 58 L40 10" stroke-width="9"/><path d="M14 58 L40 10" stroke="#8d6e63" stroke-width="5"/>
         <path d="M38 12 C48 8 58 14 60 26 C54 20 46 18 36 20 Z" fill="#cfd8dc"/>
         <path d="M14 40 C8 40 6 34 9 30 C10 28 10 26 9 23 C14 25 16 28 16 31 C17 29 18 28 18 26 C22 30 22 36 20 38 C19 40 17 40 14 40 Z" fill="#62dbe2" stroke-width="3"/>`,
