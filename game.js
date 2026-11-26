@@ -2913,8 +2913,10 @@ class Projectile {
 
             if (distToTargetSq <= hitRadiusSq) {
                 const hit = this.target;
-                const block = this.style === 'soul' ? 0 : projectileBlockAt(hit);
+                const pierce = this.style === 'soul' || !!(this.owner && this.owner.pierceShield && this.owner.pierceShield(hit));
+                const block = pierce ? 0 : projectileBlockAt(hit);
                 if (block) spawnParticles(this.pos.x, this.pos.y, '#CFD8DC', 3, 50, 0.2, 2);
+                else if (pierce && projectileBlockAt(hit) > 0) spawnParticles(this.pos.x, this.pos.y, '#FFD740', 5, 70, 0.25, 2);
                 else if (this.homing) soulBoltBurst(this.pos);
                 else spawnParticles(this.pos.x, this.pos.y, this.color, BOLT_HIT_SPARKS, 60, 0.25, 2);
                 const dealt = this.damage * (1 - block);
