@@ -617,11 +617,11 @@ const PACT_SCHOOL = 'pact';
 const RUN_MOD_LABELS = {
     summonDmgMult: { label: '召喚物傷害', good: true },
     summonAtkSpeedMult: { label: '召喚物攻速', good: true },
-    boltDmgMult: { label: '法師靈魂彈傷害', good: true },
+    boltDmgMult: { label: '主角普攻傷害', good: true },
     soulMult: { label: '靈魂掉落', good: true },
     costMult: { label: '召喚費用', good: false },
     novaCdMult: { label: '新星冷卻', good: false },
-    mageHpMult: { label: '法師血量', good: true },
+    mageHpMult: { label: '主角血量', good: true },
     hpMult: { label: '怪物血量', good: false },
     atkMult: { label: '怪物攻擊', good: false },
     speedMult: { label: '怪物移速', good: false },
@@ -5872,7 +5872,7 @@ const CURSES = [
     { icon: 'curseBarren', name: '貧瘠', desc: '靈魂掉落 -20%', soulMult: 0.8 },
     { icon: 'curseElite', name: '精英橫行', desc: '精英怪機率 ×2', eliteMult: 2 },
     { icon: 'curseTyrant', name: '暴君', desc: '首領血量 +50%', bossHpMult: 1.5 },
-    { icon: 'curseFrail', name: '脆弱', desc: '法師血量 -30%', mageHpMult: 0.7 },
+    { icon: 'curseFrail', name: '脆弱', desc: '主角血量 -30%', mageHpMult: 0.7 },
     { icon: 'curseBloodDebt', name: '血債', desc: '怪物攻擊 +30%', atkMult: 1.3 },
 ];
 const CURSE_CRYSTAL_STEP = 0.3;
@@ -6042,18 +6042,18 @@ function getNewcomer(wave) {
     // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
     const list = [
         { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', color: '#EF9A9A' },
-        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝法師射血彈，走動就躲得掉', color: '#FF8A80' },
-        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快撿或放新星吸走', color: '#80DEEA' },
-        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，骷髏打不到，靠眼魔與法師', color: '#B0BEC5' },
-        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒小怪，帶大軍去拆有大獎', color: '#A5D6A7' },
+        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝你射血彈，走動就躲得掉', color: '#FF8A80' },
+        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快去撿走', color: '#80DEEA' },
+        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，近戰打不到，要靠遠程', color: '#B0BEC5' },
+        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒血狼，拆掉牠就換你招狼', color: '#A5D6A7' },
         { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', color: '#E6EE9C' },
         { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', color: '#AED581' },
-        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲法師，邊走邊放新星', color: '#BCAAA4' },
-        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，靠骷髏近戰', color: '#B0BEC5' },
+        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲你而來，邊走邊放大招', color: '#BCAAA4' },
+        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，要靠近戰打破', color: '#B0BEC5' },
         { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', color: POISON_LIGHT },
         { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'eliteAffix', color: '#FFD54F' },
         { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '會從地底鑽出，紅圈出現就走開', color: '#BCAAA4' },
-        { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的召喚物變成敵人，先殺牠', color: '#69F0AE' },
+        { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的手下變成敵人，先殺牠', color: '#69F0AE' },
     ];
     const hit = list.find(n => n.wave === wave);
     if (!hit) return null;
