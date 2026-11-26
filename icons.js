@@ -337,6 +337,11 @@ const ICON_BODIES = {
     // 流派
     assassination: `<circle cx="32" cy="32" r="24" stroke="#ffc400" stroke-width="4"/><circle cx="32" cy="32" r="12" stroke="#ffc400" stroke-width="3"/><path d="M32 4 L32 18 M32 46 L32 60 M4 32 L18 32 M46 32 L60 32" stroke="#ffc400" stroke-width="3.5"/>
         <circle cx="32" cy="32" r="3.5" fill="#ffc400" stroke="none"/>`,
+    // 刺客頭上「伏擊備好了」：一把刃朝下的金匕首、旁邊一顆閃光（下一把射向目標的飛刀 ×4）
+    ambush: `<path d="M25 24 L39 24 L32 58 Z" fill="#ffd740"/><path d="M32 27 L32 50" stroke="#fff8e1" stroke-width="2.5"/>
+        <path d="M18 22 L46 22" stroke-width="9"/><path d="M18 22 L46 22" stroke="#8d6e63" stroke-width="4.5"/>
+        <path d="M32 6 L32 18" stroke-width="9"/><path d="M32 6 L32 18" stroke="#5d4037" stroke-width="4.5"/>
+        <path d="${starPath(50, 40, 9, 3, 4)}" fill="#fff8e1" stroke-width="2.5"/>`,
     venomschool: `<path d="M24 6 L40 6 L40 18 C50 24 54 34 50 44 C46 54 38 58 32 58 C26 58 18 54 14 44 C10 34 14 24 24 18 Z" fill="#7cb342"/><path d="M24 6 L40 6" stroke-width="5"/>
         <circle cx="32" cy="36" r="8" fill="#f1f8e9" stroke-width="2.5"/><path d="M28 44 L36 44" stroke="#f1f8e9" stroke-width="4"/><circle cx="29" cy="35" r="2" fill="#1b1424" stroke="none"/><circle cx="35" cy="35" r="2" fill="#1b1424" stroke="none"/>${shine(22, 30, 3, 6, 20)}`,
     smoke: `<path d="M10 44 C2 44 2 30 12 30 C12 18 28 14 34 22 C40 14 56 18 54 30 C62 32 62 44 54 44 Z" fill="#90a4ae"/><path d="M18 52 C26 48 38 56 46 52" stroke="#cfd8dc" stroke-width="3.5"/>

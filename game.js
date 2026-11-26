@@ -1107,7 +1107,7 @@ const UNIT_TYPES = {
 //   onBossKill(boss)：打倒首領時；onRelic(relic)：遺跡讀條完成時，回傳 true 就取代預設效果
 //   canAfford(cost)／pay(cost)：用什麼付召喚與升級（吸血鬼可以拿自己的血付）；onOrbCollect(value)：撿到靈魂時，回傳要存進錢包的量
 //   soulMult(monster)：這隻怪掉的靈魂倍率；onMonsterKill(monster)：怪死掉時
-//   heroHidden()：主角這一格怪看不到（刺客隱身）
+//   heroHidden()：主角這一格怪看不到（刺客隱身）；heroAlpha()：主角身體的透明度；drawHeroUnder(ctx, player)：畫在主角身體之前（腳下）
 //   targetableSummons()：怪找目標時看得到的召喚物（沒有就是全部）；德魯伊離得太遠的橡樹會沉睡、怪不理
 //   drawWorld(ctx)：世界座標、畫在特效之後；drawScreen(ctx)：螢幕座標、畫在介面之前
 //   currency：{ icon, glow: [r, g, b] }，錢包與掉落物長什麼樣（吸血鬼是血）；沒有就是靈魂
@@ -1797,6 +1797,9 @@ const SFX_DEFS = {
     // 有招式瞄準主角（或主角在範圍裡）：兩聲短促的高音。所有這類招式共用這一個，點升級、看別處時用聽的也知道要閃
     aimWarn: { gap: 0.25, fn: s => { s.tone(1760, 0.07, { type: 'square', vol: 0.07 }); s.tone(1760, 0.07, { type: 'square', vol: 0.07, delay: 0.11 }); } },
     rumble: { gap: 0.4, fn: s => s.noise(0.5, { vol: 0.12, filterFreq: 250 }) },
+    // 刺客：消失（一陣往下沉的風聲）、伏擊（短促的金屬聲）
+    vanish: { gap: 0.3, fn: s => { s.noise(0.35, { vol: 0.16, filterFreq: 1200 }); s.tone(900, 0.3, { type: 'sine', vol: 0.07, slideTo: 220 }); } },
+    ambush: { gap: 0.15, fn: s => { s.tone(2600, 0.08, { type: 'square', vol: 0.06, slideTo: 1800 }); s.noise(0.12, { vol: 0.18, filterFreq: 5000 }); } },
     mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
@@ -2099,13 +2102,18 @@ class Player extends GameObject {
         return true;
     }
     draw(ctx) {
+        const cls = classDef();
+        if (this.isAlive && cls.drawHeroUnder) cls.drawHeroUnder(ctx, this);
         if (this.isAlive && this.absorbGlow > 0 && orbGlowSprite) {
             const g = 70 + this.absorbGlow * 20;
             ctx.globalAlpha = Math.min(1, this.absorbGlow) * 0.75;
             ctx.drawImage(orbGlowSprite, this.pos.x - g / 2, this.pos.y - g / 2, g, g);
             ctx.globalAlpha = 1;
         }
+        const alpha = this.isAlive && cls.heroAlpha ? cls.heroAlpha() : 1;
+        if (alpha < 1) ctx.globalAlpha = alpha;
         super.draw(ctx);
+        ctx.globalAlpha = 1;
         // 施法瞬間杖頭亮一下
         if (this.isAlive && this.castGlow > 0) {
             const tip = this.staffTip(), g = CAST_GLOW_SIZE * (0.6 + 0.4 * this.castGlow);
@@ -2117,6 +2125,7 @@ class Player extends GameObject {
     // 法師的血條一直貼在腳下：眼睛本來就盯著法師，不用另外去看角落
     drawHealthBar(ctx) {
         if (!this.isAlive) return;
+        ctx.globalAlpha = 1;
         const w = 38, h = 6;
         const x = this.pos.x - w / 2, y = this.pos.y + this.imageHeight * 0.5 + 1;
         const ratio = Math.max(0, this.currentHealth / this.maxHealth);
@@ -7060,7 +7069,7 @@ const CLASS_GUIDES = {
         cards: ['只能修練：箭的傷害，進化後多射一支、穿透、爆擊', '只能修練：移動時在腳下放陷阱，爆炸、緩速、定身輪流', '靈狐、鷹輪流加入，最多 4 隻但很強'],
     },
     rogue: {
-        rules: ['場上最有威脅的一隻怪會被標成<b>目標</b>（頭上金色準星）', '殺掉目標拿<b>一大筆賞金</b>、身邊的怪嚇跑；雜兵只給一半靈魂', '1.6 秒沒被打就<b>隱身</b>，怪看不到你；隱身後第一刀 ×4', '血量低於兩成的怪，被飛刀打中<b>直接處決</b>'],
+        rules: ['飛刀<b>一次射三隻</b>，在怪群裡邊閃邊清；血量低於兩成的怪被打中<b>直接處決</b>', '場上最有威脅的一隻怪是<b>目標</b>（金色準星），飛刀一定分一把給牠', '殺掉目標：拿<b>賞金</b>、身邊的怪嚇跑、你<b>隱身 2.5 秒</b>（變透明、腳下紫圈倒數），怪看不到你', '隱身換來<b>伏擊</b>（頭上金匕首）：下一把射向新目標的飛刀 <b>×4</b>', '血掉到三成半以下<b>自動遁形</b>脫身，20 秒一次'],
         cards: ['只能修練：飛刀的傷害，進化後多一把、會彈射', '只能修練：命中上毒，毒會一層層疊上去', '召喚 20 秒後消失的分身'],
     },
     monk: {
