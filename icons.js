@@ -55,15 +55,15 @@ const ICON_BODIES = {
     flame: `<path d="M32 58 C17 58 11 46 15 35 C18 27 24 24 25 14 C34 20 37 26 37 32 C41 28 42 23 41 17 C51 26 54 38 50 47 C47 54 40 58 32 58 Z" fill="#ff8a3d"/>
         <path d="M32 53 C25 53 22 47 25 41 C27 37 31 35 32 30 C37 35 40 40 39 46 C38 50 36 53 32 53 Z" fill="#ffd54f" stroke="none"/>`,
     // ---- 戰士的五個流派（warrior.js）----
-    // 流派「軍團紀律」：紅底金邊的軍旗
-    legion: `<path d="M16 6 L16 60" stroke-width="4"/><path d="M16 8 L52 8 L52 40 L16 40 Z" fill="#c62828"/><path d="M16 40 L22 46 L28 40 L34 46 L40 40 L46 46 L52 40" stroke="#ffd54f" stroke-width="3"/>
+    // 流派「軍團紀律」：藍底金邊的軍旗
+    legion: `<path d="M16 6 L16 60" stroke-width="4"/><path d="M16 8 L52 8 L52 40 L16 40 Z" fill="#1565c0"/><path d="M16 40 L22 46 L28 40 L34 46 L40 40 L46 46 L52 40" stroke="#ffd54f" stroke-width="3"/>
         <path d="M34 16 L37 22 L44 23 L39 28 L40 35 L34 31 L28 35 L29 28 L24 23 L31 22 Z" fill="#ffd54f" stroke-width="2"/><circle cx="16" cy="6" r="4" fill="#ffd54f" stroke-width="2.5"/>`,
     // 盾牆
     wallThick: `<circle cx="32" cy="32" r="27" fill="#607d8b"/><circle cx="32" cy="32" r="21" fill="#90a4ae" stroke-width="3"/><circle cx="32" cy="32" r="14" fill="#b0bec5" stroke-width="3"/>
         <circle cx="32" cy="32" r="5" fill="#eceff1" stroke-width="2.5"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return `<circle cx="${(32 + Math.cos(a) * 24).toFixed(1)}" cy="${(32 + Math.sin(a) * 24).toFixed(1)}" r="2" fill="#eceff1" stroke="none"/>`; }).join('')}${shine(22, 20, 4, 2.5)}`,
     wallSpikes: `${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<path d="M${(32 + Math.cos(a - 0.2) * 20).toFixed(1)} ${(32 + Math.sin(a - 0.2) * 20).toFixed(1)} L${(32 + Math.cos(a) * 30).toFixed(1)} ${(32 + Math.sin(a) * 30).toFixed(1)} L${(32 + Math.cos(a + 0.2) * 20).toFixed(1)} ${(32 + Math.sin(a + 0.2) * 20).toFixed(1)} Z" fill="#cfd8dc" stroke-width="2.5"/>`; }).join('')}
-        <circle cx="32" cy="32" r="20" fill="#78909c"/><circle cx="32" cy="32" r="7" fill="#e5484d" stroke-width="2.5"/>`,
-    wallTaunt: `<path d="M8 10 L36 4 L36 50 C26 56 14 52 8 44 Z" fill="#90a4ae"/><path d="M20 16 L22 32 M21 38 L21 41" stroke="#e5484d" stroke-width="5"/>
+        <circle cx="32" cy="32" r="20" fill="#78909c"/><circle cx="32" cy="32" r="7" fill="#42a5f5" stroke-width="2.5"/>`,
+    wallTaunt: `<path d="M8 10 L36 4 L36 50 C26 56 14 52 8 44 Z" fill="#90a4ae"/><path d="M20 16 L22 32 M21 38 L21 41" stroke="#ffd54f" stroke-width="5"/>
         <path d="M44 20 C48 24 48 32 44 36 M50 14 C57 22 57 34 50 42 M56 8 C66 20 66 36 56 48" stroke="#ffcc80" stroke-width="3"/>`,
     wallRotate: `<path d="M8 14 L26 10 L26 40 C20 44 12 42 8 36 Z" fill="#90a4ae"/><path d="M38 24 L56 20 L56 50 C50 54 42 52 38 46 Z" fill="#78909c"/>
         <path d="M30 6 C44 4 52 10 54 16" stroke="#81c784" stroke-width="3.5"/><path d="M54 16 L48 14 L54 9 Z" fill="#81c784" stroke-width="2"/>
@@ -85,40 +85,40 @@ const ICON_BODIES = {
     bowPower: `<path d="M6 34 C12 14 52 14 58 34" stroke-width="7"/><path d="M6 34 C12 14 52 14 58 34" stroke="#5d4037" stroke-width="4"/><path d="M32 18 L32 58" stroke-width="7"/><path d="M32 18 L32 58" stroke="#8d6e63" stroke-width="4"/>
         <path d="M6 34 L32 40 L58 34" stroke="#eceff1" stroke-width="2"/><path d="M32 4 L38 14 L26 14 Z" fill="#b0bec5"/><rect x="24" y="44" width="16" height="10" rx="2" fill="#78909c"/>`,
     bowRange: `<path d="M4 44 C8 32 24 32 28 44" stroke-width="4"/><path d="M4 44 C8 32 24 32 28 44" stroke="#8d6e63" stroke-width="2"/><path d="M16 36 L16 60" stroke-width="4"/>
-        <path d="M20 30 L30 22 M36 18 L44 12" stroke="#ffd54f" stroke-width="3" stroke-dasharray="3 4"/><circle cx="54" cy="10" r="7" fill="#e5484d"/><circle cx="54" cy="10" r="3" fill="#fff8e1" stroke-width="2"/>`,
+        <path d="M20 30 L30 22 M36 18 L44 12" stroke="#ffd54f" stroke-width="3" stroke-dasharray="3 4"/><circle cx="54" cy="10" r="7" fill="#42a5f5"/><circle cx="54" cy="10" r="3" fill="#fff8e1" stroke-width="2"/>`,
     bowVolley: `<path d="M6 46 C10 34 26 34 30 46" stroke-width="4"/><path d="M6 46 C10 34 26 34 30 46" stroke="#8d6e63" stroke-width="2"/><path d="M18 38 L18 62" stroke-width="4"/>
         ${[[50, 8], [58, 26], [44, 22]].map(([x, y]) => `<path d="M20 34 L${x} ${y}" stroke="#cfd8dc" stroke-width="2.5"/><path d="M${x} ${y} L${x - 7} ${y - 1} L${x - 3} ${y + 5} Z" fill="#eceff1" stroke-width="2"/>`).join('')}`,
     // 狂戰
-    rageGain: `<path d="M32 60 C16 60 8 48 14 34 C18 26 18 18 14 6 C24 12 30 20 30 28 C34 22 36 16 36 8 C48 18 54 32 48 46 C44 54 40 60 32 60 Z" fill="#e53935"/>
-        <path d="M32 54 C24 54 20 46 24 38 C26 34 28 32 28 26 C34 30 38 36 38 42 C38 48 36 54 32 54 Z" fill="#ffab40" stroke="none"/>${duoStroke('M48 26 L58 16 M58 16 L50 16 M58 16 L58 24', '#ffd54f', 3)}`,
-    rageLength: `<path d="M16 6 L48 6 M16 58 L48 58" stroke-width="5"/><path d="M19 8 C19 22 30 26 30 32 C30 38 19 42 19 56 L45 56 C45 42 34 38 34 32 C34 26 45 22 45 8 Z" fill="#ffcdd2"/>
-        <path d="M23 18 L41 18 C40 25 34 28 32 31 C30 28 24 25 23 18 Z" fill="#c62828" stroke="none"/><path d="M22 54 C24 44 40 44 42 54 Z" fill="#c62828" stroke="none"/><path d="M32 33 L32 46" stroke="#c62828" stroke-width="2"/>`,
-    rageCleave: `<circle cx="32" cy="32" r="24" stroke="#ef9a9a" stroke-width="3" stroke-dasharray="8 6"/>
+    rageGain: `<path d="M32 60 C16 60 8 48 14 34 C18 26 18 18 14 6 C24 12 30 20 30 28 C34 22 36 16 36 8 C48 18 54 32 48 46 C44 54 40 60 32 60 Z" fill="#ff6d00"/>
+        <path d="M32 54 C24 54 20 46 24 38 C26 34 28 32 28 26 C34 30 38 36 38 42 C38 48 36 54 32 54 Z" fill="#ffd54f" stroke="none"/>${duoStroke('M48 26 L58 16 M58 16 L50 16 M58 16 L58 24', '#ffd54f', 3)}`,
+    rageLength: `<path d="M16 6 L48 6 M16 58 L48 58" stroke-width="5"/><path d="M19 8 C19 22 30 26 30 32 C30 38 19 42 19 56 L45 56 C45 42 34 38 34 32 C34 26 45 22 45 8 Z" fill="#ffe0b2"/>
+        <path d="M23 18 L41 18 C40 25 34 28 32 31 C30 28 24 25 23 18 Z" fill="#ef6c00" stroke="none"/><path d="M22 54 C24 44 40 44 42 54 Z" fill="#ef6c00" stroke="none"/><path d="M32 33 L32 46" stroke="#ef6c00" stroke-width="2"/>`,
+    rageCleave: `<circle cx="32" cy="32" r="24" stroke="#ffcc80" stroke-width="3" stroke-dasharray="8 6"/>
         <path d="M14 50 L44 20" stroke-width="7"/><path d="M14 50 L44 20" stroke="#cfd8dc" stroke-width="4"/><path d="M44 20 L54 10 L52 22 Z" fill="#eceff1" stroke-width="2.5"/>
         <path d="M10 46 L18 54" stroke-width="5"/><path d="M10 46 L18 54" stroke="#ffd54f" stroke-width="2.5"/><path d="M6 58 L12 52" stroke-width="5"/><path d="M6 58 L12 52" stroke="#6d4c41" stroke-width="2.5"/>`,
     rageLeech: `<path d="M8 8 L36 36" stroke-width="7"/><path d="M8 8 L36 36" stroke="#cfd8dc" stroke-width="4"/><path d="M34 30 L42 38 M38 34 L32 40" stroke-width="5"/>
         <path d="M40 40 C40 44 42 46 42 48 C42 50 40 52 40 52 C40 52 38 50 38 48 C38 46 40 44 40 40 Z" fill="#c62828" stroke-width="2"/>
         <path d="M46 62 C34 54 30 46 35 40 C39 35 44 37 46 41 C48 37 53 35 57 40 C62 46 58 54 46 62 Z" fill="#e53935"/>`,
     // 軍團紀律
-    legionCap: `${[[16, 36], [32, 30], [48, 36]].map(([x, y]) => `<path d="M${x - 10} ${y + 6} C${x - 10} ${y - 8} ${x + 10} ${y - 8} ${x + 10} ${y + 6} Z" fill="#90a4ae"/><path d="M${x} ${y - 6} L${x} ${y - 12}" stroke="#c62828" stroke-width="4"/>`).join('')}
+    legionCap: `${[[16, 36], [32, 30], [48, 36]].map(([x, y]) => `<path d="M${x - 10} ${y + 6} C${x - 10} ${y - 8} ${x + 10} ${y - 8} ${x + 10} ${y + 6} Z" fill="#90a4ae"/><path d="M${x} ${y - 6} L${x} ${y - 12}" stroke="#1565c0" stroke-width="4"/>`).join('')}
         <path d="M4 50 L60 50" stroke-width="4"/>${duoStroke('M50 8 L50 22 M43 15 L57 15', '#81c784', 3.5)}`,
     legionDrill: `<path d="M32 22 L32 60" stroke-width="5"/><path d="M32 22 L32 60" stroke="#8d6e63" stroke-width="2.5"/><path d="M14 30 L50 30" stroke-width="5"/><path d="M14 30 L50 30" stroke="#8d6e63" stroke-width="2.5"/>
         <ellipse cx="32" cy="38" rx="10" ry="14" fill="#ffe082"/><circle cx="32" cy="14" r="9" fill="#ffe082"/><path d="M26 34 L38 42 M38 34 L26 42" stroke="#a1887f" stroke-width="2"/>
         <path d="M48 46 L58 56 M52 44 L60 52" stroke="#cfd8dc" stroke-width="3"/>`,
     legionPay: `<ellipse cx="32" cy="50" rx="18" ry="6" fill="#e0a82e"/><ellipse cx="32" cy="42" rx="18" ry="6" fill="#ffd54f"/><ellipse cx="32" cy="34" rx="18" ry="6" fill="#e0a82e"/><ellipse cx="32" cy="26" rx="18" ry="6" fill="#ffd54f"/>
         <path d="M6 8 L22 22 M58 8 L42 22" stroke-width="5"/><path d="M6 8 L22 22 M58 8 L42 22" stroke="#cfd8dc" stroke-width="2.5"/>${shine(26, 24, 4, 2)}`,
-    legionVet: `<path d="M20 4 L32 18 L44 4 L44 14 L32 28 L20 14 Z" fill="#c62828"/><circle cx="32" cy="42" r="16" fill="#ffd54f"/>
+    legionVet: `<path d="M20 4 L32 18 L44 4 L44 14 L32 28 L20 14 Z" fill="#1565c0"/><circle cx="32" cy="42" r="16" fill="#ffd54f"/>
         <path d="${starPath(32, 42, 10, 4.5, 5)}" fill="#fff8e1" stroke-width="2.5"/><path d="M22 58 L32 52 L42 58" stroke="#e0a82e" stroke-width="3"/>`,
     // 傳說
     valhalla: `<path d="M8 36 C2 24 6 12 14 10 C12 20 16 28 22 30 Z M56 36 C62 24 58 12 50 10 C52 20 48 28 42 30 Z" fill="#fff8e1"/>
         <path d="M32 12 C18 12 14 24 14 36 L50 36 C50 24 46 12 32 12 Z" fill="#ffd54f"/><rect x="12" y="34" width="40" height="8" rx="2" fill="#e0a82e"/>
         <path d="M18 42 L18 52 C24 58 40 58 46 52 L46 42" fill="#b0bec5"/>${[[32, 4, 4], [6, 52, 3], [58, 50, 3]].map(([x, y, r]) => `<path d="${starPath(x, y, r, r * 0.35, 4)}" fill="#fff8e1" stroke-width="1.5"/>`).join('')}`,
-    aquila: `<path d="M32 26 L32 62" stroke-width="5"/><path d="M32 26 L32 62" stroke="#8d6e63" stroke-width="2.5"/><rect x="22" y="38" width="20" height="14" rx="2" fill="#c62828"/>
+    aquila: `<path d="M32 26 L32 62" stroke-width="5"/><path d="M32 26 L32 62" stroke="#8d6e63" stroke-width="2.5"/><rect x="22" y="38" width="20" height="14" rx="2" fill="#1565c0"/>
         <path d="M32 24 C24 12 10 10 4 14 C10 16 14 20 16 24 C22 22 28 24 32 28 C36 24 42 22 48 24 C50 20 54 16 60 14 C54 10 40 12 32 24 Z" fill="#ffd54f"/>
         <circle cx="32" cy="14" r="5" fill="#ffd54f"/><path d="M36 14 L40 16 L36 17 Z" fill="#e0a82e" stroke-width="2"/>`,
     spartans: `<path d="M8 34 C8 14 56 14 56 34 L56 46 C50 50 46 56 44 60 L20 60 C18 56 14 50 8 46 Z" fill="#e0a82e"/>
         <path d="M24 34 L24 50 M40 34 L40 50" stroke-width="4"/><path d="M14 30 L50 30" stroke-width="4"/>
-        <path d="M10 18 C14 4 50 4 54 18 C46 12 18 12 10 18 Z" fill="#c62828"/>${shine(20, 26, 4, 2.5)}`,
+        <path d="M10 18 C14 4 50 4 54 18 C46 12 18 12 10 18 Z" fill="#1565c0"/>${shine(20, 26, 4, 2.5)}`,
     // ---- 德魯伊（druid.js）----
     // 大招「野性化身」：熊掌印
     bearform: `<ellipse cx="32" cy="42" rx="16" ry="14" fill="#8d6e63"/>${[[14, 24, -20], [24, 15, -8], [40, 15, 8], [50, 24, 20]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="8" transform="rotate(${r} ${x} ${y})" fill="#8d6e63"/><path d="M${x} ${y - 8} L${x + r / 6} ${y - 14}" stroke-width="3"/>`).join('')}
@@ -140,7 +140,7 @@ const ICON_BODIES = {
         <path d="M32 46 C26 46 24 40 26 34 C28 31 30 30 30 26 C35 29 38 34 37 39 C37 43 35 46 32 46 Z" fill="#ffd54f" stroke="none"/>`,
     fest_lughnasadh: `${[-16, -8, 0, 8, 16].map(r => `<g transform="rotate(${r} 32 58)"><path d="M32 58 L32 18" stroke-width="4.5"/><path d="M32 58 L32 18" stroke="#c8a24a" stroke-width="2"/>
         ${[0, 1, 2, 3].map(i => `<ellipse cx="${i % 2 ? 35 : 29}" cy="${12 + i * 5}" rx="3" ry="4.5" fill="#ffd54f" stroke-width="2"/>`).join('')}</g>`).join('')}
-        <path d="M22 44 C28 48 36 48 42 44" stroke="#c62828" stroke-width="5"/>`,
+        <path d="M22 44 C28 48 36 48 42 44" stroke="#ff8f00" stroke-width="5"/>`,
     // 聖林
     oakHp: `<rect x="26" y="34" width="12" height="24" rx="3" fill="#6d4c41"/><circle cx="32" cy="24" r="18" fill="#558b2f"/><circle cx="20" cy="30" r="10" fill="#689f38"/><circle cx="44" cy="30" r="10" fill="#689f38"/>
         <path d="M28 44 C30 46 34 46 36 44 M28 50 L36 50" stroke="#3e2723" stroke-width="2"/><path d="M44 46 L56 46 L56 58 L44 58 Z" fill="#e5484d" stroke-width="2.5"/><path d="M50 49 L50 55 M47 52 L53 52" stroke="#fff" stroke-width="2.5"/>${shine(24, 16, 4, 2.5)}`,
@@ -159,7 +159,7 @@ const ICON_BODIES = {
     // 一串越跳越遠的狼爪印
     wolfSpeed: `${[[16, 50, 0.7], [32, 36, 0.85], [50, 20, 1]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="4" rx="7" ry="6" fill="#b0bec5"/>${[[-7, -4], [-2.5, -8], [2.5, -8], [7, -4]].map(([a, b]) => `<ellipse cx="${a}" cy="${b}" rx="2.6" ry="3.4" fill="#b0bec5" stroke-width="2.5"/>`).join('')}</g>`).join('')}
         <path d="M4 40 L12 32 M8 56 L18 46 M22 26 L30 18" stroke="#8fd3ff" stroke-width="3"/>`,
-    wolfCrit: `<path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke-width="7"/><path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke="#e53935" stroke-width="3.5"/>
+    wolfCrit: `<path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke-width="7"/><path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke="#ff9100" stroke-width="3.5"/>
         <path d="${starPath(16, 16, 10, 4, 4)}" fill="#ffd54f" stroke-width="2.5"/>`,
     // 巨熊
     bearHide: `<path d="M8 22 C8 10 20 6 32 6 C44 6 56 10 56 22 L56 44 C56 54 46 60 32 60 C18 60 8 54 8 44 Z" fill="#795548"/><circle cx="14" cy="10" r="6" fill="#795548"/><circle cx="50" cy="10" r="6" fill="#795548"/>
@@ -201,66 +201,66 @@ const ICON_BODIES = {
         <circle cx="28" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="36" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="25" cy="32" r="2.2" fill="#1b1424" stroke="none"/><circle cx="39" cy="32" r="2.2" fill="#1b1424" stroke="none"/>`,
     // ---- 吸血鬼（vampire.js）----
     // 錢包：一滴血
-    blood: `<path d="M32 4 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#d32f2f"/><path d="M22 42 C22 48 26 52 32 52" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 36, 3, 6, 20)}`,
+    blood: `<path d="M32 4 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#7e57c2"/><path d="M22 42 C22 48 26 52 32 52" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 36, 3, 6, 20)}`,
     sun: `${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<path d="M${(32 + Math.cos(a) * 20).toFixed(1)} ${(32 + Math.sin(a) * 20).toFixed(1)} L${(32 + Math.cos(a) * 29).toFixed(1)} ${(32 + Math.sin(a) * 29).toFixed(1)}" stroke-width="5"/><path d="M${(32 + Math.cos(a) * 20).toFixed(1)} ${(32 + Math.sin(a) * 20).toFixed(1)} L${(32 + Math.cos(a) * 29).toFixed(1)} ${(32 + Math.sin(a) * 29).toFixed(1)}" stroke="#ffd54f" stroke-width="2.5"/>`; }).join('')}
         <circle cx="32" cy="32" r="15" fill="#ffca28"/>${shine(27, 26, 4, 2.5)}`,
     moon: `<path d="M40 6 C24 8 12 20 12 34 C12 50 26 60 40 58 C28 52 22 42 22 32 C22 20 30 10 40 6 Z" fill="#fff3c4"/>${[[46, 20, 3], [52, 38, 2.5], [40, 46, 2]].map(([x, y, r]) => `<path d="${starPath(x, y, r * 1.6, r * 0.6, 4)}" fill="#fff3c4" stroke-width="1.5"/>`).join('')}`,
     // 大招「血月降臨」
-    bloodmoon: `<circle cx="32" cy="30" r="22" fill="#c62828"/><circle cx="24" cy="24" r="4" fill="#8e1b1b" stroke="none"/><circle cx="38" cy="34" r="5" fill="#8e1b1b" stroke="none"/><circle cx="30" cy="40" r="2.5" fill="#8e1b1b" stroke="none"/>
+    bloodmoon: `<circle cx="32" cy="30" r="22" fill="#5e35b1"/><circle cx="24" cy="24" r="4" fill="#311b92" stroke="none"/><circle cx="38" cy="34" r="5" fill="#311b92" stroke="none"/><circle cx="30" cy="40" r="2.5" fill="#311b92" stroke="none"/>
         <path d="M14 52 L24 46 L32 54 L40 46 L50 52 L44 60 L20 60 Z" fill="#1b1424"/>${shine(22, 18, 5, 3)}`,
     // 流派
     kin: `<path d="M8 58 L8 40 C8 30 14 26 20 26 C26 26 32 30 32 40 L32 58 Z" fill="#ce93d8"/><path d="M32 58 L32 36 C32 26 38 22 44 22 C50 22 56 26 56 36 L56 58 Z" fill="#ab47bc"/>
-        <circle cx="20" cy="16" r="9" fill="#e1bee7"/><circle cx="44" cy="12" r="9" fill="#ce93d8"/><circle cx="17" cy="15" r="1.8" fill="#c62828" stroke="none"/><circle cx="23" cy="15" r="1.8" fill="#c62828" stroke="none"/><circle cx="41" cy="11" r="1.8" fill="#c62828" stroke="none"/><circle cx="47" cy="11" r="1.8" fill="#c62828" stroke="none"/>`,
-    bloodmagic: `<path d="M32 6 C40 18 48 26 48 36 C48 46 41 52 32 52 C23 52 16 46 16 36 C16 26 24 18 32 6 Z" fill="#c62828"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3 + 0.3; return `<path d="M${(32 + Math.cos(a) * 22).toFixed(1)} ${(36 + Math.sin(a) * 22).toFixed(1)} L${(32 + Math.cos(a) * 29).toFixed(1)} ${(36 + Math.sin(a) * 29).toFixed(1)}" stroke="#ff8a80" stroke-width="3"/>`; }).join('')}
+        <circle cx="20" cy="16" r="9" fill="#e1bee7"/><circle cx="44" cy="12" r="9" fill="#ce93d8"/><circle cx="17" cy="15" r="1.8" fill="#5e35b1" stroke="none"/><circle cx="23" cy="15" r="1.8" fill="#5e35b1" stroke="none"/><circle cx="41" cy="11" r="1.8" fill="#5e35b1" stroke="none"/><circle cx="47" cy="11" r="1.8" fill="#5e35b1" stroke="none"/>`,
+    bloodmagic: `<path d="M32 6 C40 18 48 26 48 36 C48 46 41 52 32 52 C23 52 16 46 16 36 C16 26 24 18 32 6 Z" fill="#5e35b1"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3 + 0.3; return `<path d="M${(32 + Math.cos(a) * 22).toFixed(1)} ${(36 + Math.sin(a) * 22).toFixed(1)} L${(32 + Math.cos(a) * 29).toFixed(1)} ${(36 + Math.sin(a) * 29).toFixed(1)}" stroke="#b388ff" stroke-width="3"/>`; }).join('')}
         <path d="${starPath(32, 36, 9, 4, 5)}" fill="#ffcdd2" stroke-width="2"/>`,
     werewolf: `<path d="M12 60 L12 30 L6 8 L22 22 L42 22 L58 8 L52 30 L52 60 Z" fill="#78909c"/><path d="M22 34 L28 38 M42 34 L36 38" stroke="#ffd54f" stroke-width="3.5"/>
         <path d="M22 48 L26 52 L30 48 L34 52 L38 48 L42 52" stroke="#eceff1" stroke-width="2.5"/>${cornerMoon()}`,
     coffin: `<path d="M22 4 L42 4 L52 18 L44 60 L20 60 L12 18 Z" fill="#4e342e"/><path d="M22 4 L42 4 L52 18 L44 60 L20 60 L12 18 Z" fill="none" stroke="#1b1424" stroke-width="4"/>
         <path d="M32 18 L32 40 M24 26 L40 26" stroke="#ffd54f" stroke-width="3.5"/>${shine(22, 14, 3, 5, 20)}`,
     // 血魔法
-    bmPower: `<path d="M32 6 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#d32f2f"/>${boltAt(32, 40)}`,
-    bmRadius: `${[24, 16, 8].map((r, i) => `<circle cx="32" cy="32" r="${r + 4}" stroke="${['#ef9a9a', '#e57373', '#c62828'][i]}" stroke-width="3" ${i === 0 ? 'stroke-dasharray="5 4"' : ''}/>`).join('')}<circle cx="32" cy="32" r="6" fill="#b71c1c"/>`,
-    bmRate: `<path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke-width="7"/><path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke="#e53935" stroke-width="3.5"/>`,
-    bmLeech: `<path d="M32 10 C38 20 44 26 44 34 C44 42 38 46 32 46 C26 46 20 42 20 34 C20 26 26 20 32 10 Z" fill="#d32f2f"/>
+    bmPower: `<path d="M32 6 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#7e57c2"/>${boltAt(32, 40)}`,
+    bmRadius: `${[24, 16, 8].map((r, i) => `<circle cx="32" cy="32" r="${r + 4}" stroke="${['#d1c4e9', '#b39ddb', '#5e35b1'][i]}" stroke-width="3" ${i === 0 ? 'stroke-dasharray="5 4"' : ''}/>`).join('')}<circle cx="32" cy="32" r="6" fill="#4527a0"/>`,
+    bmRate: `<path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke-width="7"/><path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke="#9575cd" stroke-width="3.5"/>`,
+    bmLeech: `<path d="M32 10 C38 20 44 26 44 34 C44 42 38 46 32 46 C26 46 20 42 20 34 C20 26 26 20 32 10 Z" fill="#7e57c2"/>
         <path d="M10 40 C8 54 20 60 32 58 M54 40 C56 54 44 60 32 58" stroke-width="5"/><path d="M10 40 C8 54 20 60 32 58 M54 40 C56 54 44 60 32 58" stroke="#81c784" stroke-width="2.5"/><path d="M6 44 L10 38 L14 44" stroke="#81c784" stroke-width="2.5"/>`,
     // 眷屬
     kinRate: `<path d="M16 62 L16 40 C16 28 24 22 32 22 C40 22 48 28 48 40 L48 62" fill="#ce93d8"/><path d="M20 26 L26 8 L32 22 L38 8 L44 26" fill="#e1bee7"/>
-        <circle cx="26" cy="36" r="3" fill="#c62828" stroke="none"/><circle cx="38" cy="36" r="3" fill="#c62828" stroke="none"/>${duoStroke('M50 18 L50 6 M44 12 L56 12', '#ffd54f', 3)}`,
-    kinCap: `${[[12, 0.7], [32, 0.9], [52, 0.7]].map(([x, s]) => `<g transform="translate(${x} 40) scale(${s})"><path d="M-10 22 L-10 0 C-10 -8 -5 -12 0 -12 C5 -12 10 -8 10 0 L10 22 Z" fill="#ce93d8"/><circle cx="-3" cy="-2" r="1.8" fill="#c62828" stroke="none"/><circle cx="3" cy="-2" r="1.8" fill="#c62828" stroke="none"/></g>`).join('')}
+        <circle cx="26" cy="36" r="3" fill="#5e35b1" stroke="none"/><circle cx="38" cy="36" r="3" fill="#5e35b1" stroke="none"/>${duoStroke('M50 18 L50 6 M44 12 L56 12', '#ffd54f', 3)}`,
+    kinCap: `${[[12, 0.7], [32, 0.9], [52, 0.7]].map(([x, s]) => `<g transform="translate(${x} 40) scale(${s})"><path d="M-10 22 L-10 0 C-10 -8 -5 -12 0 -12 C5 -12 10 -8 10 0 L10 22 Z" fill="#ce93d8"/><circle cx="-3" cy="-2" r="1.8" fill="#5e35b1" stroke="none"/><circle cx="3" cy="-2" r="1.8" fill="#5e35b1" stroke="none"/></g>`).join('')}
         <path d="M14 12 L22 4 L32 12 L42 4 L50 12 L46 20 L18 20 Z" fill="#ffd54f"/>`,
     kinPower: `<path d="M14 60 L14 34 C14 22 22 16 32 16 C42 16 50 22 50 34 L50 60" fill="#ab47bc"/><path d="M20 44 L44 44 M32 30 L32 58" stroke="#e1bee7" stroke-width="3"/>
         <circle cx="25" cy="28" r="3" fill="#ffcdd2" stroke="none"/><circle cx="39" cy="28" r="3" fill="#ffcdd2" stroke="none"/>${duoStroke('M8 22 L8 8 M3 13 L8 8 L13 13', '#ffd54f', 2.5)}${duoStroke('M56 22 L56 8 M51 13 L56 8 L61 13', '#ffd54f', 2.5)}`,
-    kinLeech: `<path d="M8 50 L24 18 L40 50 Z" fill="#ce93d8"/><path d="M32 18 C38 28 44 34 44 42 C44 50 38 54 32 54 C26 54 20 50 20 42 C20 34 26 28 32 18 Z" fill="#d32f2f"/>
+    kinLeech: `<path d="M8 50 L24 18 L40 50 Z" fill="#ce93d8"/><path d="M32 18 C38 28 44 34 44 42 C44 50 38 54 32 54 C26 54 20 50 20 42 C20 34 26 28 32 18 Z" fill="#7e57c2"/>
         <path d="M48 52 C56 46 58 34 52 26" stroke-width="5"/><path d="M48 52 C56 46 58 34 52 26" stroke="#81c784" stroke-width="2.5"/><path d="M48 24 L52 26 L50 30" stroke="#81c784" stroke-width="2.5"/>`,
     // 蝠群
-    batPair: `${[[20, 26, 0.9], [44, 40, 0.9]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="#b71c1c"/><circle cx="-3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/></g>`).join('')}`,
-    batFang: `<path d="M32 18 C18 4 4 10 2 24 C10 20 16 24 18 30 C24 24 28 28 32 36 C36 28 40 24 46 30 C48 24 54 20 62 24 C60 10 46 4 32 18 Z" fill="#b71c1c"/>
+    batPair: `${[[20, 26, 0.9], [44, 40, 0.9]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="#4527a0"/><circle cx="-3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/></g>`).join('')}`,
+    batFang: `<path d="M32 18 C18 4 4 10 2 24 C10 20 16 24 18 30 C24 24 28 28 32 36 C36 28 40 24 46 30 C48 24 54 20 62 24 C60 10 46 4 32 18 Z" fill="#4527a0"/>
         <path d="M26 36 L28 46 L30 36 M34 36 L36 46 L38 36" fill="#ffffff" stroke-width="2"/><circle cx="27" cy="26" r="2.2" fill="#ffd54f" stroke="none"/><circle cx="37" cy="26" r="2.2" fill="#ffd54f" stroke="none"/>`,
-    batDrain: `<path d="M20 22 C12 14 4 16 2 24 C8 22 10 24 12 28 C16 24 18 26 20 30 C22 26 24 24 28 28 C30 24 34 22 38 24 C36 16 28 14 20 22 Z" fill="#b71c1c"/>
-        <path d="M24 32 C30 44 40 50 52 50" stroke="#e53935" stroke-width="3" stroke-dasharray="4 3"/><path d="M52 40 C58 48 58 56 52 60 C46 56 46 48 52 40 Z" fill="#d32f2f" stroke-width="2.5"/>`,
-    batSpeed: `<path d="M38 26 C30 16 18 18 16 28 C22 26 26 28 28 32 C32 28 34 30 38 36 C42 30 44 28 48 32 C50 28 54 26 60 28 C58 18 46 16 38 26 Z" fill="#b71c1c"/>
+    batDrain: `<path d="M20 22 C12 14 4 16 2 24 C8 22 10 24 12 28 C16 24 18 26 20 30 C22 26 24 24 28 28 C30 24 34 22 38 24 C36 16 28 14 20 22 Z" fill="#4527a0"/>
+        <path d="M24 32 C30 44 40 50 52 50" stroke="#9575cd" stroke-width="3" stroke-dasharray="4 3"/><path d="M52 40 C58 48 58 56 52 60 C46 56 46 48 52 40 Z" fill="#7e57c2" stroke-width="2.5"/>`,
+    batSpeed: `<path d="M38 26 C30 16 18 18 16 28 C22 26 26 28 28 32 C32 28 34 30 38 36 C42 30 44 28 48 32 C50 28 54 26 60 28 C58 18 46 16 38 26 Z" fill="#4527a0"/>
         <path d="M4 26 L14 26 M2 36 L14 36 M6 46 L18 46" stroke="#8fd3ff" stroke-width="3.5"/>`,
     // 狼化
     vwSpeed: `${[[16, 50, 0.7], [32, 36, 0.85], [50, 20, 1]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="4" rx="7" ry="6" fill="#ce93d8"/>${[[-7, -4], [-2.5, -8], [2.5, -8], [7, -4]].map(([a, b]) => `<ellipse cx="${a}" cy="${b}" rx="2.6" ry="3.4" fill="#ce93d8" stroke-width="2.5"/>`).join('')}</g>`).join('')}${cornerMoon()}`,
     vwBite: `<path d="M6 22 C18 12 46 12 58 22 L52 32 L46 24 L40 36 L32 24 L24 36 L18 24 L12 32 Z" fill="#eceff1"/><path d="M6 44 C18 54 46 54 58 44 L52 36 L46 42 L40 32 L32 42 L24 32 L18 42 L12 36 Z" fill="#eceff1"/>
-        <path d="M40 36 C40 40 42 42 42 44 C42 46 40 47 40 47 C40 47 38 46 38 44 C38 42 40 40 40 36 Z" fill="#d32f2f" stroke-width="2"/>`,
+        <path d="M40 36 C40 40 42 42 42 44 C42 46 40 47 40 47 C40 47 38 46 38 44 C38 42 40 40 40 36 Z" fill="#7e57c2" stroke-width="2"/>`,
     vwHowl: `<path d="M14 60 L14 34 L8 16 L22 26 L30 18 L42 30 C48 34 48 44 44 50 L44 60 Z" fill="#78909c"/><path d="M42 30 L58 22 L52 34" fill="#78909c"/>
         <path d="M50 14 C54 12 58 14 60 18 M52 6 C58 4 62 8 62 14" stroke="#e1bee7" stroke-width="3"/><circle cx="34" cy="32" r="2" fill="#ffd54f" stroke="none"/>`,
     vwPack: `${[[16, 44], [48, 44], [32, 34]].map(([x, y]) => `<g transform="translate(${x} ${y})"><path d="M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z" fill="#78909c"/><circle cx="-5" cy="0" r="2" fill="#ce93d8" stroke="none"/><circle cx="5" cy="0" r="2" fill="#ce93d8" stroke="none"/></g>`).join('')}${cornerMoon()}`,
     // 不死
     mistForm: `<path d="M8 40 C8 30 18 28 22 32 C24 22 38 20 42 30 C50 26 58 32 56 40 C60 46 54 52 48 50 C44 56 32 56 28 50 C20 54 10 50 12 44 C8 44 6 42 8 40 Z" fill="#b39ddb" opacity="0.9"/>
         <path d="M16 42 C24 38 32 46 40 42 C44 40 48 42 50 44" stroke="#ede7f6" stroke-width="3"/><path d="M40 18 L48 10 M46 22 L56 18" stroke="#ede7f6" stroke-width="3"/>`,
-    sunWard: `<path d="M30 6 C20 6 12 14 12 26 L12 58 L24 52 L32 58 L40 52 L52 58 L52 26 C52 14 44 6 34 6 Z" fill="#4a148c"/><path d="M24 12 C28 20 36 20 40 12" stroke="#c62828" stroke-width="4"/>
-        ${cornerSun()}${duoStroke('M44 6 L62 24', '#e53935', 2.5)}`,
+    sunWard: `<path d="M30 6 C20 6 12 14 12 26 L12 58 L24 52 L32 58 L40 52 L52 58 L52 26 C52 14 44 6 34 6 Z" fill="#4a148c"/><path d="M24 12 C28 20 36 20 40 12" stroke="#5e35b1" stroke-width="4"/>
+        ${cornerSun()}${duoStroke('M44 6 L62 24', '#9575cd', 2.5)}`,
     nightRegen: `<path d="M34 8 C22 10 12 20 12 32 C12 46 24 56 36 54 C26 50 20 42 20 32 C20 22 26 14 34 8 Z" fill="#fff3c4"/><path d="M48 28 L48 48 M38 38 L58 38" stroke-width="7"/><path d="M48 28 L48 48 M38 38 L58 38" stroke="#81c784" stroke-width="4"/>`,
     bloodBank: `<path d="M12 22 L52 22 L48 58 L16 58 Z" fill="#8d6e63"/><path d="M8 22 L56 22" stroke-width="5"/><path d="M8 22 L56 22" stroke="#bcaaa4" stroke-width="2.5"/>
-        <path d="M32 28 C37 36 42 40 42 46 C42 52 37 54 32 54 C27 54 22 52 22 46 C22 40 27 36 32 28 Z" fill="#d32f2f" stroke-width="2.5"/>${duoStroke('M32 4 L32 16 M27 11 L32 16 L37 11', '#ffd54f', 2.5)}`,
+        <path d="M32 28 C37 36 42 40 42 46 C42 52 37 54 32 54 C27 54 22 52 22 46 C22 40 27 36 32 28 Z" fill="#7e57c2" stroke-width="2.5"/>${duoStroke('M32 4 L32 16 M27 11 L32 16 L37 11', '#ffd54f', 2.5)}`,
     // 傳說
-    dracula: `<path d="M6 60 C8 40 16 28 32 26 C48 28 56 40 58 60 Z" fill="#1b1424"/><path d="M6 60 C8 40 16 28 32 26 C48 28 56 40 58 60" stroke="#c62828" stroke-width="3"/>
+    dracula: `<path d="M6 60 C8 40 16 28 32 26 C48 28 56 40 58 60 Z" fill="#1b1424"/><path d="M6 60 C8 40 16 28 32 26 C48 28 56 40 58 60" stroke="#5e35b1" stroke-width="3"/>
         <path d="M20 26 L20 12 C20 6 44 6 44 12 L44 26 C40 32 24 32 20 26 Z" fill="#eceff1"/><path d="M20 12 L32 20 L44 12" fill="#1b1424" stroke-width="2.5"/>
-        <path d="M27 28 L29 33 L31 28 M33 28 L35 33 L37 28" fill="#fff" stroke-width="1.8"/><circle cx="27" cy="19" r="1.8" fill="#c62828" stroke="none"/><circle cx="37" cy="19" r="1.8" fill="#c62828" stroke="none"/><path d="M22 6 L26 0 L32 4 L38 0 L42 6 Z" fill="#ffd54f" stroke-width="2.5"/>`,
-    countess: `<path d="M10 22 L18 10 L26 20 L32 6 L38 20 L46 10 L54 22 L50 30 L14 30 Z" fill="#ffd54f"/><circle cx="32" cy="20" r="3" fill="#c62828" stroke-width="2"/>
-        <path d="M18 34 C12 46 18 58 32 58 C46 58 52 46 46 34 Z" fill="#c62828"/><path d="M22 40 C24 50 40 50 42 40" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 40, 3, 5, 20)}`,
+        <path d="M27 28 L29 33 L31 28 M33 28 L35 33 L37 28" fill="#fff" stroke-width="1.8"/><circle cx="27" cy="19" r="1.8" fill="#5e35b1" stroke="none"/><circle cx="37" cy="19" r="1.8" fill="#5e35b1" stroke="none"/><path d="M22 6 L26 0 L32 4 L38 0 L42 6 Z" fill="#ffd54f" stroke-width="2.5"/>`,
+    countess: `<path d="M10 22 L18 10 L26 20 L32 6 L38 20 L46 10 L54 22 L50 30 L14 30 Z" fill="#ffd54f"/><circle cx="32" cy="20" r="3" fill="#5e35b1" stroke-width="2"/>
+        <path d="M18 34 C12 46 18 58 32 58 C46 58 52 46 46 34 Z" fill="#5e35b1"/><path d="M22 40 C24 50 40 50 42 40" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 40, 3, 5, 20)}`,
     garlic: `<path d="M32 12 C22 14 10 24 12 40 C14 54 26 60 32 60 C38 60 50 54 52 40 C54 24 42 14 32 12 Z" fill="#fff8e1"/><path d="M32 14 C26 26 26 48 32 60 M32 14 C38 26 38 48 32 60 M20 22 C16 34 18 50 26 58 M44 22 C48 34 46 50 38 58" stroke="#d7ccc8" stroke-width="2.5"/>
         <path d="M32 12 C30 6 34 2 38 4" stroke="#9ccc65" stroke-width="4"/>${duoStroke('M8 8 L56 56', '#e53935', 3)}`,
     // ---- 精靈弓箭手（elf.js）----
@@ -333,24 +333,24 @@ const ICON_BODIES = {
     // ---- 刺客（rogue.js）----
     // 大招「斬首」：兩把交叉的彎刀
     behead: `${[[-1, '#cfd8dc'], [1, '#eceff1']].map(([s, c]) => `<g transform="translate(32 32) scale(${s} 1)"><path d="M-22 22 C-10 4 4 -10 22 -22 C10 -2 -2 10 -16 26 Z" fill="${c}"/><path d="M-16 26 L-24 18" stroke-width="5"/><path d="M-16 26 L-24 18" stroke="#5d4037" stroke-width="2.5"/></g>`).join('')}
-        <path d="M26 30 L38 34" stroke="#e53935" stroke-width="3"/>`,
+        <path d="M26 30 L38 34" stroke="#ffc400" stroke-width="3"/>`,
     // 流派
-    assassination: `<circle cx="32" cy="32" r="24" stroke="#e53935" stroke-width="4"/><circle cx="32" cy="32" r="12" stroke="#e53935" stroke-width="3"/><path d="M32 4 L32 18 M32 46 L32 60 M4 32 L18 32 M46 32 L60 32" stroke="#e53935" stroke-width="3.5"/>
-        <circle cx="32" cy="32" r="3.5" fill="#e53935" stroke="none"/>`,
+    assassination: `<circle cx="32" cy="32" r="24" stroke="#ffc400" stroke-width="4"/><circle cx="32" cy="32" r="12" stroke="#ffc400" stroke-width="3"/><path d="M32 4 L32 18 M32 46 L32 60 M4 32 L18 32 M46 32 L60 32" stroke="#ffc400" stroke-width="3.5"/>
+        <circle cx="32" cy="32" r="3.5" fill="#ffc400" stroke="none"/>`,
     venomschool: `<path d="M24 6 L40 6 L40 18 C50 24 54 34 50 44 C46 54 38 58 32 58 C26 58 18 54 14 44 C10 34 14 24 24 18 Z" fill="#7cb342"/><path d="M24 6 L40 6" stroke-width="5"/>
         <circle cx="32" cy="36" r="8" fill="#f1f8e9" stroke-width="2.5"/><path d="M28 44 L36 44" stroke="#f1f8e9" stroke-width="4"/><circle cx="29" cy="35" r="2" fill="#1b1424" stroke="none"/><circle cx="35" cy="35" r="2" fill="#1b1424" stroke="none"/>${shine(22, 30, 3, 6, 20)}`,
     smoke: `<path d="M10 44 C2 44 2 30 12 30 C12 18 28 14 34 22 C40 14 56 18 54 30 C62 32 62 44 54 44 Z" fill="#90a4ae"/><path d="M18 52 C26 48 38 56 46 52" stroke="#cfd8dc" stroke-width="3.5"/>
         <path d="M22 36 C26 32 32 34 34 38" stroke="#eceff1" stroke-width="3"/>`,
     intel: `<path d="M12 8 L44 8 L52 16 L52 58 L12 58 Z" fill="#fff3e0"/><path d="M44 8 L44 16 L52 16" fill="#ffe0b2"/><path d="M18 22 L44 22 M18 30 L44 30 M18 38 L34 38" stroke="#8d6e63" stroke-width="2.5"/>
-        <circle cx="40" cy="46" r="8" fill="none" stroke="#e53935" stroke-width="3"/><path d="M46 52 L54 60" stroke="#e53935" stroke-width="4"/>`,
+        <circle cx="40" cy="46" r="8" fill="none" stroke="#ffc400" stroke-width="3"/><path d="M46 52 L54 60" stroke="#ffc400" stroke-width="4"/>`,
     // 暗殺
     critChance: `<path d="M14 54 L44 24" stroke-width="5"/><path d="M14 54 L44 24" stroke="#8d6e63" stroke-width="2.5"/><path d="M44 24 L56 8 L52 28 Z" fill="#eceff1" stroke-width="2.5"/>
-        <path d="${starPath(20, 20, 10, 4, 4)}" fill="#ff5252" stroke-width="2.5"/>`,
+        <path d="${starPath(20, 20, 10, 4, 4)}" fill="#ffd740" stroke-width="2.5"/>`,
     critDamage: `<path d="M8 56 L36 28" stroke-width="5"/><path d="M8 56 L36 28" stroke="#8d6e63" stroke-width="2.5"/><path d="M36 28 L52 8 L46 32 Z" fill="#eceff1" stroke-width="2.5"/>
-        <path d="M44 40 C44 46 48 50 48 54 C48 58 44 60 44 60 C44 60 40 58 40 54 C40 50 44 46 44 40 Z" fill="#c62828" stroke-width="2"/><path d="M54 36 C54 40 57 43 57 46 C57 49 54 50 54 50 C54 50 51 49 51 46 C51 43 54 40 54 36 Z" fill="#c62828" stroke-width="2"/>`,
+        <path d="M44 40 C44 46 48 50 48 54 C48 58 44 60 44 60 C44 60 40 58 40 54 C40 50 44 46 44 40 Z" fill="#ff8f00" stroke-width="2"/><path d="M54 36 C54 40 57 43 57 46 C57 49 54 50 54 50 C54 50 51 49 51 46 C51 43 54 40 54 36 Z" fill="#ff8f00" stroke-width="2"/>`,
     executeUp: `<path d="M20 8 L20 60" stroke-width="5"/><path d="M20 8 L20 60" stroke="#6d4c41" stroke-width="2.5"/><path d="M20 10 C36 6 52 12 54 26 C44 22 32 24 20 30 Z" fill="#b0bec5"/>
-        <rect x="34" y="44" width="22" height="8" rx="2" fill="#ef5350"/><rect x="34" y="44" width="6" height="8" rx="2" fill="#7f0000" stroke="none"/>`,
-    ambushPower: `<path d="M8 48 C16 30 48 30 56 48 Z" fill="#311b92"/><path d="M20 42 L26 38 M44 42 L38 38" stroke="#ff5252" stroke-width="3.5"/>
+        <rect x="34" y="44" width="22" height="8" rx="2" fill="#ffca28"/><rect x="34" y="44" width="6" height="8" rx="2" fill="#8d5a00" stroke="none"/>`,
+    ambushPower: `<path d="M8 48 C16 30 48 30 56 48 Z" fill="#311b92"/><path d="M20 42 L26 38 M44 42 L38 38" stroke="#ffd740" stroke-width="3.5"/>
         <path d="M44 6 L28 30" stroke-width="5"/><path d="M44 6 L28 30" stroke="#eceff1" stroke-width="2.5"/>${duoStroke('M52 18 L52 30 M46 24 L58 24', '#ffd54f', 2.5)}`,
     // 劇毒
     poisonStacks: `${[[20, 46], [32, 30], [44, 46]].map(([x, y]) => `<path d="M${x} ${y - 14} C${x + 6} ${y - 4} ${x + 10} ${y} ${x + 10} ${y + 5} C${x + 10} ${y + 11} ${x + 5} ${y + 14} ${x} ${y + 14} C${x - 5} ${y + 14} ${x - 10} ${y + 11} ${x - 10} ${y + 5} C${x - 10} ${y} ${x - 6} ${y - 4} ${x} ${y - 14} Z" fill="#7cb342"/>`).join('')}`,
@@ -360,12 +360,12 @@ const ICON_BODIES = {
     poisonSlow: `<ellipse cx="32" cy="36" rx="18" ry="14" fill="#aed581"/><path d="M24 34 L28 34 M36 34 L40 34" stroke-width="2.5"/><path d="M26 42 C30 40 34 44 38 42" stroke-width="2.5"/>
         ${[[12, 18], [52, 18], [32, 10]].map(([x, y]) => `<path d="M${x - 5} ${y} L${x + 5} ${y} M${x} ${y - 5} L${x} ${y + 5}" stroke="#4fc3f7" stroke-width="2.5"/>`).join('')}`,
     // 影
-    shadowCap: `${[[16, 0.75, 0.55], [48, 0.75, 0.55], [32, 1, 1]].map(([x, s, o]) => `<g transform="translate(${x} 36) scale(${s})" opacity="${o}"><circle cx="0" cy="-14" r="9" fill="#5e35b1"/><path d="M-12 22 L-12 0 C-12 -6 12 -6 12 0 L12 22 Z" fill="#5e35b1"/><path d="M-4 -15 L-1 -13 M4 -15 L1 -13" stroke="#ff5252" stroke-width="2"/></g>`).join('')}`,
+    shadowCap: `${[[16, 0.75, 0.55], [48, 0.75, 0.55], [32, 1, 1]].map(([x, s, o]) => `<g transform="translate(${x} 36) scale(${s})" opacity="${o}"><circle cx="0" cy="-14" r="9" fill="#5e35b1"/><path d="M-12 22 L-12 0 C-12 -6 12 -6 12 0 L12 22 Z" fill="#5e35b1"/><path d="M-4 -15 L-1 -13 M4 -15 L1 -13" stroke="#ffd740" stroke-width="2"/></g>`).join('')}`,
     shadowTime: `<circle cx="24" cy="24" r="9" fill="#5e35b1"/><path d="M12 58 L12 38 C12 32 36 32 36 38 L36 58 Z" fill="#5e35b1"/>
         <circle cx="46" cy="44" r="14" fill="#fff3e0"/><path d="M46 36 L46 44 L52 48" stroke-width="3"/>`,
     shadowPower: `<circle cx="26" cy="18" r="9" fill="#4527a0"/><path d="M14 58 L14 34 C14 28 38 28 38 34 L38 58 Z" fill="#4527a0"/><path d="M40 40 L56 14" stroke-width="5"/><path d="M40 40 L56 14" stroke="#b39ddb" stroke-width="2.5"/>
         ${duoStroke('M54 56 L54 44 M49 49 L54 44 L59 49', '#ffd54f', 2.5)}`,
-    shadowStrike: `<circle cx="20" cy="20" r="8" fill="#4527a0"/><path d="M10 54 L10 34 C10 28 30 28 30 34 L30 54 Z" fill="#4527a0"/>${[0, 1, 2].map(i => `<path d="M${34 + i * 7} ${16 + i * 4} L${44 + i * 7} ${40 + i * 4}" stroke="#ff5252" stroke-width="3.5"/>`).join('')}`,
+    shadowStrike: `<circle cx="20" cy="20" r="8" fill="#4527a0"/><path d="M10 54 L10 34 C10 28 30 28 30 34 L30 54 Z" fill="#4527a0"/>${[0, 1, 2].map(i => `<path d="M${34 + i * 7} ${16 + i * 4} L${44 + i * 7} ${40 + i * 4}" stroke="#ffd740" stroke-width="3.5"/>`).join('')}`,
     // 煙霧
     smokeBomb: `<circle cx="28" cy="40" r="16" fill="#37474f"/><path d="M28 24 L32 12" stroke-width="4"/><path d="M32 12 L38 8" stroke="#ffd54f" stroke-width="3"/>
         <path d="M44 18 C40 12 48 6 52 12 C58 10 60 18 56 22" fill="#cfd8dc"/>${shine(22, 34, 4, 3)}`,
@@ -375,7 +375,7 @@ const ICON_BODIES = {
     longHide: `<path d="M8 40 C2 40 2 28 12 28 C12 16 28 12 34 20 C40 12 56 16 54 28 C62 30 62 40 54 40 Z" fill="#78909c"/><circle cx="32" cy="48" r="12" fill="#fff3e0"/><path d="M32 40 L32 48 L38 52" stroke-width="3"/>`,
     // 情報
     bounty: `<path d="M10 6 L54 6 L54 58 L10 58 Z" fill="#ffe0b2"/><path d="M18 14 L46 14" stroke="#8d6e63" stroke-width="3"/><circle cx="32" cy="32" r="10" fill="#bcaaa4"/><path d="M26 30 L30 32 M38 30 L34 32" stroke-width="2"/>
-        <path d="M18 48 L40 48" stroke="#e53935" stroke-width="4"/><circle cx="50" cy="50" r="9" fill="#ffd54f" stroke-width="2.5"/><circle cx="50" cy="50" r="4.5" stroke="#e0a82e" stroke-width="2"/>`,
+        <path d="M18 48 L40 48" stroke="#ffc400" stroke-width="4"/><circle cx="50" cy="50" r="9" fill="#ffd54f" stroke-width="2.5"/><circle cx="50" cy="50" r="4.5" stroke="#e0a82e" stroke-width="2"/>`,
     earlyMark: `<circle cx="32" cy="34" r="22" fill="#eceff1"/><circle cx="32" cy="34" r="12" fill="#5d4037"/><circle cx="32" cy="34" r="5" fill="#1b1424" stroke="none"/>${shine(26, 28, 3, 2)}
         <path d="M8 34 C14 22 22 16 32 12 C42 16 50 22 56 34" stroke-width="3"/>`,
     trashLoot: `<path d="M18 26 C8 34 10 54 24 56 L40 56 C54 54 56 34 46 26 Z" fill="#8d6e63"/><path d="M22 26 L42 26 L38 18 L26 18 Z" fill="#6d4c41"/>
@@ -387,7 +387,7 @@ const ICON_BODIES = {
         <path d="M28 22 L30 24 M36 22 L34 24" stroke="#ffd54f" stroke-width="2.5"/><path d="M8 50 C14 44 20 46 22 52" stroke="#b39ddb" stroke-width="3"/>`,
     pillowDagger: `<path d="M6 40 C6 30 14 26 32 26 C50 26 58 30 58 40 C58 50 50 54 32 54 C14 54 6 50 6 40 Z" fill="#e1bee7"/><path d="M14 40 C24 36 40 36 50 40" stroke="#ce93d8" stroke-width="2.5"/>
         <path d="M34 8 L34 36" stroke-width="5"/><path d="M34 8 L34 36" stroke="#eceff1" stroke-width="2.5"/><path d="M28 10 L40 10" stroke-width="4"/><path d="M28 10 L40 10" stroke="#ffd54f" stroke-width="2"/>`,
-    fidai: `<path d="M32 6 L56 18 L50 50 L32 60 L14 50 L8 18 Z" fill="#212121"/><path d="M20 28 L28 32 M44 28 L36 32" stroke="#ff5252" stroke-width="3.5"/><path d="M8 18 L32 6 L56 18 L32 22 Z" fill="#424242"/>
+    fidai: `<path d="M32 6 L56 18 L50 50 L32 60 L14 50 L8 18 Z" fill="#212121"/><path d="M20 28 L28 32 M44 28 L36 32" stroke="#ffd740" stroke-width="3.5"/><path d="M8 18 L32 6 L56 18 L32 22 Z" fill="#424242"/>
         <path d="M2 58 L14 46 M62 58 L50 46" stroke="#b39ddb" stroke-width="3"/>`,
     // ---- 武僧（monk.js）----
     // 大招「十八羅漢陣」：一圈金色小人
@@ -446,9 +446,9 @@ const ICON_BODIES = {
     javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
         <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>
         <path d="M4 40 L14 40 M2 48 L10 48" stroke="#ffcc80" stroke-width="3"/>`,
-    // 戰士的狂怒：怒吼的紅色獸頭盔
+    // 戰士的狂怒：怒吼的橘色獸頭盔
     rage: `<path d="M12 22 C6 12 8 4 14 2 C14 10 18 16 22 20 Z M52 22 C58 12 56 4 50 2 C50 10 46 16 42 20 Z" fill="#f1ead6"/>
-        <path d="M32 12 C18 12 12 22 12 34 C12 46 20 56 32 58 C44 56 52 46 52 34 C52 22 46 12 32 12 Z" fill="#e53935"/>
+        <path d="M32 12 C18 12 12 22 12 34 C12 46 20 56 32 58 C44 56 52 46 52 34 C52 22 46 12 32 12 Z" fill="#ff6d00"/>
         <path d="M18 30 L28 34 M46 30 L36 34" stroke-width="4"/><path d="M22 44 C26 52 38 52 42 44 L38 48 L32 44 L26 48 Z" fill="#1b1424"/>${shine(22, 20, 4, 2.5)}`,
     clock: `<circle cx="32" cy="35" r="23" fill="#f1ead6"/><rect x="26" y="4" width="12" height="7" rx="2" fill="#b0bec5"/><path d="M32 11 L32 12" stroke-width="3"/>
         <path d="M32 35 L32 20 M32 35 L42 40" stroke-width="4"/><circle cx="32" cy="35" r="2.5" fill="#1b1424" stroke="none"/>${shine(21, 24, 4, 2.5)}`,
@@ -509,6 +509,13 @@ const ICON_BODIES = {
     altar: `<path d="M10 22 L10 48 C10 53 20 56 32 56 C44 56 54 53 54 48 L54 22" fill="#8e24aa"/>
         <ellipse cx="32" cy="22" rx="22" ry="8" fill="#f1ead6"/><path d="M14 32 L22 50 L32 32 L42 50 L50 32" stroke="#ffd54f" stroke-width="3"/>
         <path d="M18 2 L28 16 M46 2 L36 16" stroke-width="7"/><path d="M18 2 L28 16 M46 2 L36 16" stroke="#d7965a" stroke-width="3.5"/>`,
+    // 護佑祭壇（主角受傷減半一陣子）：青色的六角護盾，中間一顆亮點
+    altarWard: `<path d="M32 4 L56 18 L56 46 L32 60 L8 46 L8 18 Z" fill="#26c6da"/><path d="M32 14 L47 23 L47 41 L32 50 L17 41 L17 23 Z" fill="#b2ebf2" stroke-width="3"/>
+        <path d="${starPath(32, 32, 9, 3.5, 4)}" fill="#ffffff" stroke-width="2"/>${shine(18, 20, 4, 2.5, -30)}`,
+    // 遲滯祭壇（全場怪物變慢）：慢吞吞的蝸牛
+    altarSlow: `<path d="M4 52 C4 44 12 42 20 42 L50 42 C56 42 60 46 60 52 Z" fill="#d7ccc8"/>
+        <path d="M50 42 C50 36 52 30 54 26 M56 42 C57 36 60 32 62 30" stroke-width="3"/><circle cx="54" cy="25" r="3" fill="#d7ccc8" stroke-width="2.5"/><circle cx="61" cy="29" r="2.5" fill="#d7ccc8" stroke-width="2"/>
+        <circle cx="30" cy="30" r="19" fill="#8bc34a"/><path d="M30 30 C30 26 36 26 36 31 C36 37 26 38 25 31 C24 23 36 20 41 27 C46 35 38 46 28 45" stroke="#33691e" stroke-width="3"/>${shine(20, 18, 4, 2.5)}`,
     // 遺跡「靈泉」：石盆裡的綠水，上面一滴
     spring: `<path d="M8 36 L56 36 L50 56 L14 56 Z" fill="#90a4ae"/><ellipse cx="32" cy="36" rx="24" ry="7" fill="#66bb6a"/><path d="M18 47 L46 47" stroke="#607d8b" stroke-width="2.5"/>
         <path d="M32 4 C26 12 22 17 22 22 C22 28 27 31 32 31 C37 31 42 28 42 22 C42 17 38 12 32 4 Z" fill="#a5d6a7"/>${shine(28, 20, 2.5, 4, 20)}`,
@@ -662,8 +669,8 @@ const ICON_BODIES = {
         <path d="M21 52 L21 46 M26 52 L26 46 M31 52 L31 46" stroke-width="3"/>
         <path d="M50 34 C44 34 41 38 41 43 C41 46 43 48 45 49 L45 54 L55 54 L55 49 C57 48 59 46 59 43 C59 38 56 34 50 34 Z" fill="#d7ccc8"/>
         <circle cx="47" cy="43" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="53" cy="43" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/>${shine(18, 15, 4, 2.5)}`,
-    ricochet: duoStroke('M6 50 L24 22 L40 44 L58 14', '#f48fb1', 4) + `<path d="M58 14 L49 15 L56 23 Z" fill="#f48fb1"/>
-        <circle cx="24" cy="22" r="6" fill="#f06292"/><circle cx="40" cy="44" r="6" fill="#f06292"/>
+    ricochet: duoStroke('M6 50 L24 22 L40 44 L58 14', '#ffe082', 4) + `<path d="M58 14 L49 15 L56 23 Z" fill="#ffe082"/>
+        <circle cx="24" cy="22" r="6" fill="#ffc400"/><circle cx="40" cy="44" r="6" fill="#ffc400"/>
         <circle cx="24" cy="22" r="2.4" fill="#fce4ec" stroke="none"/><circle cx="40" cy="44" r="2.4" fill="#fce4ec" stroke="none"/>`,
     frostNova: `<path d="${starPath(32, 32, 28, 16, 12)}" fill="#81d4fa"/>` + duoStroke('M32 14 L32 50 M16 23 L48 41 M16 41 L48 23', '#e1f5fe', 3.5) +
         `<circle cx="32" cy="32" r="6" fill="#e1f5fe"/>`,
@@ -681,7 +688,7 @@ const ICON_BODIES = {
         `<circle cx="32" cy="22" r="7" fill="#7ff0f0"/><circle cx="40" cy="34" r="8" fill="#7ff0f0"/><circle cx="32" cy="46" r="7" fill="#7ff0f0"/>
         <circle cx="40" cy="34" r="3.5" fill="#e8ffff" stroke="none"/>${shine(30, 20, 2, 1.5)}${shine(38, 31, 2.5, 1.5)}${shine(30, 44, 2, 1.5)}`,
     eagleEye: duoStroke('M32 3 L32 12 M32 52 L32 61', '#ffd54f', 3) +
-        `<path d="M5 32 C15 18 49 18 59 32 C49 46 15 46 5 32 Z" fill="#f1ead6"/><circle cx="32" cy="32" r="10" fill="#f06292"/>
+        `<path d="M5 32 C15 18 49 18 59 32 C49 46 15 46 5 32 Z" fill="#f1ead6"/><circle cx="32" cy="32" r="10" fill="#ffc400"/>
         <circle cx="32" cy="32" r="4" fill="${ICON_OUTLINE}" stroke="none"/>${shine(28, 28, 2.5, 1.5)}`,
     auraMight: `<path d="${GHOST_PATH}" fill="#80cbc4"/><ellipse cx="26" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>
         <ellipse cx="38" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>${shine(24, 17, 4, 2.5)}` +
@@ -732,8 +739,8 @@ const ICON_BODIES = {
     mut_giants: `<ellipse cx="32" cy="40" rx="16" ry="18" fill="#795548"/><ellipse cx="14" cy="18" rx="6" ry="8" fill="#795548" transform="rotate(-20 14 18)"/>
         <ellipse cx="27" cy="12" rx="6" ry="8" fill="#795548"/><ellipse cx="41" cy="12" rx="6" ry="8" fill="#795548"/><ellipse cx="52" cy="19" rx="6" ry="8" fill="#795548" transform="rotate(20 52 19)"/>
         <path d="M24 40 L40 40 M26 48 L38 48" stroke="#4e342e" stroke-width="3"/>`,
-    mut_eyes: `<path d="M32 4 L32 12 M32 52 L32 60 M4 32 L12 32 M52 32 L60 32 M12 12 L18 18 M46 46 L52 52 M12 52 L18 46 M46 18 L52 12" stroke="#f48fb1" stroke-width="4"/>
-        <path d="M10 32 C18 18 46 18 54 32 C46 46 18 46 10 32 Z" fill="#ffffff"/><circle cx="32" cy="32" r="10" fill="#f06292"/><circle cx="32" cy="32" r="4.5" fill="#1b1424" stroke="none"/>${shine(28, 27, 2.5, 1.8)}`,
+    mut_eyes: `<path d="M32 4 L32 12 M32 52 L32 60 M4 32 L12 32 M52 32 L60 32 M12 12 L18 18 M46 46 L52 52 M12 52 L18 46 M46 18 L52 12" stroke="#ffe082" stroke-width="4"/>
+        <path d="M10 32 C18 18 46 18 54 32 C46 46 18 46 10 32 Z" fill="#ffffff"/><circle cx="32" cy="32" r="10" fill="#ffc400"/><circle cx="32" cy="32" r="4.5" fill="#1b1424" stroke="none"/>${shine(28, 27, 2.5, 1.8)}`,
     mut_bloodMoon: `<circle cx="32" cy="28" r="22" fill="#c62828"/><circle cx="24" cy="22" r="5" fill="#b71c1c" stroke-width="2.5"/><circle cx="40" cy="32" r="4" fill="#b71c1c" stroke-width="2.5"/>
         <path d="M22 48 C22 54 26 56 26 60 C26 56 30 54 30 48 M38 49 C38 53 41 55 41 58 C41 55 44 53 44 49" fill="#e53935" stroke-width="2.5"/>${shine(20, 14, 4, 2.5)}`,
     mut_feast: `<path d="M6 36 L58 36 C58 50 46 58 32 58 C18 58 6 50 6 36 Z" fill="#8d6e63"/><path d="M6 36 L58 36" stroke-width="4"/>

@@ -38,6 +38,8 @@ CONFIG.shadowClone = {
     wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
     summonCost: 8, upgradeCostBase: 26, upgradeCostInc: 11,
 };
+// 暗殺標記、爆擊、斬殺用金色：紅色是警示色，敵人頭上掛紅圈會看成「這隻很危險」而不是「這是你的目標」
+const ROGUE_MARK_COLOR = '#FFD740';
 // 影子存在幾秒、上限（每 capPerLevels 級多一個）
 const SHADOW_LIFE = 20, SHADOW_CAP = 3, SHADOW_CAP_PER_LEVELS = 10;
 // 毒：每層每秒傷害（跟著波數）、一層持續幾秒、最多幾層
@@ -57,7 +59,7 @@ const KNIVES_TIER3_EXECUTE = 0.1, VENOM_TIER1_STACKS = 3, VENOM_CLOUD_RADIUS = 5
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    assassination: { name: '暗殺', icon: 'assassination', color: '#EF9A9A', res: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
+    assassination: { name: '暗殺', icon: 'assassination', color: '#FFE57F', res: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
     venomschool: { name: '劇毒', icon: 'venomschool', color: '#AED581', res: [{ name: '腐蝕', desc: '中毒的怪受到的傷害 +20%' }, { name: '瘟疫之刃', desc: '毒傷也會爆擊' }] },
     shadowschool: { name: '影', img: 'rogue.png', color: '#B39DDB', res: [{ name: '影襲', desc: '每次隱身都多一個影子' }, { name: '千面', desc: '處決時留下一個影子' }] },
     smoke: { name: '煙霧', icon: 'smoke', color: '#B0BEC5', res: [{ name: '煙幕', desc: '隱身時放出一團煙，煙裡的怪緩速、看不到你' }, { name: '迷蹤', desc: '被打中時 30% 直接隱身' }] },
@@ -241,7 +243,7 @@ function markTarget() {
     r.targets.push(best);
     best.markedFullHp = best.currentHealth >= best.maxHealth;
     r.markT = Math.max(0.5, ROGUE.markDelay - blessVal('earlyMark'));
-    spawnFloatText(best.pos.x, best.pos.y - 30, '目標', '#FF5252', 14, 1.2, 'assassination');
+    spawnFloatText(best.pos.x, best.pos.y - 30, '目標', ROGUE_MARK_COLOR, 14, 1.2, 'assassination');
     Sfx.play('elite');
 }
 function targetDown(m) {
@@ -298,7 +300,7 @@ function rogueKnives(p, dt) {
         const pr = getProjectileFromPool();
         pr.init(p.pos.x, p.pos.y - 6, t, ROGUE_KNIFE, dmg, rogueKnifeOwner, tier >= 2 ? 1 : 0, false);
         gameState.projectiles.push(pr);
-        if (crit) spawnParticles(t.pos.x, t.pos.y, '#FF5252', 6, 60, 0.3, 2);
+        if (crit) spawnParticles(t.pos.x, t.pos.y, ROGUE_MARK_COLOR, 6, 60, 0.3, 2);
     }
     Sfx.play('mageBolt');
 }
@@ -308,7 +310,7 @@ function knifeHit(m) {
         if (m.isElite) gameState.run.flags.rogueExecElite = true;
         const x = m.pos.x, y = m.pos.y;
         m.takeDamage(m.currentHealth + 1);
-        spawnFloatText(x, y - 20, '處決', '#FF8A80', 12, 0.8);
+        spawnFloatText(x, y - 20, '處決', '#FFE57F', 12, 0.8);
         if (res('shadowschool') >= 2) spawnShadow(x, y, gameState.units.Shadow.level, true);
     }
     if (m.isAlive && (gameState.units.Venom.level > 0 || bl('poisonPower'))) addPoison(m, 1);
@@ -376,7 +378,7 @@ function useBehead() {
     }
     enterHide();
     gameState.run.novaBest = Math.max(gameState.run.novaBest, kills);
-    spawnFloatText(p.pos.x, p.pos.y - 40, '斬首！', '#FF8A80', 18, 1.1, 'behead');
+    spawnFloatText(p.pos.x, p.pos.y - 40, '斬首！', '#FFE57F', 18, 1.1, 'behead');
     addShake(6);
     Sfx.play('nova');
     gameState.ultCooldown = B.cooldown;
@@ -390,7 +392,7 @@ class SlashBurstEffect extends TimedEffect {
         const k = 1 - this.life / this.duration;
         ctx.save();
         ctx.globalAlpha = 1 - k;
-        ctx.strokeStyle = '#FF5252'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.strokeStyle = ROGUE_MARK_COLOR; ctx.lineWidth = 3; ctx.lineCap = 'round';
         for (let i = 0; i < 3; i++) {
             const a = this.a + i * Math.PI / 3, r = 14 + k * 10;
             ctx.beginPath(); ctx.moveTo(this.pos.x - Math.cos(a) * r, this.pos.y - Math.sin(a) * r); ctx.lineTo(this.pos.x + Math.cos(a) * r, this.pos.y + Math.sin(a) * r); ctx.stroke();
@@ -423,12 +425,12 @@ function drawRogueWorld(ctx) {
         ctx.drawImage(getGlowSprite('#90A4AE'), s.x - SMOKE_RADIUS * 1.3, s.y - SMOKE_RADIUS * 1.3, SMOKE_RADIUS * 2.6, SMOKE_RADIUS * 2.6);
         ctx.restore();
     }
-    // 目標頭上的紅色準星
+    // 目標頭上的金色準星
     for (const t of r.targets) {
         if (!t.isAlive || !inView(t.pos)) continue;
         const R = Math.max(16, t.imageWidth * 0.45), a = worldTime * 2;
         ctx.save();
-        ctx.strokeStyle = '#FF1744'; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = ROGUE_MARK_COLOR; ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.arc(t.pos.x, t.pos.y, R, 0, Math.PI * 2); ctx.stroke();
         for (let i = 0; i < 4; i++) {
             const b = a + i * Math.PI / 2;
@@ -439,7 +441,7 @@ function drawRogueWorld(ctx) {
     // 中毒的怪腳下冒綠泡
     for (const m of r.poisoned) if (m.isAlive && m.poisonStacks > 0 && inView(m.pos) && Math.random() < 0.05) spawnParticles(m.pos.x, m.pos.y - 6, '#9CCC65', 1, 20, 0.5, 2);
 }
-// 目標在畫面外時，邊緣一個紅箭頭指著牠
+// 目標在畫面外時，邊緣一個金箭頭指著牠
 function drawTargetPointers(ctx) {
     const r = rogueState(), W = view.cssW, H = view.cssH, z = view.zoom, pad = 30;
     for (const t of r.targets) {
@@ -450,7 +452,7 @@ function drawTargetPointers(ctx) {
         const x = cx + dx * k, y = cy + dy * k, a = Math.atan2(dy, dx);
         ctx.save();
         ctx.translate(x, y); ctx.rotate(a);
-        ctx.fillStyle = '#FF1744'; ctx.strokeStyle = '#1b1424'; ctx.lineWidth = 2;
+        ctx.fillStyle = ROGUE_MARK_COLOR; ctx.strokeStyle = '#1b1424'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, -9); ctx.lineTo(-4, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.restore();
     }

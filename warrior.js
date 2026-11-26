@@ -99,7 +99,7 @@ Object.assign(SCHOOLS, {
     shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', res: [{ name: '龜甲陣', desc: '戰士站著不動時，全軍受傷 -30%' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },
     phalanx: { name: '長槍方陣', img: 'soldier_spear.png', color: '#CFD8DC', res: [{ name: '槍林', desc: '每 2 秒陣型前方整排刺擊' }, { name: '馬其頓方陣', desc: '長槍兵攻速 ×1.5' }] },
     crossbow: { name: '弩陣', img: 'soldier_crossbow.png', color: '#BCAAA4', res: [{ name: '三段射', desc: '弩手攻速 +40%' }, { name: '箭雨', desc: '每 6 秒弩手對最大一群怪齊射' }] },
-    berserk: { name: '狂戰', icon: 'rage', color: '#EF9A9A', res: [{ name: '熊皮戰士', desc: '狂怒結束不會虛脫' }, { name: '戰神降臨', desc: '狂怒時全軍一起狂暴' }] },
+    berserk: { name: '狂戰', icon: 'rage', color: '#FFAB40', res: [{ name: '熊皮戰士', desc: '狂怒結束不會虛脫' }, { name: '戰神降臨', desc: '狂怒時全軍一起狂暴' }] },
     legion: { name: '軍團紀律', icon: 'legion', color: '#FFE082', res: [{ name: '鐵律', desc: '陣型轉向快一倍' }, { name: '最後一線', desc: '人數剩三分之一時，倖存者全部視為百戰老兵' }] },
 });
 Object.assign(BLESSINGS, {
@@ -201,7 +201,7 @@ CLASSES.warrior = {
             w.chargeT = WARRIOR.javelin.chargeTime;
             w.exhaustT = 0;
             addRage(WARRIOR.rageMax);
-            spawnFloatText(p.pos.x, p.pos.y - 34, '衝鋒！', '#FF8A80', 18, 1.1, 'rage');
+            spawnFloatText(p.pos.x, p.pos.y - 34, '衝鋒！', '#FFAB40', 18, 1.1, 'rage');
             addShake(5);
             Sfx.play('nova');
             return true;
@@ -303,8 +303,8 @@ function addRage(amount) {
     w.rage = 0;
     w.berserkT = WARRIOR.berserkTime + blessVal('rageLength');
     const p = gameState.player;
-    spawnParticles(p.pos.x, p.pos.y, '#FF5252', 36, 200, 0.7, 3);
-    spawnFloatText(p.pos.x, p.pos.y - 40, '狂怒！', '#FF8A80', 20, 1.2, 'rage');
+    spawnParticles(p.pos.x, p.pos.y, BERSERK_COLOR, 36, 200, 0.7, 3);
+    spawnFloatText(p.pos.x, p.pos.y - 40, '狂怒！', '#FFAB40', 20, 1.2, 'rage');
     addShake(8);
     Sfx.play('boss');
 }
@@ -468,7 +468,9 @@ class JavelinEffect extends TimedEffect {
     }
 }
 
-// ---------- 戰士頭上：怒氣條、狂怒的紅光 ----------
+// ---------- 戰士頭上：怒氣條、狂怒的金光 ----------
+// 狂怒用金黃不用紅：紅色是警示色，主角身上發紅光會讓人以為自己有危險
+const BERSERK_COLOR = '#FFD600';
 const RAGE_BAR_W = 38, RAGE_BAR_H = 4;
 function drawWarriorHud(ctx, p) {
     const w = warState();
@@ -476,13 +478,13 @@ function drawWarriorHud(ctx, p) {
     if (w.berserkT > 0) {
         ctx.save();
         ctx.globalAlpha = 0.35 + 0.15 * Math.sin(worldTime * 12);
-        ctx.drawImage(getGlowSprite('#FF1744'), p.pos.x - 45, p.pos.y - 45, 90, 90);
+        ctx.drawImage(getGlowSprite(BERSERK_COLOR), p.pos.x - 45, p.pos.y - 45, 90, 90);
         ctx.restore();
     }
     const k = w.berserkT > 0 ? w.berserkT / WARRIOR.berserkTime : w.exhaustT > 0 ? 0 : w.rage / WARRIOR.rageMax;
     ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
     ctx.fillRect(x - 1.5, y - 1.5, RAGE_BAR_W + 3, RAGE_BAR_H + 3);
-    ctx.fillStyle = w.berserkT > 0 ? '#FF1744' : w.exhaustT > 0 ? '#607D8B' : '#FF9100';
+    ctx.fillStyle = w.berserkT > 0 ? BERSERK_COLOR : w.exhaustT > 0 ? '#607D8B' : '#FF9100';
     ctx.fillRect(x, y, RAGE_BAR_W * (w.exhaustT > 0 ? 1 - w.exhaustT / WARRIOR.exhaustTime : k), RAGE_BAR_H);
 }
 

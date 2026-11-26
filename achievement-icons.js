@@ -31,7 +31,7 @@ const P = {
     bone: (fill = C.bone) => `<path d="M-20 -4 C-26 -10 -18 -16 -14 -10 L14 -10 C18 -16 26 -10 20 -4 C26 2 18 8 14 2 L-14 2 C-18 8 -26 2 -20 -4 Z" fill="${fill}"/>`,
     soul: (fill = C.soul) => `<path d="M0 24 C-12 24 -17 14 -12 5 C-9 -1 -8 -8 -11 -17 C-2 -12 2 -6 2 0 C5 -4 6 -8 6 -13 C15 -5 17 6 13 13 C10 20 5 24 0 24 Z" fill="${fill}"/>
         <path d="M0 19 C-6 19 -8 14 -6 9 C-4 6 -2 5 -1 1 C4 4 7 8 6 13 C5 17 3 19 0 19 Z" fill="${C.soulLight}" stroke="none"/>`,
-    eye: (iris = '#f06292') => `<path d="M-24 0 C-14 -16 14 -16 24 0 C14 16 -14 16 -24 0 Z" fill="${C.white}"/><circle r="9" fill="${iris}"/><circle r="4" fill="${C.ink}" stroke="none"/>${shine(-4, -5, 2.5, 1.8)}`,
+    eye: (iris = '#ffc400') => `<path d="M-24 0 C-14 -16 14 -16 24 0 C14 16 -14 16 -24 0 Z" fill="${C.white}"/><circle r="9" fill="${iris}"/><circle r="4" fill="${C.ink}" stroke="none"/>${shine(-4, -5, 2.5, 1.8)}`,
     ghost: (fill = '#b2ebf2') => `<path d="M-14 22 L-14 -2 C-14 -14 -8 -22 0 -22 C8 -22 14 -14 14 -2 L14 22 L9 17 L4 22 L0 17 L-4 22 L-9 17 Z" fill="${fill}"/>
         <ellipse cx="-5" cy="-4" rx="3" ry="4" fill="${C.ink}" stroke="none"/><ellipse cx="5" cy="-4" rx="3" ry="4" fill="${C.ink}" stroke="none"/>`,
     star: (fill = C.gold, r = 22) => `<path d="${starPath(0, 0, r, r * 0.45, 5)}" fill="${fill}"/>`,
@@ -166,8 +166,8 @@ const ACHV_ICON_BODIES = {
         <path d="M32 14 C32 4 44 0 52 4 C46 6 42 10 40 16 Z" fill="${C.red}"/>`,
     evo_SkeletonWarrior_3: `<path d="M8 40 C4 54 14 62 20 60 L44 60 C50 62 60 54 56 40 Z" fill="${C.blood}"/>${at(32, 36, 0.85, P.skull())}
         <path d="M14 22 L18 6 L26 16 L32 2 L38 16 L46 6 L50 22 Z" fill="#ef5350"/><path d="M14 22 L50 22" stroke-width="4"/>`,
-    evo_EyeMonster_1: `${at(28, 36, 0.85, P.eye())}${duoStroke('M38 20 L48 6 L58 18', '#f48fb1', 3)}<path d="M58 18 L52 18 L57 12 Z" fill="#f48fb1" stroke-width="2"/>`,
-    evo_EyeMonster_2: `<path d="M6 32 C16 14 48 14 58 32 C48 50 16 50 6 32 Z" fill="${C.white}"/><circle cx="24" cy="32" r="8" fill="#f06292"/><circle cx="40" cy="32" r="8" fill="#f06292"/>
+    evo_EyeMonster_1: `${at(28, 36, 0.85, P.eye())}${duoStroke('M38 20 L48 6 L58 18', '#ffe082', 3)}<path d="M58 18 L52 18 L57 12 Z" fill="#ffe082" stroke-width="2"/>`,
+    evo_EyeMonster_2: `<path d="M6 32 C16 14 48 14 58 32 C48 50 16 50 6 32 Z" fill="${C.white}"/><circle cx="24" cy="32" r="8" fill="#ffc400"/><circle cx="40" cy="32" r="8" fill="#ffc400"/>
         <circle cx="24" cy="32" r="3.5" fill="${C.ink}" stroke="none"/><circle cx="40" cy="32" r="3.5" fill="${C.ink}" stroke="none"/>${shine(20, 28, 2, 1.5)}${shine(36, 28, 2, 1.5)}`,
     evo_EyeMonster_3: `<path d="${starPath(32, 32, 30, 18, 10)}" fill="${C.ember}"/>${at(32, 32, 0.72, P.eye('#ef5350'))}`,
     evo_Wraith_1: `${at(28, 32, 1, P.ghost('#80cbc4'))}${duoStroke('M50 14 L50 40', '#64b5f6', 3)}<path d="M44 34 L50 44 L56 34 Z" fill="#64b5f6" stroke-width="2.5"/>`,
@@ -297,7 +297,7 @@ Object.assign(ACHV_ICON_BODIES, {
     metaAll: `${at(32, 40, 0.95, P.crown('#b388ff'))}${at(32, 16, 0.5, P.gem('#ede7f6'))}${sparks([[8, 10, 4], [56, 10, 4]], '#e1bee7')}`,
 });
 // ---- 職業：戰士（warrior.js）。母題是羅馬軍團：紅冠頭盔、方盾、標槍 ----
-const WAR_RED = '#c62828', WAR_RED_DARK = '#8e1b1b';
+const WAR_RED = '#1565c0', WAR_RED_DARK = '#0d47a1';   // 名字沿用；戰士軍團改成藍底金邊（紅色是警示色）
 // 紅冠頭盔，畫在 ±28 的範圍
 const HELM = (crest = WAR_RED) => `<path d="M-18 -10 C-22 -16 -10 -30 0 -30 C10 -30 22 -16 18 -10 C10 -16 -10 -16 -18 -10 Z" fill="${crest}"/>
     <path d="M-20 4 C-20 -14 20 -14 20 4 L20 14 L12 14 L12 22 L-12 22 L-12 14 L-20 14 Z" fill="${C.steel}"/>
@@ -324,7 +324,7 @@ Object.assign(ACHV_ICON_BODIES, {
         ${[[14, 34], [27, 40], [40, 34], [53, 40], [20, 52], [46, 52]].map(([x, y]) => `<g transform="translate(${x} ${y}) rotate(180)">${JAVELIN(18)}</g>`).join('')}
         <path d="M4 62 L60 62" stroke-width="4"/>`,
     // 熊皮戰士：火焰前面一顆披著的熊頭
-    warrior_res_berserk: `${at(14, 30, 0.7, P.flame(C.red, C.orange), -20)}${at(50, 30, 0.7, P.flame(C.red, C.orange), 20)}${at(32, 22, 0.8, P.flame(C.red, C.orange))}
+    warrior_res_berserk: `${at(14, 30, 0.7, P.flame('#ff9100', C.orange), -20)}${at(50, 30, 0.7, P.flame('#ff9100', C.orange), 20)}${at(32, 22, 0.8, P.flame('#ff9100', C.orange))}
         <circle cx="18" cy="26" r="7" fill="${C.woodDark}"/><circle cx="46" cy="26" r="7" fill="${C.woodDark}"/><circle cx="18" cy="26" r="3" fill="${C.wood}" stroke="none"/><circle cx="46" cy="26" r="3" fill="${C.wood}" stroke="none"/>
         <path d="M14 40 C14 26 22 22 32 22 C42 22 50 26 50 40 C50 52 42 58 32 58 C22 58 14 52 14 40 Z" fill="${C.woodDark}"/>
         <ellipse cx="32" cy="48" rx="9" ry="7" fill="${C.wood}"/><ellipse cx="32" cy="44" rx="4" ry="3" fill="${C.ink}" stroke="none"/>
@@ -334,9 +334,9 @@ Object.assign(ACHV_ICON_BODIES, {
     // 戰士自己做得到的事
     warrior_veterans: `${at(32, 40, 0.86, HELM())}${[16, 32, 48].map(x => `<path d="${starPath(x, 10, 7, 3, 5)}" fill="${C.gold}" stroke-width="2"/>`).join('')}`,
     warrior_noLoss: `<path d="M2 50 L62 50" stroke-width="4"/>${at(26, 30, 0.86, SCUTUM())}
-        ${at(50, 46, 0.32, P.skull())}<circle cx="50" cy="46" r="12" stroke="${C.red}" stroke-width="3.5"/><path d="M42 54 L58 38" stroke="${C.red}" stroke-width="3.5"/>`,
-    warrior_berserkBoss: `${rays(32, 32, 18, 30, 12, C.red, 3)}${at(32, 40, 0.78, P.crown())}${at(32, 26, 0.9, P.sword(), 180)}
-        <path d="M30 46 C30 50 28 52 28 54 C28 56 32 56 32 54 C32 52 30 50 30 46 Z" fill="${C.blood}" stroke-width="1.5"/>`,
+        ${at(50, 46, 0.32, P.skull())}<circle cx="50" cy="46" r="12" stroke="#42a5f5" stroke-width="3.5"/><path d="M42 54 L58 38" stroke="#42a5f5" stroke-width="3.5"/>`,
+    warrior_berserkBoss: `${rays(32, 32, 18, 30, 12, '#ff9100', 3)}${at(32, 40, 0.78, P.crown())}${at(32, 26, 0.9, P.sword(), 180)}
+        <path d="M30 46 C30 50 28 52 28 54 C28 56 32 56 32 54 C32 52 30 50 30 46 Z" fill="#e65100" stroke-width="1.5"/>`,
     warrior_javelin: `${[-36, -20, -4, 12, 28].map((r, i) => `<g transform="translate(${14 + i * 9} ${30 + Math.abs(i - 2) * 4}) rotate(${r + 160})">${JAVELIN(40)}</g>`).join('')}
         ${at(32, 54, 0.3, P.skull())}${at(16, 56, 0.24, P.skull())}${at(48, 56, 0.24, P.skull())}`,
     // 開局那四個人：兩個盾兵、一個長槍兵、一個弩手，頭盔冠毛顏色照兵種
@@ -369,23 +369,23 @@ Object.assign(ACHV_ICON_BODIES, {
     druid_loneOak: `<path d="M4 58 C16 52 48 52 60 58" stroke="#8d6e63" stroke-width="4"/>${at(32, 34, 0.95, OAK('#7cb342'))}${at(54, 12, 0.36, P.moon())}`,
 });
 // ---- 職業：吸血鬼（vampire.js）。母題是血與夜：血滴、血月、棺木、蝙蝠 ----
-const BAT = (fill = '#b71c1c') => `<path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="${fill}"/><circle cx="-3" cy="-2" r="1.6" fill="${C.gold}" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="${C.gold}" stroke="none"/>`;
-const VDROP = (fill = '#d32f2f') => `<path d="M0 -24 C8 -10 16 0 16 9 C16 19 8 25 0 25 C-8 25 -16 19 -16 9 C-16 0 -8 -10 0 -24 Z" fill="${fill}"/>${shine(-6, 8, 3, 5, 20)}`;
+const BAT = (fill = '#5e35b1') => `<path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="${fill}"/><circle cx="-3" cy="-2" r="1.6" fill="${C.gold}" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="${C.gold}" stroke="none"/>`;
+const VDROP = (fill = '#7e57c2') => `<path d="M0 -24 C8 -10 16 0 16 9 C16 19 8 25 0 25 C-8 25 -16 19 -16 9 C-16 0 -8 -10 0 -24 Z" fill="${fill}"/>${shine(-6, 8, 3, 5, 20)}`;
 Object.assign(ACHV_ICON_BODIES, {
-    vampire_win: `${at(32, 36, 1, P.laurel('#c62828'))}${at(32, 30, 0.62, VDROP())}${at(32, 12, 0.45, P.crown())}`,
+    vampire_win: `${at(32, 36, 1, P.laurel('#5e35b1'))}${at(32, 30, 0.62, VDROP())}${at(32, 12, 0.45, P.crown())}`,
     vampire_speed28: `${at(24, 36, 0.9, BAT())}<path d="M44 26 L58 26 M46 36 L60 36 M44 46 L58 46" stroke="${C.sky}" stroke-width="3.5"/>`,
     vampire_speed24: `${at(20, 44, 0.7, BAT())}${at(40, 24, 0.8, BAT())}${at(54, 50, 0.5, P.bolt())}`,
-    vampire_speed20: `<circle cx="32" cy="32" r="24" fill="#c62828"/>${at(32, 34, 1.05, BAT('#1b1424'))}${at(54, 54, 0.45, P.bolt())}${sparks([[8, 10, 4]], C.white)}`,
-    vampire_res_bloodmagic: `${rays(32, 36, 20, 30, 10, '#ff8a80', 3)}${at(32, 36, 0.75, VDROP())}`,
+    vampire_speed20: `<circle cx="32" cy="32" r="24" fill="#5e35b1"/>${at(32, 34, 1.05, BAT('#1b1424'))}${at(54, 54, 0.45, P.bolt())}${sparks([[8, 10, 4]], C.white)}`,
+    vampire_res_bloodmagic: `${rays(32, 36, 20, 30, 10, '#b388ff', 3)}${at(32, 36, 0.75, VDROP())}`,
     vampire_res_kin: `${[[14, 40], [50, 40], [32, 32]].map(([x, y], i) => at(x, y, i === 2 ? 0.55 : 0.45, P.ghost('#ce93d8'))).join('')}${at(32, 10, 0.4, P.crown())}`,
     vampire_res_bats: `${at(32, 28, 0.7, P.moon())}${at(16, 46, 0.55, BAT())}${at(46, 52, 0.5, BAT())}${at(48, 14, 0.4, BAT())}`,
     vampire_res_werewolf: `<circle cx="32" cy="28" r="20" fill="#fff3c4"/><path d="M12 60 L12 40 L8 26 L20 34 L30 26 L40 38 C46 42 46 50 42 54 L42 60 Z" fill="#455a64"/><path d="M40 38 L54 30 L50 42" fill="#455a64"/><circle cx="32" cy="38" r="2" fill="${C.gold}" stroke="none"/>`,
     vampire_res_undying: `<path d="M22 4 L42 4 L52 18 L44 60 L20 60 L12 18 Z" fill="#4e342e"/><path d="M32 18 L32 40 M24 26 L40 26" stroke="${C.gold}" stroke-width="3.5"/>${sparks([[54, 8, 5], [8, 40, 4]], '#d1c4e9')}`,
-    vampire_boss: `${at(32, 42, 0.8, P.crown('#ce93d8'))}${at(32, 18, 0.45, VDROP())}<path d="M14 58 L50 58" stroke="#c62828" stroke-width="4"/>`,
+    vampire_boss: `${at(32, 42, 0.8, P.crown('#ce93d8'))}${at(32, 18, 0.45, VDROP())}<path d="M14 58 L50 58" stroke="#5e35b1" stroke-width="4"/>`,
     vampire_horde: `${[[10, 20], [26, 14], [44, 18], [56, 30], [16, 36], [36, 32], [24, 52], [46, 48]].map(([x, y]) => at(x, y, 0.34, BAT())).join('')}`,
-    vampire_menagerie: `${[['#ce93d8', 14, 22], ['#a5d6a7', 32, 16], ['#ffcc80', 50, 22], ['#90caf9', 22, 44], ['#ef9a9a', 42, 44]].map(([c, x, y]) => at(x, y, 0.36, P.ghost(c))).join('')}`,
+    vampire_menagerie: `${[['#ce93d8', 14, 22], ['#a5d6a7', 32, 16], ['#ffcc80', 50, 22], ['#90caf9', 22, 44], ['#d1c4e9', 42, 44]].map(([c, x, y]) => at(x, y, 0.36, P.ghost(c))).join('')}`,
     vampire_dayBoss: `${at(32, 28, 0.9, `<circle r="16" fill="#ffca28"/>`)}${rays(32, 28, 20, 28, 8, '#ffca28', 3)}${at(32, 50, 0.5, P.crown())}`,
-    vampire_reborn: `<path d="M18 8 L46 8 L56 22 L48 62 L16 62 L8 22 Z" fill="#4e342e"/><path d="M24 30 C24 18 40 18 40 30 L40 62 L24 62 Z" fill="#1b1424"/><path d="M32 36 L32 54 M26 42 L38 42" stroke="#ef9a9a" stroke-width="3"/>${sparks([[56, 6, 5], [6, 10, 4]], '#d1c4e9')}`,
+    vampire_reborn: `<path d="M18 8 L46 8 L56 22 L48 62 L16 62 L8 22 Z" fill="#4e342e"/><path d="M24 30 C24 18 40 18 40 30 L40 62 L24 62 Z" fill="#1b1424"/><path d="M32 36 L32 54 M26 42 L38 42" stroke="#d1c4e9" stroke-width="3"/>${sparks([[56, 6, 5], [6, 10, 4]], '#d1c4e9')}`,
 });
 // ---- 職業：精靈弓箭手（elf.js）。母題是弓與風：長弓、回頭的箭、風紋 ----
 const BOW = (wood = '#6d4c41') => `<path d="M-8 -26 C14 -14 14 14 -8 26" stroke-width="6"/><path d="M-8 -26 C14 -14 14 14 -8 26" stroke="${wood}" stroke-width="3"/><path d="M-8 -26 L-8 26" stroke="${C.white}" stroke-width="1.8"/>`;
@@ -408,9 +408,9 @@ Object.assign(ACHV_ICON_BODIES, {
     elf_lone: `${at(32, 34, 0.95, BOW())}${at(54, 12, 0.4, P.moon())}<path d="M6 58 L58 58" stroke="#8d6e63" stroke-width="3"/>`,
 });
 // ---- 職業：刺客（rogue.js）。母題是兜帽與匕首：紅準星、紫影 ----
-const HOOD = (fill = '#311b92') => `<path d="M0 -26 L20 -12 L16 22 L0 28 L-16 22 L-20 -12 Z" fill="${fill}"/><path d="M-20 -12 L0 -26 L20 -12 L0 -8 Z" fill="#4527a0"/><path d="M-9 -2 L-3 1 M9 -2 L3 1" stroke="#ff5252" stroke-width="3"/>`;
+const HOOD = (fill = '#311b92') => `<path d="M0 -26 L20 -12 L16 22 L0 28 L-16 22 L-20 -12 Z" fill="${fill}"/><path d="M-20 -12 L0 -26 L20 -12 L0 -8 Z" fill="#4527a0"/><path d="M-9 -2 L-3 1 M9 -2 L3 1" stroke="#ffd740" stroke-width="3"/>`;
 const DAGGER = (blade = C.steel) => P.dagger(blade);
-const RETICLE = `<circle cx="32" cy="32" r="22" stroke="${C.red}" stroke-width="3"/><path d="M32 6 L32 16 M32 48 L32 58 M6 32 L16 32 M48 32 L58 32" stroke="${C.red}" stroke-width="3"/>`;
+const RETICLE = `<circle cx="32" cy="32" r="22" stroke="#ffd740" stroke-width="3"/><path d="M32 6 L32 16 M32 48 L32 58 M6 32 L16 32 M48 32 L58 32" stroke="#ffd740" stroke-width="3"/>`;
 Object.assign(ACHV_ICON_BODIES, {
     rogue_win: `${at(32, 36, 1, P.laurel(C.gold))}${at(32, 30, 0.7, HOOD())}`,
     rogue_speed28: `${at(22, 34, 0.8, HOOD())}<path d="M42 22 L58 22 M44 34 L60 34 M42 46 L58 46" stroke="#b39ddb" stroke-width="3.5"/>`,
@@ -421,9 +421,9 @@ Object.assign(ACHV_ICON_BODIES, {
     rogue_res_shadowschool: `${[[14, 0.55, 0.5], [50, 0.55, 0.5], [24, 0.7, 0.75], [40, 0.7, 0.75], [32, 0.9, 1]].map(([x, s, o]) => `<g opacity="${o}">${at(x, 34, s, HOOD())}</g>`).join('')}`,
     rogue_res_smoke: `<path d="M8 44 C0 44 0 30 10 30 C10 18 26 14 32 22 C38 14 54 18 52 30 C60 32 60 44 52 44 Z" fill="#90a4ae"/>${at(32, 34, 0.5, HOOD())}`,
     rogue_res_intel: `<path d="M10 10 L46 10 L54 18 L54 58 L10 58 Z" fill="#fff3e0"/><path d="M18 22 L46 22 M18 30 L46 30" stroke="${C.wood}" stroke-width="2.5"/>${at(40, 44, 0.45, P.crown())}`,
-    rogue_targets: `${RETICLE}${at(32, 34, 0.5, P.skull())}${[[10, 10], [54, 10], [10, 54], [54, 54]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="${C.red}" stroke-width="2"/>`).join('')}`,
+    rogue_targets: `${RETICLE}${at(32, 34, 0.5, P.skull())}${[[10, 10], [54, 10], [10, 54], [54, 54]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3.5" fill="#ffc400" stroke-width="2"/>`).join('')}`,
     rogue_executeElite: `<path d="M18 8 L18 60" stroke-width="5"/><path d="M18 8 L18 60" stroke="#6d4c41" stroke-width="2.5"/><path d="M18 10 C34 6 52 12 54 28 C44 24 30 26 18 32 Z" fill="${C.steel}"/>${at(42, 48, 0.4, P.crown())}`,
-    rogue_oneShot: `${at(32, 34, 1.2, DAGGER(), 45)}${sparks([[48, 14, 7]], C.red)}<path d="M8 56 L22 42" stroke="${C.red}" stroke-width="3"/>`,
+    rogue_oneShot: `${at(32, 34, 1.2, DAGGER(), 45)}${sparks([[48, 14, 7]], '#ffc400')}<path d="M8 56 L22 42" stroke="#ffc400" stroke-width="3"/>`,
     rogue_ghost: `${[0.25, 0.45, 0.7, 1].map((o, i) => `<g opacity="${o}">${at(14 + i * 12, 34, 0.55, HOOD())}</g>`).join('')}`,
     rogue_shadows: `${[[12, 22], [32, 16], [52, 22], [20, 44], [44, 44], [32, 54]].map(([x, y]) => at(x, y, 0.36, HOOD('#4527a0'))).join('')}`,
 });
