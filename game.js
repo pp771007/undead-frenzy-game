@@ -6751,9 +6751,10 @@ function renderDraftCards() {
 }
 
 // 補滿血：不拿祝福，換法師血量回滿。波與波之間不回血，所以每次選祝福都是「變強還是保命」
+// 血量可能是小數（吸血、每秒回血），照整數算：差不到 1 點就當滿血，按鈕上也不會印出一串小數
 function draftHealAmount() {
     const p = gameState.player;
-    return p && p.isAlive ? p.maxHealth - p.currentHealth : 0;
+    return p && p.isAlive ? Math.round(p.maxHealth - p.currentHealth) : 0;
 }
 function healDraft() {
     if (!gameState.pendingDraft) return;
