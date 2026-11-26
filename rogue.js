@@ -54,6 +54,11 @@ Object.assign(CONFIG.evolution.perks, {
     Shadow: ['影子存在時間加倍', '影子的攻擊也會上毒', '影子消失時伏擊身邊的怪'],
 });
 const KNIVES_TIER3_EXECUTE = 0.1, VENOM_TIER1_STACKS = 3, VENOM_CLOUD_RADIUS = 50;
+// 中毒看得出來：怪身上蓋一層綠光（層數越多越濃）、頭上冒毒泡（最多 POISON_BUBBLES 顆）、毒死爆一團綠霧
+const POISON_GREEN = '#76FF03', POISON_BUBBLE = '#CCFF90', POISON_BUBBLE_EDGE = '#1B5E20';
+const POISON_GLOW_BASE = 0.35, POISON_GLOW_PER_STACK = 0.07, POISON_GLOW_MAX = 0.75, POISON_GLOW_SIZE = 1.4;  // 大小 × 圖寬
+const POISON_BUBBLES = 3, POISON_BUBBLE_RISE = 22, POISON_BUBBLE_SPEED = 0.9;
+const POISON_HIT_SPARKS = 3, POISON_DEATH_PUFF = 10;
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
@@ -311,7 +316,11 @@ function knifeHit(m) {
         spawnFloatText(x, y - 20, '處決', '#FF8A80', 12, 0.8);
         if (res('shadowschool') >= 2) spawnShadow(x, y, gameState.units.Shadow.level, true);
     }
-    if (m.isAlive && (gameState.units.Venom.level > 0 || bl('poisonPower'))) addPoison(m, 1);
+    // 每一刀都上毒，0 級就有（同飛刀：修練是讓它更強，不是解鎖）。0 級才有毒的話開局完全看不到毒，玩家不知道這張卡在做什麼
+    if (m.isAlive) {
+        addPoison(m, 1);
+        spawnParticles(m.pos.x, m.pos.y - 4, POISON_GREEN, POISON_HIT_SPARKS, 50, 0.3, 2);
+    }
 }
 
 // ---------- 毒 ----------
@@ -321,6 +330,7 @@ function addPoison(m, stacks) {
     if (!m.poisonStacks) { m.poisonStacks = 0; r.poisoned.push(m); }
     m.poisonStacks = Math.min(poisonCap(), m.poisonStacks + stacks);
     m.poisonTime = POISON.time;
+    introduceRelic('venom', '飛刀帶毒', `每刀疊一層，最多 ${poisonCap()} 層`, '#AED581', 'venomschool');
 }
 function tickPoison() {
     const r = rogueState();
@@ -345,6 +355,7 @@ function tickPoison() {
 // 毒死的怪：傳染、三階炸出毒霧
 function poisonDeath(m) {
     const stacks = m.poisonStacks;
+    if (inView(m.pos)) spawnParticles(m.pos.x, m.pos.y, POISON_GREEN, POISON_DEATH_PUFF, 70, 0.5, 3);
     if (bl('poisonSpread')) {
         let left = bl('poisonSpread');
         monsterGrid.forEachInRadius(m.pos, VENOM_CLOUD_RADIUS, o => { if (left > 0 && o.isAlive && o !== m) { addPoison(o, stacks); left--; } });
@@ -436,8 +447,24 @@ function drawRogueWorld(ctx) {
         }
         ctx.restore();
     }
-    // 中毒的怪腳下冒綠泡
-    for (const m of r.poisoned) if (m.isAlive && m.poisonStacks > 0 && inView(m.pos) && Math.random() < 0.05) spawnParticles(m.pos.x, m.pos.y - 6, '#9CCC65', 1, 20, 0.5, 2);
+    // 中毒的怪：身上一層綠光（層數越多越濃），頭上一串往上飄的毒泡（層數越多越多顆）
+    const glow = getGlowSprite(POISON_GREEN);
+    for (const m of r.poisoned) {
+        if (!m.isAlive || !(m.poisonStacks > 0) || !inView(m.pos)) continue;
+        const g = m.imageWidth * POISON_GLOW_SIZE;
+        ctx.globalAlpha = Math.min(POISON_GLOW_MAX, POISON_GLOW_BASE + POISON_GLOW_PER_STACK * m.poisonStacks);
+        ctx.drawImage(glow, m.pos.x - g / 2, m.pos.y - g / 2, g, g);
+        const top = m.pos.y - m.imageHeight * 0.45, n = Math.min(POISON_BUBBLES, m.poisonStacks);
+        ctx.fillStyle = POISON_BUBBLE;
+        ctx.strokeStyle = POISON_BUBBLE_EDGE;
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < n; i++) {
+            const ph = (worldTime * POISON_BUBBLE_SPEED + i / n + (m.pos.x % 1)) % 1;
+            ctx.globalAlpha = 1 - ph * 0.8;
+            ctx.beginPath(); ctx.arc(m.pos.x + (i - (n - 1) / 2) * 7, top - ph * POISON_BUBBLE_RISE, 3 + ph * 2.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        }
+    }
+    ctx.globalAlpha = 1;
 }
 // 目標在畫面外時，邊緣一個紅箭頭指著牠
 function drawTargetPointers(ctx) {
