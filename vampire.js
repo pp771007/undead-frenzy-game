@@ -26,13 +26,16 @@ const VAMPIRE = {
 
 OPTIONAL_ART.vampire = 'vampire.png';
 OPTIONAL_ART.blood_bat = 'blood_bat.png';
-BOLT_STYLES.blood = { glowIn: 'rgba(255, 138, 128, 0.85)', glowMid: 'rgba(198, 40, 40, 0.4)', glowOut: 'rgba(198, 40, 40, 0)', body: '#B71C1C', core: '#FFCDD2' };
+// 吸血鬼的攻擊、特效用夜紫：紅色是警示色，留給敵人與危險（血瞳的血彈用 game.js 的 blood）
+// 自己一個 key，不要蓋掉 BOLT_STYLES.blood，不然所有角色的局裡血瞳的彈都變成吸血鬼的樣子
+BOLT_STYLES.nightblade = { glowIn: 'rgba(209, 196, 255, 0.9)', glowMid: 'rgba(124, 77, 255, 0.4)', glowOut: 'rgba(124, 77, 255, 0)', body: '#7C4DFF', core: '#EDE7F6' };
+const VAMP_ATTACK_COLOR = '#7C4DFF', VAMP_ATTACK_DARK = '#4527A0';
 
 // 眷屬的共通設定；每隻實際的數值照牠生前是什麼怪（thrallConfig）
 const THRALL_COMMON = {
     targetSearchRadius: 170, returnDistance: 45, avoidanceRadius: 13, avoidanceForce: 100, playerAvoidanceForce: 40,
     wanderRadius: 30, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
-    upgradeBonus: 0.15, projectileSpeed: 300, projectileRadius: 4, projectileColor: '#E57373', boltStyle: 'blood',
+    upgradeBonus: 0.15, projectileSpeed: 300, projectileRadius: 4, projectileColor: VAMP_ATTACK_COLOR, boltStyle: 'nightblade',
 };
 // 生前的血量、攻擊乘上這個倍數（怪的基礎值是給「一大群」用的，眷屬一隻要頂一隻）；沒有攻擊力的怪（巫醫、血瞳）給 minAtk
 const THRALL_HP_MULT = 2.5, THRALL_ATK_MULT = 2, THRALL_MIN_HP = 20, THRALL_MIN_ATK = 5;
@@ -52,7 +55,7 @@ CONFIG.thrall = { ...THRALL_COMMON, type: 'Thrall', radius: 11, color: '#CE93D8'
 // 蝙蝠是最便宜的兵，又能拿自己的血付錢：價格與每級成長照其他職業的兵定的話，第 20 波就有五六百隻、七十幾級，
 // 整局沒有壓力（機器人量的），所以召喚跟眷屬差不多貴、升級也貴一截，每級長得比較少
 CONFIG.bloodBat = {
-    ...THRALL_COMMON, type: 'BloodBat', imageName: 'blood_bat', color: '#C62828', radius: 9, imgScaleMultiplier: 3.6,
+    ...THRALL_COMMON, type: 'BloodBat', imageName: 'blood_bat', color: '#9575CD', radius: 9, imgScaleMultiplier: 3.6,
     baseHealth: 28, baseAttack: 6, attackRange: 20, attackSpeed: 1.4, moveSpeed: 150, upgradeBonus: 0.14,
     summonCost: 9, upgradeCostBase: 26, upgradeCostInc: 13,
 };
@@ -76,9 +79,9 @@ const BURST_TIER1_RADIUS = 1.25, BURST_TIER2_SLOW = 0.5;
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    bloodmagic: { name: '血魔法', icon: 'bloodmagic', color: '#EF5350', res: [{ name: '血箭', desc: '血之飛刃每次多射一把' }, { name: '血祭', desc: '血量低於一半時，你的傷害加倍' }] },
+    bloodmagic: { name: '血魔法', icon: 'bloodmagic', color: '#B388FF', res: [{ name: '血箭', desc: '血之飛刃每次多射一把' }, { name: '血祭', desc: '血量低於一半時，你的傷害加倍' }] },
     kin: { name: '眷屬', icon: 'kin', color: '#CE93D8', res: [{ name: '饗宴', desc: '眷屬每打倒一隻怪，你回 1% 血' }, { name: '血親', desc: '精英怪也能轉化，而且保留精英的強度' }] },
-    bats: { name: '蝠群', img: 'blood_bat.png', color: '#E57373', res: [{ name: '夜翼', desc: '入夜時蝙蝠攻速 +40%' }, { name: '夜幕', desc: '蝙蝠擋下射向你的飛彈' }] },
+    bats: { name: '蝠群', img: 'blood_bat.png', color: '#9575CD', res: [{ name: '夜翼', desc: '入夜時蝙蝠攻速 +40%' }, { name: '夜幕', desc: '蝙蝠擋下射向你的飛彈' }] },
     werewolf: { name: '狼化', icon: 'werewolf', color: '#B0BEC5', res: [{ name: '狼行', desc: '入夜時你移速 +25%、飛刃吸血 +10%' }, { name: '月下狼群', desc: '入夜時近戰眷屬傷害 ×1.5、移速 +30%' }] },
     undying: { name: '不死', icon: 'coffin', color: '#9575CD', res: [{ name: '蝠化', desc: '一下被打掉 12% 以上的血時化成蝙蝠，1 秒無敵' }, { name: '永生', desc: '每局可以從棺木復活一次' }] },
 });
@@ -145,7 +148,7 @@ CLASSES.vampire = {
         sunWard: { icon: 'sunWard', name: '夜之斗篷', max: 4, per: 0.12, costBase: 25, desc: m => `白天曬傷 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     },
     hero: { imageName: 'vampire', baseHealth: VAMPIRE.baseHealth, moveSpeed: VAMPIRE.moveSpeed },
-    currency: { icon: 'blood', glow: [198, 40, 40] },
+    currency: { icon: 'blood', glow: [124, 77, 255] },
     attack: (p, dt) => vampAttack(p, dt),
     update: (dt) => vampUpdate(dt),
     reset: () => { gameState.vamp = newVampState(); },
@@ -180,8 +183,8 @@ CLASSES.vampire = {
         if (res('undying') >= 1 && lostFrac >= RES_BATFORM_HIT && v.batFormCd <= 0) {
             v.batFormT = RES_BATFORM_TIME; v.batFormCd = RES_BATFORM_CD;
             const p = gameState.player;
-            spawnParticles(p.pos.x, p.pos.y, '#B71C1C', 24, 160, 0.6, 3);
-            spawnFloatText(p.pos.x, p.pos.y - 34, '蝠化', '#E57373', 14, 1, 'batFang');
+            spawnParticles(p.pos.x, p.pos.y, VAMP_ATTACK_COLOR, 24, 160, 0.6, 3);
+            spawnFloatText(p.pos.x, p.pos.y - 34, '蝠化', '#B39DDB', 14, 1, 'batFang');
         }
     },
     // 永生：每局一次，從棺木裡站起來
@@ -360,17 +363,17 @@ function bladeLeech() {
 }
 
 // ---------- 普攻：血之飛刃 ----------
-const VAMP_BLADE = { projectileSpeed: 360, projectileRadius: 4, projectileColor: '#E53935', boltStyle: 'bloodBlade' };
-// 血之飛刃：一彎血色的月牙刃，邊飛邊轉，身後一圈紅光
-SHAPE_SPRITES.bloodBlade = {
-    len: 18, wid: 18, spin: 3, glow: '#D50000',
+const VAMP_BLADE = { projectileSpeed: 360, projectileRadius: 4, projectileColor: VAMP_ATTACK_COLOR, boltStyle: 'nightCrescent' };
+// 血之飛刃：一彎夜紫色的月牙刃，邊飛邊轉，身後一圈紫光（我方攻擊不用紅，見專案 CLAUDE.md）
+SHAPE_SPRITES.nightCrescent = {
+    len: 18, wid: 18, spin: 3, glow: VAMP_ATTACK_COLOR,
     draw(g) {
-        g.lineWidth = 1.6; g.strokeStyle = '#3E0A0A';
+        g.lineWidth = 1.6; g.strokeStyle = SHAPE_OUTLINE;
         // 月牙：外圓減掉偏一邊的內圓
-        g.fillStyle = '#C62828';
+        g.fillStyle = VAMP_ATTACK_COLOR;
         g.beginPath(); g.arc(0, 0, 8, -Math.PI * 0.85, Math.PI * 0.85); g.arc(-3.5, 0, 6.2, Math.PI * 0.62, -Math.PI * 0.62, true); g.closePath(); g.fill(); g.stroke();
         // 刃口的亮邊
-        g.strokeStyle = '#FF8A80'; g.lineWidth = 1.2;
+        g.strokeStyle = '#EDE7F6'; g.lineWidth = 1.2;
         g.beginPath(); g.arc(0, 0, 6.8, -Math.PI * 0.6, Math.PI * 0.6); g.stroke();
     },
 };
@@ -426,10 +429,10 @@ class BloodBurstEffect extends TimedEffect {
         const k = 1 - this.life / this.duration;
         ctx.save();
         ctx.globalAlpha = (1 - k) * 0.8;
-        ctx.strokeStyle = '#C62828'; ctx.lineWidth = 8 * (1 - k) + 2;
+        ctx.strokeStyle = VAMP_ATTACK_COLOR; ctx.lineWidth = 8 * (1 - k) + 2;
         ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * (0.4 + 0.6 * k), 0, Math.PI * 2); ctx.stroke();
         ctx.globalAlpha = (1 - k) * 0.25;
-        ctx.fillStyle = '#B71C1C';
+        ctx.fillStyle = VAMP_ATTACK_DARK;
         ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * (0.4 + 0.6 * k), 0, Math.PI * 2); ctx.fill();
         ctx.restore();
     }
@@ -440,11 +443,11 @@ function useBloodMoon() {
     const v = vampState(), p = gameState.player, M = VAMPIRE.bloodMoon;
     v.moonT = M.duration;
     gameState.frenzyTimer = Math.max(gameState.frenzyTimer, M.duration);
-    spawnFloatText(p.pos.x, p.pos.y - 40, '血月降臨！', '#FF8A80', 18, 1.3, 'bloodmoon');
-    spawnParticles(p.pos.x, p.pos.y, '#B71C1C', 36, 200, 0.7, 3);
-    // 兩圈血色衝擊波，一群血蝙蝠從身上往四面八方飛散
-    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 20, r1: 200, life: 0.7, color: '#D50000', width: 10 });
-    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 10, r1: 120, life: 0.5, color: '#FF8A80', width: 5, delay: 0.12 });
+    spawnFloatText(p.pos.x, p.pos.y - 40, '血月降臨！', '#B39DDB', 18, 1.3, 'bloodmoon');
+    spawnParticles(p.pos.x, p.pos.y, VAMP_ATTACK_DARK, 36, 200, 0.7, 3);
+    // 兩圈夜紫衝擊波，一群血蝙蝠從身上往四面八方飛散
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 20, r1: 200, life: 0.7, color: VAMP_ATTACK_COLOR, width: 10 });
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 10, r1: 120, life: 0.5, color: '#D1C4E9', width: 5, delay: 0.12 });
     addWorldFx({ kind: 'sprites', image: 'blood_bat', x: p.pos.x, y: p.pos.y, size: 26, life: 0.9, list: Array.from({ length: MOON_BATS }, (_, i) => { const a = i / MOON_BATS * Math.PI * 2 + Math.random() * 0.4, s = 160 + Math.random() * 120; return { vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.7 }; }) });
     addShake(7);
     Sfx.play('boss');
@@ -611,8 +614,8 @@ class Thrall extends SummonUnit {
         updateUI();
     }
     drawHealthBar(ctx) {
-        // 腳下一圈血色：自己人
-        ctx.strokeStyle = 'rgba(229, 57, 53, 0.7)'; ctx.lineWidth = 1.5;
+        // 腳下一圈紫：自己人（不用紅，紅色是敵人與危險）
+        ctx.strokeStyle = 'rgba(124, 77, 255, 0.75)'; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.38 * (this.drawScale || 1), this.radius * 1.1, this.radius * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
         super.drawHealthBar(ctx);
     }
@@ -638,14 +641,14 @@ class BloodBat extends SummonUnit {
         const drain = this.attack * bites * (BAT_DRAIN + blessVal('batDrain')) * (this.tier >= 2 ? 2 : 1);
         healHero(drain);
         this.attackCooldown = 1 / this.attackSpeed;
-        if (Math.random() < 0.25) spawnParticles(t.pos.x, t.pos.y, '#E53935', 2, 40, 0.3, 2);
+        if (Math.random() < 0.25) spawnParticles(t.pos.x, t.pos.y, VAMP_ATTACK_COLOR, 2, 40, 0.3, 2);
     }
     die() {
         if (!this.isAlive) return;
         this.isAlive = false;
         gameState.units.BloodBat.count--;
         onSummonDeath(this);
-        spawnParticles(this.pos.x, this.pos.y, '#B71C1C', 8, 60, 0.4);
+        spawnParticles(this.pos.x, this.pos.y, VAMP_ATTACK_DARK, 8, 60, 0.4);
         updateUI();
     }
 }
@@ -656,7 +659,7 @@ UNIT_TYPES.BloodBat.summon = (level) => {
         const pos = p.getSummonPosition();
         gameState.summons.push(new BloodBat(pos.x + randomInRange(-8, 8), pos.y + randomInRange(-8, 8), level, p));
         gameState.units.BloodBat.count++;
-        spawnParticles(pos.x, pos.y, '#C62828', 8, 60, 0.4);
+        spawnParticles(pos.x, pos.y, VAMP_ATTACK_COLOR, 8, 60, 0.4);
     }
 };
 
@@ -667,20 +670,20 @@ function drawVampHud(ctx, p) {
     if (icon) ctx.drawImage(icon, p.pos.x + 22, p.pos.y + p.imageHeight * 0.5 - 4, 14, 14);
     if (v.batFormT > 0) {
         ctx.save(); ctx.globalAlpha = 0.5;
-        ctx.drawImage(getGlowSprite('#E53935'), p.pos.x - 40, p.pos.y - 40, 80, 80);
+        ctx.drawImage(getGlowSprite(VAMP_ATTACK_COLOR), p.pos.x - 40, p.pos.y - 40, 80, 80);
         ctx.restore();
     }
 }
-// 白天一層淡淡的暖光、黑夜一層藍黑（血月是暗紅）。整個畫面一次 fillRect，不影響效能
+// 白天一層淡淡的暖光、黑夜一層藍黑（血月是深紫：整個畫面泛紅會跟低血量的紅暈搞混）。整個畫面一次 fillRect，不影響效能
 function drawVampSky(ctx) {
     const v = vampState();
-    ctx.fillStyle = v.moonT > 0 ? 'rgba(90, 0, 10, 0.22)' : v.night ? 'rgba(10, 6, 40, 0.24)' : 'rgba(255, 196, 110, 0.07)';
+    ctx.fillStyle = v.moonT > 0 ? 'rgba(45, 10, 90, 0.26)' : v.night ? 'rgba(10, 6, 40, 0.24)' : 'rgba(255, 196, 110, 0.07)';
     ctx.fillRect(0, 0, view.cssW, view.cssH);
     if (v.moonT > 0) drawBloodMoon(ctx, v);
 }
-// 血月：畫面右上方升起一輪巨大的紅月，背後幾道慢慢轉的紅光，快結束時淡掉
+// 血月：畫面右上方升起一輪巨大的夜紫色月亮，背後幾道慢慢轉的紫光，快結束時淡掉（我方大招不用紅，見專案 CLAUDE.md）
 const MOON_R = 46, MOON_RISE = 0.7, MOON_FADE = 1, MOON_RAYS = 9, MOON_BATS = 12;
-const MOON_LIGHT = '#FF5252', MOON_DARK = '#7F0000', MOON_CRATER = 'rgba(90, 0, 0, 0.2)';
+const MOON_LIGHT = '#D1C4E9', MOON_DARK = VAMP_ATTACK_DARK, MOON_CRATER = 'rgba(40, 20, 90, 0.25)', MOON_RAY = 'rgba(179, 157, 219, 0.1)';
 const MOON_CRATERS = [[-0.35, -0.2, 0.2], [0.28, 0.18, 0.26], [0.08, -0.48, 0.1], [-0.22, 0.42, 0.13], [0.45, -0.25, 0.08], [-0.55, 0.15, 0.07]];
 function drawBloodMoon(ctx, v) {
     const since = VAMPIRE.bloodMoon.duration - v.moonT;
@@ -693,7 +696,7 @@ function drawBloodMoon(ctx, v) {
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(worldTime * 0.15);
-    ctx.fillStyle = 'rgba(255, 82, 82, 0.09)';
+    ctx.fillStyle = MOON_RAY;
     for (let i = 0; i < MOON_RAYS; i++) {
         ctx.rotate(Math.PI * 2 / MOON_RAYS);
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-14, -MOON_R * 4.5); ctx.lineTo(14, -MOON_R * 4.5); ctx.closePath(); ctx.fill();
@@ -701,7 +704,7 @@ function drawBloodMoon(ctx, v) {
     ctx.restore();
     ctx.globalAlpha = alpha * (0.75 + 0.25 * Math.sin(worldTime * 2));
     const gs = MOON_R * 5;
-    ctx.drawImage(getGlowSprite('#D50000'), cx - gs / 2, cy - gs / 2, gs, gs);
+    ctx.drawImage(getGlowSprite(VAMP_ATTACK_COLOR), cx - gs / 2, cy - gs / 2, gs, gs);
     ctx.globalAlpha = alpha;
     const g = ctx.createRadialGradient(cx - MOON_R * 0.3, cy - MOON_R * 0.3, MOON_R * 0.1, cx, cy, MOON_R);
     g.addColorStop(0, MOON_LIGHT);

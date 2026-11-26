@@ -1,29 +1,32 @@
 // 刺客 · 阿拉穆特之影（規劃見 docs/characters.md 第 4 節）
-// 核心是「暗殺目標」：每一波場上最有威脅的那隻怪被標成目標（邊緣有箭頭指著）。殺死目標拿到大筆賞金、牠身邊的怪潰散逃跑；
-// 殺雜兵幾乎不給錢——收入幾乎全部來自目標，逼刺客每一波都要潛進怪堆裡。
-// 一陣子沒被打就隱身（怪看不到你、從身邊走過），隱身後的第一刀是伏擊；血量很低的怪直接處決。
+// 核心是「暗殺目標」：場上最有威脅的那隻怪被標成目標（邊緣有箭頭指著）。怪照常衝著刺客來，飛刀一次射好幾隻清身邊的雜兵，
+// 同時優先射目標；殺掉目標拿賞金、牠身邊的怪潰散逃跑，刺客隱身幾秒，下一把射向新目標的飛刀是伏擊 ×4。
+// 節奏：殺進怪堆 → 刺殺目標 → 消失換位置 → 伏擊下一個目標。隱身是殺出來的獎勵，不是常態（常態隱身的話怪都不理刺客，只能自己一隻隻去找）。
+// 血掉很低時自動遁形一次（有冷卻），讓脆皮的刺客敢鑽進怪堆；血量很低的怪直接處決。
 // 典故：十一世紀以阿拉穆特堡為據點的尼查里派「哈薩辛」，潛伏的菲達伊專門刺殺掌權者，以少擊眾。
 // 這個檔在 game.js 之後載入，用的是 game.js 的全域；game.js 的 init 等所有腳本載完才跑
 
 const ROGUE = {
     baseHealth: 80,
     moveSpeed: 108,
-    // 飛刀：射程內最近的怪（隱身中優先射目標）
-    knife: { interval: 0.6, range: 190, damage: 8 },
-    // 潛行：hideDelay 秒沒被打就隱身，最多 hideTime 秒；隱身後第一刀 ×ambushMult
-    hideDelay: 1.6, hideTime: 3.5, ambushMult: 4,
-    // 隱身時每秒回最大血量的 hideRegen：打了就躲起來喘口氣
-    hideRegen: 0.025,
+    // 飛刀：一次射 count 隻（射程內的目標優先，其餘挑最近的）。怪會湧上來，一把一把丟清不動
+    knife: { interval: 0.6, range: 190, damage: 6, count: 3 },
+    // 隱身：殺掉目標隱身 killHide 秒；血掉到 panicHp 以下自動遁形 panicHide 秒，冷卻 panicCd 秒。
+    // 隱身中怪看不到你、移速 +hideSpeed；伏擊＝下一把射向目標的飛刀 ×ambushMult（現身後還留著，直到射出去）
+    killHide: 2.5, panicHp: 0.35, panicHide: 2, panicCd: 20, hideSpeed: 0.2, ambushMult: 4,
+    // 隱身時每秒回最大血量的 hideRegen
+    hideRegen: 0.03,
     // 每修練一次任何一張卡，最大血量 +基礎血量的 trainHp：刺客要鑽進怪堆，怪的攻擊指數成長，血不跟著長的話後期一刀就倒
     trainHp: 0.12,
     // 處決：血量低於 execute 的怪（首領除外）被飛刀打中直接處決
     execute: 0.2,
     // 雜兵只給 trashSouls 的靈魂；目標的賞金＝上一個目標之後打倒的雜兵「原本該給的」靈魂 × bountyShare（至少 bountyMin）
-    trashSouls: 0.5, bountyShare: 1.2, bountyMin: 15,
-    // 目標死時，身邊 fearRadius 內的怪逃跑 fearTime 秒；下一個目標隔 markDelay 秒才標
-    fearRadius: 150, fearTime: 3, markDelay: 4,
-    // 大招「斬首」：瞬移到目標身邊連斬 hits 下；沒有目標就斬最近的幾隻
-    behead: { cooldown: 18, hits: 5, damage: 14, fallback: 8 },
+    // 雜兵照常會湧上來被清掉，大部分收入還是雜兵；目標是額外的大獎，不殺也活得下去、殺了賺比較多
+    trashSouls: 0.8, bountyShare: 0.6, bountyMin: 15,
+    // 目標死時，身邊 fearRadius 內的怪逃跑 fearTime 秒；下一個目標隔 markDelay 秒才標（隱身是獎勵不是常態：一輪大約十秒，隱身佔兩三成）
+    fearRadius: 150, fearTime: 3, markDelay: 6,
+    // 大招「斬首」：瞬移到目標身邊連斬 hits 下；沒有目標就斬最近的幾隻。斬完隱身 hide 秒脫身
+    behead: { cooldown: 18, hits: 5, damage: 14, fallback: 8, hide: 1.5 },
 };
 
 OPTIONAL_ART.rogue = 'rogue.png';
@@ -38,6 +41,8 @@ CONFIG.shadowClone = {
     wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
     summonCost: 8, upgradeCostBase: 26, upgradeCostInc: 11,
 };
+// 暗殺標記、爆擊、斬殺用金色：紅色是警示色，敵人頭上掛紅圈會看成「這隻很危險」而不是「這是你的目標」
+const ROGUE_MARK_COLOR = '#FFD740';
 // 影子存在幾秒、上限（每 capPerLevels 級多一個）
 const SHADOW_LIFE = 20, SHADOW_CAP = 3, SHADOW_CAP_PER_LEVELS = 10;
 // 毒：每層每秒傷害（跟著波數）、一層持續幾秒、最多幾層
@@ -62,10 +67,10 @@ const POISON_HIT_SPARKS = 3, POISON_DEATH_PUFF = 10;
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    assassination: { name: '暗殺', icon: 'assassination', color: '#EF9A9A', res: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
+    assassination: { name: '暗殺', icon: 'assassination', color: '#FFE57F', res: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
     venomschool: { name: '劇毒', icon: 'venomschool', color: '#AED581', res: [{ name: '腐蝕', desc: '中毒的怪受到的傷害 +20%' }, { name: '瘟疫之刃', desc: '毒傷也會爆擊' }] },
     shadowschool: { name: '影', img: 'rogue.png', color: '#B39DDB', res: [{ name: '影襲', desc: '每次隱身都多一個影子' }, { name: '千面', desc: '處決時留下一個影子' }] },
-    smoke: { name: '煙霧', icon: 'smoke', color: '#B0BEC5', res: [{ name: '煙幕', desc: '隱身時放出一團煙，煙裡的怪緩速、看不到你' }, { name: '迷蹤', desc: '被打中時 30% 直接隱身' }] },
+    smoke: { name: '煙霧', icon: 'smoke', color: '#B0BEC5', res: [{ name: '煙幕', desc: '隱身時放出一團煙，煙裡的怪緩速、看不到你' }, { name: '迷蹤', desc: '被打中時 30% 隱身 1.5 秒（8 秒一次）' }] },
     intel: { name: '情報', icon: 'intel', color: '#FFE082', res: [{ name: '線人網', desc: '目標優先標精英' }, { name: '鷹巢', desc: '每波第一個目標倒下時，多一次祝福' }] },
 });
 Object.assign(BLESSINGS, {
@@ -83,22 +88,24 @@ Object.assign(BLESSINGS, {
     shadowStrike: { school: 'shadowschool', name: '影殺', max: 2, per: 1, desc: b => `影子的第一擊多打 ${b.per * 2} 倍` },
     smokeBomb: { school: 'smoke', name: '煙霧彈', max: 2, per: 1, desc: () => '一下被打掉 10% 以上的血時放出一團煙' },
     dodge: { school: 'smoke', name: '身法', max: 3, per: 0.08, desc: b => `${pct(b.per)} 機率閃過攻擊` },
-    quickHide: { school: 'smoke', name: '遁形', max: 3, per: 0.4, desc: b => `隱身前要等的時間 -${b.per} 秒` },
-    longHide: { school: 'smoke', name: '藏鋒', max: 3, per: 1, desc: b => `每次隱身多 ${b.per} 秒` },
+    quickHide: { school: 'smoke', name: '遁形', max: 3, per: 4, desc: b => `危急遁形的冷卻 -${b.per} 秒` },
+    longHide: { school: 'smoke', name: '藏鋒', max: 3, per: 0.5, desc: b => `每次隱身多 ${b.per} 秒` },
     bounty: { school: 'intel', name: '懸賞', max: 3, per: 0.3, desc: b => `目標的賞金 +${pct(b.per)}` },
-    earlyMark: { school: 'intel', name: '眼線', max: 2, per: 1.5, desc: b => `下一個目標早 ${b.per} 秒標出來` },
+    earlyMark: { school: 'intel', name: '眼線', max: 1, per: 360, desc: () => '目標挑你身邊的怪標，不用跑去找' },
     trashLoot: { school: 'intel', name: '順手牽羊', max: 3, per: 0.15, desc: b => `雜兵的靈魂 +${pct(b.per)}` },
     spoils: { school: 'intel', name: '戰利品', max: 2, per: 0.08, desc: b => `目標倒下時你回 ${pct(b.per)} 血` },
     oldMan: { school: 'intel', name: '山中老人', legendary: true, max: 1, per: 3, desc: b => `目標倒下時，牠身邊 ${b.per} 隻怪倒戈成為你的影子` },
     pillowDagger: { school: 'assassination', name: '枕邊匕首', legendary: true, max: 1, per: 160, desc: () => '目標被標記的那一刻起，牠身邊的怪攻擊力下降' },
-    fidai: { school: 'smoke', name: '菲達伊', legendary: true, max: 1, per: 0.5, desc: b => `隱身時移速 +${pct(b.per)}，隱身時間加倍` },
+    fidai: { school: 'smoke', name: '菲達伊', legendary: true, max: 1, per: 0.5, desc: b => `隱身時移速 +${pct(b.per)}，隱身中的飛刀傷害 ×${FIDAI_KNIFE}` },
 });
 const RES_MARKED_TAKEN = 1.3;
+// 菲達伊：隱身中的飛刀都乘這個（不延長隱身：隱身時間疊太長，怪又都不理刺客了）
+const FIDAI_KNIFE = 2;
 const RES_CORRODE_TAKEN = 1.2;
-const RES_VANISH_CHANCE = 0.3;
+const RES_VANISH_CHANCE = 0.3, RES_VANISH_TIME = 1.5, RES_VANISH_CD = 8;
 const SMOKE_RADIUS = 70, SMOKE_TIME = 4, SMOKE_SLOW = 0.5, SMOKE_HIT = 0.1;
 const DAGGER_EVERY = 1;
-const ROGUE_ACHV = { targets: 100, hides: 10, shadows: 6 };
+const ROGUE_ACHV = { targets: 100, waveTargets: 5, shadows: 6 };
 // 目標優先：首領 > 精英 > 這幾種會幫別人的怪 > 血最多的
 const TARGET_PRIORITY = { WitchDoctor: 1, GravePriest: 1, Tombstone: 1, Assassin: 1 };
 
@@ -130,15 +137,21 @@ CLASSES.rogue = {
         p.maxHealth += gain;
         p.currentHealth += gain;
     },
-    heroSpeedMult: () => rogueState().hideT > 0 && bl('fidai') ? 1 + BLESSINGS.fidai.per : 1,
+    heroSpeedMult: () => rogueState().hideT > 0 ? 1 + ROGUE.hideSpeed + (bl('fidai') ? BLESSINGS.fidai.per : 0) : 1,
+    heroAlpha: () => rogueState().hideT > 0 ? 0.45 : 1,
+    drawHeroUnder: (ctx, p) => drawRogueStealthGround(ctx, p),
     heroDamageTakenMult: () => {
         if (Math.random() < blessVal('dodge')) { const p = gameState.player; spawnFloatText(p.pos.x, p.pos.y - 30, '閃', '#B0BEC5', 12, 0.5); return 0; }
         return 1;
     },
+    // 被打不會打斷隱身（隱身是殺出來的獎勵，時間到才現身）。血掉到三成半以下自動遁形；煙霧共鳴「迷蹤」被打中有機會隱身
     onHeroHurt: (lostFrac) => {
         const r = rogueState(), p = gameState.player;
-        r.hideT = 0; r.notHitT = 0;
-        if (res('smoke') >= 2 && Math.random() < RES_VANISH_CHANCE) enterHide();
+        if (p.isAlive && p.currentHealth < p.maxHealth * ROGUE.panicHp && r.panicT <= 0) {
+            r.panicT = Math.max(4, ROGUE.panicCd - blessVal('quickHide'));
+            enterHide(ROGUE.panicHide, '遁形');
+        }
+        else if (res('smoke') >= 2 && r.vanishT <= 0 && Math.random() < RES_VANISH_CHANCE) { r.vanishT = RES_VANISH_CD; enterHide(RES_VANISH_TIME); }
         if (bl('smokeBomb') && lostFrac >= SMOKE_HIT) r.smokes.push({ x: p.pos.x, y: p.pos.y, life: SMOKE_TIME * bl('smokeBomb') });
     },
     soulMult: (m) => {
@@ -148,7 +161,7 @@ CLASSES.rogue = {
         return ROGUE.trashSouls * (1 + blessVal('trashLoot'));
     },
     onMonsterKill: (m) => { if (rogueState().targets.includes(m)) targetDown(m); },
-    onWaveStart: () => { const r = rogueState(); r.markT = 0; r.waveHides = 0; r.firstTargetThisWave = true; },
+    onWaveStart: () => { const r = rogueState(); r.markT = 0; r.waveTargets = 0; r.firstTargetThisWave = true; },
     relicChannelMult: () => rogueState().hideT > 0 ? RELIC_STEALTH_CHANNEL : 1,
     // 封印寶棺開出「情報」：下一個目標賞金加倍（原本的靈魂照給）
     onRelic: (r) => {
@@ -166,7 +179,7 @@ CLASSES.rogue = {
             ['targets', '百人斬首', `累計刺殺 ${ROGUE_ACHV.targets} 個目標`, 60, () => (stats().rogueTargets || 0) >= ROGUE_ACHV.targets],
             ['executeElite', '處刑人', '處決一隻精英怪', 30, () => !!gameState.run.flags.rogueExecElite],
             ['oneShot', '一擊必殺', '一刀打倒滿血的目標', 50, () => !!gameState.run.flags.rogueOneShot],
-            ['ghost', '來無影', `一波內進入隱身 ${ROGUE_ACHV.hides} 次`, 40, () => rogueState().waveHides >= ROGUE_ACHV.hides],
+            ['ghost', '來無影', `一波內刺殺 ${ROGUE_ACHV.waveTargets} 個目標`, 40, () => rogueState().waveTargets >= ROGUE_ACHV.waveTargets],
             ['shadows', '影武者', `同時有 ${ROGUE_ACHV.shadows} 個影子`, 50, () => gameState.units.Shadow.count >= ROGUE_ACHV.shadows],
         ],
     },
@@ -179,20 +192,34 @@ const RELIC_STEALTH_CHANNEL = 3;
 
 // targets：目前標記的目標（共鳴「死亡宣告」時兩個）；markT：下一次標記還要等幾秒；trashValue：上一個目標之後雜兵原本該給的靈魂
 function newRogueState() {
-    return { targets: [], markT: 0, trashValue: 0, knifeT: 0, notHitT: 0, hideT: 0, ambush: false, smokes: [], poisoned: [], poisonT: 0,
-        daggerT: 0, waveHides: 0, firstTargetThisWave: true, intelBonus: false };
+    return { targets: [], markT: 0, trashValue: 0, knifeT: 0, hideT: 0, hideMax: 1, panicT: 0, vanishT: 0, ambush: false, smokes: [], poisoned: [], poisonT: 0,
+        daggerT: 0, waveTargets: 0, firstTargetThisWave: true, intelBonus: false };
 }
 function rogueState() { return gameState.rogue || (gameState.rogue = newRogueState()); }
 function inSmoke(pos) { for (const s of rogueState().smokes) if (distanceSq(s, pos) <= SMOKE_RADIUS * SMOKE_RADIUS) return true; return false; }
 function knifeDamage() {
     return ROGUE.knife.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * (1 + gameState.units.Knives.level * CONFIG.knives.upgradeBonus);
 }
-function enterHide() {
+// 隱身 dur 秒（藏鋒加秒）；已經在隱身就延長。剛消失的那一下：煙、「隱身」字、追著你的怪頭上冒問號
+const STEALTH_COLOR = '#B39DDB', STEALTH_DARK = '#311B92', LOST_RADIUS = 280, LOST_MAX = 6;
+function enterHide(dur, label = '隱身') {
     const r = rogueState(), p = gameState.player;
-    r.hideT = (ROGUE.hideTime + blessVal('longHide') + classMeta('longHide')) * (bl('fidai') ? 2 : 1);
+    const t = dur + blessVal('longHide') + classMeta('longHide');
+    const fresh = r.hideT <= 0;
+    r.hideT = Math.max(r.hideT, t);
+    r.hideMax = r.hideT;
     r.ambush = true;
-    r.waveHides++;
-    spawnParticles(p.pos.x, p.pos.y, '#4527A0', 14, 80, 0.5, 3);
+    if (!fresh) return;
+    spawnParticles(p.pos.x, p.pos.y, '#7E57C2', 22, 110, 0.6, 4);
+    spawnParticles(p.pos.x, p.pos.y, '#B0BEC5', 10, 60, 0.8, 5);
+    spawnFloatText(p.pos.x, p.pos.y - 44, label, STEALTH_COLOR, 15, 1.1, 'smoke');
+    Sfx.play('vanish');
+    let lost = 0;
+    monsterGrid.forEachInRadius(p.pos, LOST_RADIUS, m => {
+        if (lost >= LOST_MAX || !m.isAlive || m.target !== p || m instanceof BossMonster) return;
+        lost++;
+        spawnFloatText(m.pos.x, m.pos.y - (m.imageHeight || 30) * 0.5 - 6, '?', '#ECEFF1', 16, 1.0);
+    });
     if (res('smoke') >= 1) r.smokes.push({ x: p.pos.x, y: p.pos.y, life: SMOKE_TIME });
     if (res('shadowschool') >= 1) spawnShadow(p.pos.x, p.pos.y, gameState.units.Shadow.level, true);
 }
@@ -201,15 +228,14 @@ function enterHide() {
 function rogueUpdate(dt) {
     const r = rogueState(), p = gameState.player;
     if (!p) return;
-    // 潛行：一陣子沒被打就隱身，時間到現身
+    // 隱身：時間到現身（現身時一小團煙）；隱身中回血、身邊冒紫煙
+    if (r.panicT > 0) r.panicT -= dt;
+    if (r.vanishT > 0) r.vanishT -= dt;
     if (r.hideT > 0) {
         r.hideT -= dt;
         p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * ROGUE.hideRegen * dt);
-        if (r.hideT <= 0) { r.hideT = 0; r.notHitT = 0; }
-    }
-    else {
-        r.notHitT += dt;
-        if (r.notHitT >= Math.max(0.4, ROGUE.hideDelay - blessVal('quickHide')) && !gameState.betweenWaves) enterHide();
+        if (Math.random() < dt * 14) spawnParticles(p.pos.x + (Math.random() - 0.5) * 20, p.pos.y + 8, '#5E35B1', 1, 18, 0.7, 3);
+        if (r.hideT <= 0) { r.hideT = 0; spawnParticles(p.pos.x, p.pos.y, '#7E57C2', 10, 70, 0.4, 3); }
     }
     // 目標：死了或不見了就清掉，隔一下再標新的
     r.targets = r.targets.filter(t => t.isAlive);
@@ -242,17 +268,21 @@ function markTarget() {
     const r = rogueState();
     const eliteFirst = res('intel') >= 1;
     let best = null, bestScore = -1;
+    // 眼線：只挑身邊的怪（身邊沒有才放寬到全場）
+    const p = gameState.player, nearSq = bl('earlyMark') && p ? BLESSINGS.earlyMark.per ** 2 : 0;
+    const nearOk = nearSq > 0 && gameState.monsters.some(m => m.isAlive && !m.stealthed && distanceSq(m.pos, p.pos) <= nearSq);
     for (const m of gameState.monsters) {
         if (!m.isAlive || m.stealthed || r.targets.includes(m)) continue;
+        if (nearOk && !(m instanceof BossMonster) && distanceSq(m.pos, p.pos) > nearSq) continue;
         const score = (m instanceof BossMonster ? 1e6 : 0) + (m.isElite ? (eliteFirst ? 1e5 : 1e4) : 0) + (TARGET_PRIORITY[m.config.type] ? 5e3 : 0) + m.maxHealth;
         if (score > bestScore) { bestScore = score; best = m; }
     }
     if (!best) return;
     r.targets.push(best);
     best.markedFullHp = best.currentHealth >= best.maxHealth;
-    r.markT = Math.max(0.5, ROGUE.markDelay - blessVal('earlyMark'));
-    spawnFloatText(best.pos.x, best.pos.y - 30, '目標', '#FF5252', 14, 1.2, 'assassination');
-    Sfx.play('elite');
+    r.markT = ROGUE.markDelay;
+    spawnFloatText(best.pos.x, best.pos.y - 30, '目標', ROGUE_MARK_COLOR, 14, 1.2, 'assassination');
+    Sfx.play('mark');
 }
 function targetDown(m) {
     const r = rogueState(), p = gameState.player;
@@ -261,6 +291,7 @@ function targetDown(m) {
     dropSouls(m.pos.x, m.pos.y, bounty);
     spawnFloatText(m.pos.x, m.pos.y - 34, `刺殺 +${formatNumberK(bounty)}`, '#FFD54F', 16, 1.6, 'assassination');
     stats().rogueTargets = (stats().rogueTargets || 0) + 1;
+    r.waveTargets++;
     if (m.markedFullHp && m.lastHitWasOneShot) gameState.run.flags.rogueOneShot = true;
     if (bl('spoils') && p) p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * blessVal('spoils'));
     if (res('intel') >= 2 && r.firstTargetThisWave) { gameState.relicDrafts++; spawnFloatText(m.pos.x, m.pos.y - 52, '祝福 +1', '#FFD54F', 16, 1.6, 'draft'); }
@@ -276,9 +307,11 @@ function targetDown(m) {
     });
     addShake(5);
     Sfx.play('boss');
+    // 刺殺得手：消失；伏擊留給下一個目標
+    enterHide(ROGUE.killHide);
 }
 
-// ---------- 飛刀：射程內最近的怪；隱身中先射目標 ----------
+// ---------- 飛刀：一次射好幾隻，射程內的目標一定分到一把；伏擊只用在射向目標的那一把 ----------
 const ROGUE_KNIFE = { projectileSpeed: 520, projectileRadius: 3, projectileColor: '#CFD8DC', boltStyle: 'knife' };
 // 飛刀：銀色刀身、皮繩纏的刀柄、尾端一個環，邊飛邊轉
 SHAPE_SPRITES.knife = {
@@ -304,7 +337,9 @@ SHAPE_SPRITES.knife = {
     },
 };
 // 飛刀命中：處決、上毒、記爆擊。Projectile 打中時呼叫 owner.healFromDamage／onHit
-const rogueKnifeOwner = { healFromDamage() {}, onHit: (m) => knifeHit(m) };
+// pierceShield：飛刀打自己的「目標」時無視骨盾衛兵的盾（刺客專挑盔甲的縫）。目標挑的是場上最有威脅、血最多的怪，盾衛常被選中，
+// 全擋的話主要收入的目標用主要武器打不動；其他怪照樣被擋，盾陣對刺客還是麻煩
+const rogueKnifeOwner = { healFromDamage() {}, onHit: (m) => knifeHit(m), pierceShield: (m) => rogueState().targets.includes(m) };
 const rogueTargets = [];
 function rogueKnives(p, dt) {
     const r = rogueState(), K = ROGUE.knife;
@@ -312,26 +347,33 @@ function rogueKnives(p, dt) {
     if (r.knifeT > 0) return;
     const range = K.range, rSq = range * range;
     rogueTargets.length = 0;
-    monsterGrid.forEachInRadius(p.pos, range, m => { if (m.isAlive && !m.stealthed) { const d = distanceSq(m.pos, p.pos); if (d <= rSq) rogueTargets.push({ m, d: r.targets.includes(m) && r.hideT > 0 ? -1 : d }); } });
+    monsterGrid.forEachInRadius(p.pos, range, m => { if (m.isAlive && !m.stealthed) { const d = distanceSq(m.pos, p.pos); if (d <= rSq) rogueTargets.push({ m, d: r.targets.includes(m) ? -1 : d }); } });
     if (!rogueTargets.length) return;
     rogueTargets.sort((a, b) => a.d - b.d);
     r.knifeT = K.interval;
     const tier = getTier(gameState.units.Knives.level);
-    const n = Math.min(rogueTargets.length, 1 + (tier >= 1 ? 1 : 0));
+    const n = Math.min(rogueTargets.length, K.count + (tier >= 1 ? 1 : 0));
     for (let i = 0; i < n; i++) {
-        const t = rogueTargets[i].m;
+        const t = rogueTargets[i].m, isTarget = rogueTargets[i].d < 0;
         let dmg = knifeDamage();
         let crit = false;
-        // 伏擊：隱身後的第一刀
-        if (r.ambush && i === 0) { dmg *= (ROGUE.ambushMult + blessVal('ambushPower') + classMeta('ambushPower')) * (1 + blessVal('critDamage')); r.ambush = false; crit = true; }
+        // 伏擊：隱身換來的那一刀，留給目標
+        if (r.ambush && isTarget) {
+            const mult = ROGUE.ambushMult + blessVal('ambushPower') + classMeta('ambushPower');
+            dmg *= mult * (1 + blessVal('critDamage'));
+            r.ambush = false; crit = true;
+            spawnFloatText(t.pos.x, t.pos.y - (t.imageHeight || 30) * 0.5 - 10, `伏擊 ×${+mult.toFixed(1)}`, ROGUE_MARK_COLOR, 16, 1.0, 'ambush');
+            Sfx.play('ambush');
+        }
         else if (Math.random() < blessVal('critChance')) { dmg *= 2 * (1 + blessVal('critDamage')); crit = true; }
+        if (r.hideT > 0 && bl('fidai')) dmg *= FIDAI_KNIFE;
         if (r.targets.includes(t) && res('assassination') >= 1) dmg *= RES_MARKED_TAKEN;
         if (t.poisonStacks > 0 && res('venomschool') >= 1) dmg *= RES_CORRODE_TAKEN;
         t.lastHitWasOneShot = t.currentHealth >= t.maxHealth && dmg >= t.currentHealth;
         const pr = getProjectileFromPool();
         pr.init(p.pos.x, p.pos.y - 6, t, ROGUE_KNIFE, dmg, rogueKnifeOwner, tier >= 2 ? 1 : 0, false);
         gameState.projectiles.push(pr);
-        if (crit) spawnParticles(t.pos.x, t.pos.y, '#FF5252', 6, 60, 0.3, 2);
+        if (crit) spawnParticles(t.pos.x, t.pos.y, ROGUE_MARK_COLOR, 6, 60, 0.3, 2);
     }
     Sfx.play('mageBolt');
 }
@@ -341,7 +383,7 @@ function knifeHit(m) {
         if (m.isElite) gameState.run.flags.rogueExecElite = true;
         const x = m.pos.x, y = m.pos.y;
         m.takeDamage(m.currentHealth + 1);
-        spawnFloatText(x, y - 20, '處決', '#FF8A80', 12, 0.8);
+        spawnFloatText(x, y - 20, '處決', '#FFE57F', 12, 0.8);
         if (res('shadowschool') >= 2) spawnShadow(x, y, gameState.units.Shadow.level, true);
     }
     // 每一刀都上毒，0 級就有（同飛刀：修練是讓它更強，不是解鎖）。0 級才有毒的話開局完全看不到毒，玩家不知道這張卡在做什麼
@@ -421,9 +463,9 @@ function useBehead() {
         }
         spawnParticles(v.pos.x, v.pos.y, BEHEAD_SLASH, 10, 120, 0.4, 3);
     });
-    enterHide();
+    enterHide(ROGUE.behead.hide);
     gameState.run.novaBest = Math.max(gameState.run.novaBest, kills);
-    spawnFloatText(p.pos.x, p.pos.y - 40, '斬首！', '#FF8A80', 18, 1.1, 'behead');
+    spawnFloatText(p.pos.x, p.pos.y - 40, '斬首！', '#FFE57F', 18, 1.1, 'behead');
     addShake(6);
     Sfx.play('nova');
     gameState.ultCooldown = B.cooldown;
@@ -431,22 +473,55 @@ function useBehead() {
     stats().novas++;
     return true;
 }
-const BEHEAD_SHADOW = '#7E57C2', BEHEAD_SLASH = '#FF5252', BEHEAD_SLASH_ALT = '#E1BEE7';
+// 刀光用刺客的標記金色、一刀金一刀白（我方特效不用紅，見專案 CLAUDE.md）
+const BEHEAD_SHADOW = STEALTH_COLOR, BEHEAD_SLASH = ROGUE_MARK_COLOR, BEHEAD_SLASH_ALT = '#FFF8E1';
 const BEHEAD_SLASH_R = 22, BEHEAD_SLASH_W = 8, BEHEAD_SLASH_GAP = 0.06;
 
-// ---------- 畫面：隱身時半透明、目標的準星、畫面外的箭頭、煙 ----------
+// ---------- 畫面：隱身（腳下暗影＋倒數圈、身體半透明）、伏擊、目標的準星、畫面外的箭頭、煙 ----------
+// 腳下：一灘暗影、外圈淡紫的倒數環（剩幾秒一眼看得到）。畫在主角身體之前
+function drawRogueStealthGround(ctx, p) {
+    const r = rogueState();
+    if (r.hideT <= 0) return;
+    const x = p.pos.x, y = p.pos.y + p.imageHeight * 0.32, R = 24;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.drawImage(getGlowSprite(STEALTH_DARK), x - 46, y - 30, 92, 60);
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = 'rgba(20, 10, 40, 0.8)'; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.ellipse(x, y, R, R * 0.45, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = STEALTH_COLOR; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    const k = Math.max(0, Math.min(1, r.hideT / r.hideMax));
+    ctx.beginPath(); ctx.ellipse(x, y, R, R * 0.45, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
+    ctx.restore();
+}
+// 身體畫完之後：隱身時一圈忽明忽暗的紫色輪廓光；伏擊備好時頭上一把金匕首，隱身中再拉一條金色虛線指向目標
 function drawRogueHud(ctx, p) {
     const r = rogueState();
     if (r.hideT > 0) {
-        // 主角已經畫好了：蓋一層深紫，看起來像融進陰影裡
         ctx.save();
-        ctx.globalAlpha = 0.45;
-        ctx.drawImage(getGlowSprite('#311B92'), p.pos.x - 32, p.pos.y - 34, 64, 64);
+        ctx.globalAlpha = 0.35 + 0.15 * Math.sin(worldTime * 8);
+        ctx.drawImage(getGlowSprite('#7E57C2'), p.pos.x - 34, p.pos.y - 38, 68, 68);
         ctx.restore();
     }
-    if (r.ambush && r.hideT > 0) {
-        const icon = getIconImage('assassination');
-        if (icon) ctx.drawImage(icon, p.pos.x + 22, p.pos.y + p.imageHeight * 0.5 - 4, 14, 14);
+    if (!r.ambush) return;
+    const t = r.targets.find(m => m.isAlive);
+    if (r.hideT > 0 && t) {
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = ROGUE_MARK_COLOR; ctx.lineWidth = 2; ctx.setLineDash([6, 7]); ctx.lineDashOffset = -worldTime * 30;
+        const dx = t.pos.x - p.pos.x, dy = t.pos.y - p.pos.y, d = Math.hypot(dx, dy) || 1, end = Math.max(0, d - Math.max(16, t.imageWidth * 0.45));
+        ctx.beginPath(); ctx.moveTo(p.pos.x + dx / d * 20, p.pos.y + dy / d * 20); ctx.lineTo(p.pos.x + dx / d * end, p.pos.y + dy / d * end); ctx.stroke();
+        ctx.restore();
+    }
+    const icon = getIconImage('ambush');
+    if (icon) {
+        const s = 26 + 2 * Math.sin(worldTime * 6), top = p.pos.y - p.imageHeight * 0.5 - s;
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(getGlowSprite(ROGUE_MARK_COLOR), p.pos.x - s, top - s / 2, s * 2, s * 2);
+        ctx.globalAlpha = 1;
+        ctx.drawImage(icon, p.pos.x - s / 2, top, s, s);
+        ctx.restore();
     }
 }
 function drawRogueWorld(ctx) {
@@ -458,12 +533,12 @@ function drawRogueWorld(ctx) {
         ctx.drawImage(getGlowSprite('#90A4AE'), s.x - SMOKE_RADIUS * 1.3, s.y - SMOKE_RADIUS * 1.3, SMOKE_RADIUS * 2.6, SMOKE_RADIUS * 2.6);
         ctx.restore();
     }
-    // 目標頭上的紅色準星
+    // 目標頭上的金色準星
     for (const t of r.targets) {
         if (!t.isAlive || !inView(t.pos)) continue;
         const R = Math.max(16, t.imageWidth * 0.45), a = worldTime * 2;
         ctx.save();
-        ctx.strokeStyle = '#FF1744'; ctx.lineWidth = 2.5;
+        ctx.strokeStyle = ROGUE_MARK_COLOR; ctx.lineWidth = 2.5;
         ctx.beginPath(); ctx.arc(t.pos.x, t.pos.y, R, 0, Math.PI * 2); ctx.stroke();
         for (let i = 0; i < 4; i++) {
             const b = a + i * Math.PI / 2;
@@ -490,7 +565,7 @@ function drawRogueWorld(ctx) {
     }
     ctx.globalAlpha = 1;
 }
-// 目標在畫面外時，邊緣一個紅箭頭指著牠
+// 目標在畫面外時，邊緣一個金箭頭指著牠
 function drawTargetPointers(ctx) {
     const r = rogueState(), W = view.cssW, H = view.cssH, z = view.zoom, pad = 30;
     for (const t of r.targets) {
@@ -501,7 +576,7 @@ function drawTargetPointers(ctx) {
         const x = cx + dx * k, y = cy + dy * k, a = Math.atan2(dy, dx);
         ctx.save();
         ctx.translate(x, y); ctx.rotate(a);
-        ctx.fillStyle = '#FF1744'; ctx.strokeStyle = '#1b1424'; ctx.lineWidth = 2;
+        ctx.fillStyle = ROGUE_MARK_COLOR; ctx.strokeStyle = '#1b1424'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(12, 0); ctx.lineTo(-8, -9); ctx.lineTo(-4, 0); ctx.lineTo(-8, 9); ctx.closePath(); ctx.fill(); ctx.stroke();
         ctx.restore();
     }

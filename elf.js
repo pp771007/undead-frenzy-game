@@ -271,6 +271,7 @@ function fireArrow(x, y, target, dmg, elem) {
 
 // 箭：直線飛、碰到怪就打（可以穿透）；不用 Projectile 是因為要穿透、要記「是不是回頭射」
 const ARROW_HIT_R = 12, ARROW_LIFE = 0.9, ARROW_TURN = 7;
+const ELF_SHIELD_BLOCK = 0.5;
 class Arrow extends TimedEffect {
     constructor(x, y, dir, target, dmg, pierce, back, elem, homing, chains) {
         super({ x, y }, ARROW_LIFE);
@@ -309,6 +310,10 @@ class Arrow extends TimedEffect {
         const surge = (1 + blessVal('elemSurge')) * (res('elemental') >= 1 ? RES_RESONANCE_MULT : 1);
         const el = this.elem;
         if (el === 'fire' || el === 'all') dmg *= 1 + (FIRE_BASE + blessVal('fireArrow')) * surge;
+        // 骨盾衛兵：箭也算飛彈，但精靈的箭只被擋一半（其他飛彈全擋）。精靈的火力幾乎全在箭上，全擋的話碰到盾陣只剩陷阱和夥伴；
+        // 原本箭完全不吃盾牌，跟「盾牌擋飛彈」矛盾，盾衛對精靈也等於不存在
+        const block = projectileBlockAt(m) * ELF_SHIELD_BLOCK;
+        if (block > 0) { dmg *= 1 - block; spawnParticles(m.pos.x, m.pos.y, '#CFD8DC', 3, 50, 0.2, 2); }
         m.takeDamage(dmg);
         m.lastArrowHit = true;
         if (this.back) {

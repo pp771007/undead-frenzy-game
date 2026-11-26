@@ -47,8 +47,18 @@ function updateCamera(deltaTime, moveVec) {
     cameraLead.x += (moveVec.x * CAMERA_LEAD - cameraLead.x) * lk;
     cameraLead.y += (moveVec.y * CAMERA_LEAD - cameraLead.y) * lk;
     const k = Math.min(1, deltaTime * CAMERA_FOLLOW);
-    camera.x += (p.pos.x + cameraLead.x - view.w / 2 - camera.x) * k;
-    camera.y += (p.pos.y + cameraLead.y - view.h / 2 - camera.y) * k;
+    let tx = p.pos.x + cameraLead.x, ty = p.pos.y + cameraLead.y;
+    // 首領登場：鏡頭帶到首領身上再拉回來
+    const pan = bossIntroPan();
+    if (pan > 0) {
+        const b = gameState.bossIntro.boss.pos;
+        tx += (b.x - tx) * pan; ty += (b.y - ty) * pan;
+        camera.x = tx - view.w / 2 + (camera.x - (tx - view.w / 2)) * 0.8;
+        camera.y = ty - view.h / 2 + (camera.y - (ty - view.h / 2)) * 0.8;
+        return;
+    }
+    camera.x += (tx - view.w / 2 - camera.x) * k;
+    camera.y += (ty - view.h / 2 - camera.y) * k;
 }
 const CULL_MARGIN = 80;
 function inView(pos) {
@@ -74,7 +84,9 @@ const uiElements = {
     titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'), finalTarget: $id('final-target'),
     lbScreen: $id('lb-screen'), lbTabs: $id('lb-tabs'), lbList: $id('lb-list'), lbCloseBtn: $id('lb-close-btn'),
     lbDetail: $id('lb-detail'), lbDetailBody: $id('lb-detail-body'), lbDetailCloseBtn: $id('lb-detail-close-btn'),
-    lbCongrats: $id('lb-congrats'), lbCongratsRanks: $id('lb-congrats-ranks'), lbCongratsResult: $id('lb-congrats-result'), lbNameInput: $id('lb-name-input'),
+    classGuide: $id('class-guide'), classGuideBtn: $id('class-guide-btn'), pauseGuideBtn: $id('pause-guide-btn'), cgOkBtn: $id('cg-ok-btn'),
+    cgPortrait: $id('cg-portrait'), cgName: $id('cg-name'), cgTagline: $id('cg-tagline'), cgRules: $id('cg-rules'), cgCards: $id('cg-cards'), cgUlt: $id('cg-ult'),
+    lbCongrats: $id('lb-congrats'), lbCongratsTitle: $id('lb-congrats-title'), lbCongratsCheer: $id('lb-congrats-cheer'), lbCongratsRanks: $id('lb-congrats-ranks'), lbCongratsResult: $id('lb-congrats-result'), lbNameInput: $id('lb-name-input'),
     lbCongratsOkBtn: $id('lb-congrats-ok-btn'), lbCongratsCloseBtn: $id('lb-congrats-close-btn'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
@@ -192,7 +204,7 @@ const CONFIG = {
         avoidanceRadius: 16, avoidanceForce: 120,
         playerAvoidanceForce: 50,
         wanderRadius: 15, wanderSpeedFactor: 0.3, wanderIntervalMin: 1.8, wanderIntervalMax: 3.5,
-        projectileColor: '#F06292', boltStyle: 'eye',
+        projectileColor: '#FFC400', boltStyle: 'eye',
         projectileSpeed: 300,
         projectileRadius: 3,
         retreatCheckDistance: 40,
@@ -255,9 +267,9 @@ const CONFIG = {
         soulDrop: 5, waveSpeedIncreaseFactor: 0.008,
         minWave: 9, waveInterval: 4,
     },
-    // 首領的招式（見 BossMonster 的出招節奏）：一次只出一招，每招「前搖預警 → 出招 → 破綻」。
-    // cd 冷卻秒數、windup 前搖、dmg 打召喚物（× 首領攻擊）、hp 打主角（× 主角最大生命，再乘 BOSS_TIER_HIT）、recover 收招後的破綻秒數；
-    // reach／minRange 是主角（或首領當下的目標）要在多遠內／外才出這招；phase2: true 的招半血以後才會出
+    // 首領的招式（見 BossMonster 的出招節奏）：一次只出一招，每招「前搖預警 → 出招 → 收招」。
+    // cd 冷卻秒數、windup 前搖、dmg 打召喚物（× 首領攻擊）、hp 打主角（× 主角最大生命，再乘 BOSS_TIER_HIT）、recover 收招後站著不動幾秒；
+    // reach／minRange 是主角（或首領當下的目標）要在多遠內／外才出這招；phase2: true 的招第二階段起才會出；phase2Speed 是最終階段出招加快的倍率
     boss: {
         type: 'Boss', name: '骸骨巨像', baseHealth: 500, baseAttack: 22, radius: 26,
         imageName: 'armored_melee', art: 'boss_colossus', imgScaleMultiplier: 4.5, tint: '#AB47BC', tintStrength: 0.5,
@@ -265,7 +277,7 @@ const CONFIG = {
         soulDrop: 40, waveSpeedIncreaseFactor: 0.004,
         // 首領只吃一半的緩速，不然一隻怨靈就能把它定在原地
         slowResist: 0.5,
-        moveGap: 1.6, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moveGap: 1.6, phase2Speed: 1.3,
         moves: {
             // 重踏：跳起來，腳下紅圈填滿時砸下，震波往外擴散
             slam: { cd: 5, reach: 150, windup: 1.0, radius: 85, dmg: 1.0, hp: 0.18, recover: 1.0 },
@@ -283,7 +295,7 @@ const CONFIG = {
         attackRange: 30, attackSpeed: 0.8, moveSpeed: 26, color: '#33691E',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.004,
         slowResist: 0.5,
-        moveGap: 1.6, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moveGap: 1.6, phase2Speed: 1.3,
         moves: {
             // 孕育：鼓脹幾下，身邊冒出一圈自爆怪
             brood: { cd: 8, windup: 0.8, countBase: 3, countPerTier: 1, radius: 40, recover: 0.4 },
@@ -301,7 +313,7 @@ const CONFIG = {
         attackRange: 26, attackSpeed: 1.2, moveSpeed: 55, color: '#311B92',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.006,
         slowResist: 0.5,
-        moveGap: 1.3, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moveGap: 1.3, phase2Speed: 1.3,
         moves: {
             // 疾影衝刺：紅線預警，沿線衝過去；半血後衝完立刻轉向主角再衝，一輪三次（後兩次預警短）
             dash: { cd: 4.5, reach: 300, windup: 0.8, chainWindup: 0.45, chain: 3, length: 260, width: 28, travel: 0.15, dmg: 1.5, hp: 0.15, recover: 0.7 },
@@ -317,7 +329,7 @@ const CONFIG = {
         imageName: 'boss_colossus', art: 'boss_dragon', imgScaleMultiplier: 4.5, artScale: 5, tint: '#2E7D32', tintStrength: 0.55,
         attackRange: 34, attackSpeed: 0.7, moveSpeed: 34, color: '#2E7D32',
         soulDrop: 50, waveSpeedIncreaseFactor: 0.004, slowResist: 0.5,
-        moveGap: 1.6, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moveGap: 1.6, phase2Speed: 1.3,
         moves: {
             // 吐息：朝主角畫一塊扇形預警，蓄力後整塊噴下去（大軍擠在前面會被燒一大片，主角要閃出扇形）；半血後連噴三口、左右掃
             breath: { cd: 6, reach: 280, windup: 1.0, range: 240, angle: Math.PI / 3.5, dmg: 2.5, hp: 0.22, sweep: 0.9, sweepEvery: 0.4, recover: 0.8 },
@@ -343,12 +355,13 @@ const CONFIG = {
         attackRange: 90, attackSpeed: 1, moveSpeed: 68, color: '#5E35B1',
         soulDrop: 6, waveSpeedIncreaseFactor: 0.006,
         minWave: 11, waveInterval: 7,
-        // 潛行時召喚物看不到她（見 SpatialGrid.rebuild），只在蓄力到刺完後現形的那段時間會被大軍圍毆，所以每隻幾乎都會出手一次。
+        // 潛行時召喚物看不到她（見 SpatialGrid.rebuild）；蓄力時也還隱身，刺完才現形 revealTime 秒，這段時間會被大軍圍毆，所以每隻都會出手一次。
         // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
-        // 傷害是法師最大生命的固定比例、不隨波數變大：站著不動才會中，一直走一定閃得掉（法師走速 × 蓄力 0.75 秒 ≫ 判定半徑）
-        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 0.75, strikeRadius: 34, strikeHpRatio: 0.3,
+        // 傷害是主角最大生命的固定比例、不隨波數變大。蓄力 1.1 秒：聽到預警音、看到紅圈後約 0.45 秒才開始走，剩 0.65 秒，最慢的德魯伊（88）也走得出半徑 34 的圈；
+        // 0.75 秒時站著不動的人反應正常也閃不掉（剩 0.3 秒只走得了 26～33）。戰士虛脫（移速減半）時還是閃不太掉，那是虛脫的代價
+        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 1.1, strikeRadius: 34, strikeHpRatio: 0.3,
         // 平常半透明（潛行），蓄力到瞬移後這段時間現形
-        stealthAlpha: 0.5, revealTime: 1.5,
+        stealthAlpha: 0.5, revealTime: 2.2,
     },
     spitter: {
         type: 'Spitter', name: '瘟疫投手', baseHealth: 30, baseAttack: 5, radius: 12,
@@ -477,7 +490,7 @@ const CONFIG = {
         // 施法型：站在遠處，不普攻
         attackRange: 170, attackSpeed: 0.5, moveSpeed: 32, color: '#B71C1C',
         soulDrop: 120, waveSpeedIncreaseFactor: 0.004, slowResist: 0.5,
-        moveGap: 1.5, phase2Ratio: 0.5, phase2Speed: 1.4,
+        moveGap: 1.5, phase2Speed: 1.4,
         moves: {
             // 喚骨：舉杖，身邊爬出一圈敵方骷髏
             raise: { cd: 7, windup: 0.8, count: 5, radius: 45, recover: 0.3 },
@@ -597,7 +610,7 @@ const CONFIG = {
     // 兵種進化：等級到門檻就升一階（一顆星），外型變大換色、多一個能力
     evolution: {
         levels: [10, 25, 50],
-        tints: ['#64B5F6', '#FFD54F', '#EF5350'],
+        tints: ['#64B5F6', '#FFD54F', '#B388FF'],   // 第三階不用紅：紅色是警示色，召喚物染紅會看成敵方的紅骷髏
         tintStrength: [0.28, 0.32, 0.36],
         sizeBonusPerTier: 0.12,
         names: {
@@ -643,11 +656,11 @@ const PACT_SCHOOL = 'pact';
 const RUN_MOD_LABELS = {
     summonDmgMult: { label: '召喚物傷害', good: true },
     summonAtkSpeedMult: { label: '召喚物攻速', good: true },
-    boltDmgMult: { label: '法師靈魂彈傷害', good: true },
+    boltDmgMult: { label: '主角普攻傷害', good: true },
     soulMult: { label: '靈魂掉落', good: true },
     costMult: { label: '召喚費用', good: false },
     novaCdMult: { label: '新星冷卻', good: false },
-    mageHpMult: { label: '法師血量', good: true },
+    mageHpMult: { label: '主角血量', good: true },
     hpMult: { label: '怪物血量', good: false },
     atkMult: { label: '怪物攻擊', good: false },
     speedMult: { label: '怪物移速', good: false },
@@ -718,7 +731,7 @@ function blessIcon(id) { return BLESSINGS[id].icon || id; }
 // 同 Hades 的雙神祝福、吸血鬼倖存者的武器進化：專精一條路要有爆發點，不然 27 張各加一點數字，選哪張都差不多
 const SCHOOLS = {
     skel: { name: '骷髏', img: 'skeleton_warrior.png', color: '#ECEFF1', res: [{ name: '骨潮', desc: '骷髏攻速 +25%' }, { name: '不滅骨軍', desc: '骷髏陣亡時 35% 當場重組' }] },
-    eye: { name: '眼魔', img: 'eye_monster.png', color: '#F48FB1', res: [{ name: '連環凝視', desc: '眼魔的彈多彈射 1 次' }, { name: '千眼', desc: '眼魔每次多射 1 發' }] },
+    eye: { name: '眼魔', img: 'eye_monster.png', color: '#FFD54F', res: [{ name: '連環凝視', desc: '眼魔的彈多彈射 1 次' }, { name: '千眼', desc: '眼魔每次多射 1 發' }] },
     wraith: { name: '怨靈', img: 'wraith.png', color: '#80CBC4', res: [{ name: '冥域', desc: '怨靈光環範圍 +30%' }, { name: '哀嚎', desc: '怨靈每 3 秒脈衝，傷害 ×2' }] },
     mage: { name: '法師', img: 'player.png', color: '#80DEEA', res: [{ name: '魂彈連發', desc: '法師射速 +40%' }, { name: '新星湧動', desc: '新星冷卻 -35%' }] },
     soul: { name: '靈魂', icon: 'soulSchool', color: '#B2EBF2', res: [{ name: '引魂', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '靈魂掉落 +30%' }] },
@@ -955,7 +968,8 @@ const ACHV_THIEVES = 5;
 const ACHV_LAST_STAND = 0.1;
 const ACHV_STEADY = 0.5;
 const ACHV_FLAWLESS_WAVE = 20;
-const ACHV_BLITZ_SECONDS = 20;
+// 首領戰有登場、護甲（每階至少 5 秒）、換階段，最快也要二十幾秒：「閃電戰」以 40 秒為準
+const ACHV_BLITZ_SECONDS = 40;
 // 前兩隻首領自動遊玩都能無傷、20 秒內打倒：這兩個挑戰從這一波的首領起才算
 const ACHV_BOSS_CHALLENGE_WAVE = 30;
 const ACHV_LEGENDS = 3;
@@ -1162,7 +1176,7 @@ const UNIT_TYPES = {
 //   onBossKill(boss)：打倒首領時；onRelic(relic)：遺跡讀條完成時，回傳 true 就取代預設效果
 //   canAfford(cost)／pay(cost)：用什麼付召喚與升級（吸血鬼可以拿自己的血付）；onOrbCollect(value)：撿到靈魂時，回傳要存進錢包的量
 //   soulMult(monster)：這隻怪掉的靈魂倍率；onMonsterKill(monster)：怪死掉時
-//   heroHidden()：主角這一格怪看不到（刺客隱身）
+//   heroHidden()：主角這一格怪看不到（刺客隱身）；heroAlpha()：主角身體的透明度；drawHeroUnder(ctx, player)：畫在主角身體之前（腳下）
 //   targetableSummons()：怪找目標時看得到的召喚物（沒有就是全部）；德魯伊離得太遠的橡樹會沉睡、怪不理
 //   drawWorld(ctx)：世界座標、畫在特效之後；drawScreen(ctx)：螢幕座標、畫在介面之前
 //   currency：{ icon, glow: [r, g, b] }，錢包與掉落物長什麼樣（吸血鬼是血）；沒有就是靈魂
@@ -1300,7 +1314,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -1862,7 +1876,20 @@ const SFX_DEFS = {
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
     splat: { gap: 0.15, fn: s => { s.noise(0.2, { vol: 0.15, filterFreq: 700 }); s.tone(140, 0.18, { vol: 0.08, slideTo: 70 }); } },
+    // 首領登場：低沉的兩聲鼓＋往下滑的長音；護甲碎裂：玻璃碎掉的亮聲＋往下掉的音
+    bossIntro: { gap: 2, fn: s => { s.noise(0.5, { vol: 0.3, filterFreq: 300 }); s.noise(0.5, { vol: 0.3, filterFreq: 300, delay: 0.35 }); s.tone(196, 1.4, { type: 'sawtooth', vol: 0.12, slideTo: 98, delay: 0.1 }); } },
+    armorBreak: { gap: 0.5, fn: s => { s.noise(0.35, { vol: 0.3, filterFreq: 6000 }); [1568, 1175, 880, 659].forEach((f, i) => s.tone(f, 0.16, { type: 'triangle', vol: 0.12, delay: i * 0.06 })); } },
+    // 招魂反轉：一聲低沉的碎裂，接一串往上翻的亮音
+    tombClaim: { gap: 0.5, fn: s => { s.noise(0.4, { vol: 0.18, filterFreq: 700 }); [330, 494, 659, 988].forEach((f, i) => s.tone(f, 0.28, { type: 'triangle', vol: 0.12, delay: 0.08 + i * 0.07 })); } },
+    // 上榜：一串往上爬的和弦；煙火每炸一顆一聲悶響
+    lbCheer: { gap: 1, fn: s => { [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.3, { type: 'triangle', vol: 0.14, delay: i * 0.09 })); s.tone(1568, 0.6, { type: 'sine', vol: 0.08, delay: 0.5 }); } },
     victory: { gap: 1, fn: s => { [523, 659, 784, 1046, 1318].forEach((f, i) => s.tone(f, 0.35, { type: 'triangle', vol: 0.16, delay: i * 0.12 })); } },
+    // 有招式瞄準主角（或主角在範圍裡）：兩聲短促的高音。所有這類招式共用這一個，點升級、看別處時用聽的也知道要閃
+    aimWarn: { gap: 0.25, fn: s => { s.tone(1760, 0.07, { type: 'square', vol: 0.07 }); s.tone(1760, 0.07, { type: 'square', vol: 0.07, delay: 0.11 }); } },
+    rumble: { gap: 0.4, fn: s => s.noise(0.5, { vol: 0.12, filterFreq: 250 }) },
+    // 刺客：消失（一陣往下沉的風聲）、伏擊（短促的金屬聲）
+    vanish: { gap: 0.3, fn: s => { s.noise(0.35, { vol: 0.16, filterFreq: 1200 }); s.tone(900, 0.3, { type: 'sine', vol: 0.07, slideTo: 220 }); } },
+    ambush: { gap: 0.15, fn: s => { s.tone(2600, 0.08, { type: 'square', vol: 0.06, slideTo: 1800 }); s.noise(0.12, { vol: 0.18, filterFreq: 5000 }); } },
     mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
@@ -2068,6 +2095,26 @@ const PLAYER_MAX_HIT_RATIO = 0.4;
 // 這個上限是一大塊難度：0.1～0.15 時躲在大軍後面的職業（亡靈法師、刺客、精靈）沒強化也常常通關，
 // 而加怪物攻擊、血量補不回來（只會磨大軍，碰不到主角）。0.2 = 至少被咬五下才倒
 const MELEE_HERO_HIT_RATIO = 0.2;
+// 契約、詛咒、每日變異的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
+// 上限固定時，後期怪物攻擊早就超過上限，+30% 乘上去還是被壓回 20%；主角血量少三成，上限（最大血量的 20%）也跟著小三成，
+// 一樣被咬 5 下才倒 —— 兩種代價後期都等於沒有。所以上限 × 怪物攻擊倍率 ÷ 主角血量倍率（例：戰狂契約 20% → 26%，約 4 下倒）。
+// 刺客、首領大招、血瞳、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
+// 疊太多時封頂在 HERO_HIT_CAP_MAX，不會一下就倒（玻璃之軀主角血量只剩四分之一，不封頂的話普攻一下 80%）
+const HERO_HIT_CAP_MAX = { melee: 0.35, any: 0.6 };
+// 招式瞄準主角時響預警音：pos/radius 給了就只在主角站在範圍裡時響（打大軍不吵）
+function warnHero(pos = null, radius = 0) {
+    const p = gameState.player;
+    if (!p || !p.isAlive) return;
+    if (pos && distanceSq(p.pos, pos) > radius * radius) return;
+    Sfx.play('aimWarn');
+}
+function heroPenaltyScale() {
+    const m = runMods();
+    return m.atkMult / m.mageHpMult;
+}
+function heroHitCap(ratio, max) {
+    return Math.min(max, ratio * heroPenaltyScale());
+}
 // 吸到靈魂時法師身上的光暈：每吸一顆加一點，每秒淡掉這麼多
 const ABSORB_GLOW_PER_ORB = 0.35;
 const ABSORB_GLOW_DECAY = 2.5;
@@ -2145,7 +2192,8 @@ class Player extends GameObject {
         // 單一下傷害封頂：滿血不會被一下秒掉（後期精英腐屍一爆就超過法師血量），死亡要來自看得到的壓力
         const cls = classDef();
         if (cls.heroDamageTakenMult) amount *= cls.heroDamageTakenMult();
-        const lost = Math.min(amount, this.maxHealth * PLAYER_MAX_HIT_RATIO, this.currentHealth);
+        if (gameState.wardTimer > 0) amount *= ALTAR_EFFECTS.ward.mult;
+        const lost = Math.min(amount, this.maxHealth * heroHitCap(PLAYER_MAX_HIT_RATIO, HERO_HIT_CAP_MAX.any), this.currentHealth);
         this.currentHealth -= lost;
         if (cls.onHeroHurt && lost > 0) cls.onHeroHurt(lost / this.maxHealth);
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
@@ -2182,13 +2230,18 @@ class Player extends GameObject {
         return true;
     }
     draw(ctx) {
+        const cls = classDef();
+        if (this.isAlive && cls.drawHeroUnder) cls.drawHeroUnder(ctx, this);
         if (this.isAlive && this.absorbGlow > 0 && orbGlowSprite) {
             const g = 70 + this.absorbGlow * 20;
             ctx.globalAlpha = Math.min(1, this.absorbGlow) * 0.75;
             ctx.drawImage(orbGlowSprite, this.pos.x - g / 2, this.pos.y - g / 2, g, g);
             ctx.globalAlpha = 1;
         }
+        const alpha = this.isAlive && cls.heroAlpha ? cls.heroAlpha() : 1;
+        if (alpha < 1) ctx.globalAlpha = alpha;
         super.draw(ctx);
+        ctx.globalAlpha = 1;
         // 施法瞬間杖頭亮一下
         if (this.isAlive && this.castGlow > 0) {
             const tip = this.staffTip(), g = CAST_GLOW_SIZE * (0.6 + 0.4 * this.castGlow);
@@ -2200,6 +2253,7 @@ class Player extends GameObject {
     // 法師的血條一直貼在腳下：眼睛本來就盯著法師，不用另外去看角落
     drawHealthBar(ctx) {
         if (!this.isAlive) return;
+        ctx.globalAlpha = 1;
         const w = 38, h = 6;
         const x = this.pos.x - w / 2, y = this.pos.y + this.imageHeight * 0.5 + 1;
         const ratio = Math.max(0, this.currentHealth / this.maxHealth);
@@ -2748,7 +2802,7 @@ class SummonUnit extends GameObject {
         if (reviveChance > 0 && !this.revived && Math.random() < reviveChance) {
             this.revived = true;
             this.currentHealth = Math.round(this.maxHealth * E.skelReviveHealth);
-            spawnParticles(this.pos.x, this.pos.y, '#EF9A9A', 10, 60, 0.5);
+            spawnParticles(this.pos.x, this.pos.y, '#B2EBF2', 10, 60, 0.5);
             return;
         }
         this.isAlive = false;
@@ -2996,8 +3050,10 @@ class Projectile {
 
             if (distToTargetSq <= hitRadiusSq) {
                 const hit = this.target;
-                const block = this.style === 'soul' ? 0 : projectileBlockAt(hit);
+                const pierce = this.style === 'soul' || !!(this.owner && this.owner.pierceShield && this.owner.pierceShield(hit));
+                const block = pierce ? 0 : projectileBlockAt(hit);
                 if (block) spawnParticles(this.pos.x, this.pos.y, '#CFD8DC', 3, 50, 0.2, 2);
+                else if (pierce && projectileBlockAt(hit) > 0) spawnParticles(this.pos.x, this.pos.y, '#FFD740', 5, 70, 0.25, 2);
                 else if (this.homing) soulBoltBurst(this.pos);
                 else spawnParticles(this.pos.x, this.pos.y, this.color, BOLT_HIT_SPARKS, 60, 0.25, 2);
                 const dealt = this.damage * (1 - block);
@@ -3240,9 +3296,10 @@ const BOLT_TAIL_LEN = 20;
 const BOLT_TRAIL_COUNT = 4;
 const BOLT_HIT_SPARKS = 4;
 const BOLT_SPRITE_PX_PER_UNIT = 3;
-// 誰射的就用誰的顏色：眼魔粉紅、法師靈魂青（跟靈魂光球同色）
+// 誰射的就用誰的顏色：眼魔金黃、法師靈魂青（跟靈魂光球同色）。
+// 紅色是警示色，只給玩家判斷危險用（敵人的攻擊、預警圈、低血量）；我方的攻擊、特效、標記都不用紅、粉紅
 const BOLT_STYLES = {
-    eye: { glowIn: 'rgba(255, 179, 213, 0.85)', glowMid: 'rgba(240, 98, 146, 0.35)', glowOut: 'rgba(240, 98, 146, 0)', body: '#F06292', core: '#FCE4EC' },
+    eye: { glowIn: 'rgba(255, 236, 140, 0.9)', glowMid: 'rgba(255, 196, 0, 0.38)', glowOut: 'rgba(255, 196, 0, 0)', body: '#FFC400', core: '#FFF8E1' },
     soul: { glowIn: 'rgba(214, 251, 251, 0.9)', glowMid: 'rgba(127, 240, 240, 0.38)', glowOut: 'rgba(127, 240, 240, 0)', body: '#7FF0F0', core: '#E8FFFF' },
     blood: { glowIn: 'rgba(255, 138, 128, 0.95)', glowMid: 'rgba(213, 0, 0, 0.45)', glowOut: 'rgba(213, 0, 0, 0)', body: '#D50000', core: '#FFCDD2' },
     // 首領的彈幕：每隻一個顏色，看彈的顏色就知道是誰打的
@@ -3327,7 +3384,7 @@ class SweepEffect extends TimedEffect {
         const k = 1 - this.life / this.duration;
         ctx.save();
         ctx.globalAlpha = Math.max(0, 1 - k) * 0.85;
-        ctx.strokeStyle = this.rage ? '#FF5252' : '#ECEFF1';
+        ctx.strokeStyle = this.rage ? '#FF9100' : '#ECEFF1';
         ctx.lineWidth = 6 * (1 - k) + 2;
         ctx.lineCap = 'round';
         ctx.beginPath();
@@ -3668,6 +3725,7 @@ class Monster extends GameObject {
 
     soulValue() {
         if (this.noSouls) return 0;
+        if (this.bounty) return this.bounty;
         return this.config.soulDrop * (this.isElite ? CONFIG.elite.soulMult : 1);
     }
 
@@ -3844,7 +3902,7 @@ class Monster extends GameObject {
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
         let dmg = this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1) * overtimeMult();
-        if (this.target === gameState.player) dmg = Math.min(dmg, this.target.maxHealth * MELEE_HERO_HIT_RATIO);
+        if (this.target === gameState.player) dmg = Math.min(dmg, this.target.maxHealth * heroHitCap(MELEE_HERO_HIT_RATIO, HERO_HIT_CAP_MAX.melee));
         this.target.takeDamage(dmg, this);
 
         if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
@@ -3996,19 +4054,32 @@ class BloaterMonster extends Monster {
     }
 }
 
-// ---------- 首領 ----------
-// 出招節奏：一次只出一招，每招都是「前搖（身上發光、地上畫預警）→ 出招 → 破綻」。
-// 破綻時首領站著喘、頭上冒星星、受到的傷害 ×BOSS_OPENING_TAKEN：閃過一招就有一段反擊的空檔，打首領才有來回。
-// 好幾招同時壓上來的話，看得到預警也閃不掉（第一版各招各自計時就是這樣，死靈法師的大軍在第 10 波首領被一口氣打光）
-const BOSS_OPENING_TAKEN = 1.5;
-const BOSS_OPENING_TEXT_MIN = 0.9;   // 破綻這麼久以上才跳「破綻」兩個字（短的只冒星星，不然字太多）
+// ---------- 首領戰：登場、護甲、破防、三階段 ----------
+// 原本首領只是血比較多的怪：後期火力成倍成長，第 10、20 波首領 4～15 秒、亡靈王 1 秒多就倒（自動遊玩量的），完全沒有打首領的感覺。
+// 參考 Hades（護甲條打破才吃傷害、破了會硬直）、Halls of Torment／HoloCure（登場演出、畫面上方大血條、分階段）：
+//   登場：小怪清光後從天而降（updateBossEntrance），落地後畫面上下壓黑邊、時間變慢、鏡頭帶到首領身上報名字，首領這段時間不動也不受傷
+//   護甲：首領身上一圈金光，護甲在時完全不掉血；護甲每秒最多被削 armorMax / armorMinTime（火力再強也要打 armorMinTime 秒，大招一下打不穿）
+//   破防：護甲打光 → 首領暈 breakTime 秒、受到的傷害 ×breakMult（放大招的時候）；沒趁機打到下一階段的話護甲長回 regrow
+//   三階段：血打到 phases 的門檻就停住（破防再猛也一次只能打掉一階），換階段時怒吼震開大軍、叫出一批小怪、變強，護甲全長回來；
+//           第二階段起多出新招（config.moves 裡 phase2: true 的），最終階段出招再快 phase2Speed 倍
+// 弱的玩家也照樣打得完：護甲量跟著首領血量（armorFrac），破防時 ×1.5 傷害；只是要多打幾輪
+const BOSS_FIGHT = {
+    armorFrac: 0.25, armorMinTime: 5, burstFrac: 0.3, breakTime: 5, breakMult: 1.5, regrow: 0.6,
+    phases: [2 / 3, 1 / 3], transitionTime: 1.6, roarRadius: 170, roarPush: 70, adds: [6, 10], phaseBuff: 1.15,
+    introTime: 2.6, introSlowmo: 0.2,
+};
+const BOSS_ARMOR_COLOR = '#FFD54F';
+const BOSS_BREAK_COLOR = '#80DEEA';
+const BOSS_PHASE_NAMES = ['', '第二階段', '最終階段'];
+// 出招節奏：一次只出一招，每招都是「前搖（身上發光、地上畫預警）→ 出招 → 收招」，收招時站著不動，是反擊的空檔。
+// 好幾招同時壓上來的話，看得到預警也閃不掉（各招各自計時時死靈法師的大軍在第 10 波首領被一口氣打光）
 // 落地後第一招前先給幾秒看清楚牠；開場各招冷卻先走掉一部分，不會一落地就全部一起好
 const BOSS_FIRST_MOVE_DELAY = 1.5;
 const BOSS_FIRST_CD = 0.5;
 // 打主角的比例照第幾隻首領打折：第一隻首領要讓第一次碰到的人學得會躲
 const BOSS_TIER_HIT = [0.7, 0.85, 1];
 const BOSS_AIM_LEN = 150;            // 彈幕前搖時畫出來的彈道線多長
-const BOSS_STAR_COUNT = 3;
+const BOSS_FINAL_PHASE = 3;
 class BossMonster extends Monster {
     constructor(x, y, waveNumber, config) {
         super(x, y, config, waveNumber, false);
@@ -4016,7 +4087,14 @@ class BossMonster extends Monster {
         this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult * (1 + BOSS_HP_PER_TIER * this.tier));
         this.attack *= 1 + BOSS_ATK_PER_TIER * this.tier;
         this.spawnedAt = worldTime;
-        this.enraged = false;
+        this.phase = 1;
+        this.armorMax = this.maxHealth * BOSS_FIGHT.armorFrac;
+        this.armor = this.armorMax;
+        this.armorBudget = 0;
+        this.breakT = 0;
+        this.transT = 0;
+        this.introPending = true;
+        this.blockFxT = 0;
         this.cd = {};
         for (const id in config.moves) this.cd[id] = config.moves[id].cd * BOSS_FIRST_CD;
         this.gap = BOSS_FIRST_MOVE_DELAY;
@@ -4029,41 +4107,137 @@ class BossMonster extends Monster {
     }
     // 飛在天上時誰都打不到、也不會被當成目標（格子不收潛行中的單位）
     get stealthed() { return this.airborne; }
-    get speedMult() { return this.enraged ? this.config.phase2Speed : 1; }
+    // 第二階段起多出新招、最終階段出招更快（換階段本身另外加攻擊與移速，見 nextPhase）
+    get enraged() { return this.phase >= 2; }
+    get speedMult() { return this.phase >= BOSS_FINAL_PHASE ? this.config.phase2Speed : 1; }
+    get armorRate() { return this.armorMax / BOSS_FIGHT.armorMinTime; }
     playerHit(ratio) { return ratio * BOSS_TIER_HIT[Math.min(this.tier, BOSS_TIER_HIT.length) - 1]; }
     playerWithin(p, r) { return p.isAlive && distanceSq(this.pos, p.pos) <= r * r; }
     playerBeyond(p, r) { return p.isAlive && distanceSq(this.pos, p.pos) >= r * r; }
     targetWithin(r) { return !!this.target && this.target.isAlive && distanceSq(this.pos, this.target.pos) <= r * r; }
     // 這隻首領的招式：id → { when(player) 現在能不能出、start(player) 回傳一段動作 }。id 對到 config.moves
     buildMoves() { return {}; }
-    // 一段動作：dur 秒；tick(t, dt) 每格；done() 結束時（裡面再 startAct 就是連段，不進破綻）；
-    // charge 秒數內身上的光越來越亮；aim 是前搖時畫出來的彈道角度；recover 是收招後的破綻
+    // 一段動作：dur 秒；tick(t, dt) 每格；done() 結束時（裡面再 startAct 就是連段，不收招）；
+    // charge 秒數內身上的光越來越亮；aim 是前搖時畫出來的彈道角度；warn 瞄準主角（響預警音）；recover 是收招站著不動多久
     startAct(a) {
         this.act = { t: 0, recover: 0, charge: 0, ...a };
     }
+    // 被破防暈住、換階段時，手上那一招直接中斷（已經畫出來的預警照樣落下）
+    cancelAct() {
+        this.act = null;
+        this.recover = 0;
+        this.lift = 0;
+        this.fade = 1;
+        this.drawScale = 1;
+        this.airborne = false;
+    }
     newCast() { return { hit: new Set(), wasIn: false, left: 0 }; }
+    // 每格在 update 之前呼叫：回傳 true 時這格不動（登場、換階段、破防暈眩中）
+    bossTick(deltaTime) {
+        if (this.introPending) {
+            this.introPending = false;
+            startBossIntro(this);
+        }
+        if (gameState.bossIntro && gameState.bossIntro.boss === this) { this.tickFlash(deltaTime); return true; }
+        this.armorBudget = Math.min(this.armorBudget + this.armorRate * deltaTime, this.armorRate * BOSS_FIGHT.burstFrac);
+        this.blockFxT -= deltaTime;
+        if (this.transT > 0) {
+            this.transT -= deltaTime;
+            this.tickFlash(deltaTime);
+            if (this.transT <= 0) { this.armor = this.armorMax; this.armorBudget = 0; }
+            return true;
+        }
+        if (this.breakT > 0) {
+            this.breakT -= deltaTime;
+            this.tickFlash(deltaTime);
+            if (this.breakT <= 0) {
+                this.armor = this.armorMax * BOSS_FIGHT.regrow;
+                this.armorBudget = 0;
+                spawnParticles(this.pos.x, this.pos.y, BOSS_ARMOR_COLOR, 18, 90, 0.5, 3);
+                spawnFloatText(this.pos.x, this.pos.y - 50, '護甲恢復', BOSS_ARMOR_COLOR, 15, 1.1, 'bossArmor');
+            }
+            return true;
+        }
+        return false;
+    }
+    get invulnerable() { return this.airborne || this.transT > 0 || !!(gameState.bossIntro && gameState.bossIntro.boss === this); }
     takeDamage(amount) {
-        if (this.airborne) return;
-        super.takeDamage(amount * (this.recover > 0 ? BOSS_OPENING_TAKEN : 1));
+        if (!this.isAlive || this.invulnerable) return;
+        if (this.armor > 0) {
+            const a = Math.min(amount, this.armor, this.armorBudget);
+            this.armor -= a;
+            this.armorBudget -= a;
+            if (this.blockFxT <= 0) {
+                this.blockFxT = 0.12;
+                spawnParticles(this.pos.x + randomInRange(-this.radius, this.radius), this.pos.y - this.radius * 0.5, BOSS_ARMOR_COLOR, 2, 70, 0.3, 2);
+            }
+            if (this.armor <= 0.5) this.breakArmor();
+            return;
+        }
+        if (this.breakT > 0) amount *= BOSS_FIGHT.breakMult;
+        // 一次只能打掉一階：打到門檻就停住、換階段
+        const floor = this.phase <= BOSS_FIGHT.phases.length ? this.maxHealth * BOSS_FIGHT.phases[this.phase - 1] : 0;
+        if (floor > 0 && this.currentHealth - amount * (1 + metaVal('might')) <= floor) {
+            this.currentHealth = Math.round(floor);
+            this.hitFlash = CONFIG.visuals.hitFlashDuration;
+            this.nextPhase();
+            return;
+        }
+        super.takeDamage(amount);
+    }
+    breakArmor() {
+        this.armor = 0;
+        this.breakT = BOSS_FIGHT.breakTime;
+        this.cancelAct();
+        spawnParticles(this.pos.x, this.pos.y, BOSS_ARMOR_COLOR, 40, 220, 0.8, 4);
+        spawnParticles(this.pos.x, this.pos.y, '#FFFFFF', 14, 140, 0.5, 3);
+        spawnFloatText(this.pos.x, this.pos.y - 60, '破防！', BOSS_BREAK_COLOR, 24, 1.6, 'bossBreak');
+        addShake(9);
+        Sfx.play('armorBreak');
+    }
+    nextPhase() {
+        this.phase++;
+        this.breakT = 0;
+        this.armor = 0;
+        this.transT = BOSS_FIGHT.transitionTime;
+        this.cancelAct();
+        // 換完階段馬上出招：新招在這一階才解鎖，讓玩家一進新階段就看到
+        this.gap = 0;
+        for (const id in this.cd) if (this.config.moves[id].phase2) this.cd[id] = 0;
+        this.attack *= BOSS_FIGHT.phaseBuff;
+        this.baseMoveSpeed *= BOSS_FIGHT.phaseBuff;
+        this.moveSpeed = this.baseMoveSpeed;
+        // 怒吼：震開身邊的大軍
+        const R = BOSS_FIGHT.roarRadius, rSq = R * R;
+        for (const s of gameState.summons) {
+            if (!s.isAlive) continue;
+            const dx = s.pos.x - this.pos.x, dy = s.pos.y - this.pos.y, d = Math.hypot(dx, dy);
+            if (d * d > rSq || d < 1) continue;
+            const push = BOSS_FIGHT.roarPush * (1 - d / R);
+            s.pos.x += dx / d * push; s.pos.y += dy / d * push;
+        }
+        gameState.visualEffects.push(new NovaEffect(this.pos, R, BOSS_ROAR_COLORS));
+        addWorldFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: R, life: 0.7, color: this.auraColor, width: 9 });
+        // 叫一批小怪
+        const n = BOSS_FIGHT.adds[Math.min(this.phase - 2, BOSS_FIGHT.adds.length - 1)];
+        for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2, r = this.radius * 2 + 20;
+            const Cls = i % 3 === 2 ? FastMeleeMonster : BasicMeleeMonster;
+            gameState.monsters.push(new Cls(this.pos.x + Math.cos(a) * r, this.pos.y + Math.sin(a) * r, this.waveNumber, false));
+        }
+        spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 40, 200, 0.8, 4);
+        const name = BOSS_PHASE_NAMES[this.phase - 1] || '';
+        gameState.banner = { text: name, sub: `${this.config.name}變強了`, color: this.phase >= 3 ? '#FF8A80' : '#E1BEE7', life: CONFIG.wave.bannerDuration * 0.9, icon: 'bossPhase' };
+        addShake(12);
+        Sfx.play('boss');
     }
     applySlow(amount, duration) {
         super.applySlow(amount * (1 - this.config.slowResist), duration);
-    }
-    // 血量掉到 phase2Ratio 以下進第二階段（只觸發一次）：招式變快、多出新招
-    checkEnrage() {
-        if (this.enraged || this.currentHealth >= this.maxHealth * this.config.phase2Ratio) return;
-        this.enraged = true;
-        spawnFloatText(this.pos.x, this.pos.y - 40, '狂怒', '#FF8A80', 20, 1.4);
-        spawnParticles(this.pos.x, this.pos.y, this.auraColor, 30, 160, 0.7, 4);
-        addWorldFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 160, life: 0.7, color: this.auraColor, width: 8 });
-        addShake(8);
-        Sfx.play('boss');
     }
     get auraColor() { return this.config.color; }
     update(deltaTime, player, summons) {
         if (!this.isAlive) return;
         if (!this.moves) this.moves = this.buildMoves();
-        this.checkEnrage();
         const sp = this.speedMult;
         for (const id in this.cd) this.cd[id] -= deltaTime * sp;
         if (this.act) {
@@ -4086,7 +4260,11 @@ class BossMonster extends Monster {
                 this.cd[id] = this.config.moves[id].cd;
                 this.lastMove = id;
                 this.gap = this.config.moveGap;
+                const before = gameState.bossMarks.length;
                 this.startAct(this.moves[id].start(player));
+                // 瞄準主角的招（彈幕、追著主角丟的）、或預警圈罩住主角時，響預警音：看別處也聽得到要閃
+                const aimed = this.act && (this.act.aim || this.act.warn);
+                if (aimed || gameState.bossMarks.slice(before).some(m => bossMarkHits(m, player.pos))) warnHero();
                 return;
             }
         }
@@ -4106,9 +4284,7 @@ class BossMonster extends Monster {
     startRecover(sec) {
         this.drawScale = 1;
         this.lift = 0;
-        if (!(sec > 0)) return;
-        this.recover = sec;
-        if (sec >= BOSS_OPENING_TEXT_MIN) spawnFloatText(this.pos.x, this.pos.y - this.imageHeight * 0.6, '破綻', '#FFE082', 15, 0.9);
+        if (sec > 0) this.recover = sec;
     }
     faceTo(pos) { this.updateFacingDirection(pos.x - this.pos.x); }
     drawHealthBar() { }
@@ -4150,17 +4326,6 @@ class BossMonster extends Monster {
         if (this.lift) ctx.translate(0, -this.lift);
         super.draw(ctx);
         ctx.restore();
-        // 破綻：頭上繞圈的星星
-        if (this.recover > 0) {
-            const top = this.pos.y - this.imageHeight * 0.55;
-            ctx.fillStyle = '#FFE082';
-            ctx.strokeStyle = '#5D4037';
-            ctx.lineWidth = 1.5;
-            for (let i = 0; i < BOSS_STAR_COUNT; i++) {
-                const ang = worldTime * 4 + i * Math.PI * 2 / BOSS_STAR_COUNT;
-                drawStarShape(ctx, this.pos.x + Math.cos(ang) * this.radius * 0.9, top + Math.sin(ang) * 6, 6);
-            }
-        }
     }
     die() {
         super.die();
@@ -4181,14 +4346,6 @@ class BossMonster extends Monster {
     }
 }
 const BOSS_SHADOW = 'rgba(0, 0, 0, 0.35)';
-function drawStarShape(ctx, x, y, r) {
-    ctx.beginPath();
-    for (let i = 0; i < 10; i++) {
-        const ang = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
-        if (i === 0) ctx.moveTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr); else ctx.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr);
-    }
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-}
 function angleTo(from, to) { return Math.atan2(to.y - from.y, to.x - from.x); }
 
 // ---------- 首領的地面預警 ----------
@@ -4235,7 +4392,7 @@ function fireBossMark(m) {
         if (s.isAlive && !cast.hit.has(s) && bossMarkHits(m, s.pos)) { cast.hit.add(s); s.takeDamage(m.dmg); }
     });
     const p = gameState.player;
-    if (p && p.isAlive && !cast.hit.has(p) && bossMarkHits(m, p.pos)) { cast.hit.add(p); p.takeDamage(p.maxHealth * m.hp, m.source); }
+    if (p && p.isAlive && !cast.hit.has(p) && bossMarkHits(m, p.pos)) { cast.hit.add(p); p.takeDamage(p.maxHealth * m.hp * heroPenaltyScale(), m.source); }
     const color = m.color;
     if (m.shape === 'line') {
         addWorldFx({ kind: 'beam', x: m.x, y: m.y, dx: m.dx, dy: m.dy, len: m.len, w: m.w, life: 0.35, color });
@@ -4515,7 +4672,7 @@ class ColossusBoss extends BossMonster {
         const cast = this.newCast();
         let thrown = 0;
         return {
-            dur: M.every * M.count, charge: M.every, recover: M.recover,
+            dur: M.every * M.count, charge: M.every, recover: M.recover, warn: true,
             tick: (t) => {
                 const player = gameState.player;
                 while (thrown < M.count && t >= M.every * (thrown + 0.5) && player) {
@@ -4892,9 +5049,8 @@ function updateBossEntrance(deltaTime) {
         const Cls = gameState.pendingBoss;
         gameState.pendingBoss = null;
         gameState.bossEntrance = { Cls, x: p.pos.x + Math.cos(a) * BOSS_ENTRANCE_DIST, y: p.pos.y + Math.sin(a) * BOSS_ENTRANCE_DIST, t: 0 };
-        gameState.banner = Cls === LichBoss
-            ? { text: '最終決戰', sub: `${bossDisplayName(Cls)}降臨`, color: '#FF8A65', life: CONFIG.wave.bannerDuration * 1.5, icon: 'boss' }
-            : { text: '首領來襲', sub: bossDisplayName(Cls), color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
+        // 名字等落地後的登場演出再報（startBossIntro），這裡只用畫面轉暗、地上紅圈倒數
+        gameState.banner = null;
         Sfx.play('boss');
         return;
     }
@@ -5059,8 +5215,8 @@ class AssassinMonster extends Monster {
         if (this.blinkTimer <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.blinkRange * c.blinkRange) {
             this.windup = c.blinkWindup;
             this.mark = { x: player.pos.x, y: player.pos.y };
-            this.revealed = c.blinkWindup + c.revealTime;
-            Sfx.play('mark');
+            // 蓄力時還隱身：現形的話大軍會在她出手前圍上去打死她，標記等於沒出現過。刺下去之後才現形（見 strike）
+            warnHero();
             return;
         }
         super.update(deltaTime, player, summons);
@@ -5077,12 +5233,13 @@ class AssassinMonster extends Monster {
             this.updateFacingDirection(player.pos.x - this.pos.x);
             const effect = getVisualEffectFromPool(SlashEffect);
             if (effect) { effect.init(this.pos, player.pos); gameState.visualEffects.push(effect); }
-            player.takeDamage(player.maxHealth * c.strikeHpRatio, this);
+            player.takeDamage(player.maxHealth * c.strikeHpRatio * heroPenaltyScale(), this);
         } else {
             spawnFloatText(this.mark.x, this.mark.y - 20, '閃過', '#B3E5FC', 13);
         }
         this.mark = null;
         this.blinkTimer = c.blinkCooldown;
+        this.revealed = c.revealTime;
     }
     // 標記另外畫在召喚物之上、法師之下：不然會被大軍蓋住，刺客本人在畫面外時也會漏畫
     drawMark(ctx) {
@@ -5232,7 +5389,7 @@ function updateEnemyBolts(deltaTime) {
             if (distanceSq(b.pos, p.pos) <= hit * hit) {
                 b.travel = Infinity;
                 spawnParticles(b.pos.x, b.pos.y, BOLT_STYLES[b.style || 'blood'].body, BLOOD_BOLT_HIT_SPARKS, 110, 0.35, 3);
-                p.takeDamage(p.maxHealth * (b.hpRatio || c.boltPlayerHpRatio), b.source);
+                p.takeDamage(p.maxHealth * (b.hpRatio || c.boltPlayerHpRatio) * heroPenaltyScale(), b.source);
             }
         }
     }
@@ -5374,6 +5531,12 @@ class TombstoneMonster extends Monster {
         }
         if (n > 0 && inView(this.pos)) Sfx.play('spawn');
     }
+    // 被打倒：招魂反轉（牠招的狼全部被鎖鏈拖倒、化成靈魂，墓碑翻成你的、替你招狼）
+    die() {
+        const wolves = this.spawned.filter(m => m.isAlive);
+        super.die();
+        claimTomb(this, wolves);
+    }
     // 時間到自己垮掉：不算擊殺、不掉靈魂
     crumble() {
         this.isAlive = false;
@@ -5410,6 +5573,199 @@ class TombstoneMonster extends Monster {
         ctx.fillRect(this.pos.x - 2, y + h * 0.25, 4, h * 0.45);
         ctx.fillRect(this.pos.x - w * 0.25, y + h * 0.38, w * 0.5, 4);
         ctx.globalAlpha = 1;
+    }
+}
+
+// ---------- 招魂反轉：打倒招魂墓碑 → 牠招的狼全倒下噴靈魂，墓碑翻成你的、替你招狼 ----------
+// 拆墓碑原本只拿一點靈魂、不拆 30 秒後也會自己垮，沒人想專程過去。現在：
+//   1. 拆的那一刻，牠招出來還活著的狼被靈魂鎖鏈一條條拖倒，每隻噴 bountyShare × 墓碑的靈魂（越拖越多狼、越危險，拆的時候噴得越多）
+//   2. 墓碑翻成你的顏色，接下來 life 秒每 spawnInterval 秒替你招 spawnCount 隻狼（同時最多 maxAlive 隻），每隻活 wolfLife 秒
+// 我方的顏色用天藍：敵方墓碑是灰石綠火、牠的狼是紅的；戰鬥畫面上紅色只留給敵人（見 CLAUDE.md）
+const TOMB_CLAIM = { life: 15, spawnInterval: 2.5, spawnCount: 2, maxAlive: 8, wolfLife: 20, wolfHpMult: 4, wolfAtkMult: 2, bountyShare: 0.3, novaRadius: 130 };
+const TOMB_ALLY = '#4FC3F7';
+const TOMB_ALLY_LIGHT = '#E1F5FE';
+const TOMB_ALLY_TINT = 0.6;           // 狼與墓碑染天藍的強度：原圖是紅狼、灰石，要一眼看得出換邊了
+const TOMB_CLAIM_COLORS = { fill: '79, 195, 247', stroke: '225, 245, 254' };
+const TOMB_CHAIN_TIME = 0.55;         // 鎖鏈從墓碑射到每隻狼、狼化成靈魂的這一段多長
+const TOMB_CHAIN_STAGGER = 0.05;      // 每條鎖鏈之間錯開一點，看得出是一條一條拖過去的
+CONFIG.tombWolf = {
+    type: 'TombWolf', name: '招魂狼', baseHealth: CONFIG.basicMeleeMonster.baseHealth, baseAttack: CONFIG.basicMeleeMonster.baseAttack, radius: 11,
+    imageName: 'basic_melee', imgScaleMultiplier: 4.6, attackRange: 22, attackSpeed: 1.1, moveSpeed: 95, color: TOMB_ALLY, upgradeBonus: 0,
+    targetSearchRadius: 200, returnDistance: 60, avoidanceRadius: 14, avoidanceForce: 100, playerAvoidanceForce: 40,
+    wanderRadius: 30, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
+};
+
+function claimTomb(t, wolves) {
+    const p = gameState.player;
+    const bounty = Math.max(1, Math.round(t.soulValue() * TOMB_CLAIM.bountyShare));
+    wolves.forEach((w, i) => {
+        gameState.visualEffects.push(new TombChainEffect(t.pos, w.pos, i * TOMB_CHAIN_STAGGER));
+        w.noSouls = false;
+        w.bounty = bounty;
+        w.die();
+        spawnParticles(w.pos.x, w.pos.y, TOMB_ALLY, 12, 90, 0.6, 3);
+    });
+    if (!gameState.ownedTombs) gameState.ownedTombs = [];
+    gameState.ownedTombs.push({
+        x: t.pos.x, y: t.pos.y, life: TOMB_CLAIM.life, spawnT: 0.6, wolves: [], phase: Math.random() * Math.PI * 2,
+        image: t.image, w: t.imageWidth * (t.drawScale || 1), h: t.imageHeight * (t.drawScale || 1),
+    });
+    gameState.visualEffects.push(new NovaEffect(t.pos, TOMB_CLAIM.novaRadius, TOMB_CLAIM_COLORS));
+    spawnParticles(t.pos.x, t.pos.y, TOMB_ALLY, 36, 160, 0.8, 3.5);
+    spawnParticles(t.pos.x, t.pos.y, TOMB_ALLY_LIGHT, 14, 80, 0.6, 2.5);
+    // 第一次用橫幅講清楚規則；之後只在墓碑上飄字（同時出現會重複兩次「招魂反轉」）
+    const first = !(meta.relicSeen && meta.relicSeen.tombClaim);
+    introduceRelic('tombClaim', '招魂反轉', `墓碑歸你了，接下來 ${TOMB_CLAIM.life} 秒替你招狼`, TOMB_ALLY, 'tombClaim');
+    if (!(first && gameState.banner && gameState.banner.icon === 'tombClaim')) spawnFloatText(t.pos.x, t.pos.y - 46, '招魂反轉！', TOMB_ALLY, 20, 1.5, 'tombClaim');
+    if (wolves.length) spawnFloatText(t.pos.x, t.pos.y - 22, `${wolves.length} 隻化為靈魂`, TOMB_ALLY_LIGHT, 13, 1.4);
+    addShake(6);
+    Sfx.play('tombClaim');
+}
+
+// 佔領的墓碑：只在打的時候倒數、招狼（波與波之間停住）
+function updateOwnedTombs(deltaTime) {
+    const list = gameState.ownedTombs;
+    if (!list || !list.length || !gameState.player) return;
+    const C = TOMB_CLAIM;
+    for (const o of list) {
+        if (gameState.betweenWaves) continue;
+        o.life -= deltaTime;
+        if (Math.random() < deltaTime * 6) spawnParticles(o.x + randomInRange(-10, 10), o.y - o.h * 0.35, TOMB_ALLY, 1, 25, 0.7, 2.5);
+        if (o.life <= 0) {
+            spawnParticles(o.x, o.y, '#B0BEC5', 22, 90, 0.6, 3);
+            spawnParticles(o.x, o.y, TOMB_ALLY, 12, 70, 0.5, 2.5);
+            continue;
+        }
+        o.spawnT -= deltaTime;
+        if (o.spawnT > 0) continue;
+        o.spawnT = C.spawnInterval;
+        o.wolves = o.wolves.filter(w => w.isAlive);
+        const n = Math.min(C.spawnCount, C.maxAlive - o.wolves.length);
+        for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const w = new TombWolf(o.x + Math.cos(a) * 26, o.y + Math.sin(a) * 26, gameState.currentWave, gameState.player);
+            gameState.summons.push(w);
+            o.wolves.push(w);
+            spawnParticles(w.pos.x, w.pos.y, TOMB_ALLY, 10, 70, 0.45, 2.5);
+        }
+        if (n > 0 && inView(o)) Sfx.play('raise');
+    }
+    gameState.ownedTombs = list.filter(o => o.life > 0);
+}
+
+// 地上：天藍光暈、倒數圈、染成天藍的墓碑（畫在召喚物底下，狼從牠身邊跑出來）
+function drawOwnedTombs() {
+    const list = gameState.ownedTombs;
+    if (!list || !list.length) return;
+    const t = worldTime;
+    for (const o of list) {
+        if (!inView(o)) continue;
+        const pulse = 0.75 + 0.25 * Math.sin(t * 4 + o.phase);
+        const g = o.w * 2.6 * pulse;
+        ctx.globalAlpha = 0.55;
+        ctx.drawImage(getGlowSprite(TOMB_ALLY), o.x - g / 2, o.y - g / 2, g, g);
+        ctx.globalAlpha = 1;
+        const rx = Math.max(26, o.w * 0.55), ry = rx * 0.38, gy = o.y + o.h * 0.4;
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = 'rgba(14, 10, 20, 0.7)';
+        ctx.beginPath(); ctx.ellipse(o.x, gy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = TOMB_ALLY;
+        const k = Math.max(0, o.life / TOMB_CLAIM.life);
+        ctx.globalAlpha = o.life < 3 ? 0.45 + 0.55 * Math.abs(Math.sin(t * 6)) : 1;
+        ctx.beginPath(); ctx.ellipse(o.x, gy, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (o.image) ctx.drawImage(getSprite(o.image, o.w, o.h, TOMB_ALLY, 0.35), o.x - o.w / 2, o.y - o.h / 2, o.w, o.h);
+    }
+}
+
+// 我方的招魂狼：跟敵方的血狼同一張圖、染成天藍，腳下一圈天藍；不算進任何兵種、時間到自己散掉
+class TombWolf extends SummonUnit {
+    constructor(x, y, wave, p) {
+        super(x, y, CONFIG.tombWolf, 0, p);
+        this.wave = wave;
+        this.life = TOMB_CLAIM.wolfLife;
+        this.refreshStats();
+        this.currentHealth = this.maxHealth;
+    }
+    computeStats() {
+        super.computeStats();
+        const k = getWaveStatMultiplier(Math.max(1, this.wave || gameState.currentWave));
+        this.maxHealth = Math.round(CONFIG.tombWolf.baseHealth * TOMB_CLAIM.wolfHpMult * k * (1 + blessVal('boneArmor')) * (1 + classMeta('summonHp')));
+        this.attack = CONFIG.tombWolf.baseAttack * TOMB_CLAIM.wolfAtkMult * k * runMods().summonDmgMult;
+        this.tint = TOMB_ALLY; this.tintStrength = TOMB_ALLY_TINT; this.drawScale = 1;
+    }
+    update(deltaTime, ...rest) {
+        if (!this.isAlive) return;
+        if (!gameState.betweenWaves) {
+            this.life -= deltaTime;
+            if (this.life <= 0) { this.fade(); return; }
+        }
+        super.update(deltaTime, ...rest);
+    }
+    attackTarget() {
+        const t = this.target;
+        if (!t || !t.isAlive) return;
+        const dmg = Math.round(this.attack * (this.auraDamageMult || 1));
+        t.takeDamage(dmg);
+        this.healFromDamage(dmg);
+        const fx = getVisualEffectFromPool(SlashEffect);
+        if (fx) { fx.init(this.pos, t.pos); gameState.visualEffects.push(fx); }
+        this.attackCooldown = 1 / this.attackSpeed;
+    }
+    // 時間到：化成一縷天藍散掉（不算陣亡、祭司也拉不起來）
+    fade() {
+        this.isAlive = false;
+        spawnParticles(this.pos.x, this.pos.y, TOMB_ALLY, 8, 50, 0.5, 2.5);
+    }
+    die() {
+        this.isAlive = false;
+        onSummonDeath(this);
+        spawnParticles(this.pos.x, this.pos.y, TOMB_ALLY, 10, 70, 0.45);
+    }
+    drawHealthBar(ctx) {
+        ctx.strokeStyle = 'rgba(79, 195, 247, 0.8)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.38, this.radius * 1.1, this.radius * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+        super.drawHealthBar(ctx);
+    }
+}
+
+// 鎖鏈：從墓碑射向牠招的每一隻狼，一節一節的天藍光，打到的那一刻狼那邊炸一圈
+class TombChainEffect extends TimedEffect {
+    constructor(from, to, delay) {
+        super(from, TOMB_CHAIN_TIME + delay);
+        this.to = { ...to };
+        this.delay = delay;
+        this.seed = Math.random() * 10;
+    }
+    draw(ctx) {
+        const age = this.duration - this.life - this.delay;
+        if (age < 0) return;
+        const k = Math.min(1, age / (TOMB_CHAIN_TIME * 0.35));          // 射出去的進度
+        const fade = 1 - Math.max(0, (age - TOMB_CHAIN_TIME * 0.35) / (TOMB_CHAIN_TIME * 0.65));
+        const x0 = this.pos.x, y0 = this.pos.y - 10, x1 = x0 + (this.to.x - x0) * k, y1 = y0 + (this.to.y - y0) * k;
+        const nx = -(y1 - y0), ny = x1 - x0, len = Math.hypot(nx, ny) || 1;
+        const SEG = 7;
+        ctx.save();
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        for (const [w, col, a] of [[9, TOMB_ALLY, 0.35], [3.5, TOMB_ALLY, 0.9], [1.5, TOMB_ALLY_LIGHT, 1]]) {
+            ctx.globalAlpha = a * fade;
+            ctx.strokeStyle = col; ctx.lineWidth = w;
+            ctx.beginPath();
+            for (let i = 0; i <= SEG; i++) {
+                const f = i / SEG, wob = (i === 0 || i === SEG) ? 0 : Math.sin(f * 9 + this.seed + worldTime * 20) * 5;
+                const x = x0 + (x1 - x0) * f + nx / len * wob, y = y0 + (y1 - y0) * f + ny / len * wob;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+        if (k >= 1) {
+            const r = 6 + 22 * (1 - fade);
+            ctx.globalAlpha = fade;
+            ctx.strokeStyle = TOMB_ALLY_LIGHT; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(this.to.x, this.to.y, r, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
     }
 }
 
@@ -5466,7 +5822,7 @@ class BatMonster extends Monster {
     }
     attackTarget() {
         if (this.target !== gameState.player) { super.attackTarget(); return; }
-        this.target.takeDamage(this.target.maxHealth * this.config.playerHpRatio, this);
+        this.target.takeDamage(this.target.maxHealth * this.config.playerHpRatio * heroPenaltyScale(), this);
         this.attackCooldown = 1.0 / this.attackSpeed;
     }
     update(deltaTime, player, summons) {
@@ -5593,6 +5949,7 @@ class CorpseWormMonster extends Monster {
                 this.stateT = c.warnTime;
                 this.mark = { x: this.pos.x, y: this.pos.y };
                 Sfx.play('rumble');
+                warnHero(this.mark, c.eruptRadius + 25);
             }
             return;
         }
@@ -5615,7 +5972,7 @@ class CorpseWormMonster extends Monster {
         this.mark = null;
         const r = c.eruptRadius, rSq = r * r, dmg = this.attack * c.eruptDamageMult;
         summonGrid.forEachInRadius(this.pos, r, s => { if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg); });
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.eruptPlayerHpRatio, this);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.eruptPlayerHpRatio * heroPenaltyScale(), this);
         spawnParticles(this.pos.x, this.pos.y, '#8D6E63', 26, 160, 0.6, 4);
         addShake(6);
         Sfx.play('slam');
@@ -5750,7 +6107,7 @@ function updateHazards(deltaTime) {
         const rSq = h.r * h.r;
         summonGrid.forEachInRadius(h, h.r, s => { if (s.isAlive && distanceSq(h, s.pos) <= rSq) s.takeDamage(h.dmg); });
         if (p && p.isAlive && distanceSq(h, p.pos) <= rSq) {
-            p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio, h.source);
+            p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio * heroPenaltyScale(), h.source);
             spawnFloatText(p.pos.x, p.pos.y - 30, hazardStyle(h).hurtText, hazardStyle(h).light, 13, 0.6);
         }
     }
@@ -5878,8 +6235,29 @@ const RELIC_TYPES = {
     // pool：一座泉總共回多少（× 法師血量上限），回完就乾
     spring: { name: '靈泉', hint: '站在裡面回血', icon: 'spring', art: 'relic_spring', artW: 72, color: '#A5D6A7', glow: '67, 160, 71', healPerSec: 0.15, pool: 0.6 },
     // 靈魂 = 上一波全部掉落的 soulShare 倍：跟著當下的經濟成長，不用另外調每一波的數字
-    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'coffinRelic', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, draftChance: 0.35, weight: 1 },
+    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'coffinRelic', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, weight: 1 },
 };
+// 祭壇每座只有一種效果，冒出來時就決定：頭上的圖示就是那個效果、圈的顏色也跟著換，走過去之前就看得懂會拿到什麼。
+// 效果刻意少、各自一句話講得完（大軍變強／自己變硬／怪變慢），戰局中瞄一眼就認得
+// frenzy 是原本的戰鼓（各職業的 onRelic 換成自己的版本）；其他兩種所有職業都一樣
+const ALTAR_EFFECTS = {
+    frenzy: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'altar', color: '#E1BEE7', glow: '186, 104, 200' },
+    ward: { name: '護佑祭壇', hint: '站上去，10 秒內受傷減半', icon: 'altarWard', color: '#80DEEA', glow: '0, 172, 193', time: 10, mult: 0.5 },
+    slow: { name: '遲滯祭壇', hint: '站上去，全場怪物變慢', icon: 'altarSlow', color: '#C5E1A5', glow: '124, 179, 66', time: 7, amount: 0.5 },
+};
+// 遲滯期間每隔這麼久把全場的怪（含新冒出來的）再緩一次
+const ALTAR_SLOW_REAPPLY = 0.5;
+// 寶棺開出什麼：開之前不知道（開箱的期待），開了用大字＋圖示講清楚
+const COFFIN_LOOT = [
+    { id: 'souls', weight: 2 },
+    { id: 'draft', weight: 1 },
+    { id: 'level', weight: 1, levels: 2 },
+];
+// 遺跡畫出來的樣子：祭壇疊上它那種效果的名字、圖示、顏色
+function relicLook(r) {
+    const T = RELIC_TYPES[r.kind];
+    return r.kind === 'altar' ? { ...T, ...ALTAR_EFFECTS[r.effect || 'frenzy'] } : T;
+}
 // 物件的底邊落在範圍圈中心往下這麼多：看起來是「放在圈裡」，法師走進圈時站在物件前面
 const RELIC_ART_BASE = 16;
 // 喝乾的靈泉、還沒拿完的泉：立繪的不透明度從這個值（快乾了）到 1（滿的）
@@ -5911,7 +6289,13 @@ function placeRelic(kind, angle, pair) {
     const p = gameState.player, T = RELIC_TYPES[kind];
     const [dMin, dMax] = classDef().relicDist || [RELIC_DIST_MIN, RELIC_DIST_MAX];
     const d = randomInRange(dMin, dMax);
-    gameState.relics.push({ kind, x: p.pos.x + Math.cos(angle) * d, y: p.pos.y + Math.sin(angle) * d, progress: 0, pool: T.pool || 0, healFrac: 0, healShown: 0, healTextTimer: 0, done: false, fade: 1, life: RELIC_LIFE, pair });
+    const r = { kind, x: p.pos.x + Math.cos(angle) * d, y: p.pos.y + Math.sin(angle) * d, progress: 0, pool: T.pool || 0, healFrac: 0, healShown: 0, healTextTimer: 0, done: false, fade: 1, life: RELIC_LIFE, pair };
+    if (kind === 'altar') {
+        const effects = Object.keys(ALTAR_EFFECTS);
+        r.effect = effects[Math.floor(Math.random() * effects.length)];
+    }
+    gameState.relics.push(r);
+    return r;
 }
 
 // 每種只在玩家第一次看到時用橫幅介紹；之後靠畫面邊緣的箭頭和地上的圖示就認得
@@ -5930,13 +6314,14 @@ function spawnRelic() {
     const kind = pickRelicKind();
     const fork = gameState.currentWave >= RELIC_FORK_WAVE && Math.random() < RELIC_FORK_CHANCE;
     const pair = fork ? Math.random() : 0;
-    placeRelic(kind, a, pair);
+    const first = placeRelic(kind, a, pair);
     if (fork) {
         placeRelic(pickRelicKind(kind), a + Math.PI + randomInRange(-RELIC_FORK_SPREAD, RELIC_FORK_SPREAD), pair);
         introduceRelic('fork', '二選一', '走進一座，另一座就崩塌', '#FFE082', 'fork');
     }
-    const T = RELIC_TYPES[kind];
-    introduceRelic(kind, T.name, T.hint, T.color, T.icon);
+    const L = relicLook(first);
+    // 戰鼓沿用舊的 key 'altar'：玩過的人不用再介紹一次
+    introduceRelic(first.effect && first.effect !== 'frenzy' ? `altar_${first.effect}` : kind, L.name, L.hint, L.color, L.icon);
     Sfx.play('spawn');
 }
 
@@ -5953,17 +6338,34 @@ function breakRelicPartner(r) {
 
 function expireRelic(r) {
     r.done = true;
-    spawnParticles(r.x, r.y, RELIC_TYPES[r.kind].color, 12, 60, 0.5, 2);
+    spawnParticles(r.x, r.y, relicLook(r).color, 12, 60, 0.5, 2);
     spawnFloatText(r.x, r.y - 30, '消散', '#BDBDBD', 13, 0.9);
 }
 
 function finishRelic(r) {
-    const T = RELIC_TYPES[r.kind];
+    const T = relicLook(r);
     const p = gameState.player;
     r.done = true;
     stats().relics[r.kind] = (stats().relics[r.kind] || 0) + 1;
     gameState.run.relics[r.kind] = true;
     spawnParticles(r.x, r.y, T.color, 30, 160, 0.7, 3);
+    const effect = r.kind === 'altar' ? (r.effect || 'frenzy') : null;
+    if (effect === 'ward') {
+        gameState.wardTimer = Math.max(gameState.wardTimer || 0, T.time);
+        spawnFloatText(p.pos.x, p.pos.y - 34, '護佑：受傷減半', T.color, 18, 1.2, T.icon);
+        spawnParticles(p.pos.x, p.pos.y, T.color, 24, 120, 0.6, 3);
+        Sfx.play('nova');
+        return;
+    }
+    if (effect === 'slow') {
+        gameState.altarSlowTimer = Math.max(gameState.altarSlowTimer || 0, T.time);
+        gameState.altarSlowTick = 0;
+        spawnFloatText(p.pos.x, p.pos.y - 34, '遲滯：怪物變慢', T.color, 18, 1.2, T.icon);
+        addShake(4);
+        Sfx.play('nova');
+        return;
+    }
+    // 職業的 onRelic 只換掉戰鼓（frenzy）和寶棺；護佑、遲滯所有職業都一樣
     if (classDef().onRelic && classDef().onRelic(r)) return;
     if (r.kind === 'altar') {
         gameState.frenzyTimer = Math.max(gameState.frenzyTimer, T.frenzy);
@@ -5973,20 +6375,55 @@ function finishRelic(r) {
         addShake(5);
         Sfx.play('nova');
     } else if (r.kind === 'coffin') {
-        const souls = Math.max(T.soulMin, Math.round(gameState.lastWaveSouls * T.soulShare));
-        dropSouls(r.x, r.y, souls);
-        // 寶棺自己噴的不算進「這一波掉了多少」，不然下一座寶棺會越滾越大
-        gameState.waveSouls -= souls;
-        spawnFloatText(r.x, r.y - 30, `+${formatNumberK(souls)}`, '#80DEEA', 18, 1.3, 'soul');
-        if (Math.random() < T.draftChance) {
-            gameState.relicDrafts++;
-            spawnFloatText(r.x, r.y - 52, '祝福 +1', '#FFD54F', 18, 1.6, 'draft');
-        }
+        openCoffin(r, T);
         addShake(4);
-        Sfx.play('pick');
     } else {
         spawnFloatText(r.x, r.y - 30, '乾涸', '#A5D6A7', 13, 0.9);
     }
+}
+
+function pickCoffinLoot() {
+    const levelable = classDef().cards.filter(t => unitAllowed(t) && !UNIT_TYPES[t].upgradeOnly && gameState.units[t]);
+    const pool = COFFIN_LOOT.filter(l => l.id !== 'level' || levelable.length);
+    let roll = Math.random() * pool.reduce((a, l) => a + l.weight, 0);
+    for (const l of pool) { roll -= l.weight; if (roll < 0) return { loot: l, levelable }; }
+    return { loot: pool[0], levelable };
+}
+function openCoffin(r, T) {
+    const { loot, levelable } = pickCoffinLoot();
+    if (loot.id === 'draft') {
+        // 波次結束時接在這一波的祝福後面（settleRelicsAtWaveEnd）
+        gameState.relicDrafts++;
+        spawnFloatText(r.x, r.y - 30, '祝福 +1', '#FFD54F', 20, 1.6, 'draft');
+        Sfx.play('upgrade');
+        return;
+    }
+    if (loot.id === 'level') {
+        const type = levelable[Math.floor(Math.random() * levelable.length)];
+        for (let i = 0; i < loot.levels; i++) levelUpUnit(type);
+        spawnFloatText(r.x, r.y - 30, `${UNIT_TYPES[type].name} +${loot.levels} 級`, '#C5E1A5', 18, 1.6, 'arrowUp');
+        Sfx.play('upgrade');
+        updateUI();
+        return;
+    }
+    const souls = Math.max(T.soulMin, Math.round(gameState.lastWaveSouls * T.soulShare));
+    dropSouls(r.x, r.y, souls);
+    // 寶棺自己噴的不算進「這一波掉了多少」，不然下一座寶棺會越滾越大
+    gameState.waveSouls -= souls;
+    spawnFloatText(r.x, r.y - 30, `+${formatNumberK(souls)}`, '#80DEEA', 18, 1.3, 'soul');
+    Sfx.play('pick');
+}
+
+// 遲滯祭壇：期間內每隔一下把全場的怪緩一次，後來才冒出來的也逃不掉
+function updateAltarSlow(deltaTime) {
+    if (!(gameState.altarSlowTimer > 0) || gameState.betweenWaves) return;
+    gameState.altarSlowTimer = Math.max(0, gameState.altarSlowTimer - deltaTime);
+    gameState.altarSlowTick -= deltaTime;
+    if (gameState.altarSlowTick > 0) return;
+    gameState.altarSlowTick = ALTAR_SLOW_REAPPLY;
+    const dur = Math.min(gameState.altarSlowTimer, ALTAR_SLOW_REAPPLY + 0.1);
+    if (dur <= 0) return;
+    for (const m of gameState.monsters) if (m.isAlive) m.applySlow(ALTAR_EFFECTS.slow.amount, dur);
 }
 
 function updateRelics(deltaTime) {
@@ -6005,7 +6442,7 @@ function updateRelics(deltaTime) {
             r.life -= deltaTime;
             if (r.life <= 0) { expireRelic(r); continue; }
         }
-        const T = RELIC_TYPES[r.kind];
+        const T = relicLook(r);
         const inside = p && p.isAlive && distanceSq(p.pos, r) <= rSq;
         if (inside && r.pair) breakRelicPartner(r);
         if (r.kind === 'spring') {
@@ -6052,7 +6489,7 @@ function drawRelicsGround() {
     const t = worldTime;
     for (const r of gameState.relics) {
         if (!inView(r)) continue;
-        const T = RELIC_TYPES[r.kind];
+        const T = relicLook(r);
         const fill = 0.1 + 0.05 * Math.sin(t * 3);
         ctx.globalAlpha = Math.max(0, r.fade);
         ctx.fillStyle = `rgba(${T.glow}, ${fill.toFixed(2)})`;
@@ -6101,7 +6538,7 @@ function drawRelicsTop() {
     const t = worldTime;
     for (const r of gameState.relics) {
         if (!inView(r)) continue;
-        const T = RELIC_TYPES[r.kind];
+        const T = relicLook(r);
         const art = relicArtSize(T);
         const lift = Math.max(RELIC_BADGE_LIFT, art ? art.h - RELIC_ART_BASE + RELIC_BADGE_GAP : 0);
         const bx = r.x, by = r.y - lift - Math.sin(t * 2.5) * 3;
@@ -6136,6 +6573,10 @@ const buffPeak = {};
 function activeBuffs() {
     const list = [];
     if (gameState.frenzyTimer > 0) list.push({ icon: 'armyFrenzy', t: gameState.frenzyTimer, color: FRENZY_CHIP_COLOR });
+    if (gameState.wardTimer > 0) list.push({ icon: 'altarWard', t: gameState.wardTimer, color: ALTAR_EFFECTS.ward.color });
+    if (gameState.altarSlowTimer > 0) list.push({ icon: 'altarSlow', t: gameState.altarSlowTimer, color: ALTAR_EFFECTS.slow.color });
+    const owned = gameState.ownedTombs;
+    if (owned && owned.length) list.push({ icon: 'tombClaim', t: Math.max(...owned.map(o => o.life)), color: TOMB_ALLY });
     const cls = classDef();
     if (cls.buffs) list.push(...cls.buffs());
     return list;
@@ -6174,7 +6615,7 @@ const CURSES = [
     { icon: 'curseBarren', name: '貧瘠', desc: '靈魂掉落 -20%', soulMult: 0.8 },
     { icon: 'curseElite', name: '精英橫行', desc: '精英怪機率 ×2', eliteMult: 2 },
     { icon: 'curseTyrant', name: '暴君', desc: '首領血量 +50%', bossHpMult: 1.5 },
-    { icon: 'curseFrail', name: '脆弱', desc: '法師血量 -30%', mageHpMult: 0.7 },
+    { icon: 'curseFrail', name: '脆弱', desc: '主角血量 -30%', mageHpMult: 0.7 },
     { icon: 'curseBloodDebt', name: '血債', desc: '怪物攻擊 +30%', atkMult: 1.3 },
 ];
 const CURSE_CRYSTAL_STEP = 0.3;
@@ -6346,18 +6787,18 @@ function getNewcomer(wave) {
     // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
     const list = [
         { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', color: '#EF9A9A' },
-        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝法師射血彈，走動就躲得掉', color: '#FF8A80' },
-        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快撿或放新星吸走', color: '#80DEEA' },
-        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，骷髏打不到，靠眼魔與法師', color: '#B0BEC5' },
-        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒小怪，帶大軍去拆有大獎', color: '#A5D6A7' },
+        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝你射血彈，走動就躲得掉', color: '#FF8A80' },
+        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快去撿走', color: '#80DEEA' },
+        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，近戰打不到，要靠遠程', color: '#B0BEC5' },
+        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒血狼，拆掉牠就換你招狼', color: '#A5D6A7' },
         { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', color: '#E6EE9C' },
         { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', color: '#AED581' },
-        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲法師，邊走邊放新星', color: '#BCAAA4' },
-        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，靠骷髏近戰', color: '#B0BEC5' },
+        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲你而來，邊走邊放大招', color: '#BCAAA4' },
+        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，要靠近戰打破', color: '#B0BEC5' },
         { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', color: POISON_LIGHT },
         { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'eliteAffix', color: '#FFD54F' },
         { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '會從地底鑽出，紅圈出現就走開', color: '#BCAAA4' },
-        { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的召喚物變成敵人，先殺牠', color: '#69F0AE' },
+        { wave: CONFIG.gravePriest.minWave, cfg: CONFIG.gravePriest, hint: '會把陣亡的手下變成敵人，先殺牠', color: '#69F0AE' },
     ];
     const hit = list.find(n => n.wave === wave);
     if (!hit) return null;
@@ -6370,6 +6811,44 @@ function isFinalWave(wave) {
 // 通關前顯示離終點還有多遠；通關後是無盡模式
 function waveLabel(wave) {
     return gameState.endless ? `無盡 ${wave}` : `第 ${wave}/${CONFIG.wave.finalWave} 波`;
+}
+
+const BOSS_ROAR_COLORS = { fill: '206, 147, 216', stroke: '243, 229, 245' };
+function startBossIntro(boss) {
+    gameState.bossIntro = { boss, t: 0, dur: BOSS_FIGHT.introTime };
+    addShake(6);
+    Sfx.play('bossIntro');
+}
+// 鏡頭帶到首領身上的比例：前 25% 推過去、中間停住、最後 25% 拉回來
+function bossIntroPan() {
+    const I = gameState.bossIntro;
+    if (!I) return 0;
+    const k = I.t / I.dur;
+    const ease = (x) => x * x * (3 - 2 * x);
+    return k < 0.25 ? ease(k / 0.25) : k > 0.75 ? ease((1 - k) / 0.25) : 1;
+}
+function drawBossIntro() {
+    const I = gameState.bossIntro;
+    if (!I) return;
+    const k = I.t / I.dur;
+    const inK = Math.min(1, I.t / 0.3), outK = Math.min(1, (I.dur - I.t) / 0.3), a = Math.min(inK, outK);
+    const barH = view.cssH * 0.12 * a;
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, view.cssW, barH);
+    ctx.fillRect(0, view.cssH - barH, view.cssW, barH);
+    const boss = I.boss, final = boss instanceof LichBoss;
+    const y = view.cssH * 0.68;
+    const slide = (1 - Math.min(1, I.t / 0.45)) * 40;
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center';
+    drawOutlinedText(final ? '最終決戰' : `第 ${gameState.currentWave} 波首領`, view.cssW / 2, y - 34, 15, final ? '#FF8A65' : '#E1BEE7');
+    drawOutlinedText(boss.config.name, view.cssW / 2 + slide, y, 34, '#FFF3E0');
+    const w = Math.min(view.cssW * 0.6, 240) * Math.min(1, k * 3);
+    ctx.fillStyle = final ? '#FF8A65' : '#CE93D8';
+    ctx.fillRect(view.cssW / 2 - w / 2, y + 14, w, 3);
+    drawOutlinedText('打破護甲才傷得到牠', view.cssW / 2, y + 38, 13, BOSS_ARMOR_COLOR);
+    ctx.restore();
 }
 
 function getAliveBoss() {
@@ -6411,6 +6890,7 @@ function prepareNextWave() {
     scheduleRelic(waveNum);
     const isBossWave = waveNum % CONFIG.wave.bossEvery === 0;
     const ev = getWaveEvent();
+    // 首領波：先講「清光小怪首領才會出來」（名字等首領落地的登場演出再報）
     if (gameState.pendingBoss) {
         gameState.banner = { text: '首領波', sub: `清光小怪，${bossDisplayName(gameState.pendingBoss)}就會登場`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
     } else if (waveNum === 1 && dailyDef()) {
@@ -6720,7 +7200,8 @@ const FW_DRAG = 0.985;           // 每 1/60 秒剩下的速度比例
 const FW_TRAIL = 6;              // 每顆火花記幾個舊位置畫尾巴
 const FW_PALETTE = ['#FF5252', '#FFD740', '#69F0AE', '#40C4FF', '#E040FB', '#FFAB40', '#FFFFFF'];
 const FW_GOLD = '#FFD180';
-const FW_SHOW_SECONDS = 5.5;
+// 放多久照成績：lbCheer 給的顆數（4～9）× 每顆幾秒；新榜首放最久
+const FW_SECONDS_PER_BURST = 0.7, FW_MIN_SECONDS = 3, FW_DEFAULT_BURSTS = 7;
 const FW_FINALE = 3;             // 結尾一起放幾發
 const Fireworks = (() => {
     let cv = null, g = null, raf = 0, last = 0, endAt = 0, nextAt = 0, kindIdx = 0, finaleDone = false;
@@ -6840,15 +7321,16 @@ const Fireworks = (() => {
         if (now < endAt || rockets.length || sparks.length) raf = requestAnimationFrame(frame);
         else stop();
     }
-    function start(host) {
+    function start(host, bursts = FW_DEFAULT_BURSTS) {
         stop();
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         cv = document.createElement('canvas');
         cv.className = 'fireworks';
         host.insertBefore(cv, host.firstChild);
         g = cv.getContext('2d');
         size();
         rockets = []; sparks = []; flashes = []; finaleDone = false;
-        last = performance.now(); endAt = last + FW_SHOW_SECONDS * 1000; nextAt = last;
+        last = performance.now(); endAt = last + Math.max(FW_MIN_SECONDS, bursts * FW_SECONDS_PER_BURST) * 1000; nextAt = last;
         raf = requestAnimationFrame(frame);
     }
     function stop() {
@@ -6864,8 +7346,24 @@ const Fireworks = (() => {
 let lbPending = null;
 // 這一局第一次超越的對手最多列這幾個（一口氣跳很多名時只列最前面的）
 const LB_PASSED_SHOWN = 2;
+// 祝賀詞：挑這一局最了不起的那件事講。回傳 [標題, 一句話, 煙火幾顆]
+function lbCheer(e, passed) {
+    const all = lbRank(e, LB_ALL), mine = lbRank(e, e.cls), C = CLASSES[e.cls];
+    if (all === 1) return ['新的榜首！', '整座墓園都在為你歡呼', 9];
+    if (e.won && mine === 1) return ['恭喜通關！', `${C ? C.name : ''}榜第一，傳奇就此寫下`, 8];
+    if (e.won) return ['恭喜通關！', '亡靈大軍凱旋歸來', 7];
+    if (mine === 1) return ['恭喜上榜！', `${C ? C.name : ''}榜第一名！`, 7];
+    if (passed.length >= 2) return ['恭喜上榜！', `一口氣超越 ${passed.length} 位對手`, 6];
+    if (passed.length === 1) return ['恭喜上榜！', `超越了 ${passed[0].name}`, 5];
+    if (all && all <= 3) return ['恭喜上榜！', `綜合榜第 ${all} 名，離榜首只差一步`, 6];
+    return ['恭喜上榜！', '你的名字被記住了，下一局再往上爬', 4];
+}
+
 function openLbCongrats({ entry: e, passed }) {
     lbPending = e;
+    const [title, cheer, bursts] = lbCheer(e, passed);
+    uiElements.lbCongratsTitle.textContent = title;
+    uiElements.lbCongratsCheer.textContent = cheer;
     uiElements.lbCongratsRanks.innerHTML = lbRanksHtml(e);
     const top = passed.sort(lbCompare).slice(0, LB_PASSED_SHOWN);
     uiElements.lbCongratsResult.innerHTML = lbResultHtml(e) +
@@ -6873,7 +7371,8 @@ function openLbCongrats({ entry: e, passed }) {
     uiElements.lbNameInput.value = meta.lbName || '';
     uiElements.lbNameInput.placeholder = LB_DEFAULT_NAME;
     showScreen(uiElements.lbCongrats, true);
-    Fireworks.start(uiElements.lbCongrats);
+    Fireworks.start(uiElements.lbCongrats, bursts);
+    Sfx.play('lbCheer');
     // 手機上自動點進輸入框會直接彈出鍵盤蓋住名次，只在有實體鍵盤的裝置上這樣做
     if (!matchMedia('(pointer: coarse)').matches) uiElements.lbNameInput.focus();
 }
@@ -7320,6 +7819,7 @@ function handleBackButton() {
     if (appScreen !== 'playing') return;
     armBackButton();
     // 結算上面疊的排行榜視窗：一次收一層，上榜恭喜收掉時照樣用預設名字登錄
+    if (uiElements.classGuide.style.display === 'flex') { closeClassGuide(); return; }
     if (lbPending) { closeLbCongrats(); return; }
     if (uiElements.lbDetail.style.display === 'flex') { showScreen(uiElements.lbDetail, false); return; }
     if (uiElements.lbScreen.style.display === 'flex') { closeLeaderboard(); return; }
@@ -7343,7 +7843,16 @@ function enterPlaying() {
 }
 
 function startNewRun() {
-    const begin = () => { resetGame(); enterPlaying(); };
+    const id = selectedClass();
+    const begin = () => {
+        if (id !== 'necro' && !(meta.classGuideSeen || {})[id]) {
+            meta.classGuideSeen = { ...(meta.classGuideSeen || {}), [id]: true };
+            saveMeta();
+            openClassGuide(id, () => { resetGame(); enterPlaying(); });
+            return;
+        }
+        resetGame(); enterPlaying();
+    };
     const save = peekSave();
     if (save && save.currentWave > 0) showConfirm('開始新的一局？', `第 ${save.currentWave} 波的進度會被覆蓋`, '開始', begin);
     else begin();
@@ -7355,6 +7864,65 @@ function startDailyRun() {
     const overwrite = save && save.currentWave > 0 ? `\n第 ${save.currentWave} 波的進度會被覆蓋` : '';
     const bonus = meta.dailyClaimed === todayKey() ? '' : `\n今天第一場結晶 ×${DAILY_CRYSTAL_MULT}`;
     showConfirm(`每日變異 · ${d.name}`, `${dailyRulesText(d)}${bonus}${overwrite}`, '出發', () => { resetGame(d); enterPlaying(); });
+}
+
+// ---------- 職業玩法介紹 ----------
+// 標題的「玩法介紹」、暫停選單的「職業玩法」、第一次用某個職業開局時自動跳出來。
+// 只講「這個職業跟別人哪裡不一樣」：怎麼變強、錢怎麼用、要注意什麼；三張卡各一句、大招一句。重點字用 <b>
+const CLASS_GUIDES = {
+    necro: {
+        rules: ['用靈魂召喚骷髏、怨靈、眼魔，<b>數量沒有上限</b>', '同一種兵越多，再召喚就越貴：<b>升級鈕發金光就升級</b>', '法師很脆，<b>躲在大軍後面、邊走邊打</b>'],
+        cards: ['近戰主力，便宜又耐打', '光環讓身邊的怪變慢，陣亡時爆炸', '遠程射擊，躲在後排輸出'],
+    },
+    warrior: {
+        rules: ['士兵跟著你<b>排成陣型</b>，面向你移動的方向', '從背後、側面挨打傷害加倍：<b>把陣型轉過去對著怪</b>', '人數有上限，士兵越打越老練：<b>保住老兵比補新兵重要</b>', '受傷、砍怪會累積怒氣（腳下的橘條），<b>滿了自動發狂 8 秒</b>，之後虛脫 4 秒'],
+        cards: ['站前排，嘲諷身邊的怪、擋下射向你的血彈', '越過盾牌刺擊，對首領、大型、會飛的怪加倍', '站後排遠程射擊，射程長但裝填慢'],
+    },
+    druid: {
+        rules: ['用靈魂<b>在腳下種橡樹</b>，橡樹聚成你的林地', '野獸數量上限看林地：<b>每棵橡樹養 3 隻</b>', '野獸守著最近的橡樹，離林地越遠越弱：<b>選好地方打這一仗</b>', '橡樹和野獸活得越久長得越大（最多 3 階）'],
+        cards: ['在腳下種一棵會長大的橡樹', '快又便宜，成群包圍', '慢但血厚，擋在最前面'],
+    },
+    vampire: {
+        rules: ['沒有靈魂：怪掉的是<b>血珠</b>，撿到先補血，多的存成血池', '召喚、升級花血池，不夠就<b>花自己的血</b>（最多花到剩四分之一）', '打倒的怪有機會<b>站起來變成眷屬</b>，保留原本的能力', '<b>白天會被曬傷</b>、眷屬變弱；<b>入夜</b>轉化變多、眷屬變強', '靈泉是聖水，<b>別站進去</b>'],
+        cards: ['按「轉化」把身邊最近的一隻怪變成手下', '吸血蝙蝠，吸到的血回給你', '只能修練：定時花一點自己的血炸開身邊，越殘越痛'],
+    },
+    elf: {
+        rules: ['<b>移動中射速 +60%</b>，停下來就掉回去', '朝背後射的箭<b>傷害 ×2</b>：邊退邊回頭射', '射程全職業最遠，但很脆：<b>別讓怪圍住</b>'],
+        cards: ['只能修練：箭的傷害，進化後多射一支、穿透、爆擊', '只能修練：移動時在腳下放陷阱，爆炸、緩速、定身輪流', '靈狐、鷹輪流加入，最多 4 隻但很強'],
+    },
+    rogue: {
+        rules: ['飛刀<b>一次射三隻</b>，在怪群裡邊閃邊清；血量低於兩成的怪被打中<b>直接處決</b>', '場上最有威脅的一隻怪是<b>目標</b>（金色準星），飛刀一定分一把給牠', '殺掉目標：拿<b>賞金</b>、身邊的怪嚇跑、你<b>隱身 2.5 秒</b>（變透明、腳下紫圈倒數），怪看不到你', '隱身換來<b>伏擊</b>（頭上金匕首）：下一把射向新目標的飛刀 <b>×4</b>', '血掉到三成半以下<b>自動遁形</b>脫身，20 秒一次'],
+        cards: ['只能修練：飛刀的傷害，進化後多一把、會彈射', '只能修練：命中上毒，毒會一層層疊上去', '召喚 20 秒後消失的分身'],
+    },
+    monk: {
+        rules: ['<b>沒有手下</b>：靈魂全拿來修練自己，每修練一次血量也會長', '自動瞬步出拳，每打中一下連擊 +1，越高越痛；<b>被打中連擊歸零</b>', '所有怪都衝著你來：<b>在怪群裡穿梭、別被碰到</b>', '身邊沒怪時站著不動會<b>入定</b>：回血、蓄氣，下一拳更痛'],
+        cards: ['出拳傷害，進化後一拳兩下、擊退', '瞬步距離，進化後閃避、瞬步無敵', '每幾拳打出一道直線氣功波'],
+    },
+};
+let classGuideThen = null;
+function openClassGuide(id = selectedClass(), then = null) {
+    const C = CLASSES[id], G = CLASS_GUIDES[id];
+    if (!C || !G) { if (then) then(); return; }
+    classGuideThen = then;
+    uiElements.cgPortrait.src = C.portrait;
+    uiElements.cgName.textContent = C.title === C.name ? C.name : `${C.name} · ${C.title}`;
+    uiElements.cgTagline.textContent = C.tagline;
+    uiElements.cgRules.innerHTML = G.rules.map(r => `<li>${r}</li>`).join('');
+    uiElements.cgCards.innerHTML = C.cards.map((t, i) => {
+        const U = UNIT_TYPES[t];
+        return `<div class="cg-card"><img src="${U.img}" alt=""><div><b>${U.name}</b><span>${G.cards[i] || ''}</span></div></div>`;
+    }).join('');
+    const ult = C.ultimate || CLASSES.necro.ultimate;
+    const hint = ult.hint.includes('：') ? ult.hint.slice(ult.hint.indexOf('：') + 1) : ult.hint;
+    uiElements.cgUlt.innerHTML = `<div class="cg-card">${iconHtml(ult.icon)}<div><b>${ult.name}</b><span>${hint}</span></div></div>`;
+    uiElements.cgOkBtn.textContent = then ? '開始' : '知道了';
+    showScreen(uiElements.classGuide, true);
+}
+function closeClassGuide() {
+    showScreen(uiElements.classGuide, false);
+    const then = classGuideThen;
+    classGuideThen = null;
+    if (then) then();
 }
 
 // ---------- 標題畫面選職業：一排頭像，選中的金框；還沒解鎖的暗下來壓一個鎖，點了說怎麼解鎖 ----------
@@ -7605,6 +8173,8 @@ function updateTimers(deltaTime) {
     gameState.reviveShield = Math.max(0, (gameState.reviveShield || 0) - deltaTime);
     // 波與波之間沒有怪打，狂暴不扣時間：不會白白耗在空檔裡
     if (!gameState.betweenWaves) gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
+    if (!gameState.betweenWaves) gameState.wardTimer = Math.max(0, (gameState.wardTimer || 0) - deltaTime);
+    updateAltarSlow(deltaTime);
     achvCheckTimer -= deltaTime;
     if (achvCheckTimer <= 0) { achvCheckTimer = ACHV_CHECK_EVERY; checkAchievements(); }
     if (gameState.streakTimer > 0) {
@@ -8383,7 +8953,7 @@ function resetGameInternalState() {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -8460,7 +9030,15 @@ function leaveToTitleFromPause() {
 
 // 這一格主角是不是隱身（怪找目標時每隻都要問，所以每格算一次存起來）
 let heroHiddenNow = false;
+let realDeltaTime = 0;
 function updateGame(deltaTime) {
+    realDeltaTime = deltaTime;
+    if (gameState.bossIntro) {
+        const I = gameState.bossIntro;
+        I.t += deltaTime;
+        if (I.t >= I.dur || !I.boss.isAlive) gameState.bossIntro = null;
+        else deltaTime *= BOSS_FIGHT.introSlowmo;
+    }
     frameNo++;
     worldTime += deltaTime;
     if (appScreen === 'playing' && !gameState.endless) gameState.runTime += deltaTime;
@@ -8498,19 +9076,21 @@ function updateGame(deltaTime) {
     heroHiddenNow = !!(cls.heroHidden && cls.heroHidden());
     const moveVec = getMoveVector();
     if (gameState.player) gameState.player.update(deltaTime, moveVec);
-    updateCamera(deltaTime, moveVec);
+    updateCamera(realDeltaTime, moveVec);
 
     for (let i = 0; i < gameState.summons.length; i++) {
         if (gameState.summons[i].isAlive) gameState.summons[i].update(deltaTime, gameState.monsters, gameState.summons, gameState.player);
     }
     for (let i = 0; i < gameState.monsters.length; i++) {
-        if (gameState.monsters[i].isAlive) gameState.monsters[i].update(deltaTime, gameState.player, gameState.summons);
+        const m = gameState.monsters[i];
+        if (m.isAlive && !(m.bossTick && m.bossTick(deltaTime))) m.update(deltaTime, gameState.player, gameState.summons);
     }
     updateHazards(deltaTime);
     updateBossMarks(deltaTime);
     updateWorldFx(deltaTime);
     updateBossEntrance(deltaTime);
     updateRelics(deltaTime);
+    updateOwnedTombs(deltaTime);
     updateEnemyBolts(deltaTime);
     for (let i = 0; i < gameState.projectiles.length; i++) {
         if (gameState.projectiles[i].isAlive) gameState.projectiles[i].update(deltaTime);
@@ -8695,28 +9275,97 @@ function drawStreak() {
 
 function drawBossBar() {
     const boss = getAliveBoss();
-    if (!boss) return;
-    const w = Math.min(view.cssW * 0.46, 300), h = 12;
-    const x = (view.cssW - w) / 2, y = hudTop + 26;
+    if (!boss || gameState.bossIntro) return;
+    const w = Math.min(view.cssW * 0.72, 380), h = 16;
+    const x = (view.cssW - w) / 2, y = hudTop + 30;
+    const t = worldTime;
     ctx.save();
-    drawIconLabel('boss', `${boss.config.name}  Lv${boss.tier}`, view.cssW / 2, y - 6, 14, '#E1BEE7');
+    // 名字＋三顆階段燈（打過的階段暗掉）
+    const label = `${boss.config.name}  Lv${boss.tier}`;
+    drawIconLabel('boss', label, view.cssW / 2, y - 8, 15, '#E1BEE7');
     // 外框：深色粗框 + 暗金細框，跟介面面板同一套
     ctx.fillStyle = TEXT_OUTLINE;
-    roundRect(x - 3, y - 3, w + 6, h + 6, 8); ctx.fill();
+    roundRect(x - 3, y - 3, w + 6, h + 6, 9); ctx.fill();
     ctx.fillStyle = '#2a1636';
-    roundRect(x, y, w, h, 6); ctx.fill();
+    roundRect(x, y, w, h, 7); ctx.fill();
     const ratio = Math.max(0, boss.currentHealth / boss.maxHealth);
     if (ratio > 0) {
         const g = ctx.createLinearGradient(0, y, 0, y + h);
-        g.addColorStop(0, '#d17cf0'); g.addColorStop(1, '#7b1fa2');
+        const broken = boss.breakT > 0;
+        g.addColorStop(0, broken ? '#f3b4ff' : '#d17cf0'); g.addColorStop(1, broken ? '#ab47bc' : '#7b1fa2');
         ctx.fillStyle = g;
-        roundRect(x, y, w * ratio, h, 6); ctx.fill();
+        roundRect(x, y, w * ratio, h, 7); ctx.fill();
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.fillRect(x + 3, y + 2, Math.max(0, w * ratio - 6), 2);
     }
+    // 階段刻度：打到這裡就換階段
+    for (const ph of BOSS_FIGHT.phases) {
+        const px = x + w * ph;
+        ctx.fillStyle = TEXT_OUTLINE;
+        ctx.fillRect(px - 2, y - 4, 4, h + 8);
+        ctx.fillStyle = ratio > ph ? '#FFF3E0' : '#6d4c7d';
+        ctx.fillRect(px - 1, y - 3, 2, h + 6);
+    }
     ctx.strokeStyle = '#9c7a3c';
     ctx.lineWidth = 1.5;
-    roundRect(x - 1, y - 1, w + 2, h + 2, 7); ctx.stroke();
+    roundRect(x - 1, y - 1, w + 2, h + 2, 8); ctx.stroke();
+    // 血條上面一條護甲／破防倒數
+    const ay = y + h + 5, ah = 7;
+    ctx.fillStyle = TEXT_OUTLINE;
+    roundRect(x - 2, ay - 2, w + 4, ah + 4, 5); ctx.fill();
+    let caption = '', capColor = BOSS_ARMOR_COLOR;
+    if (boss.transT > 0) {
+        caption = '換階段中 · 無敵'; capColor = '#E1BEE7';
+        ctx.fillStyle = '#6d4c7d'; roundRect(x, ay, w, ah, 3); ctx.fill();
+    } else if (boss.breakT > 0) {
+        const k = boss.breakT / BOSS_FIGHT.breakTime;
+        ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 14);
+        ctx.fillStyle = BOSS_BREAK_COLOR; roundRect(x, ay, w * k, ah, 3); ctx.fill();
+        ctx.globalAlpha = 1;
+        caption = `破防！傷害 ×${BOSS_FIGHT.breakMult}  ${boss.breakT.toFixed(1)}s`; capColor = BOSS_BREAK_COLOR;
+    } else {
+        const k = boss.armor / boss.armorMax;
+        ctx.fillStyle = '#4a3b12'; roundRect(x, ay, w, ah, 3); ctx.fill();
+        ctx.fillStyle = BOSS_ARMOR_COLOR; roundRect(x, ay, w * k, ah, 3); ctx.fill();
+        caption = '護甲：打破才傷得到牠';
+    }
+    drawIconLabel(boss.transT > 0 ? 'bossPhase' : boss.breakT > 0 ? 'bossBreak' : 'bossArmor', caption, view.cssW / 2, ay + ah + 12, 12, capColor);
+    ctx.restore();
+}
+
+// 首領身上：護甲在時一圈金色護盾；破防時頭上轉圈的星星、身上冒天藍裂光；換階段時紫色怒吼光
+function drawBossFightWorld() {
+    const boss = getAliveBoss();
+    if (!boss || !inView(boss.pos)) return;
+    const t = worldTime, r = Math.max(boss.imageWidth || 0, boss.radius * 3) * 0.62;
+    ctx.save();
+    if (boss.transT > 0) {
+        ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 18);
+        const g = r * 3;
+        ctx.drawImage(getGlowSprite('#CE93D8'), boss.pos.x - g / 2, boss.pos.y - g / 2, g, g);
+    } else if (boss.breakT > 0) {
+        const hy = boss.pos.y - (boss.imageHeight || boss.radius * 3) * 0.55;
+        for (let i = 0; i < 3; i++) {
+            const a = t * 4 + i * Math.PI * 2 / 3;
+            const sx = boss.pos.x + Math.cos(a) * r * 0.55, sy = hy + Math.sin(a) * r * 0.18;
+            ctx.fillStyle = BOSS_BREAK_COLOR; ctx.strokeStyle = TEXT_OUTLINE; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(sx, sy - 6); ctx.lineTo(sx + 2, sy - 2); ctx.lineTo(sx + 6, sy); ctx.lineTo(sx + 2, sy + 2); ctx.lineTo(sx, sy + 6); ctx.lineTo(sx - 2, sy + 2); ctx.lineTo(sx - 6, sy); ctx.lineTo(sx - 2, sy - 2); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+        }
+        if (Math.random() < 0.4) spawnParticles(boss.pos.x + randomInRange(-r * 0.5, r * 0.5), boss.pos.y + randomInRange(-r * 0.5, r * 0.3), BOSS_BREAK_COLOR, 1, 30, 0.4, 2.5);
+    } else if (boss.armor > 0) {
+        const k = boss.armor / boss.armorMax;
+        ctx.globalAlpha = 0.35 + 0.45 * k;
+        ctx.strokeStyle = BOSS_ARMOR_COLOR;
+        ctx.lineWidth = 3 + 3 * k;
+        ctx.setLineDash([10, 6]);
+        ctx.lineDashOffset = -t * 30;
+        ctx.beginPath(); ctx.ellipse(boss.pos.x, boss.pos.y, r, r * 0.9, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 0.18 * k;
+        ctx.fillStyle = BOSS_ARMOR_COLOR;
+        ctx.beginPath(); ctx.ellipse(boss.pos.x, boss.pos.y, r, r * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
 }
 
@@ -8731,7 +9380,7 @@ function roundRect(x, y, w, h, r) {
     ctx.closePath();
 }
 
-// 畫面邊緣的方位標記：竊賊、首領跑出畫面時一定標；畫面上一隻怪都看不到時，再標最近那隻怪
+// 畫面邊緣的方位標記：竊賊、首領、招魂墓碑、遺跡跑出畫面（或被狀態列、召喚面板蓋住）時一定標；畫面上一隻怪都看不到時，再標最近那隻怪
 // （不然一直走都遇不到，只能亂猜方向）
 const POINTER_EDGE_PAD = 30;
 const POINTER_TOP_EXTRA = 70;
@@ -8745,19 +9394,23 @@ function drawOffscreenPointers() {
     let bounds = null;
     let anyVisible = false, nearest = null, nearestD = Infinity;
     const p = gameState.player.pos;
+    // 「看得到」= 在上方狀態列與下方召喚面板之間：被面板蓋住的墓碑、祭壇也算畫面外，一樣要標方位
+    // （只看整個畫布的話，手機上很高的召喚面板底下那一片完全沒有提示）
+    const hb = uiElements.hudBottom.getBoundingClientRect();
+    const visTop = hudTop, visBottom = hb.height ? hb.top : view.cssH;
+    const seen = (sx, sy) => sx > 0 && sx < view.cssW && sy > visTop && sy < visBottom;
     for (const r of gameState.relics) {
         if (r.done) continue;
         const sx = (r.x - camera.x) * view.unitPx, sy = (r.y - camera.y) * view.unitPx;
-        if (sx > 0 && sx < view.cssW && sy > 0 && sy < view.cssH) continue;
+        if (seen(sx, sy)) continue;
         bounds = bounds || pointerBounds();
-        drawEdgePointer(sx, sy, RELIC_TYPES[r.kind].color, bounds, getIconImage(RELIC_TYPES[r.kind].icon), 22, 22);
+        drawEdgePointer(sx, sy, relicLook(r).color, bounds, getIconImage(relicLook(r).icon), 22, 22);
     }
     for (let i = 0; i < gameState.monsters.length; i++) {
         const m = gameState.monsters[i];
         if (!m.isAlive || m.stealthed) continue;
         const sx = (m.pos.x - camera.x) * view.unitPx, sy = (m.pos.y - camera.y) * view.unitPx;
-        const onScreen = sx > 0 && sx < view.cssW && sy > 0 && sy < view.cssH;
-        if (onScreen) { anyVisible = true; continue; }
+        if (seen(sx, sy)) { anyVisible = true; continue; }
         const isThief = m instanceof ThiefMonster;
         const isTomb = m instanceof TombstoneMonster;
         if (isThief || isTomb || m instanceof BossMonster) {
@@ -8961,6 +9614,7 @@ function drawGame() {
     drawGround();
     drawHazards();
     drawRelicsGround();
+    drawOwnedTombs();
     for (let i = 0; i < gameState.orbs.length; i++) if (inView(gameState.orbs[i].pos)) gameState.orbs[i].draw(ctx);
 
     drawAuraLayer();
@@ -8969,6 +9623,7 @@ function drawGame() {
         const m = gameState.monsters[i];
         if (m.isAlive && (inView(m.pos) || m instanceof BossMonster)) m.draw(ctx);
     }
+    drawBossFightWorld();
     drawSummonsBatched();
     drawProjectilesBatched();
     for (let i = 0; i < gameState.monsters.length; i++) {
@@ -9017,6 +9672,7 @@ function drawGame() {
     drawBossEntranceOverlay();
     if (drawCls.drawScreen && gameState.player && appScreen !== 'title') drawCls.drawScreen(ctx);
     drawBossBar();
+    drawBossIntro();
     drawStreak();
     drawOffscreenPointers();
     drawBuffChips();
@@ -9473,6 +10129,9 @@ function init() {
     // 觸控的 pointerdown 不算使用者手勢，第一次解鎖音效要等到 click
     const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
     onTap(uiElements.titleStartBtn, startNewRun);
+    onTap(uiElements.classGuideBtn, () => openClassGuide());
+    onTap(uiElements.pauseGuideBtn, () => openClassGuide(runClass()));
+    onTap(uiElements.cgOkBtn, closeClassGuide);
     onTap(uiElements.titleDailyBtn, startDailyRun);
     uiElements.classPicker.addEventListener('click', (e) => { const b = e.target.closest('[data-class]'); if (b) pickClass(b.dataset.class); });
     onTap(uiElements.titleContinueBtn, continueRun);

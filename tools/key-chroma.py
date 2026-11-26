@@ -15,7 +15,7 @@
 最後裁到剛好包住角色、最長邊縮到 MAX_SIDE。
 """
 import sys
-from PIL import Image
+from PIL import Image, ImageFilter
 
 MAX_SIDE = 512
 # 角色本身的顏色允許偏背景色到這麼多（暖紅、膚色、褐色都在裡面），超過的部分才當成背景混進來的
@@ -38,6 +38,13 @@ TRIM_ALPHA = 24
 PAD = 4
 # 亮／暗通道的分界
 CHANNEL_SPLIT = 128
+# 只扣「跟背景連在一起」的地方：從圖的四邊往內漫延，顏色跟背景差在 BG_FLOOD_DIST 以內的才算背景，
+# 再往外擴 EDGE_BAND 像素包住描邊的反鋸齒。其餘（角色內部）一律保留原色、不透明。
+# 不加這條的話偏背景色的布（戰士的皇家藍戰袍放在洋紅背景上）會被扣成半透明（實測六成的藍色像素變半透明）
+BG_FLOOD_DIST = 110
+EDGE_BAND = 3
+# 手臂和身體圍出來的洞不跟圖邊相連：離背景色這麼近的像素（幾乎就是純背景色）也當漫延的起點
+BG_SEED_DIST = 45
 
 
 def background_color(im):
@@ -82,16 +89,48 @@ def unmix(px, bg, hi, lo):
     return a, tuple((px[c] - beta * bg[c]) / a for c in range(3))
 
 
+def background_mask(im, bg):
+    """跟圖邊連通、顏色接近背景的區域，往外擴 EDGE_BAND 像素。回傳 bytearray（1 = 可以扣）。"""
+    w, h = im.size
+    raw = im.tobytes()
+    lim = BG_FLOOD_DIST * BG_FLOOD_DIST
+    seed_lim = BG_SEED_DIST * BG_SEED_DIST
+    near = bytearray(w * h)
+    stack = [x for x in range(w)] + [(h - 1) * w + x for x in range(w)] + [y * w for y in range(h)] + [y * w + w - 1 for y in range(h)]
+    for k in range(w * h):
+        i = k * 3
+        dr, dg, db = raw[i] - bg[0], raw[i + 1] - bg[1], raw[i + 2] - bg[2]
+        d = dr * dr + dg * dg + db * db
+        near[k] = d < lim
+        if d < seed_lim:
+            stack.append(k)
+    seen = bytearray(w * h)
+    while stack:
+        k = stack.pop()
+        if seen[k] or not near[k]:
+            continue
+        seen[k] = 1
+        x, y = k % w, k // w
+        if x > 0: stack.append(k - 1)
+        if x < w - 1: stack.append(k + 1)
+        if y > 0: stack.append(k - w)
+        if y < h - 1: stack.append(k + w)
+    m = Image.frombytes('L', (w, h), bytes(v * 255 for v in seen))
+    m = m.filter(ImageFilter.MaxFilter(EDGE_BAND * 2 + 1))
+    return bytearray(1 if v else 0 for v in m.tobytes())
+
+
 def key(src, dst, flip=False):
     im = Image.open(src).convert('RGB')
     bg = background_color(im)
     hi, lo = split_channels(bg)
+    keyable = background_mask(im, bg)
     raw = im.tobytes()
     out = bytearray(len(raw) // 3 * 4)
     for i in range(0, len(raw), 3):
         px = (raw[i], raw[i + 1], raw[i + 2])
         j = i // 3 * 4
-        if spill(px, hi, lo) <= SPILL_FLOOR:
+        if not keyable[i // 3] or spill(px, hi, lo) <= SPILL_FLOOR:
             out[j:j + 4] = bytes((*px, 255))
             continue
         lo_v = max(px[c] for c in lo)
