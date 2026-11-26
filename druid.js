@@ -395,7 +395,7 @@ function druidUpdate(dt) {
         const heal = Math.round(p.maxHealth * BLESSINGS.goldenSickle.per);
         p.currentHealth = Math.min(p.maxHealth, p.currentHealth + heal);
         gameState.frenzyTimer = Math.max(gameState.frenzyTimer, SICKLE_FRENZY);
-        spawnFloatText(p.pos.x, p.pos.y - 30, `槲寄生 +${heal}`, '#C5E1A5', 14, 1.2, 'goldenSickle');
+        spawnFloatText(p.pos.x, p.pos.y - 30, `槲寄生 +${formatNumberK(heal)}`, '#C5E1A5', 14, 1.2, 'goldenSickle');
         spawnParticles(k.x, k.y, '#FFF59D', 16, 90, 0.6, 3);
         Sfx.play('pick');
     }

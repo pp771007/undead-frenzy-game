@@ -311,7 +311,7 @@ function payBlood(cost) {
     if (hp <= 0) return false;
     gameState.souls = 0;
     p.currentHealth -= hp;
-    spawnFloatText(p.pos.x, p.pos.y - 24, `-${hp}`, '#EF5350', 12, 0.7, 'blood');
+    spawnFloatText(p.pos.x, p.pos.y - 24, `-${formatNumberK(hp)}`, '#EF5350', 12, 0.7, 'blood');
     return true;
 }
 

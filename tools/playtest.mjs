@@ -47,6 +47,10 @@ await page.evaluate(([policy, cls, pick, metaLvl]) => {
     const origDrop = window.dropSouls;
     window.dropSouls = function (x, y, a) { const k = window.__dying || 'other'; B.src[k] = (B.src[k] || 0) + a; return origDrop(x, y, a); };
     // 主角每一下掉多少血、誰打的（佔最大生命的比例）：被秒殺時看是一隻怪一下很痛，還是好幾隻同時打中
+    // 畫面上的字有沒有漏網的長小數（遊戲顯示前會被 tidyNumbers 修掉，這裡記原文）：看到就回頭補 formatNumberK
+    B.decimals = {};
+    const origTidy = window.tidyNumbers;
+    window.tidyNumbers = function (text) { if (typeof text === 'string' && LONG_DECIMAL.test(text)) B.decimals[text] = (B.decimals[text] || 0) + 1; LONG_DECIMAL.lastIndex = 0; return origTidy(text); };
     B.hits = [];
     const origHurt = Player.prototype.takeDamage;
     Player.prototype.takeDamage = function (amount, source) {
@@ -266,8 +270,10 @@ const out = await page.evaluate(() => ({
     })(),
     // 整局主角被誰打掉最多血（佔最大生命的比例加總）
     hurt: Object.fromEntries(Object.entries(window.__bot.hits.reduce((o, [, k, f]) => (o[k] = (o[k] || 0) + f, o), {})).map(([k, f]) => [k, +f.toFixed(2)])),
+    decimals: Object.keys(window.__bot.decimals).slice(0, 10),
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
+if (out.decimals.length) console.log('DECIMAL', JSON.stringify(out.decimals));
 console.log(`RESULT ${TAG} policy=${POLICY} pick=${PICK} meta=${META} class=${CLASS} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
 console.log('BUILD', out.build);
 if (!r.won) console.log('BURST', out.burst, JSON.stringify(out.lastHits));

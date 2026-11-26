@@ -434,7 +434,7 @@ function warriorSwing(p, dt) {
         const per = WARRIOR.killHeal + blessVal('rageLeech');
         const heal = Math.max(1, Math.round(p.maxHealth * Math.min(WARRIOR.killHealMax + blessVal('rageLeech') * 3, kills * per)));
         p.currentHealth = Math.min(p.maxHealth, p.currentHealth + heal);
-        spawnFloatText(p.pos.x, p.pos.y - 26, `+${heal}`, '#81C784', 12, 0.6);
+        spawnFloatText(p.pos.x, p.pos.y - 26, `+${formatNumberK(heal)}`, '#81C784', 12, 0.6);
     }
     addRage(hits.length * WARRIOR.ragePerHit);
     const fx = getVisualEffectFromPool(SweepEffect) || new SweepEffect();

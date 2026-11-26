@@ -1435,7 +1435,10 @@ function getRandomSpawnPosNearPlayer(radius = 30) {
     const c = gameState.player ? gameState.player.pos : { x: 0, y: 0 };
     return { x: c.x + Math.cos(angle) * distance, y: c.y + Math.sin(angle) * distance };
 }
+// 畫面上的數字一律走這裡：血量、回血、扣血、靈魂、結晶、費用、獎勵……
+// 遊戲裡的數值多半是小數（吸血、每秒回血、按比例扣血），直接塞進字串會印出 +1.3149999999999977
 function formatNumberK(num) {
+    num = Math.round(num);
     if (num < 1000) {
         return num.toString();
     }
@@ -1917,6 +1920,7 @@ function canvasFont(size, weight = 900) {
     return `${weight} ${size}px ${CANVAS_FONT_FAMILY}`;
 }
 function drawOutlinedText(text, x, y, size, color, weight = 900) {
+    text = tidyNumbers(text);
     ctx.font = canvasFont(size, weight);
     ctx.lineJoin = 'round';
     // 大字的描邊要封頂：照比例放大會把數字的內圈整個塗黑
@@ -1927,7 +1931,15 @@ function drawOutlinedText(text, x, y, size, color, weight = 900) {
     ctx.fillText(text, x, y);
 }
 // 圖示＋文字並排置中（或靠左 / 靠右）
+// 最後一道：漏網沒經過 formatNumberK 的長小數（3 位以上，一定不是故意的）在顯示前四捨五入。
+// 畫布上的字都經過 drawOutlinedText（drawIconLabel 先修一次，量寬度才準），介面文字經過 setTextIfChanged。
+// 機器人（tools/playtest.mjs）會把被這裡修掉的原文記下來，看到就回頭補 formatNumberK
+const LONG_DECIMAL = /\d+\.\d{3,}/g;
+function tidyNumbers(text) {
+    return typeof text === 'string' && text.includes('.') ? text.replace(LONG_DECIMAL, n => String(Math.round(Number(n)))) : text;
+}
 function drawIconLabel(iconName, text, x, y, size, color, align = 'center') {
+    text = tidyNumbers(text);
     const img = iconName ? getIconImage(iconName) : null;
     const iconSize = img ? size * 1.3 : 0;
     const gap = img ? size * 0.3 : 0;
@@ -3483,7 +3495,7 @@ class SoulOrb {
             if (!this.banked) {
                 const cls = classDef();
                 gameState.souls += cls.onOrbCollect ? cls.onOrbCollect(this.value) : this.value;
-                if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${this.value}`, '#80DEEA');
+                if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${formatNumberK(this.value)}`, '#80DEEA');
                 updateUI();
             }
             player.absorbGlow = Math.min(1.5, player.absorbGlow + ABSORB_GLOW_PER_ORB);
@@ -6001,9 +6013,10 @@ function updateRelics(deltaTime) {
             if (inside && classDef().onSpring) classDef().onSpring(r, deltaTime);
             else if (inside && p.currentHealth < p.maxHealth) {
                 r.healFrac += Math.min(p.maxHealth * T.healPerSec * deltaTime, r.pool * p.maxHealth);
-                const whole = Math.min(Math.floor(r.healFrac), p.maxHealth - p.currentHealth);
+                // 血量可能是小數：照整數補（最後一點補到滿為止），回了幾點才會是整數
+                const whole = Math.min(Math.floor(r.healFrac), Math.ceil(p.maxHealth - p.currentHealth));
                 if (whole > 0) {
-                    p.currentHealth += whole;
+                    p.currentHealth = Math.min(p.maxHealth, p.currentHealth + whole);
                     r.healFrac -= whole;
                     r.pool -= whole / p.maxHealth;
                     r.healShown += whole;
@@ -6011,7 +6024,7 @@ function updateRelics(deltaTime) {
                 if (Math.random() < deltaTime * 8) spawnParticles(p.pos.x + randomInRange(-12, 12), p.pos.y + 6, T.color, 1, 30, 0.6, 3);
             }
             if (r.healShown > 0 && (r.healTextTimer <= 0 || !inside)) {
-                spawnFloatText(p.pos.x, p.pos.y - 24, `+${r.healShown} HP`, '#81C784', 14, 0.9);
+                spawnFloatText(p.pos.x, p.pos.y - 24, `+${formatNumberK(r.healShown)} HP`, '#81C784', 14, 0.9);
                 r.healShown = 0;
                 r.healTextTimer = RELIC_HEAL_TEXT_EVERY;
             }
@@ -7080,7 +7093,7 @@ function renderDraftCards() {
     uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0;
     uiElements.skipBtn.innerHTML = `跳過<span class="price">${iconHtml('soul')}+${formatNumberK(draftSkipSouls())}</span>`;
     const missing = draftHealAmount();
-    uiElements.healBtn.innerHTML = `${iconHtml('heart', 'icon btn-icon')}補滿血<span class="price">+${missing}</span>`;
+    uiElements.healBtn.innerHTML = `${iconHtml('heart', 'icon btn-icon')}補滿血<span class="price">+${formatNumberK(missing)}</span>`;
     uiElements.healBtn.disabled = missing <= 0;
 }
 
@@ -7096,7 +7109,7 @@ function healDraft() {
     if (heal <= 0) return;
     p.currentHealth = p.maxHealth;
     gameState.run.heals = (gameState.run.heals || 0) + 1;
-    spawnFloatText(p.pos.x, p.pos.y - 26, `+${heal} HP`, '#81C784', 16, 1.4, 'heart');
+    spawnFloatText(p.pos.x, p.pos.y - 26, `+${formatNumberK(heal)} HP`, '#81C784', 16, 1.4, 'heart');
     spawnParticles(p.pos.x, p.pos.y, '#81C784', 24, 110, 0.7, 3);
     Sfx.play('heal');
     closeDraft();
@@ -8072,6 +8085,7 @@ function setHtmlIfChanged(el, html) {
     el.dataset.html = html;
 }
 function setTextIfChanged(el, text) {
+    text = tidyNumbers(text);
     if (el.textContent !== text) el.textContent = text;
 }
 function setStyleIfChanged(el, prop, value) {
@@ -8121,7 +8135,7 @@ function getRunReward() {
 }
 function spawnCrystalText(amount) {
     const p = gameState.player;
-    if (p && amount > 0) spawnFloatText(p.pos.x, p.pos.y - 44, `+${amount}`, '#CE93D8', 15, 1.4, 'crystal');
+    if (p && amount > 0) spawnFloatText(p.pos.x, p.pos.y - 44, `+${formatNumberK(amount)}`, '#CE93D8', 15, 1.4, 'crystal');
 }
 
 function endRunFromPause() {
