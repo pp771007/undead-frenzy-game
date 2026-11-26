@@ -312,12 +312,12 @@ const CONFIG = {
         attackRange: 90, attackSpeed: 1, moveSpeed: 68, color: '#5E35B1',
         soulDrop: 6, waveSpeedIncreaseFactor: 0.006,
         minWave: 11, waveInterval: 7,
-        // 潛行時召喚物看不到她（見 SpatialGrid.rebuild），只在蓄力到刺完後現形的那段時間會被大軍圍毆，所以每隻幾乎都會出手一次。
+        // 潛行時召喚物看不到她（見 SpatialGrid.rebuild）；蓄力時也還隱身，刺完才現形 revealTime 秒，這段時間會被大軍圍毆，所以每隻都會出手一次。
         // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
         // 傷害是法師最大生命的固定比例、不隨波數變大：站著不動才會中，一直走一定閃得掉（法師走速 × 蓄力 0.75 秒 ≫ 判定半徑）
         blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 0.75, strikeRadius: 34, strikeHpRatio: 0.3,
         // 平常半透明（潛行），蓄力到瞬移後這段時間現形
-        stealthAlpha: 0.5, revealTime: 1.5,
+        stealthAlpha: 0.5, revealTime: 2.2,
     },
     spitter: {
         type: 'Spitter', name: '瘟疫投手', baseHealth: 30, baseAttack: 5, radius: 12,
@@ -4338,7 +4338,7 @@ class AssassinMonster extends Monster {
         if (this.blinkTimer <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.blinkRange * c.blinkRange) {
             this.windup = c.blinkWindup;
             this.mark = { x: player.pos.x, y: player.pos.y };
-            this.revealed = c.blinkWindup + c.revealTime;
+            // 蓄力時還隱身：現形的話大軍會在她出手前圍上去打死她，標記等於沒出現過。刺下去之後才現形（見 strike）
             warnHero();
             return;
         }
@@ -4362,6 +4362,7 @@ class AssassinMonster extends Monster {
         }
         this.mark = null;
         this.blinkTimer = c.blinkCooldown;
+        this.revealed = c.revealTime;
     }
     // 標記另外畫在召喚物之上、法師之下：不然會被大軍蓋住，刺客本人在畫面外時也會漏畫
     drawMark(ctx) {
