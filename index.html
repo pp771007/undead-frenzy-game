@@ -1234,6 +1234,35 @@
             width: 64px;
             height: 64px;
             margin: 0 auto 6px;
+            animation: lb-cheer-bounce 0.9s ease-in-out infinite alternate;
+        }
+
+        @keyframes lb-cheer-bounce {
+            from { transform: translateY(0) scale(1); }
+            to { transform: translateY(-6px) scale(1.08); }
+        }
+
+        /* 上榜的祝賀詞：照這一局的成績換一句（新榜首、通關、職業第一、超越對手…） */
+        .lb-cheer {
+            margin: -2px 0 8px;
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffe082;
+            text-shadow: var(--text-outline);
+        }
+
+        /* 煙火疊在面板上面、整個畫面都有，不擋點擊（手機上面板幾乎佔滿畫面，畫在後面就看不到） */
+        #lb-fireworks {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .lb-congrats-icon { animation: none; }
         }
 
         .lb-x {
@@ -2633,10 +2662,12 @@
 
     <!-- 結算時上榜：恭喜＋留名字 -->
     <div id="lb-congrats" class="overlay-screen">
+        <canvas id="lb-fireworks" aria-hidden="true"></canvas>
         <div class="overlay-content panel screen-in">
             <button id="lb-congrats-close-btn" class="lb-x" aria-label="關閉"><span class="icon" data-icon="close"></span></button>
             <span class="icon lb-congrats-icon" data-icon="podium"></span>
-            <h2 class="title-text">進入排行榜！</h2>
+            <h2 class="title-text" id="lb-congrats-title">恭喜上榜！</h2>
+            <p id="lb-congrats-cheer" class="lb-cheer"></p>
             <div id="lb-congrats-ranks" class="lb-ranks"></div>
             <div id="lb-congrats-result"></div>
             <label class="lb-name-label" for="lb-name-input">名字</label>

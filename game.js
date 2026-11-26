@@ -74,7 +74,7 @@ const uiElements = {
     titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'), finalTarget: $id('final-target'),
     lbScreen: $id('lb-screen'), lbTabs: $id('lb-tabs'), lbList: $id('lb-list'), lbCloseBtn: $id('lb-close-btn'),
     lbDetail: $id('lb-detail'), lbDetailBody: $id('lb-detail-body'), lbDetailCloseBtn: $id('lb-detail-close-btn'),
-    lbCongrats: $id('lb-congrats'), lbCongratsRanks: $id('lb-congrats-ranks'), lbCongratsResult: $id('lb-congrats-result'), lbNameInput: $id('lb-name-input'),
+    lbCongrats: $id('lb-congrats'), lbCongratsTitle: $id('lb-congrats-title'), lbCongratsCheer: $id('lb-congrats-cheer'), lbFireworks: $id('lb-fireworks'), lbCongratsRanks: $id('lb-congrats-ranks'), lbCongratsResult: $id('lb-congrats-result'), lbNameInput: $id('lb-name-input'),
     lbCongratsOkBtn: $id('lb-congrats-ok-btn'), lbCongratsCloseBtn: $id('lb-congrats-close-btn'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
@@ -1771,6 +1771,9 @@ const SFX_DEFS = {
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
     splat: { gap: 0.15, fn: s => { s.noise(0.2, { vol: 0.15, filterFreq: 700 }); s.tone(140, 0.18, { vol: 0.08, slideTo: 70 }); } },
+    // 上榜：一串往上爬的和弦；煙火每炸一顆一聲悶響
+    lbCheer: { gap: 1, fn: s => { [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.3, { type: 'triangle', vol: 0.14, delay: i * 0.09 })); s.tone(1568, 0.6, { type: 'sine', vol: 0.08, delay: 0.5 }); } },
+    firework: { gap: 0.08, fn: s => { s.noise(0.35, { vol: 0.12, filterFreq: 900 }); s.tone(1800 + Math.random() * 900, 0.25, { type: 'sine', vol: 0.03, slideTo: 900, delay: 0.05 }); } },
     victory: { gap: 1, fn: s => { [523, 659, 784, 1046, 1318].forEach((f, i) => s.tone(f, 0.35, { type: 'triangle', vol: 0.16, delay: i * 0.12 })); } },
     mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
@@ -6032,8 +6035,100 @@ function openLbDetail(id) {
 let lbPending = null;
 // 這一局第一次超越的對手最多列這幾個（一口氣跳很多名時只列最前面的）
 const LB_PASSED_SHOWN = 2;
+// 祝賀詞：挑這一局最了不起的那件事講。回傳 [標題, 一句話, 煙火幾顆]
+function lbCheer(e, passed) {
+    const all = lbRank(e, LB_ALL), mine = lbRank(e, e.cls), C = CLASSES[e.cls];
+    if (all === 1) return ['新的榜首！', '整座墓園都在為你歡呼', 9];
+    if (e.won && mine === 1) return ['恭喜通關！', `${C ? C.name : ''}榜第一，傳奇就此寫下`, 8];
+    if (e.won) return ['恭喜通關！', '亡靈大軍凱旋歸來', 7];
+    if (mine === 1) return ['恭喜上榜！', `${C ? C.name : ''}榜第一名！`, 7];
+    if (passed.length >= 2) return ['恭喜上榜！', `一口氣超越 ${passed.length} 位對手`, 6];
+    if (passed.length === 1) return ['恭喜上榜！', `超越了 ${passed[0].name}`, 5];
+    if (all && all <= 3) return ['恭喜上榜！', `綜合榜第 ${all} 名，離榜首只差一步`, 6];
+    return ['恭喜上榜！', '你的名字被記住了，下一局再往上爬', 4];
+}
+
+// ---------- 上榜的煙火：畫在面板後面的整頁畫布，炸完自己停 ----------
+// 戰鬥已經結束，紅色不用留給危險（見 CLAUDE.md），什麼顏色都可以
+const FIREWORK_COLORS = ['#FFD54F', '#FFF59D', '#7FF0F0', '#B388FF', '#A5D6A7', '#FFFFFF', '#FF5252', '#FF80AB'];
+const FIREWORK_SPARKS = 56;
+const FIREWORK_GRAVITY = 160;     // 火花往下掉的重力，像素/秒²
+const ROCKET_GRAVITY = 900;       // 升空用的重力：大一點才會一秒內衝到頂炸開，不會慢吞吞飄三秒
+const FIREWORK_STAGGER = 0.28;    // 每顆之間隔幾秒
+let fireworks = null;
+function startFireworks(count) {
+    stopFireworks();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const cv = uiElements.lbFireworks, dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = window.innerWidth, H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const fx = { cv, g: cv.getContext('2d'), dpr, W, H, rockets: [], sparks: [], queue: [], last: performance.now(), raf: 0 };
+    for (let i = 0; i < count; i++) fx.queue.push(0.15 + i * FIREWORK_STAGGER + Math.random() * 0.12);
+    fireworks = fx;
+    fx.raf = requestAnimationFrame(stepFireworks);
+}
+function stopFireworks() {
+    if (!fireworks) return;
+    cancelAnimationFrame(fireworks.raf);
+    fireworks.g.clearRect(0, 0, fireworks.cv.width, fireworks.cv.height);
+    fireworks = null;
+}
+function stepFireworks(now) {
+    const fx = fireworks;
+    if (!fx) return;
+    const dt = Math.min(0.05, (now - fx.last) / 1000);
+    fx.last = now;
+    // 發射：從畫面下緣往上飛，炸在畫面上半部到中間
+    for (let i = fx.queue.length - 1; i >= 0; i--) {
+        fx.queue[i] -= dt;
+        if (fx.queue[i] > 0) continue;
+        fx.queue.splice(i, 1);
+        const x = fx.W * (0.12 + Math.random() * 0.76);
+        const ty = fx.H * (0.1 + Math.random() * 0.45);
+        fx.rockets.push({ x, y: fx.H + 10, vx: (Math.random() - 0.5) * 40, vy: -Math.sqrt(2 * ROCKET_GRAVITY * (fx.H - ty)), color: FIREWORK_COLORS[Math.floor(Math.random() * FIREWORK_COLORS.length)] });
+    }
+    for (let i = fx.rockets.length - 1; i >= 0; i--) {
+        const r = fx.rockets[i];
+        r.vy += ROCKET_GRAVITY * dt; r.x += r.vx * dt; r.y += r.vy * dt;
+        fx.sparks.push({ x: r.x, y: r.y, vx: 0, vy: 30, life: 0.35, max: 0.35, color: '#FFE082', size: 1.6 });
+        if (r.vy < -20) continue;
+        // 到頂了：炸開，主色一圈加一點白色閃光
+        fx.rockets.splice(i, 1);
+        const speed = 120 + Math.random() * 80, second = FIREWORK_COLORS[Math.floor(Math.random() * FIREWORK_COLORS.length)];
+        for (let k = 0; k < FIREWORK_SPARKS; k++) {
+            const a = (k / FIREWORK_SPARKS) * Math.PI * 2 + Math.random() * 0.1, v = speed * (0.6 + Math.random() * 0.4);
+            const life = 1.1 + Math.random() * 0.6;
+            fx.sparks.push({ x: r.x, y: r.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, max: life, color: k % 4 === 0 ? second : r.color, size: 3.2 });
+        }
+        Sfx.play('firework');
+    }
+    const g = fx.g;
+    g.setTransform(fx.dpr, 0, 0, fx.dpr, 0, 0);
+    g.clearRect(0, 0, fx.W, fx.H);
+    g.globalCompositeOperation = 'lighter';
+    for (let i = fx.sparks.length - 1; i >= 0; i--) {
+        const s = fx.sparks[i];
+        s.life -= dt;
+        if (s.life <= 0) { fx.sparks.splice(i, 1); continue; }
+        s.vx *= 1 - 1.6 * dt; s.vy = s.vy * (1 - 1.6 * dt) + FIREWORK_GRAVITY * 0.45 * dt;
+        s.x += s.vx * dt; s.y += s.vy * dt;
+        const k = s.life / s.max;
+        g.globalAlpha = Math.min(1, k * 1.4) * (k < 0.3 ? 0.6 + 0.4 * Math.sin(now / 40 + i) : 1);
+        g.fillStyle = s.color;
+        g.beginPath(); g.arc(s.x, s.y, s.size * (0.5 + 0.5 * k), 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+    for (const r of fx.rockets) { g.fillStyle = '#FFFFFF'; g.beginPath(); g.arc(r.x, r.y, 2.2, 0, Math.PI * 2); g.fill(); }
+    if (!fx.queue.length && !fx.rockets.length && !fx.sparks.length) { stopFireworks(); return; }
+    fx.raf = requestAnimationFrame(stepFireworks);
+}
+
 function openLbCongrats({ entry: e, passed }) {
     lbPending = e;
+    const [title, cheer, bursts] = lbCheer(e, passed);
+    uiElements.lbCongratsTitle.textContent = title;
+    uiElements.lbCongratsCheer.textContent = cheer;
     uiElements.lbCongratsRanks.innerHTML = lbRanksHtml(e);
     const top = passed.sort(lbCompare).slice(0, LB_PASSED_SHOWN);
     uiElements.lbCongratsResult.innerHTML = lbResultHtml(e) +
@@ -6041,6 +6136,8 @@ function openLbCongrats({ entry: e, passed }) {
     uiElements.lbNameInput.value = meta.lbName || '';
     uiElements.lbNameInput.placeholder = LB_DEFAULT_NAME;
     showScreen(uiElements.lbCongrats, true);
+    startFireworks(bursts);
+    Sfx.play('lbCheer');
     // 手機上自動點進輸入框會直接彈出鍵盤蓋住名次，只在有實體鍵盤的裝置上這樣做
     if (!matchMedia('(pointer: coarse)').matches) uiElements.lbNameInput.focus();
 }
@@ -6053,6 +6150,7 @@ function closeLbCongrats() {
     e.name = typed || LB_DEFAULT_NAME;
     saveMeta();
     uiElements.lbNameInput.blur();
+    stopFireworks();
     showScreen(uiElements.lbCongrats, false);
     // 接著打開排行榜看自己排在哪：進了綜合榜就看綜合，不然看職業榜
     lbMineId = e.id;
