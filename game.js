@@ -1944,6 +1944,19 @@ const PLAYER_MAX_HIT_RATIO = 0.4;
 // 這個上限是一大塊難度：0.1～0.15 時躲在大軍後面的職業（亡靈法師、刺客、精靈）沒強化也常常通關，
 // 而加怪物攻擊、血量補不回來（只會磨大軍，碰不到主角）。0.2 = 至少被咬五下才倒
 const MELEE_HERO_HIT_RATIO = 0.2;
+// 契約、詛咒、每日變異的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
+// 上限固定時，後期怪物攻擊早就超過上限，+30% 乘上去還是被壓回 20%；主角血量少三成，上限（最大血量的 20%）也跟著小三成，
+// 一樣被咬 5 下才倒 —— 兩種代價後期都等於沒有。所以上限 × 怪物攻擊倍率 ÷ 主角血量倍率（例：戰狂契約 20% → 26%，約 4 下倒）。
+// 刺客、首領大招、血瞳、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
+// 疊太多時封頂在 HERO_HIT_CAP_MAX，不會一下就倒（玻璃之軀主角血量只剩四分之一，不封頂的話普攻一下 80%）
+const HERO_HIT_CAP_MAX = { melee: 0.35, any: 0.6 };
+function heroPenaltyScale() {
+    const m = runMods();
+    return m.atkMult / m.mageHpMult;
+}
+function heroHitCap(ratio, max) {
+    return Math.min(max, ratio * heroPenaltyScale());
+}
 // 吸到靈魂時法師身上的光暈：每吸一顆加一點，每秒淡掉這麼多
 const ABSORB_GLOW_PER_ORB = 0.35;
 const ABSORB_GLOW_DECAY = 2.5;
@@ -2022,7 +2035,7 @@ class Player extends GameObject {
         const cls = classDef();
         if (cls.heroDamageTakenMult) amount *= cls.heroDamageTakenMult();
         if (gameState.wardTimer > 0) amount *= ALTAR_EFFECTS.ward.mult;
-        const lost = Math.min(amount, this.maxHealth * PLAYER_MAX_HIT_RATIO, this.currentHealth);
+        const lost = Math.min(amount, this.maxHealth * heroHitCap(PLAYER_MAX_HIT_RATIO, HERO_HIT_CAP_MAX.any), this.currentHealth);
         this.currentHealth -= lost;
         if (cls.onHeroHurt && lost > 0) cls.onHeroHurt(lost / this.maxHealth);
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
@@ -3664,7 +3677,7 @@ class Monster extends GameObject {
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
         let dmg = this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1) * overtimeMult();
-        if (this.target === gameState.player) dmg = Math.min(dmg, this.target.maxHealth * MELEE_HERO_HIT_RATIO);
+        if (this.target === gameState.player) dmg = Math.min(dmg, this.target.maxHealth * heroHitCap(MELEE_HERO_HIT_RATIO, HERO_HIT_CAP_MAX.melee));
         this.target.takeDamage(dmg, this);
 
         if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
@@ -4068,7 +4081,7 @@ class DragonBoss extends BossMonster {
         const c = this.config;
         const dmg = this.attack * c.breathDamageMult;
         summonGrid.forEachInRadius(this.pos, c.breathRange, s => { if (s.isAlive && this.inBreath(s.pos)) s.takeDamage(dmg); });
-        if (player.isAlive && this.inBreath(player.pos)) player.takeDamage(player.maxHealth * c.breathPlayerHpRatio, this);
+        if (player.isAlive && this.inBreath(player.pos)) player.takeDamage(player.maxHealth * c.breathPlayerHpRatio * heroPenaltyScale(), this);
         const base = Math.atan2(this.breathDir.y, this.breathDir.x);
         for (let i = 0; i < 40; i++) {
             const a = base + (Math.random() - 0.5) * c.breathAngle, r = Math.random() * c.breathRange;
@@ -4082,7 +4095,7 @@ class DragonBoss extends BossMonster {
         const rSq = c.landRadius * c.landRadius;
         const dmg = this.attack * c.landDamageMult;
         summonGrid.forEachInRadius(this.pos, c.landRadius, s => { if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg); });
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.landPlayerHpRatio, this);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.landPlayerHpRatio * heroPenaltyScale(), this);
         const effect = getVisualEffectFromPool(ExplosionEffect);
         if (effect) { effect.init(this.pos, c.landRadius); gameState.visualEffects.push(effect); }
         spawnParticles(this.pos.x, this.pos.y, '#BCAAA4', 34, 200, 0.6, 3);
@@ -4199,7 +4212,7 @@ class LichBoss extends BossMonster {
             const s = summons[i];
             if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg);
         }
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.novaPlayerHpRatio, this);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.novaPlayerHpRatio * heroPenaltyScale(), this);
         const effect = getVisualEffectFromPool(ExplosionEffect);
         if (effect) { effect.init(this.pos, c.novaRadius); gameState.visualEffects.push(effect); }
         spawnParticles(this.pos.x, this.pos.y, '#E040FB', 36, 200, 0.6, 3);
@@ -4328,7 +4341,7 @@ class AssassinMonster extends Monster {
             this.updateFacingDirection(player.pos.x - this.pos.x);
             const effect = getVisualEffectFromPool(SlashEffect);
             if (effect) { effect.init(this.pos, player.pos); gameState.visualEffects.push(effect); }
-            player.takeDamage(player.maxHealth * c.strikeHpRatio, this);
+            player.takeDamage(player.maxHealth * c.strikeHpRatio * heroPenaltyScale(), this);
         } else {
             spawnFloatText(this.mark.x, this.mark.y - 20, '閃過', '#B3E5FC', 13);
         }
@@ -4482,7 +4495,7 @@ function updateEnemyBolts(deltaTime) {
             if (distanceSq(b.pos, p.pos) <= hit * hit) {
                 b.travel = Infinity;
                 spawnParticles(b.pos.x, b.pos.y, BLOOD_EYE_GLOW, BLOOD_BOLT_HIT_SPARKS, 110, 0.35, 3);
-                p.takeDamage(p.maxHealth * c.boltPlayerHpRatio, b.source);
+                p.takeDamage(p.maxHealth * c.boltPlayerHpRatio * heroPenaltyScale(), b.source);
             }
         }
     }
@@ -4915,7 +4928,7 @@ class BatMonster extends Monster {
     }
     attackTarget() {
         if (this.target !== gameState.player) { super.attackTarget(); return; }
-        this.target.takeDamage(this.target.maxHealth * this.config.playerHpRatio, this);
+        this.target.takeDamage(this.target.maxHealth * this.config.playerHpRatio * heroPenaltyScale(), this);
         this.attackCooldown = 1.0 / this.attackSpeed;
     }
     update(deltaTime, player, summons) {
@@ -5064,7 +5077,7 @@ class CorpseWormMonster extends Monster {
         this.mark = null;
         const r = c.eruptRadius, rSq = r * r, dmg = this.attack * c.eruptDamageMult;
         summonGrid.forEachInRadius(this.pos, r, s => { if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg); });
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.eruptPlayerHpRatio, this);
+        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.eruptPlayerHpRatio * heroPenaltyScale(), this);
         spawnParticles(this.pos.x, this.pos.y, '#8D6E63', 26, 160, 0.6, 4);
         addShake(6);
         Sfx.play('slam');
@@ -5199,7 +5212,7 @@ function updateHazards(deltaTime) {
         const rSq = h.r * h.r;
         summonGrid.forEachInRadius(h, h.r, s => { if (s.isAlive && distanceSq(h, s.pos) <= rSq) s.takeDamage(h.dmg); });
         if (p && p.isAlive && distanceSq(h, p.pos) <= rSq) {
-            p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio, h.source);
+            p.takeDamage(p.maxHealth * c.puddlePlayerHpRatio * heroPenaltyScale(), h.source);
             spawnFloatText(p.pos.x, p.pos.y - 30, hazardStyle(h).hurtText, hazardStyle(h).light, 13, 0.6);
         }
     }
