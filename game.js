@@ -227,17 +227,17 @@ const CONFIG = {
         explosionBaseDamage: 45,
     },
     basicMeleeMonster: {
-        type: 'BasicMelee', name: '血狼', baseHealth: 12, baseAttack: 4, radius: 12,
+        type: 'BasicMelee', name: '血狼', baseHealth: 7, baseAttack: 4, radius: 12,
         imageName: 'basic_melee', imgScaleMultiplier: 5,
         attackRange: 20, attackSpeed: 1.0, moveSpeed: 50, color: '#EF5350',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.01,
     },
     fastMeleeMonster: {
-        type: 'FastMelee', name: '赤鷲', baseHealth: 20, baseAttack: 6, radius: 11,
+        type: 'FastMelee', name: '赤鷲', baseHealth: 14, baseAttack: 6, radius: 11,
         imageName: 'fast_melee', imgScaleMultiplier: 3,
         attackRange: 18, attackSpeed: 1.2, moveSpeed: 95, color: '#FF7043',
         soulDrop: 2, waveSpeedIncreaseFactor: 0.012,
-        minWave: 3, waveInterval: 2,
+        minWave: 3, waveInterval: 1.3,
     },
     bloaterMonster: {
         type: 'Bloater', name: '腐屍', baseHealth: 18, baseAttack: 14, radius: 12,
@@ -394,8 +394,9 @@ const CONFIG = {
         attackRange: 16, attackSpeed: 1.2, moveSpeed: 115, color: '#5D4037',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.004,
         // 一單位 = 一群 flockSize 隻；不理召喚物、直撲法師。
-        // 咬法師扣固定比例：照攻擊力算的話第 40 波一群一秒就咬死法師，而牠們比法師快、跑不掉
-        minWave: 7, waveInterval: 4, flockSize: 6, wobble: 0.6, playerHpRatio: 0.03,
+        // 咬法師扣固定比例：照攻擊力算的話第 40 波一群一秒就咬死法師，而牠們比法師快、跑不掉。
+        // 繞過大軍直撲主角、一口很小、一大群看得到：躲在大軍後面的職業主要的危險來源，所以出得比其他怪頻繁
+        minWave: 7, waveInterval: 2.5, flockSize: 6, wobble: 0.6, playerHpRatio: 0.03,
     },
     witchDoctor: {
         type: 'WitchDoctor', name: '腐骨巫醫', baseHealth: 35, baseAttack: 0, radius: 12,
@@ -495,9 +496,11 @@ const CONFIG = {
         // 一局的目標：第 finalWave 波最終首領墮落亡靈王出場，打贏算通關（約 25 分鐘）。
         // 之後可以選擇繼續無盡模式，每波再多乘 endlessGrowth，通常十幾波內結束，不會變成一小時的慢慢輸
         finalWave: 50, endlessGrowth: 1.05,
-        // 狼群是「填充」用的；中後期的壓力主要交給各種新威脅，所以每波增加的數量不多。
+        // 狼群是「看得到的壓力」：普攻打主角有上限（MELEE_HERO_HIT_RATIO），威脅靠數量堆，畫面上怪越多就越危險。
+        // 狼與赤鷲的血量配合數量調低，一整波的總血量不變：一箭射一隻的職業（精靈）才不會一波打兩分鐘。
+        // 再多、再弱反而變簡單（大軍一刀砍一片、靈魂掉更多），每波 3 隻、狼 5 血時沒強化一半以上通關。
         // 底數給高一點是為了開場：第 1 波只有 2～4 隻時，前幾波畫面上幾乎沒東西可打
-        basicBase: 8, basicPerWave: 1.0,
+        basicBase: 8, basicPerWave: 2.0,
         // 首領的大招都有預警、閃得掉，首領波只靠首領本身沒有壓力（量過：首領波常常比旁邊的波輕鬆）；
         // 帶多一點小怪，變成「一邊閃首領一邊頂住怪群」
         bossEvery: 10, bossWaveCountFactor: 0.8,
@@ -1930,6 +1933,12 @@ class GameObject {
 const PLAYER_HP_TRAIL_SPEED = 0.6;
 const PLAYER_HP_LOW = 0.3;
 const PLAYER_MAX_HIT_RATIO = 0.4;
+// 沒有預警的普攻（狼、疾行屍、石像鬼…）打主角，一下最多扣最大生命的這個比例：危險要來自「看得到一群怪圍上來」，
+// 不是一隻怪咬一口就掉四成。量過：沒強化的機器人被秒殺的局，死前 3 秒多半是一兩隻疾行屍／狼一下打滿 PLAYER_MAX_HIT_RATIO。
+// 後期怪物攻擊照樣變高（大軍一樣會被磨），只是主角要被一群同時咬才會倒；有預警的招式（首領、刺客、地刺）不受這個限制。
+// 這個上限是一大塊難度：0.1～0.15 時躲在大軍後面的職業（亡靈法師、刺客、精靈）沒強化也常常通關，
+// 而加怪物攻擊、血量補不回來（只會磨大軍，碰不到主角）。0.2 = 至少被咬五下才倒
+const MELEE_HERO_HIT_RATIO = 0.2;
 // 吸到靈魂時法師身上的光暈：每吸一顆加一點，每秒淡掉這麼多
 const ABSORB_GLOW_PER_ORB = 0.35;
 const ABSORB_GLOW_DECAY = 2.5;
@@ -3557,7 +3566,9 @@ class Monster extends GameObject {
 
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
-        this.target.takeDamage(this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1), this);
+        let dmg = this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1);
+        if (this.target === gameState.player) dmg = Math.min(dmg, this.target.maxHealth * MELEE_HERO_HIT_RATIO);
+        this.target.takeDamage(dmg, this);
 
         if (this.attackRange <= CONFIG.basicMeleeMonster.attackRange * 1.2) {
             const effect = getVisualEffectFromPool(SlashEffect);

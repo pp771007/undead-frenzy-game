@@ -114,9 +114,9 @@ Object.assign(UNIT_TYPES, {
 
 CLASSES.monk = {
     name: '武僧', title: '少林拳師', portrait: 'monk.png', tagline: '沒有手下，連擊就是一切',
-    // 武僧前期沒有大軍、波與波之間不回血，傷害一路累積：同一套怪物加強下，沒強化的四局全倒在第 10 波的首領
-    // （見 game.js 的 monsterRamp），所以加強得比其他職業少，前期也跟著輕一點
-    monsterPressure: 0.7,
+    // 武僧沒有大軍、主角站最前面挨打，普攻一下扣多少有上限（game.js 的 MELEE_HERO_HIT_RATIO）時，跟其他職業用同一套怪物加強；
+    // 調低（0.7）的話機器人沒強化也幾乎都通關（見 game.js 的 monsterRamp）
+    monsterPressure: 1.0,
     unlock: 'streak1000',
     cards: ['Fist', 'Step', 'Qi'], schools: ['external', 'hardstyle', 'lightfoot', 'internal', 'qigong', 'soul'],
     hero: { imageName: 'monk', baseHealth: MONK.baseHealth, moveSpeed: MONK.moveSpeed },
