@@ -108,6 +108,8 @@ Object.assign(UNIT_TYPES, {
 
 CLASSES.elf = {
     name: '精靈弓箭手', title: '風行者', portrait: 'elf_archer.png', tagline: '邊退邊回頭射，停下來就變弱',
+    // 同一套怪物加強下沒強化照樣通關（見 game.js 的 monsterRamp）
+    monsterPressure: 1.3,
     unlock: 'win',
     cards: ['Archery', 'Traps', 'Companion'], schools: ['parthian', 'longbow', 'elemental', 'trapper', 'wildfriends', 'soul'],
     hero: { imageName: 'elf_archer', baseHealth: ELF.baseHealth, moveSpeed: ELF.moveSpeed },

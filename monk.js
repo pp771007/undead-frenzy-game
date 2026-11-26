@@ -114,6 +114,8 @@ Object.assign(UNIT_TYPES, {
 
 CLASSES.monk = {
     name: '武僧', title: '少林拳師', portrait: 'monk.png', tagline: '沒有手下，連擊就是一切',
+    // 不加 monsterPressure：武僧不是太強而是兩極（前期沒有大軍、波與波之間不回血，抽得不好第 10 波就倒，抽得好就通關），
+    // 再加壓只會讓前期倒得更多
     unlock: 'streak1000',
     cards: ['Fist', 'Step', 'Qi'], schools: ['external', 'hardstyle', 'lightfoot', 'internal', 'qigong', 'soul'],
     hero: { imageName: 'monk', baseHealth: MONK.baseHealth, moveSpeed: MONK.moveSpeed },

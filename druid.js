@@ -145,6 +145,8 @@ Object.assign(UNIT_TYPES, {
 
 CLASSES.druid = {
     name: '德魯伊', title: '橡樹賢者', portrait: 'druid.png', tagline: '種下橡樹，在自己選的林地打這一仗',
+    // 同一套怪物加強下沒強化常常通關（見 game.js 的 monsterRamp）
+    monsterPressure: 1.2,
     unlock: 'relics30',
     cards: ['SacredOak', 'Wolf', 'Bear'], schools: ['grove', 'pack', 'bear', 'wild', 'seasons', 'soul'],
     hero: { imageName: 'druid', baseHealth: DRUID.baseHealth, moveSpeed: DRUID.moveSpeed },

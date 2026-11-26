@@ -490,7 +490,8 @@ const CONFIG = {
         scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
         // 召喚物不設上限時，玩家收入隨怪物「數量」成長、戰力隨累積收入成長，線性變強的怪物永遠追不上
         // （舊版就是這樣撐到無限波）。從 expStartWave 起再乘上 expGrowth^(超過的波數)，保證終究會被淹沒
-        expStartWave: 20, expGrowth: 1.11,
+        // 前中期的壓力改由 MONSTER_RAMP_* 補上，這裡比原本的 1.11 小：後期一樣難，但不會最後幾波一口氣斷崖
+        expStartWave: 20, expGrowth: 1.09,
         // 一局的目標：第 finalWave 波最終首領墮落亡靈王出場，打贏算通關（約 25 分鐘）。
         // 之後可以選擇繼續無盡模式，每波再多乘 endlessGrowth，通常十幾波內結束，不會變成一小時的慢慢輸
         finalWave: 50, endlessGrowth: 1.05,
@@ -731,26 +732,72 @@ function blessVal(id) { return BLESSINGS[id].per * bl(id); }
 
 // ---------- 永久強化（跨局保留）：每局結束依撐過的波數與擊敗的首領拿靈魂結晶 ----------
 const META_KEY = 'undeadFrenzy_meta';
+// 局外成長的目標（同 PokéSurvivor、吸血鬼倖存者、Halls of Torment）：沒買任何強化打不過亡靈王，
+// 一局一局買上去會明顯變強，大約買到一半以上才通關。怪物的基本強度（MONSTER_BASE_*）跟這張表是一起調的：
+// 沒強化時被怪物壓過，戰鬥類全滿時比怪物強。數值類每一項全滿約 +30%～+60%，七個職業都吃得到；
+// 再穿插幾個一次買斷、改變玩法的（復活、多一張祝福、開局祝福），體感變強主要靠這幾個。
+// 價格：第 n 級是 costBase × n，第一級一局就買得起
+// total(m, lv)：買了 lv 級時合計的效果，強化畫面寫「目前 …」
 const META_UPGRADES = {
-    startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 10, costBase: 30, desc: m => `開局靈魂 +${m.per}` },
-    mageHp: { icon: 'heart', name: '法師體魄', max: 5, per: 10, costBase: 30, desc: m => `法師血量 +${m.per}` },
-    novaMastery: { icon: 'burst', name: '新星精通', max: 5, per: 0.08, costBase: 40, desc: m => `新星冷卻 -${pct(m.per)}` },
-    boneMarrow: { icon: 'boneArmor', name: '骨髓強化', max: 5, per: 0.06, costBase: 50, desc: m => `召喚物血量 +${pct(m.per)}` },
-    soulAffinity: { icon: 'soulHarvest', name: '靈魂親和', max: 5, per: 0.06, costBase: 50, desc: m => `靈魂掉落 +${pct(m.per)}` },
-    freeReroll: { icon: 'reroll', name: '先知之眼', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}` },
+    might: { icon: 'claws', name: '亡者之力', max: 6, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    mageHp: { icon: 'heart', name: '主角體魄', max: 5, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    boneMarrow: { icon: 'boneArmor', name: '軍團體魄', max: 5, per: 0.1, costBase: 35, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    ultMastery: { icon: 'burst', name: '大招精通', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
+    soulAffinity: { icon: 'soulHarvest', name: '靈魂親和', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+    revive: { icon: 'rebirth', name: '不死執念', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
+    freeReroll: { icon: 'reroll', name: '先知之眼', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
     // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑
-    banish: { icon: 'banish', name: '斷念', max: 3, per: 1, costBase: 60, desc: m => `每局可放逐 ${m.per} 張祝福（整局不再出現）` },
+    banish: { icon: 'banish', name: '斷念', max: 3, per: 1, costBase: 60, desc: m => `每局可放逐 ${m.per} 張祝福（整局不再出現）`, total: (m, lv) => `${lv} 張` },
     extraChoice: { icon: 'extraChoice', name: '多一條路', max: 1, per: 1, costBase: 250, desc: () => '祝福多一張可選' },
     headStart: { icon: 'star', name: '開局祝福', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
 };
-const CRYSTALS_PER_WAVE = 2;
+// 強化表換過一次（數值類改成百分比、加了傷害與復活）：舊存檔買過的全部退還結晶，照新表重新買
+const META_TABLE_VERSION = 2;
+// 舊表每一項的起價（退還時照它算花了多少），新表沒有這一項的也要退
+const META_V1_COST_BASE = { startSouls: 30, mageHp: 30, novaMastery: 40, boneMarrow: 50, soulAffinity: 50, freeReroll: 80, banish: 60, extraChoice: 250, headStart: 150 };
+function migrateMetaTable(m) {
+    if ((m.metaTable || 1) >= META_TABLE_VERSION) return m;
+    let back = 0;
+    for (const [id, lv] of Object.entries(m.upgrades || {})) back += (META_V1_COST_BASE[id] || 0) * lv * (lv + 1) / 2;
+    return { ...m, crystals: (m.crystals || 0) + back, upgrades: {}, metaTable: META_TABLE_VERSION };
+}
+// 怪物的基本強度（見 META_UPGRADES 的說明）。量過的曲線（機器人、沒強化）：前 30 波幾乎沒有壓力、首領波不比旁邊的波難，
+// 難度全擠在 35 波以後（波數成長 expGrowth 是指數），所以前半局很空、後面一口氣斷崖。
+// 改成從第 1 波就慢慢加、到 MONSTER_RAMP_FULL_WAVE 波加滿，同時把 expGrowth 調小：前中期有壓力、後期一樣難但不再斷崖。
+// 整局一律加的話前期就被壓垮（死靈法師第 9 波就倒），只加後期的話斷崖更陡，兩種都試過。
+// 詛咒、契約、每日變異的倍率另外疊在上面
+// 從第 1 波就加的話，沒有大軍的職業（武僧）傷害一路累積、第 10 波首領就倒，所以從第 5 波才開始加
+const MONSTER_RAMP_FROM_WAVE = 5;
+const MONSTER_RAMP_FULL_WAVE = 25;
+const MONSTER_LATE_HP_MULT = 2.6;
+const MONSTER_LATE_ATK_MULT = 1.8;
+// 首領要是每 10 波那一輪的高峰：量過的首領波反而比旁邊的波輕鬆（大軍幾秒就把首領磨掉）。
+// 第一隻首領不加：第一局要打得過它（難度研究：第一局倒在第一隻首領之後），從第 BOSS_BOOST_FROM_WAVE 波的首領起才加
+const BOSS_HP_MULT = 1.6;
+const BOSS_ATK_MULT = 1.2;
+const BOSS_BOOST_FROM_WAVE = 20;
+// 職業的 monsterPressure 乘在加成幅度上：同一套加成下，主角能長到兩千血的職業（武僧、戰士）沒強化照樣通關，
+// 靠大軍的死靈法師卻在中期整支軍隊被磨光，同一條曲線對不同職業差太多。用機器人（會挑同流派的祝福）一個職業一個職業量出來
+function monsterRamp(wave) {
+    const t = Math.min(1, Math.max(0, (wave - MONSTER_RAMP_FROM_WAVE) / (MONSTER_RAMP_FULL_WAVE - MONSTER_RAMP_FROM_WAVE)));
+    return t * (classDef().monsterPressure || 1);
+}
+// 不死執念：復活時血量回幾成、身邊的怪推多遠、之後幾秒不會受傷
+const REVIVE_HP = 0.5;
+const REVIVE_PUSH_RADIUS = 160;
+const REVIVE_PUSH_DIST = 140;
+const REVIVE_SHIELD_SECONDS = 2.5;
+// 前幾局就要買得起有感的強化（第一局倒在二十幾波大約拿 100 多），不要農很久才有戰力
+const CRYSTALS_PER_WAVE = 4;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
+    return { crystals: 0, upgrades: {}, metaTable: META_TABLE_VERSION, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
 }
 function loadMeta() {
     try {
-        const m = JSON.parse(SaveStore.get(META_KEY));
+        const saved = JSON.parse(SaveStore.get(META_KEY));
+        const m = saved && migrateMetaTable(saved);
         if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) }, leaderboard: m.leaderboard || seedLeaderboard(m.bestClear) };
     } catch (e) { }
     return defaultMeta();
@@ -1000,7 +1047,7 @@ function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
 }
 function getNovaCooldown() {
-    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (1 - metaVal('novaMastery')) * (res('mage') >= 2 ? 1 - RES_NOVA_CD : 1) * runMods().novaCdMult;
+    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (res('mage') >= 2 ? 1 - RES_NOVA_CD : 1) * runMods().novaCdMult;
 }
 function getNovaDamage() {
     return Math.round(CONFIG.nova.baseDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('novaPower')));
@@ -1045,9 +1092,12 @@ const UNIT_TYPES = {
 //   relicChannelMult()：站在遺跡上讀條的速度倍率（刺客隱身時快三倍）
 //   relicDist：[最近, 最遠]，遺跡離主角多遠冒出來（德魯伊守林地，冒在林地裡）
 //   buffs()：[{ icon, t, color }]，職業自己的限時效果，跟狂暴一起排在狀態列底下顯示倒數
+//   monsterPressure：怪物隨波數加強的幅度倍率（預設 1，見 monsterRamp），用來讓各職業沒強化時的難度曲線差不多
 const CLASSES = {
     necro: {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
+        // 整支大軍被磨光之後法師自己打不動硬怪，對怪物血量最敏感
+        monsterPressure: 0.7,
         cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'soul'],
         hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
         attack: (p, dt) => p.shootBolt(dt),
@@ -1946,7 +1996,7 @@ class Player extends GameObject {
     }
     // source：打這一下的怪（毒池則是丟毒的那隻），陣亡畫面要寫是誰殺的
     takeDamage(amount, source = null) {
-        if (!this.isAlive) return;
+        if (!this.isAlive || gameState.reviveShield > 0) return;
         // 單一下傷害封頂：滿血不會被一下秒掉（後期精英腐屍一爆就超過法師血量），死亡要來自看得到的壓力
         const cls = classDef();
         if (cls.heroDamageTakenMult) amount *= cls.heroDamageTakenMult();
@@ -1962,11 +2012,29 @@ class Player extends GameObject {
         gameState.hurtFlash = CONFIG.visuals.hurtFlashDuration;
         addShake(4);
         Sfx.play('hurt');
-        if (this.currentHealth <= 0 && !(cls.preventDeath && cls.preventDeath())) {
+        if (this.currentHealth <= 0 && !(cls.preventDeath && cls.preventDeath()) && !this.revive()) {
             gameState.killedBy = source;
             this.die();
         }
         updateUI();
+    }
+    // 局外的「不死執念」：倒下時用掉一次，血回一半、把身邊的怪推開，幾秒內不會再受傷
+    revive() {
+        if (!(gameState.revivesLeft > 0)) return false;
+        gameState.revivesLeft--;
+        this.currentHealth = Math.round(this.maxHealth * REVIVE_HP);
+        gameState.reviveShield = REVIVE_SHIELD_SECONDS;
+        for (const m of gameState.monsters) {
+            const dx = m.pos.x - this.pos.x, dy = m.pos.y - this.pos.y, d = Math.hypot(dx, dy);
+            if (!m.isAlive || d > REVIVE_PUSH_RADIUS || d === 0) continue;
+            m.pos.x += dx / d * REVIVE_PUSH_DIST;
+            m.pos.y += dy / d * REVIVE_PUSH_DIST;
+        }
+        gameState.visualEffects.push(new NovaEffect({ x: this.pos.x, y: this.pos.y }, REVIVE_PUSH_RADIUS, REVIVE_EFFECT_COLORS));
+        gameState.banner = { text: META_UPGRADES.revive.name, sub: '倒下了，又站了起來', color: '#FFE082', life: CONFIG.wave.bannerDuration, icon: 'rebirth' };
+        addShake(10);
+        Sfx.play('victory');
+        return true;
     }
     draw(ctx) {
         if (this.isAlive && this.absorbGlow > 0 && orbGlowSprite) {
@@ -3305,9 +3373,9 @@ class Monster extends GameObject {
                 this.fxSeed = Math.random() * 10;
             }
         }
-        const cm = runMods();
-        this.maxHealth = Math.round(this.maxHealth * cm.hpMult);
-        this.attack *= cm.atkMult;
+        const cm = runMods(), ramp = monsterRamp(waveNumber);
+        this.maxHealth = Math.round(this.maxHealth * cm.hpMult * (1 + (MONSTER_LATE_HP_MULT - 1) * ramp));
+        this.attack *= cm.atkMult * (1 + (MONSTER_LATE_ATK_MULT - 1) * ramp);
         this.baseMoveSpeed *= cm.speedMult;
         this.moveSpeed = this.baseMoveSpeed;
         this.currentHealth = this.maxHealth;
@@ -3498,7 +3566,8 @@ class Monster extends GameObject {
 
     takeDamage(amount) {
         if (!this.isAlive) return;
-        this.currentHealth -= amount;
+        // 打在怪身上的傷害都是我方造成的：局外的「亡者之力」在這裡統一加成，主角、召喚物、大招、反傷都算
+        this.currentHealth -= amount * (1 + metaVal('might'));
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
         this.hitFlash = CONFIG.visuals.hitFlashDuration;
         Sfx.play('hit');
@@ -3636,7 +3705,9 @@ class BossMonster extends Monster {
     constructor(x, y, waveNumber, config) {
         super(x, y, config, waveNumber, false);
         this.tier = Math.max(1, Math.floor(waveNumber / CONFIG.wave.bossEvery));
-        this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult);
+        const boost = waveNumber >= BOSS_BOOST_FROM_WAVE;
+        this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult * (boost ? BOSS_HP_MULT : 1));
+        if (boost) this.attack *= BOSS_ATK_MULT;
         this.spawnedAt = worldTime;
     }
     applySlow(amount, duration) {
@@ -5797,6 +5868,7 @@ function closeLbCongrats() {
 
 const NOVA_EFFECT_COLORS = { fill: '156, 39, 176', stroke: '225, 190, 231' };
 const PULSE_EFFECT_COLORS = { fill: '77, 182, 172', stroke: '178, 223, 219' };
+const REVIVE_EFFECT_COLORS = { fill: '255, 213, 79', stroke: '255, 236, 179' };
 // 脈衝這類「每隻都會一直放」的特效：場上特效太多時就不再加，避免大軍時畫面與效能被淹沒
 const MAX_AMBIENT_EFFECTS = 120;
 
@@ -5825,9 +5897,12 @@ function useUltimate() {
     const p = gameState.player;
     if (!p || !p.isAlive || gameState.ultCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
     if (!classDef().ultimate.use()) return false;
+    // 各職業的大招自己設冷卻；局外的「大招精通」在這裡統一打折，七個職業都吃得到
+    gameState.ultCooldown *= ultCooldownMult();
     markUltTaught();
     return true;
 }
+function ultCooldownMult() { return 1 - metaVal('ultMastery'); }
 
 function useNova() {
     const p = gameState.player;
@@ -6329,7 +6404,7 @@ function renderMeta() {
         const btn = maxed
             ? '<button class="btn btn-dark" disabled>已滿</button>'
             : `<button class="btn btn-gold" data-meta="${id}" ${meta.crystals < cost ? 'disabled' : ''}><span class="price">${iconHtml('crystal')}${cost}</span></button>`;
-        return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${m.desc(m)}</div></div>${btn}</div>`;
+        return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${m.desc(m)}${lv > 0 && m.total && m.max > 1 ? ` · 目前 <b>${m.total(m, lv)}</b>` : ''}</div></div>${btn}</div>`;
     }).join('');
 }
 function buyMeta(id) {
@@ -6483,6 +6558,7 @@ function updateTimers(deltaTime) {
     if (tutorial && gameState.currentWave === 0) return;
     updateSpawner(deltaTime);
     gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
+    gameState.reviveShield = Math.max(0, (gameState.reviveShield || 0) - deltaTime);
     // 波與波之間沒有怪打，狂暴不扣時間：不會白白耗在空檔裡
     if (!gameState.betweenWaves) gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
     achvCheckTimer -= deltaTime;
@@ -6979,7 +7055,7 @@ function updateUltButton() {
     if (btn.disabled !== off) btn.disabled = off;
     if (cd > 0) {
         // 取整數百分比：肉眼看不出差別，按鈕從每格重畫變成冷卻期間總共重畫一百次
-        const done = Math.floor((1 - cd / U.cooldown()) * 100);
+        const done = Math.floor((1 - cd / (U.cooldown() * ultCooldownMult())) * 100);
         setHtmlIfChanged(btn, `${iconHtml(U.icon)}<span>${Math.ceil(cd)}</span>`);
         if (btn.dataset.cd !== String(done)) {
             btn.dataset.cd = String(done);
@@ -7112,6 +7188,7 @@ function saveGameState() {
         extraDrafts: gameState.extraDrafts,
         banished: gameState.banished,
         banishLeft: gameState.banishLeft,
+        revivesLeft: gameState.revivesLeft,
         rerollsLeft: gameState.rerollsLeft,
         classExtra: classDef().saveExtra ? classDef().saveExtra() : null,
         relics: gameState.relics.filter(r => !r.done),
@@ -7179,6 +7256,7 @@ function loadGameState() {
         refreshResonance();
         gameState.banished = loadedState.banished ?? [];
         gameState.banishLeft = loadedState.banishLeft ?? 0;
+        gameState.revivesLeft = loadedState.revivesLeft ?? metaVal('revive');
         gameState.rerollsLeft = loadedState.rerollsLeft ?? REROLLS_PER_RUN + metaVal('freeReroll');
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
@@ -7281,11 +7359,13 @@ function setupNewRun(daily = null) {
     gameState.curse = daily ? 0 : Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     invalidateRunMods();
     gameState.player = new Player(0, 0);
-    gameState.player.maxHealth = Math.round((classDef().hero.baseHealth + metaVal('mageHp')) * runMods().mageHpMult);
+    gameState.player.maxHealth = Math.round(classDef().hero.baseHealth * (1 + metaVal('mageHp')) * runMods().mageHpMult);
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
     gameState.banishLeft = metaVal('banish');
     gameState.rerollsLeft = REROLLS_PER_RUN + metaVal('freeReroll');
+    gameState.revivesLeft = metaVal('revive');
+    gameState.reviveShield = 0;
     snapCamera();
     [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
 }

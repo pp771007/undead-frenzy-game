@@ -49,10 +49,12 @@ const THRALL_TINT = '#CE93D8', THRALL_TINT_STRENGTH = 0.45;
 
 CONFIG.thrall = { ...THRALL_COMMON, type: 'Thrall', radius: 11, color: '#CE93D8', imageName: 'basic_melee', imgScaleMultiplier: 3,
     baseHealth: 40, baseAttack: 8, attackRange: 22, attackSpeed: 1, moveSpeed: 80, summonCost: 10, upgradeCostBase: 22, upgradeCostInc: 10 };
+// 蝙蝠是最便宜的兵，又能拿自己的血付錢：價格與每級成長照其他職業的兵定的話，第 20 波就有五六百隻、七十幾級，
+// 整局沒有壓力（機器人量的），所以召喚跟眷屬差不多貴、升級也貴一截，每級長得比較少
 CONFIG.bloodBat = {
     ...THRALL_COMMON, type: 'BloodBat', imageName: 'blood_bat', color: '#C62828', radius: 9, imgScaleMultiplier: 3.6,
-    baseHealth: 28, baseAttack: 6, attackRange: 20, attackSpeed: 1.4, moveSpeed: 150, upgradeBonus: 0.2,
-    summonCost: 5, upgradeCostBase: 18, upgradeCostInc: 9,
+    baseHealth: 28, baseAttack: 6, attackRange: 20, attackSpeed: 1.4, moveSpeed: 150, upgradeBonus: 0.14,
+    summonCost: 9, upgradeCostBase: 26, upgradeCostInc: 13,
 };
 // 血魔法：只修練不召喚，等級是血爆的威力
 CONFIG.bloodMagic = { type: 'BloodMagic', upgradeBonus: 0.25, summonCost: 0, upgradeCostBase: 20, upgradeCostInc: 10 };
@@ -132,6 +134,9 @@ Object.assign(UNIT_TYPES, {
 
 CLASSES.vampire = {
     name: '吸血鬼', title: '血月伯爵', portrait: 'vampire.png', tagline: '血就是錢，打倒的怪站起來為你而戰',
+    // 同一套怪物加強下沒強化照樣通關（見 game.js 的 monsterRamp）。2 倍時怪物血量疊到四倍，
+    // 蝙蝠打不贏巫醫補血、第 49 波卡住打不完 —— 血量灌太多只會變成拖棚，不會變好玩
+    monsterPressure: 1.5,
     unlock: 'pacts',
     cards: ['Thrall', 'BloodBat', 'BloodMagic'], schools: ['bloodmagic', 'kin', 'bats', 'werewolf', 'undying', 'soul'],
     hero: { imageName: 'vampire', baseHealth: VAMPIRE.baseHealth, moveSpeed: VAMPIRE.moveSpeed },
