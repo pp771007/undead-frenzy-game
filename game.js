@@ -1777,6 +1777,9 @@ const SFX_DEFS = {
     lbCheer: { gap: 1, fn: s => { [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.3, { type: 'triangle', vol: 0.14, delay: i * 0.09 })); s.tone(1568, 0.6, { type: 'sine', vol: 0.08, delay: 0.5 }); } },
     firework: { gap: 0.08, fn: s => { s.noise(0.35, { vol: 0.12, filterFreq: 900 }); s.tone(1800 + Math.random() * 900, 0.25, { type: 'sine', vol: 0.03, slideTo: 900, delay: 0.05 }); } },
     victory: { gap: 1, fn: s => { [523, 659, 784, 1046, 1318].forEach((f, i) => s.tone(f, 0.35, { type: 'triangle', vol: 0.16, delay: i * 0.12 })); } },
+    // 有招式瞄準主角（或主角在範圍裡）：兩聲短促的高音。所有這類招式共用這一個，點升級、看別處時用聽的也知道要閃
+    aimWarn: { gap: 0.25, fn: s => { s.tone(1760, 0.07, { type: 'square', vol: 0.07 }); s.tone(1760, 0.07, { type: 'square', vol: 0.07, delay: 0.11 }); } },
+    rumble: { gap: 0.4, fn: s => s.noise(0.5, { vol: 0.12, filterFreq: 250 }) },
     mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
@@ -1950,6 +1953,13 @@ const MELEE_HERO_HIT_RATIO = 0.2;
 // 刺客、首領大招、血瞳、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
 // 疊太多時封頂在 HERO_HIT_CAP_MAX，不會一下就倒（玻璃之軀主角血量只剩四分之一，不封頂的話普攻一下 80%）
 const HERO_HIT_CAP_MAX = { melee: 0.35, any: 0.6 };
+// 招式瞄準主角時響預警音：pos/radius 給了就只在主角站在範圍裡時響（打大軍不吵）
+function warnHero(pos = null, radius = 0) {
+    const p = gameState.player;
+    if (!p || !p.isAlive) return;
+    if (pos && distanceSq(p.pos, pos) > radius * radius) return;
+    Sfx.play('aimWarn');
+}
 function heroPenaltyScale() {
     const m = runMods();
     return m.atkMult / m.mageHpMult;
@@ -3876,6 +3886,7 @@ class ColossusBoss extends BossMonster {
         if (this.slamTimer <= 0 && this.target && distanceSq(this.pos, this.target.pos) < (c.slamRadius * 1.5) ** 2) {
             this.windup = c.slamWindup;
             this.slamTimer = c.slamInterval;
+            warnHero(this.pos, c.slamRadius + 20);
             return;
         }
         super.update(deltaTime, player, summons);
@@ -3979,6 +3990,7 @@ class HunterBoss extends BossMonster {
             this.dashTimer = c.dashInterval;
             this.windup = c.dashWindup;
             this.dashDir = normalizeVector({ x: this.target.pos.x - this.pos.x, y: this.target.pos.y - this.pos.y });
+            if (this.target === player) warnHero();
             return;
         }
         super.update(deltaTime, player, summons);
@@ -4058,6 +4070,7 @@ class DragonBoss extends BossMonster {
             this.land = { x: player.pos.x, y: player.pos.y };
             spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 20, 120, 0.5, 3);
             Sfx.play('dash');
+            warnHero();
             return;
         }
         if (this.breathT <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.breathTriggerRange * c.breathTriggerRange) {
@@ -4065,6 +4078,7 @@ class DragonBoss extends BossMonster {
             this.windup = c.breathWindup;
             this.breathDir = normalizeVector({ x: player.pos.x - this.pos.x, y: player.pos.y - this.pos.y });
             this.updateFacingDirection(this.breathDir.x);
+            warnHero();
             return;
         }
         super.update(deltaTime, player, summons);
@@ -4200,6 +4214,7 @@ class LichBoss extends BossMonster {
         if (this.novaT <= 0) {
             this.novaT = c.novaInterval;
             this.windup = c.novaWindup;
+            warnHero(this.pos, c.novaRadius + 30);
             return;
         }
         super.update(deltaTime, player, summons);
@@ -4324,7 +4339,7 @@ class AssassinMonster extends Monster {
             this.windup = c.blinkWindup;
             this.mark = { x: player.pos.x, y: player.pos.y };
             this.revealed = c.blinkWindup + c.revealTime;
-            Sfx.play('mark');
+            warnHero();
             return;
         }
         super.update(deltaTime, player, summons);
@@ -5055,6 +5070,7 @@ class CorpseWormMonster extends Monster {
                 this.stateT = c.warnTime;
                 this.mark = { x: this.pos.x, y: this.pos.y };
                 Sfx.play('rumble');
+                warnHero(this.mark, c.eruptRadius + 25);
             }
             return;
         }
