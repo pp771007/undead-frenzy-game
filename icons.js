@@ -636,6 +636,12 @@ const ICON_BODIES = {
     boneVanguard: `<circle cx="32" cy="28" r="22" fill="#5e35b1"/><circle cx="32" cy="28" r="15" fill="none" stroke="#ffd54f" stroke-width="3"/>
         ${[[18, 44], [46, 44], [32, 50]].map(([x, y]) => `<path d="M${x - 9} ${y - 2} C${x - 9} ${y - 12} ${x + 9} ${y - 12} ${x + 9} ${y - 2} C${x + 9} ${y + 3} ${x + 6} ${y + 5} ${x + 5} ${y + 5} L${x + 5} ${y + 10} L${x - 5} ${y + 10} L${x - 5} ${y + 5} C${x - 6} ${y + 5} ${x - 9} ${y + 3} ${x - 9} ${y - 2} Z" fill="#f1ead6" stroke-width="3"/><circle cx="${x - 3.5}" cy="${y - 1}" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="${x + 3.5}" cy="${y - 1}" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/>`).join('')}
         ${shine(22, 14, 5, 3)}`,
+    // 屍爆（新星引爆陣亡留下的骸骨）：交叉骨頭上一顆裂開的骷髏，四周飛出骨片（不用星形爆光：那是新星 burst）
+    corpseBlast: `${[[8, 14, -0.8], [56, 12, 0.8], [6, 34, -1.6], [58, 34, 1.6]].map(([x, y, a]) => `<path d="M${x} ${y} l${(Math.sin(a) * 8).toFixed(1)} ${(-Math.cos(a) * 8).toFixed(1)}" stroke-width="7"/><path d="M${x} ${y} l${(Math.sin(a) * 8).toFixed(1)} ${(-Math.cos(a) * 8).toFixed(1)}" stroke="#d1c4e9" stroke-width="3.5"/>`).join('')}
+        <path d="M12 58 L52 44 M12 44 L52 58" stroke-width="9"/><path d="M12 58 L52 44 M12 44 L52 58" stroke="#efebe9" stroke-width="5"/>
+        <path d="M32 8 C20 8 14 16 14 26 C14 32 17 36 21 38 L21 46 L43 46 L43 38 C47 36 50 32 50 26 C50 16 44 8 32 8 Z" fill="#efebe9"/>
+        <ellipse cx="25" cy="27" rx="5" ry="6" fill="#7e57c2" stroke="none"/><ellipse cx="39" cy="27" rx="5" ry="6" fill="#7e57c2" stroke="none"/>
+        <path d="M32 9 L29 17 L34 21 L31 27" stroke-width="2.5"/>${shine(22, 15, 4, 2.5)}`,
     boneMarrow: `<path d="M12 44 C6 40 10 32 16 36 L40 12 C36 6 44 2 48 8 C54 6 58 14 52 18 L28 42 C32 48 24 52 20 46 C16 52 8 48 12 44 Z" fill="#f1ead6"/>
         <path d="M45 61 C32 53 28 45 32 38 C36 33 42 34 45 39 C48 34 54 33 58 38 C62 45 58 53 45 61 Z" fill="#e5484d"/>`,
     // 靈魂親和（靈魂掉落）：滿出靈魂的豐饒角

@@ -1320,7 +1320,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -4189,6 +4189,13 @@ class BossMonster extends Monster {
         }
         super.takeDamage(amount);
     }
+    // 屍爆這類「直接削護甲」：不吃每秒上限（armorBudget）
+    shredArmor(amount) {
+        if (!this.isAlive || this.invulnerable || this.armor <= 0) return;
+        this.armor -= amount;
+        spawnParticles(this.pos.x, this.pos.y - this.radius * 0.5, BOSS_ARMOR_COLOR, 4, 90, 0.35, 2.5);
+        if (this.armor <= 0.5) this.breakArmor();
+    }
     breakArmor() {
         this.armor = 0;
         this.breakT = BOSS_FIGHT.breakTime;
@@ -6090,8 +6097,133 @@ function boneBurst(s) {
 // 召喚物陣亡時：附近的墓地祭司把它復活成敵方骷髏
 function onSummonDeath(summon) {
     const ps = gameState.priests;
-    if (!ps || !ps.length) return;
-    for (let i = 0; i < ps.length; i++) if (ps[i].isAlive && ps[i].tryRaise(summon)) return;
+    if (ps) for (let i = 0; i < ps.length; i++) if (ps[i].isAlive && ps[i].tryRaise(summon)) return;
+    // 被墓地祭司拉起來變敵人的不留骸骨（屍體已經被拿走了）
+    if (runClass() === 'necro') leaveBonePile(summon.pos);
+}
+
+// ---------- 屍爆（亡靈法師）：陣亡的召喚物留下一堆骸骨，新星把範圍內的骸骨全部引爆 ----------
+// 首領殺你越多兵、地上骨頭越多，一發新星就是反擊：大軍被打光不再只是輸。
+// 要把首領引到骨堆上、算準時機才放新星。炸了就沒了，不會再爬起來（使用者定的：只要屍爆，不要復活）。
+// 打首領時直接削護甲、不吃護甲的每秒上限：首領戰會把大軍磨光，不然法師一個人打不穿護甲
+const BONE_PILE = {
+    life: 15, fade: 3, max: 80,       // 留幾秒、最後幾秒淡掉、最多同時幾堆（超過丟最舊的）
+    reachMult: 1.5,                   // 新星半徑的幾倍內的骸骨會被引爆
+    radius: 46, dmgMult: 0.6,         // 每堆炸多大、傷害是新星的幾倍
+    armorShred: 0.08,                 // 每堆削掉首領最大護甲的幾成：十幾堆炸在首領身上就破防（大軍死光的那一發要能翻盤）
+    chainDelay: 0.004,                // 每離主角 1 單位晚幾秒炸：從主角往外一圈一圈炸開
+};
+const BONE_PILE_GLOW = '#B39DDB', BONE_BLAST_LIGHT = '#EDE7F6';
+function boneReach() { return CONFIG.nova.radius * (bl('frostNova') > 0 ? FROST_NOVA_RADIUS_MULT : 1) * BONE_PILE.reachMult; }
+function leaveBonePile(pos) {
+    const piles = gameState.bonePiles;
+    if (piles.length >= BONE_PILE.max) piles.shift();
+    piles.push({ x: pos.x + randomInRange(-4, 4), y: pos.y + randomInRange(-4, 4), life: BONE_PILE.life, look: Math.floor(Math.random() * BONE_PILE_LOOKS) });
+    introduceRelic('corpseBlast', '屍爆', '新星會引爆附近陣亡留下的骸骨', '#D1C4E9', 'corpseBlast');
+}
+// 新星施放時呼叫：範圍內的骸骨排進引爆佇列，離主角越遠炸得越晚
+function detonateBonePiles(center) {
+    const R = boneReach(), rSq = R * R, keep = [];
+    for (const b of gameState.bonePiles) {
+        const dSq = distanceSq(b, center);
+        if (dSq > rSq) { keep.push(b); continue; }
+        gameState.boneBlasts.push({ x: b.x, y: b.y, delay: Math.sqrt(dSq) * BONE_PILE.chainDelay });
+    }
+    gameState.bonePiles = keep;
+}
+function updateBonePiles(deltaTime) {
+    if (gameState.bonePiles.length) {
+        for (const b of gameState.bonePiles) b.life -= deltaTime;
+        gameState.bonePiles = gameState.bonePiles.filter(b => b.life > 0);
+    }
+    if (!gameState.boneBlasts.length) return;
+    for (const e of gameState.boneBlasts) {
+        e.delay -= deltaTime;
+        if (e.delay <= 0) explodeBonePile(e);
+    }
+    gameState.boneBlasts = gameState.boneBlasts.filter(e => e.delay > 0);
+}
+function explodeBonePile(e) {
+    const R = BONE_PILE.radius, rSq = R * R, dmg = getNovaDamage() * BONE_PILE.dmgMult;
+    monsterGrid.forEachInRadius(e, R, m => {
+        if (!m.isAlive || distanceSq(m.pos, e) > rSq) return;
+        if (m instanceof BossMonster) m.shredArmor(m.armorMax * BONE_PILE.armorShred);
+        m.takeDamage(dmg);
+    });
+    addWorldFx({ kind: 'ring', x: e.x, y: e.y, r0: 8, r1: R * 1.2, life: 0.35, color: BONE_PILE_GLOW, width: 6 });
+    addWorldFx({ kind: 'spikes', x: e.x, y: e.y, r: R * 0.7, life: 0.4, seed: Math.random() * 10 });
+    spawnParticles(e.x, e.y, BONE_BLAST_LIGHT, 8, 140, 0.45, 3);
+    spawnParticles(e.x, e.y, BONE_PILE_GLOW, 6, 90, 0.4, 3);
+    addShake(2);
+    Sfx.play('explode');
+}
+// 一堆骸骨：兩三根交叉的骨頭加一顆小骷髏，事先畫好幾種長相
+const BONE_PILE_LOOKS = 3, BONE_PILE_PX = 3, BONE_PILE_SIZE = 22;
+const bonePileSprites = [];
+function bonePileSprite(look) {
+    if (bonePileSprites[look]) return bonePileSprites[look];
+    const c = document.createElement('canvas');
+    c.width = c.height = BONE_PILE_SIZE * BONE_PILE_PX;
+    const g = c.getContext('2d');
+    g.translate(c.width / 2, c.height / 2); g.scale(BONE_PILE_PX, BONE_PILE_PX);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.fillStyle = '#EFEBE9'; g.strokeStyle = SHAPE_OUTLINE; g.lineWidth = 1.3;
+    const bone = (ang, len, ox, oy) => {
+        g.save(); g.translate(ox, oy); g.rotate(ang);
+        g.beginPath(); g.rect(-len, -1, len * 2, 2);
+        for (const sx of [-len, len]) for (const sy of [-1.2, 1.2]) { g.moveTo(sx + 1.5, sy); g.arc(sx, sy, 1.5, 0, Math.PI * 2); }
+        g.fill(); g.stroke(); g.restore();
+    };
+    const angs = [[0.5, -0.6], [0.2, 2.6], [-0.4, 1.4]][look];
+    bone(angs[0], 6, -1, 3); bone(angs[1], 5, 2, 2);
+    // 小骷髏
+    g.beginPath(); g.arc(1 + angs[0] * 2, -2, 3.8, Math.PI, 0); g.lineTo(4.8 + angs[0] * 2, 0.5); g.lineTo(-2.8 + angs[0] * 2, 0.5); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = SHAPE_OUTLINE;
+    g.beginPath(); g.arc(-0.4 + angs[0] * 2, -2, 0.9, 0, Math.PI * 2); g.arc(2.4 + angs[0] * 2, -2, 0.9, 0, Math.PI * 2); g.fill();
+    return (bonePileSprites[look] = c);
+}
+// 骸骨本身畫在地上（怪與召喚物底下）
+function drawBonePiles() {
+    for (const b of gameState.bonePiles) {
+        if (!inView(b)) continue;
+        const s = BONE_PILE_SIZE;
+        ctx.globalAlpha = Math.min(1, b.life / BONE_PILE.fade) * 0.9;
+        ctx.drawImage(bonePileSprite(b.look), b.x - s / 2, b.y - s / 2, s, s);
+    }
+    ctx.globalAlpha = 1;
+}
+// 新星冷卻好時，引爆範圍內的骸骨一亮一暗發紫光、往上冒光點，主角腳下一圈虛線標出範圍。
+// 畫在最上層：骷髏多半死在首領腳下，骸骨被首領的身體蓋住，光要透出來才看得出「這裡有一堆可以炸」
+const BONE_MOTES = 3, BONE_MOTE_RISE = 26;
+function drawBonePileReady() {
+    const piles = gameState.bonePiles, p = gameState.player;
+    if (!piles.length || !p || !p.isAlive || gameState.ultCooldown > 0 || runClass() !== 'necro') return;
+    const R = boneReach(), rSq = R * R, pulse = 0.5 + 0.5 * Math.sin(worldTime * 6);
+    let anyInReach = false;
+    ctx.fillStyle = BONE_BLAST_LIGHT;
+    for (const b of piles) {
+        if (!inView(b) || distanceSq(b, p.pos) > rSq) continue;
+        anyInReach = true;
+        const alpha = Math.min(1, b.life / BONE_PILE.fade), s = BONE_PILE_SIZE;
+        ctx.globalAlpha = alpha * (0.3 + 0.35 * pulse);
+        ctx.drawImage(getGlowSprite(BONE_PILE_GLOW), b.x - s, b.y - s, s * 2, s * 2);
+        for (let i = 0; i < BONE_MOTES; i++) {
+            const ph = (worldTime * 0.8 + i / BONE_MOTES + b.look * 0.21) % 1;
+            ctx.globalAlpha = alpha * (1 - ph) * 0.9;
+            ctx.beginPath(); ctx.arc(b.x + (i - 1) * 5, b.y - ph * BONE_MOTE_RISE, 1.8, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+    ctx.globalAlpha = 1;
+    if (anyInReach) {
+        ctx.save();
+        ctx.setLineDash([10, 8]);
+        ctx.lineDashOffset = -worldTime * 20;
+        ctx.strokeStyle = BONE_PILE_GLOW;
+        ctx.globalAlpha = 0.35 + 0.25 * pulse;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(p.pos.x, p.pos.y, R, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+    }
 }
 
 // 毒池：先飛（地上有預警圈）、落地後持續傷害圈內的召喚物與法師
@@ -6874,6 +7006,8 @@ function prepareNextWave() {
     gameState.enemyBolts = [];
     gameState.bossMarks = [];
     gameState.worldFx = [];
+    gameState.bonePiles = [];
+    gameState.boneBlasts = [];
     gameState.bossEntrance = null;
     gameState.projectiles.forEach(returnProjectileToPool);
     gameState.projectiles = [];
@@ -7467,6 +7601,7 @@ function useNova() {
     const live = gameState.summons, step = Math.max(1, Math.floor(live.length / FRENZY_SPARK_SUMMONS));
     for (let i = 0; i < live.length; i += step) if (live[i].isAlive) spawnParticles(live[i].pos.x, live[i].pos.y, FRENZY_SPARK_COLOR, 3, 60, 0.5, 3);
     gameState.visualEffects.push(new NovaEffect(p.pos, radius));
+    detonateBonePiles(p.pos);
     spawnParticles(p.pos.x, p.pos.y, frost ? '#B3E5FC' : '#CE93D8', 36, 260, 0.5, 3);
     addShake(7);
     Sfx.play('nova');
@@ -8962,7 +9097,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -9093,6 +9228,7 @@ function updateGame(deltaTime) {
         if (m.isAlive && !(m.bossTick && m.bossTick(deltaTime))) m.update(deltaTime, gameState.player, gameState.summons);
     }
     updateHazards(deltaTime);
+    updateBonePiles(deltaTime);
     updateBossMarks(deltaTime);
     updateWorldFx(deltaTime);
     updateBossEntrance(deltaTime);
@@ -9620,6 +9756,7 @@ function drawGame() {
     ctx.setTransform(z, 0, 0, z, (-camera.x + drawOffset.x) * z, (-camera.y + drawOffset.y) * z);
     drawGround();
     drawHazards();
+    drawBonePiles();
     drawRelicsGround();
     drawOwnedTombs();
     for (let i = 0; i < gameState.orbs.length; i++) if (inView(gameState.orbs[i].pos)) gameState.orbs[i].draw(ctx);
@@ -9638,6 +9775,7 @@ function drawGame() {
         if (m.isAlive && m.mark) m.drawMark(ctx);
     }
     drawLobs();
+    drawBonePileReady();
     drawBossEntrance();
     drawBossMarks();
     drawWorldFx();

@@ -197,7 +197,10 @@ for (;;) {
                     const mag = Math.hypot(hx, hy);
                     inputState.movementVector = mag > 0 ? { x: hx / mag * Math.min(1, mag), y: hy / mag * Math.min(1, mag) } : { x: 0, y: 0 };
                 }
-                if ((near >= 4 || fight >= 8) && gameState.ultCooldown <= 0) useUltimate();
+                // 屍爆：引爆範圍內骸骨夠多、旁邊又有怪就放新星（首領戰場上常只剩首領一隻，照「身邊很多怪」永遠不會放）
+                const BOT_BONE_PILES = 6;
+                const bones = runClass() === 'necro' ? gameState.bonePiles.filter(b => distanceSq(b, p.pos) <= boneReach() ** 2).length : 0;
+                if ((near >= 4 || fight >= 8 || (bones >= BOT_BONE_PILES && fight >= 1)) && gameState.ultCooldown <= 0) useUltimate();
             } else {
                 inputState.movementVector = { x: 0, y: 0 };
                 if (near >= 4 && gameState.ultCooldown <= 0) useUltimate();
