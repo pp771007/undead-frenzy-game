@@ -1785,6 +1785,10 @@ const SFX_DEFS = {
     upgrade: { gap: 0.1, fn: s => { [523, 659, 784].forEach((f, i) => s.tone(f, 0.09, { type: 'triangle', vol: 0.12, delay: i * 0.06 })); } },
     orb: { gap: 0.03, fn: s => s.tone(880, 0.06, { vol: 0.06, slideTo: 1320 }) },
     explode: { gap: 0.08, fn: s => { s.noise(0.35, { vol: 0.3, filterFreq: 600 }); s.tone(90, 0.3, { vol: 0.25, slideTo: 40 }); } },
+    // 煙火：升空的哨音、爆開的悶響、之後一串劈啪
+    fwLaunch: { gap: 0.1, fn: s => s.tone(500, 0.6, { type: 'sine', vol: 0.05, slideTo: 1500 }) },
+    fwBurst: { gap: 0.08, fn: s => { s.noise(0.5, { vol: 0.28, filterFreq: 450 }); s.tone(70, 0.45, { vol: 0.25, slideTo: 35 }); } },
+    fwCrackle: { gap: 0.1, fn: s => { for (let i = 0; i < 6; i++) s.noise(0.03, { vol: 0.08, filterFreq: 4000, delay: 0.25 + i * 0.07 + Math.random() * 0.05 }); } },
     hurt: { gap: 0.15, fn: s => s.tone(160, 0.15, { type: 'square', vol: 0.08, slideTo: 90 }) },
     bloat: { gap: 0.08, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 800 }); s.tone(140, 0.2, { vol: 0.2, slideTo: 50 }); } },
     slam: { gap: 0.3, fn: s => { s.noise(0.5, { vol: 0.45, filterFreq: 300 }); s.tone(60, 0.5, { vol: 0.4, slideTo: 30 }); } },
@@ -6403,11 +6407,13 @@ function showVictory() {
     uiElements.victoryUnlock.classList.toggle('hidden', !newCurse);
     if (newCurse) uiElements.victoryUnlock.innerHTML = `${iconHtml(CURSES[meta.curseUnlocked - 1].icon)}解鎖詛咒 ${meta.curseUnlocked}`;
     showScreen(uiElements.victoryScreen, true);
+    Fireworks.start(uiElements.victoryScreen);
     Sfx.play('victory');
 }
 
 function continueEndless() {
     gameState.victoryOpen = false;
+    Fireworks.stop();
     showScreen(uiElements.victoryScreen, false);
     loopLastTime = performance.now();
     if (gameState.pendingDraft) openDraft();
@@ -6415,6 +6421,7 @@ function continueEndless() {
 
 function endRunFromVictory() {
     gameState.victoryOpen = false;
+    Fireworks.stop();
     showScreen(uiElements.victoryScreen, false);
     gameState.gameOver = true;
     showGameOver('victory');
@@ -6599,6 +6606,156 @@ function openLbDetail(id) {
     showScreen(uiElements.lbDetail, true);
 }
 
+// ---------- 煙火（上榜、通關時疊在恭喜框上面放，點擊穿透）----------
+// 火箭拖著火花從底部升空 → 最高點閃一下爆開 → 火花受重力下墜、有空氣阻力、拖著漸淡的尾巴，部分會閃爍劈啪。
+// 花型輪流：牡丹（滿天球狀）、圓環、柳樹（金色長尾垂下）、棕櫚（幾道粗彗星）。用 lighter 疊加，交疊處更亮。
+// 自己一個畫布、自己的 requestAnimationFrame：恭喜框蓋著時遊戲本身已經停了
+const FW_GRAVITY = 140;          // 世界單位就是 CSS 像素
+const FW_ROCKET_GRAVITY = 800;   // 火箭用比較重的重力（初速跟著變快）：照火花的重力算，手機直式畫面要飛三秒才炸
+const FW_DRAG = 0.985;           // 每 1/60 秒剩下的速度比例
+const FW_TRAIL = 6;              // 每顆火花記幾個舊位置畫尾巴
+const FW_PALETTE = ['#FF5252', '#FFD740', '#69F0AE', '#40C4FF', '#E040FB', '#FFAB40', '#FFFFFF'];
+const FW_GOLD = '#FFD180';
+const FW_SHOW_SECONDS = 5.5;
+const FW_FINALE = 3;             // 結尾一起放幾發
+const Fireworks = (() => {
+    let cv = null, g = null, raf = 0, last = 0, endAt = 0, nextAt = 0, kindIdx = 0, finaleDone = false;
+    let rockets = [], sparks = [], flashes = [];
+    const KINDS = ['peony', 'ring', 'willow', 'palm'];
+    const pick = (a) => a[Math.floor(Math.random() * a.length)];
+    function size() {
+        const dpr = Math.min(2, window.devicePixelRatio || 1), host = cv.parentElement;
+        cv.width = host.clientWidth * dpr; cv.height = host.clientHeight * dpr;
+        g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function W() { return cv.width / Math.min(2, window.devicePixelRatio || 1); }
+    function H() { return cv.height / Math.min(2, window.devicePixelRatio || 1); }
+    function launch() {
+        const w = W(), h = H();
+        // 爆點偏上半部：中間是恭喜框的字，煙火在字的上方和兩側炸開
+        const x = w * (0.12 + Math.random() * 0.76), peak = h * (0.08 + Math.random() * 0.22);
+        // 算出剛好在 peak 速度歸零的初速（重力加速、不算阻力，所以會稍微矮一點，看起來更自然）
+        const vy = -Math.sqrt(2 * FW_ROCKET_GRAVITY * (h - peak)) * 1.02;
+        rockets.push({ x, y: h + 10, vx: (w / 2 - x) * 0.08 + (Math.random() - 0.5) * 30, vy, color: pick(FW_PALETTE), kind: KINDS[kindIdx++ % KINDS.length], trail: [] });
+        Sfx.play('fwLaunch');
+    }
+    function spark(x, y, vx, vy, color, life, sz, extra) {
+        sparks.push({ x, y, vx, vy, color, life, max: life, sz, trail: [], ...extra });
+    }
+    function burst(r) {
+        const n = meta.powerSaver ? 0.5 : 1;
+        flashes.push({ x: r.x, y: r.y, life: 0.25, color: r.color });
+        if (r.kind === 'peony') {
+            const c2 = Math.random() < 0.5 ? r.color : pick(FW_PALETTE);
+            for (let i = 0; i < 90 * n; i++) {
+                // 球面上平均取點再投影：中心不會比邊緣擠
+                const a = Math.random() * Math.PI * 2, z = Math.random() * 2 - 1, sp = 150 * Math.sqrt(1 - z * z) + Math.random() * 15;
+                spark(r.x, r.y, Math.cos(a) * sp, Math.sin(a) * sp, i % 3 ? r.color : c2, 1.4 + Math.random() * 0.5, 2.2, { twinkle: Math.random() < 0.3 });
+            }
+        } else if (r.kind === 'ring') {
+            const tilt = 0.4 + Math.random() * 0.5, rot = Math.random() * Math.PI;
+            for (let i = 0; i < 60 * n; i++) {
+                const a = i / (60 * n) * Math.PI * 2, cx = Math.cos(a) * 160, cy = Math.sin(a) * 160 * tilt;
+                spark(r.x, r.y, cx * Math.cos(rot) - cy * Math.sin(rot), cx * Math.sin(rot) + cy * Math.cos(rot), r.color, 1.3, 2.4);
+            }
+            for (let i = 0; i < 20 * n; i++) { const a = Math.random() * Math.PI * 2, sp = Math.random() * 50; spark(r.x, r.y, Math.cos(a) * sp, Math.sin(a) * sp, '#FFFFFF', 0.9, 1.8, { twinkle: true }); }
+        } else if (r.kind === 'willow') {
+            for (let i = 0; i < 70 * n; i++) {
+                const a = Math.random() * Math.PI * 2, sp = 70 + Math.random() * 60;
+                spark(r.x, r.y, Math.cos(a) * sp, Math.sin(a) * sp - 20, FW_GOLD, 2.6 + Math.random() * 0.6, 1.8, { heavy: true, twinkle: Math.random() < 0.5 });
+            }
+        } else {
+            for (let i = 0; i < 9; i++) {
+                const a = -Math.PI / 2 + (i / 9 - 0.5) * Math.PI * 1.9 + (Math.random() - 0.5) * 0.2, sp = 170 + Math.random() * 30;
+                spark(r.x, r.y, Math.cos(a) * sp, Math.sin(a) * sp, r.color, 1.8, 4, { comet: true });
+            }
+        }
+        Sfx.play('fwBurst');
+        if (r.kind !== 'palm') Sfx.play('fwCrackle');
+    }
+    function step(dt) {
+        const drag = Math.pow(FW_DRAG, dt * 60);
+        for (const r of rockets) {
+            r.trail.push({ x: r.x, y: r.y }); if (r.trail.length > 10) r.trail.shift();
+            r.vy += FW_ROCKET_GRAVITY * dt; r.x += r.vx * dt; r.y += r.vy * dt;
+            // 拖尾的火花往下掉
+            if (Math.random() < 0.7) spark(r.x, r.y, (Math.random() - 0.5) * 30, 20 + Math.random() * 30, FW_GOLD, 0.4, 1.4);
+            if (r.vy >= -25) { r.dead = true; burst(r); }
+        }
+        rockets = rockets.filter(r => !r.dead);
+        for (const s of sparks) {
+            s.trail.push({ x: s.x, y: s.y }); if (s.trail.length > (s.heavy || s.comet ? FW_TRAIL * 2 : FW_TRAIL)) s.trail.shift();
+            s.vx *= drag; s.vy *= drag;
+            s.vy += FW_GRAVITY * (s.heavy ? 0.6 : 0.45) * dt;
+            s.x += s.vx * dt; s.y += s.vy * dt;
+            s.life -= dt;
+            // 棕櫚的粗彗星一路撒下小火星
+            if (s.comet && Math.random() < 0.5) spark(s.x, s.y, (Math.random() - 0.5) * 20, 10, FW_GOLD, 0.6, 1.3);
+        }
+        sparks = sparks.filter(s => s.life > 0);
+        for (const f of flashes) f.life -= dt;
+        flashes = flashes.filter(f => f.life > 0);
+    }
+    function draw() {
+        const w = W(), h = H();
+        g.clearRect(0, 0, w, h);
+        g.globalCompositeOperation = 'lighter';
+        g.lineCap = 'round';
+        for (const f of flashes) {
+            const k = f.life / 0.25, R = 90 * (1.3 - k * 0.3);
+            const gr = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, R);
+            gr.addColorStop(0, `rgba(255, 255, 255, ${0.8 * k})`);
+            gr.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            g.fillStyle = gr; g.fillRect(f.x - R, f.y - R, R * 2, R * 2);
+        }
+        for (const r of rockets) {
+            g.strokeStyle = FW_GOLD; g.lineWidth = 2.5; g.globalAlpha = 0.8;
+            g.beginPath(); r.trail.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y)); g.lineTo(r.x, r.y); g.stroke();
+            g.globalAlpha = 1; g.fillStyle = '#FFFFFF';
+            g.beginPath(); g.arc(r.x, r.y, 2.5, 0, Math.PI * 2); g.fill();
+        }
+        for (const s of sparks) {
+            let a = Math.min(1, s.life / s.max * 1.6);
+            // 閃爍：快熄滅時一亮一暗
+            if (s.twinkle && s.life < s.max * 0.6) a *= Math.random() < 0.5 ? 0.15 : 1;
+            if (a <= 0.02) continue;
+            g.globalAlpha = a * 0.55;
+            g.strokeStyle = s.color; g.lineWidth = s.sz;
+            if (s.trail.length) { g.beginPath(); g.moveTo(s.trail[0].x, s.trail[0].y); for (const p of s.trail) g.lineTo(p.x, p.y); g.lineTo(s.x, s.y); g.stroke(); }
+            g.globalAlpha = a;
+            g.drawImage(getSparkSprite(s.color), s.x - s.sz * 2, s.y - s.sz * 2, s.sz * 4, s.sz * 4);
+        }
+        g.globalAlpha = 1;
+        g.globalCompositeOperation = 'source-over';
+    }
+    function frame(now) {
+        const dt = Math.min(0.05, (now - last) / 1000); last = now;
+        if (now < endAt && now >= nextAt) { launch(); if (Math.random() < 0.35) launch(); nextAt = now + 380 + Math.random() * 420; }
+        if (!finaleDone && now >= endAt) { finaleDone = true; for (let i = 0; i < FW_FINALE; i++) launch(); }
+        step(dt); draw();
+        if (now < endAt || rockets.length || sparks.length) raf = requestAnimationFrame(frame);
+        else stop();
+    }
+    function start(host) {
+        stop();
+        cv = document.createElement('canvas');
+        cv.className = 'fireworks';
+        host.insertBefore(cv, host.firstChild);
+        g = cv.getContext('2d');
+        size();
+        rockets = []; sparks = []; flashes = []; finaleDone = false;
+        last = performance.now(); endAt = last + FW_SHOW_SECONDS * 1000; nextAt = last;
+        raf = requestAnimationFrame(frame);
+    }
+    function stop() {
+        if (raf) cancelAnimationFrame(raf);
+        raf = 0;
+        if (cv) cv.remove();
+        cv = null;
+    }
+    return { start, stop };
+})();
+
 // 結算時上榜：恭喜＋留名字。不填直接關掉就用預設名字（上次填過的名字、沒填過就是「無名亡靈」）
 let lbPending = null;
 // 這一局第一次超越的對手最多列這幾個（一口氣跳很多名時只列最前面的）
@@ -6612,6 +6769,7 @@ function openLbCongrats({ entry: e, passed }) {
     uiElements.lbNameInput.value = meta.lbName || '';
     uiElements.lbNameInput.placeholder = LB_DEFAULT_NAME;
     showScreen(uiElements.lbCongrats, true);
+    Fireworks.start(uiElements.lbCongrats);
     // 手機上自動點進輸入框會直接彈出鍵盤蓋住名次，只在有實體鍵盤的裝置上這樣做
     if (!matchMedia('(pointer: coarse)').matches) uiElements.lbNameInput.focus();
 }
@@ -6624,6 +6782,7 @@ function closeLbCongrats() {
     e.name = typed || LB_DEFAULT_NAME;
     saveMeta();
     uiElements.lbNameInput.blur();
+    Fireworks.stop();
     showScreen(uiElements.lbCongrats, false);
     // 接著打開排行榜看自己排在哪：進了綜合榜就看綜合，不然看職業榜
     lbMineId = e.id;

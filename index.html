@@ -1227,6 +1227,16 @@
             max-width: 360px;
         }
 
+        /* 煙火（Fireworks）疊在最上層：恭喜框幾乎佔滿手機畫面，放在後面會整個被擋住。點擊穿透，不擋按鈕和輸入框 */
+        .fireworks {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
         .lb-congrats-icon {
             display: block;
             width: 64px;
