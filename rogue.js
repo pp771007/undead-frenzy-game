@@ -274,7 +274,30 @@ function targetDown(m) {
 }
 
 // ---------- 飛刀：射程內最近的怪；隱身中先射目標 ----------
-const ROGUE_KNIFE = { projectileSpeed: 520, projectileRadius: 3, projectileColor: '#CFD8DC', boltStyle: 'quarrel' };
+const ROGUE_KNIFE = { projectileSpeed: 520, projectileRadius: 3, projectileColor: '#CFD8DC', boltStyle: 'knife' };
+// 飛刀：銀色刀身、皮繩纏的刀柄、尾端一個環，邊飛邊轉
+SHAPE_SPRITES.knife = {
+    len: 22, wid: 8, spin: 4, streak: 12,
+    draw(g) {
+        g.lineWidth = 1.6; g.strokeStyle = SHAPE_OUTLINE;
+        // 刀柄＋環
+        g.fillStyle = '#4E342E';
+        g.beginPath(); g.rect(-8, -1.6, 6, 3.2); g.fill(); g.stroke();
+        g.strokeStyle = '#A1887F'; g.lineWidth = 0.9;
+        for (const x of [-6.5, -4.8, -3.1]) { g.beginPath(); g.moveTo(x, -1.6); g.lineTo(x + 0.8, 1.6); g.stroke(); }
+        g.strokeStyle = SHAPE_OUTLINE; g.lineWidth = 1.6;
+        g.beginPath(); g.arc(-9.6, 0, 1.8, 0, Math.PI * 2); g.stroke();
+        // 護手
+        g.fillStyle = '#90A4AE';
+        g.beginPath(); g.rect(-2.4, -3.2, 1.6, 6.4); g.fill(); g.stroke();
+        // 刀身：上緣直、下緣斜到刀尖
+        g.fillStyle = '#ECEFF1';
+        g.beginPath(); g.moveTo(-0.8, -2.4); g.lineTo(8, -2.4); g.lineTo(11, 0); g.lineTo(8, 2.4); g.lineTo(-0.8, 2.4); g.closePath(); g.fill(); g.stroke();
+        // 刀刃亮線
+        g.strokeStyle = '#FFFFFF'; g.lineWidth = 0.9;
+        g.beginPath(); g.moveTo(0, -0.9); g.lineTo(8.5, -0.9); g.stroke();
+    },
+};
 // 飛刀命中：處決、上毒、記爆擊。Projectile 打中時呼叫 owner.healFromDamage／onHit
 const rogueKnifeOwner = { healFromDamage() {}, onHit: (m) => knifeHit(m) };
 const rogueTargets = [];

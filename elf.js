@@ -313,7 +313,7 @@ class Arrow extends TimedEffect {
                 gameState.visualEffects.push(new ZapEffect(m.pos, o.pos));
             });
         }
-        if (el) spawnParticles(m.pos.x, m.pos.y, el === 'fire' ? '#FF7043' : el === 'ice' ? '#81D4FA' : el === 'thunder' ? '#FFF176' : '#E1BEE7', 4, 50, 0.3, 2);
+        if (el) spawnParticles(m.pos.x, m.pos.y, ELEM_COLORS[el], 4, 50, 0.3, 2);
         // 不歸之箭：打倒就彈向下一隻
         if (!m.isAlive && this.chains > 0) {
             const next = monsterGrid.nearestShared(m.pos, ELF.bow.range * 0.5);
@@ -326,16 +326,33 @@ class Arrow extends TimedEffect {
     }
     draw(ctx) {
         if (!inView(this.pos)) return;
-        const tail = 16;
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = this.back ? '#80CBC4' : '#6D4C41'; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(this.pos.x - this.dir.x * tail, this.pos.y - this.dir.y * tail); ctx.lineTo(this.pos.x, this.pos.y); ctx.stroke();
-        ctx.strokeStyle = '#ECEFF1'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(this.pos.x - this.dir.x * 3, this.pos.y - this.dir.y * 3); ctx.lineTo(this.pos.x + this.dir.x * 3, this.pos.y + this.dir.y * 3); ctx.stroke();
-        ctx.restore();
+        // 元素箭身上帶那個元素的光；背射（加倍）的箭換成青色箭桿＋青光
+        const glow = this.elem ? ELEM_COLORS[this.elem] : this.back ? ARROW_BACK_GLOW : null;
+        if (glow) {
+            const g = ARROW_GLOW_SIZE;
+            ctx.globalAlpha = 0.7;
+            ctx.drawImage(getGlowSprite(glow), this.pos.x - g / 2, this.pos.y - g / 2, g, g);
+            ctx.globalAlpha = 1;
+        }
+        drawShaped(this.back ? 'arrowBack' : 'arrow', this.pos.x - this.dir.x * 6, this.pos.y - this.dir.y * 6, Math.atan2(this.dir.y, this.dir.x), 0);
     }
 }
+const ELEM_COLORS = { fire: '#FF7043', ice: '#81D4FA', thunder: '#FFF176', all: '#E1BEE7' };
+const ARROW_BACK_GLOW = '#80CBC4', ARROW_GLOW_SIZE = 26;
+const FALLING_ARROW_ANGLE = Math.PI * 0.42;   // 箭雨的箭朝右下方插
+// 箭：細長木桿、葉形箭頭、綠色羽毛；永遠朝飛行方向
+function drawArrowShape(g, shaft, feather) {
+    g.lineWidth = 1.4; g.strokeStyle = SHAPE_OUTLINE;
+    g.fillStyle = feather;
+    g.beginPath(); g.moveTo(-13, -0.6); g.lineTo(-7.5, -0.6); g.lineTo(-10, -3.4); g.lineTo(-14, -3.4); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(-13, 0.6); g.lineTo(-7.5, 0.6); g.lineTo(-10, 3.4); g.lineTo(-14, 3.4); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = shaft;
+    g.beginPath(); g.rect(-13, -0.9, 21, 1.8); g.fill(); g.stroke();
+    g.fillStyle = '#ECEFF1';
+    g.beginPath(); g.moveTo(7.5, 0); g.quadraticCurveTo(10, -2.8, 13.5, 0); g.quadraticCurveTo(10, 2.8, 7.5, 0); g.closePath(); g.fill(); g.stroke();
+}
+SHAPE_SPRITES.arrow = { len: 28, wid: 8, spin: 0, streak: 10, draw: g => drawArrowShape(g, '#A1887F', '#66BB6A') };
+SHAPE_SPRITES.arrowBack = { len: 28, wid: 8, spin: 0, streak: 16, streakColor: ARROW_BACK_GLOW, draw: g => drawArrowShape(g, '#4DB6AC', '#B2DFDB') };
 class ZapEffect extends TimedEffect {
     constructor(a, b) { super(a, 0.15); this.b = { ...b.pos ? b.pos : b }; }
     draw(ctx) {
@@ -426,11 +443,9 @@ class FallingArrowEffect extends TimedEffect {
     constructor(pos) { super(pos, 0.22); }
     draw(ctx) {
         const k = 1 - this.life / this.duration;
+        // 箭雨：從斜上方插下來（跟平射同一支箭）
         const y = this.pos.y - (1 - k) * 80;
-        ctx.save();
-        ctx.strokeStyle = '#6D4C41'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(this.pos.x - 4, y - 18); ctx.lineTo(this.pos.x, y); ctx.stroke();
-        ctx.restore();
+        drawShaped('arrow', this.pos.x - (1 - k) * 18, y - 8, FALLING_ARROW_ANGLE, 0);
     }
 }
 

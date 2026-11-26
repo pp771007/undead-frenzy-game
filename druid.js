@@ -419,6 +419,21 @@ function druidAttack(p, dt) {
     }
     Sfx.play('mageBolt');
 }
+// 種子：一顆帶著小葉子的橡實，發著淡綠光，邊飛邊翻
+SHAPE_SPRITES.acorn = {
+    len: 12, wid: 12, spin: 1.5, glow: '#9CCC65',
+    draw(g) {
+        g.lineWidth = 1.4; g.strokeStyle = SHAPE_OUTLINE;
+        g.fillStyle = '#A1887F';
+        g.beginPath(); g.ellipse(1, 0, 4.2, 3.4, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+        g.fillStyle = '#5D4037';
+        g.beginPath(); g.arc(-1.8, 0, 3.6, Math.PI * 0.5, Math.PI * 1.5); g.closePath(); g.fill(); g.stroke();
+        g.fillStyle = '#7CB342';
+        g.beginPath(); g.moveTo(-4.8, 0); g.quadraticCurveTo(-6, -4.5, -2, -5.5); g.quadraticCurveTo(-3, -2, -4.8, 0); g.fill(); g.stroke();
+        g.strokeStyle = '#D7CCC8'; g.lineWidth = 0.8;
+        g.beginPath(); g.arc(1.5, -0.8, 2, -Math.PI * 0.8, -Math.PI * 0.2); g.stroke();
+    },
+};
 class SeedEffect extends TimedEffect {
     constructor(from, to, dmg, radius) {
         super(from, DRUID.seed.flight + 0.35);
@@ -441,8 +456,13 @@ class SeedEffect extends TimedEffect {
         const t = this.duration - this.life, k = Math.min(1, t / DRUID.seed.flight);
         if (!this.landed) {
             const x = this.from.x + (this.to.x - this.from.x) * k, y = this.from.y + (this.to.y - this.from.y) * k - Math.sin(k * Math.PI) * 40;
-            ctx.fillStyle = '#558B2F'; ctx.strokeStyle = '#1b1424'; ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.ellipse(x, y, 4, 3, k * 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            // 落點先冒出一圈淡綠，看得出要落在哪
+            ctx.save();
+            ctx.globalAlpha = 0.25 + 0.35 * k;
+            ctx.strokeStyle = '#9CCC65'; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.ellipse(this.to.x, this.to.y, this.radius * k, this.radius * 0.6 * k, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.restore();
+            drawShaped('acorn', x, y, 0, this.from.x);
             return;
         }
         // 落地：藤蔓從地面竄出來再縮回去

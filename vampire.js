@@ -355,7 +355,20 @@ function bladeLeech() {
 }
 
 // ---------- 普攻：血之飛刃 ----------
-const VAMP_BLADE = { projectileSpeed: 360, projectileRadius: 4, projectileColor: '#E53935', boltStyle: 'blood' };
+const VAMP_BLADE = { projectileSpeed: 360, projectileRadius: 4, projectileColor: '#E53935', boltStyle: 'bloodBlade' };
+// 血之飛刃：一彎血色的月牙刃，邊飛邊轉，身後一圈紅光
+SHAPE_SPRITES.bloodBlade = {
+    len: 18, wid: 18, spin: 3, glow: '#D50000',
+    draw(g) {
+        g.lineWidth = 1.6; g.strokeStyle = '#3E0A0A';
+        // 月牙：外圓減掉偏一邊的內圓
+        g.fillStyle = '#C62828';
+        g.beginPath(); g.arc(0, 0, 8, -Math.PI * 0.85, Math.PI * 0.85); g.arc(-3.5, 0, 6.2, Math.PI * 0.62, -Math.PI * 0.62, true); g.closePath(); g.fill(); g.stroke();
+        // 刃口的亮邊
+        g.strokeStyle = '#FF8A80'; g.lineWidth = 1.2;
+        g.beginPath(); g.arc(0, 0, 6.8, -Math.PI * 0.6, Math.PI * 0.6); g.stroke();
+    },
+};
 // 飛刃命中時吸血：Projectile 打中會呼叫 owner.healFromDamage
 const vampBladeOwner = { healFromDamage: (dealt) => healHero(dealt * bladeLeech()) };
 const vampTargets = [];

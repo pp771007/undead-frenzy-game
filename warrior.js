@@ -72,10 +72,28 @@ CONFIG.spearman = {
 CONFIG.crossbowman = {
     ...SOLDIER_COMMON, type: 'Crossbowman', rank: 2, imageName: 'soldier_crossbow', color: '#A1887F',
     baseHealth: 35, baseAttack: 16, attackRange: 200, attackSpeed: 0.5,
-    projectileColor: '#D7CCC8', boltStyle: 'quarrel', projectileSpeed: 420, projectileRadius: 3,
+    projectileColor: '#D7CCC8', boltStyle: 'crossbowBolt', projectileSpeed: 420, projectileRadius: 3,
     summonCost: 16, upgradeCostBase: 35, upgradeCostInc: 14,
 };
-BOLT_STYLES.quarrel = { glowIn: 'rgba(255, 236, 179, 0.8)', glowMid: 'rgba(188, 170, 164, 0.35)', glowOut: 'rgba(188, 170, 164, 0)', body: '#8D6E63', core: '#FFF3E0' };
+// 弩箭：短而粗的木桿、方錐鐵頭、紅色尾羽，永遠朝飛行方向
+SHAPE_SPRITES.crossbowBolt = {
+    len: 20, wid: 7, spin: 0, streak: 14,
+    draw(g) {
+        g.lineWidth = 1.5; g.strokeStyle = SHAPE_OUTLINE;
+        // 尾羽（上下各一片）
+        g.fillStyle = '#C62828';
+        g.beginPath(); g.moveTo(-9.5, -0.8); g.lineTo(-6, -0.8); g.lineTo(-8.5, -3.2); g.lineTo(-10.5, -3.2); g.closePath(); g.fill(); g.stroke();
+        g.beginPath(); g.moveTo(-9.5, 0.8); g.lineTo(-6, 0.8); g.lineTo(-8.5, 3.2); g.lineTo(-10.5, 3.2); g.closePath(); g.fill(); g.stroke();
+        // 木桿
+        g.fillStyle = '#8D6E63';
+        g.beginPath(); g.rect(-9.5, -1.2, 15, 2.4); g.fill(); g.stroke();
+        // 鐵頭
+        g.fillStyle = '#B0BEC5';
+        g.beginPath(); g.moveTo(5, -2.4); g.lineTo(10.5, 0); g.lineTo(5, 2.4); g.closePath(); g.fill(); g.stroke();
+        g.strokeStyle = '#ECEFF1'; g.lineWidth = 0.8;
+        g.beginPath(); g.moveTo(5.8, -1); g.lineTo(9, 0); g.stroke();
+    },
+};
 
 // 三階進化：名字與能力（announceEvolution 讀 CONFIG.evolution.names／perks）
 Object.assign(CONFIG.evolution.names, {

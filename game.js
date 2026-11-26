@@ -3008,6 +3008,11 @@ function drawProjectilesBatched() {
         const pr = list[i];
         if (!pr.isAlive || !inView(pr.pos)) continue;
         const dx = pr.direction.x, dy = pr.direction.y;
+        if (SHAPE_SPRITES[pr.style]) {
+            if (pr.spinSeed === undefined) pr.spinSeed = Math.random() * Math.PI * 2;
+            drawShaped(pr.style, pr.pos.x, pr.pos.y, Math.atan2(dy, dx), pr.spinSeed);
+            continue;
+        }
         const idx = ((Math.round(Math.atan2(dy, dx) / (Math.PI * 2) * BOLT_DIRECTIONS) % BOLT_DIRECTIONS) + BOLT_DIRECTIONS) % BOLT_DIRECTIONS;
         const sp = getBoltDirSprite(pr.style, idx);
         const scale = pr.homing ? SOUL_BOLT_TAIL_SCALE : 1;
@@ -3086,6 +3091,56 @@ function getSoulSkullSprite(flipped) {
 function soulBoltBurst(pos) {
     spawnParticles(pos.x, pos.y, SOUL_BOLT_GLOW, SOUL_BURST_SPARKS, 110, 0.35, 2.5);
     if (gameState.visualEffects.length < MAX_AMBIENT_EFFECTS) gameState.visualEffects.push(new NovaEffect(pos, SOUL_BURST_RADIUS, SOUL_HIT_COLORS));
+}
+
+// ---------- 有形狀的飛行物（飛刀、弩箭、箭、血刃、種子）----------
+// 魔法彈才畫成發光的彗星；實體的東西要看得出是什麼（飛刀是飛刀、箭是箭）。各職業在自己的檔案登記：
+// SHAPE_SPRITES.名字 = { len, wid 世界單位（朝右畫的外框）, spin 每秒轉幾圈（0 = 永遠朝飛行方向）, streak 身後的速度線多長, glow 光暈顏色, draw(g) }
+// draw 在以中心為原點、朝右、單位是世界單位的座標系裡畫。跟彗星一樣事先轉好 BOLT_DIRECTIONS 個方向，畫的時候直接貼
+const SHAPE_SPRITES = {};
+const SHAPE_OUTLINE = '#1b1424';
+const shapeDirSprites = {};
+function getShapeSprite(name, i) {
+    const list = shapeDirSprites[name] || (shapeDirSprites[name] = []);
+    if (list[i]) return list[i];
+    const S = SHAPE_SPRITES[name], k = BOLT_SPRITE_PX_PER_UNIT;
+    const a = i / BOLT_DIRECTIONS * Math.PI * 2, cos = Math.cos(a), sin = Math.sin(a);
+    const W = S.len + 4, H = S.wid + 4;
+    const c = document.createElement('canvas');
+    c.width = Math.ceil((Math.abs(W * cos) + Math.abs(H * sin)) * k);
+    c.height = Math.ceil((Math.abs(W * sin) + Math.abs(H * cos)) * k);
+    const g = c.getContext('2d');
+    g.translate(c.width / 2, c.height / 2);
+    g.scale(k, k);
+    g.rotate(a);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    S.draw(g);
+    list[i] = c;
+    return c;
+}
+// angle：飛行方向；seed：轉的起始相位（同一批飛刀不要轉得一模一樣）
+function drawShaped(name, x, y, angle, seed) {
+    const S = SHAPE_SPRITES[name], k = BOLT_SPRITE_PX_PER_UNIT;
+    const dx = Math.cos(angle), dy = Math.sin(angle);
+    if (S.streak) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = 0.35;
+        ctx.strokeStyle = S.streakColor || '#FFFFFF';
+        ctx.lineWidth = S.wid * 0.45;
+        ctx.beginPath(); ctx.moveTo(x - dx * S.len * 0.3, y - dy * S.len * 0.3); ctx.lineTo(x - dx * (S.len * 0.3 + S.streak), y - dy * (S.len * 0.3 + S.streak)); ctx.stroke();
+        ctx.restore();
+    }
+    if (S.glow) {
+        const gs = Math.max(S.len, S.wid) * 1.8;
+        ctx.globalAlpha = 0.6;
+        ctx.drawImage(getGlowSprite(S.glow), x - gs / 2, y - gs / 2, gs, gs);
+        ctx.globalAlpha = 1;
+    }
+    const ang = S.spin ? worldTime * S.spin * Math.PI * 2 + seed : angle;
+    const idx = ((Math.round(ang / (Math.PI * 2) * BOLT_DIRECTIONS) % BOLT_DIRECTIONS) + BOLT_DIRECTIONS) % BOLT_DIRECTIONS;
+    const sp = getShapeSprite(name, idx), w = sp.width / k, h = sp.height / k;
+    ctx.drawImage(sp, x - w / 2, y - h / 2, w, h);
 }
 
 // 飛彈的外觀（世界單位）。碰撞照舊用 projectileRadius，這裡只管畫多大
