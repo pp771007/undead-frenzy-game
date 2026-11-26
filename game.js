@@ -1819,6 +1819,35 @@ const SFX_DEFS = {
 };
 
 // ---------- 粒子 / 飄字 / 震動 ----------
+// 粒子畫成圓形光點，中心偏白、往外柔和淡出：實心方塊一多就像馬賽克。
+// 每種顏色事先畫好一張，畫的時候直接貼：上百顆同時在飛也只是貼圖
+const SPARK_PX = 24;
+const SPARK_DRAW_SCALE = 2.2;   // 光點有柔邊，要畫得比 size 大一點，看起來才一樣大
+const SPARK_END_SIZE = 0.35;    // 消失前縮到原本的幾成
+const sparkCache = new Map();
+function getSparkSprite(color) {
+    let c = sparkCache.get(color);
+    if (c) return c;
+    c = document.createElement('canvas');
+    c.width = c.height = SPARK_PX;
+    const g = c.getContext('2d'), r = SPARK_PX / 2;
+    g.fillStyle = color;
+    g.beginPath(); g.arc(r, r, r, 0, Math.PI * 2); g.fill();
+    const hi = g.createRadialGradient(r, r, 0, r, r, r * 0.5);
+    hi.addColorStop(0, 'rgba(255, 255, 255, 0.75)');
+    hi.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    g.fillStyle = hi;
+    g.fillRect(0, 0, SPARK_PX, SPARK_PX);
+    // 邊緣用透明度遮罩淡出：直接把顏色漸層到 transparent，邊緣會混出一圈髒黑
+    const mask = g.createRadialGradient(r, r, r * 0.25, r, r, r);
+    mask.addColorStop(0, 'rgba(0, 0, 0, 1)');
+    mask.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    g.globalCompositeOperation = 'destination-in';
+    g.fillStyle = mask;
+    g.fillRect(0, 0, SPARK_PX, SPARK_PX);
+    sparkCache.set(color, c);
+    return c;
+}
 function spawnParticles(x, y, color, count, speed = 80, life = 0.5, size = 2.5) {
     const ps = gameState.particles;
     for (let i = 0; i < count && ps.length < CONFIG.visuals.maxParticles; i++) {
@@ -8684,9 +8713,11 @@ function drawGame() {
     for (let i = 0; i < ps.length; i++) {
         const p = ps[i];
         if (!inView(p)) continue;
-        ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        const k = Math.max(0, p.life / p.maxLife);
+        // 越到尾聲越小越淡：火星燒完、煙塵散掉，不是一塊方塊原樣消失
+        const s = p.size * SPARK_DRAW_SCALE * (SPARK_END_SIZE + (1 - SPARK_END_SIZE) * k);
+        ctx.globalAlpha = Math.min(1, k * 1.5);
+        ctx.drawImage(getSparkSprite(p.color), p.x - s / 2, p.y - s / 2, s, s);
     }
     ctx.globalAlpha = 1;
     ctx.textAlign = 'center';
