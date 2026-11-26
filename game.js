@@ -326,8 +326,9 @@ const CONFIG = {
         minWave: 11, waveInterval: 7,
         // 潛行時召喚物看不到她（見 SpatialGrid.rebuild）；蓄力時也還隱身，刺完才現形 revealTime 秒，這段時間會被大軍圍毆，所以每隻都會出手一次。
         // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
-        // 傷害是法師最大生命的固定比例、不隨波數變大：站著不動才會中，一直走一定閃得掉（法師走速 × 蓄力 0.75 秒 ≫ 判定半徑）
-        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 0.75, strikeRadius: 34, strikeHpRatio: 0.2,
+        // 傷害是主角最大生命的固定比例、不隨波數變大。蓄力 1.1 秒：聽到預警音、看到紅圈後約 0.45 秒才開始走，剩 0.65 秒，最慢的德魯伊（88）也走得出半徑 34 的圈；
+        // 0.75 秒時站著不動的人反應正常也閃不掉（剩 0.3 秒只走得了 26～33）。戰士虛脫（移速減半）時還是閃不太掉，那是虛脫的代價
+        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 1.1, strikeRadius: 34, strikeHpRatio: 0.2,
         // 平常半透明（潛行），蓄力到瞬移後這段時間現形
         stealthAlpha: 0.5, revealTime: 2.2,
     },
