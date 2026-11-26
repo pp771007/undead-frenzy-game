@@ -255,32 +255,61 @@ const CONFIG = {
         soulDrop: 5, waveSpeedIncreaseFactor: 0.008,
         minWave: 9, waveInterval: 4,
     },
+    // 首領的招式（見 BossMonster 的出招節奏）：一次只出一招，每招「前搖預警 → 出招 → 破綻」。
+    // cd 冷卻秒數、windup 前搖、dmg 打召喚物（× 首領攻擊）、hp 打主角（× 主角最大生命，再乘 BOSS_TIER_HIT）、recover 收招後的破綻秒數；
+    // reach／minRange 是主角（或首領當下的目標）要在多遠內／外才出這招；phase2: true 的招半血以後才會出
     boss: {
         type: 'Boss', name: '骸骨巨像', baseHealth: 500, baseAttack: 22, radius: 26,
         imageName: 'armored_melee', art: 'boss_colossus', imgScaleMultiplier: 4.5, tint: '#AB47BC', tintStrength: 0.5,
         attackRange: 32, attackSpeed: 0.6, moveSpeed: 30, color: '#AB47BC',
         soulDrop: 40, waveSpeedIncreaseFactor: 0.004,
-        slamInterval: 5, slamWindup: 1.1, slamRadius: 80, slamDamageMult: 1.0,
         // 首領只吃一半的緩速，不然一隻怨靈就能把它定在原地
         slowResist: 0.5,
+        moveGap: 1.6, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moves: {
+            // 重踏：跳起來，腳下紅圈填滿時砸下，震波往外擴散
+            slam: { cd: 5, reach: 150, windup: 1.0, radius: 85, dmg: 1.0, hp: 0.18, recover: 1.0 },
+            // 地裂：朝主角一路竄出骨刺，一根接一根（往旁邊閃）
+            fissure: { cd: 7, reach: 320, windup: 0.7, count: 7, step: 40, radius: 30, stagger: 0.09, dmg: 1.0, hp: 0.15, recover: 0.6 },
+            // 擲骨：主角站遠時連丟三塊骨頭，每塊瞄準丟出那一刻主角站的位置（一直走就閃得掉）
+            throw: { cd: 7, minRange: 200, reach: 600, count: 3, every: 0.35, flight: 0.9, radius: 44, dmg: 1.2, hp: 0.14, recover: 0.5 },
+            // 震地連踏：連踩三下，每下都往十字竄骨刺（一下正十字一下斜十字）
+            quake: { cd: 12, phase2: true, reach: 260, stomps: 3, windup: 0.8, every: 0.75, radius: 85, lineCount: 5, step: 40, lineRadius: 28, stagger: 0.07, dmg: 0.8, hp: 0.14, recover: 1.5 },
+        },
     },
     plagueBoss: {
         type: 'Boss', name: '疫病母巢', baseHealth: 600, baseAttack: 18, radius: 24,
         imageName: 'basic_melee', art: 'boss_plague', imgScaleMultiplier: 6.5, artScale: 5, tint: '#33691E', tintStrength: 0.6,
         attackRange: 30, attackSpeed: 0.8, moveSpeed: 26, color: '#33691E',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.004,
-        spawnInterval: 4, spawnCountBase: 3, spawnCountPerTier: 1, spawnRadius: 40,
         slowResist: 0.5,
+        moveGap: 1.6, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moves: {
+            // 孕育：鼓脹幾下，身邊冒出一圈自爆怪
+            brood: { cd: 8, windup: 0.8, countBase: 3, countPerTier: 1, radius: 40, recover: 0.4 },
+            // 毒雨：朝天噴一口，毒團落在主角身邊（同瘟疫投手的毒，飛行中地上有預警），第一團落在主角腳下
+            rain: { cd: 7, windup: 0.6, count: 5, countPhase2: 8, spread: 90, recover: 0.4 },
+            // 膿包爆裂：先畫出彈道，鼓起來後噴一整圈毒彈（飛過大軍、只打主角），從空隙鑽過去；半血後錯開半格再噴一圈
+            burst: { cd: 8, windup: 1.0, count: 12, speed: 120, range: 360, hp: 0.08, again: 0.45, recover: 0.9 },
+            // 膿爆：身邊一大圈紅圈，炸開後四周留下一圈毒池
+            erupt: { cd: 11, phase2: true, windup: 1.2, radius: 110, dmg: 1.5, hp: 0.2, pools: 6, recover: 1.3 },
+        },
     },
     hunterBoss: {
         type: 'Boss', name: '暗影獵手', baseHealth: 450, baseAttack: 26, radius: 20,
         imageName: 'fast_melee', art: 'boss_hunter', imgScaleMultiplier: 4.2, artScale: 5, tint: '#311B92', tintStrength: 0.6,
         attackRange: 26, attackSpeed: 1.2, moveSpeed: 55, color: '#311B92',
         soulDrop: 45, waveSpeedIncreaseFactor: 0.006,
-        // 先畫一條預警線，再沿線高速衝過去，路上的召喚物 / 法師都吃傷害
-        dashInterval: 4.5, dashWindup: 0.8, dashDistance: 260, dashSpeed: 700, dashWidth: 28,
-        dashDamageMult: 1.5, dashTriggerRange: 300,
         slowResist: 0.5,
+        moveGap: 1.3, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moves: {
+            // 疾影衝刺：紅線預警，沿線衝過去；半血後衝完立刻轉向主角再衝，一輪三次（後兩次預警短）
+            dash: { cd: 4.5, reach: 300, windup: 0.8, chainWindup: 0.45, chain: 3, length: 260, width: 28, travel: 0.15, dmg: 1.5, hp: 0.15, recover: 0.7 },
+            // 影刃：先畫出扇形彈道，再甩一排飛刀（只打主角）；半血後連甩兩排
+            knives: { cd: 5, minRange: 120, reach: 420, windup: 0.55, count: 5, spread: 0.6, speed: 230, range: 420, hp: 0.07, again: 0.4, recover: 0.3 },
+            // 影十字：遁入陰影，主角腳下交錯三道紅線，斬下後現身在交會處
+            cross: { cd: 9, reach: 420, windup: 1.1, lines: 3, length: 440, width: 20, dmg: 1.3, hp: 0.18, recover: 1.0 },
+        },
     },
     dragonBoss: {
         type: 'Boss', name: '腐朽骨龍', baseHealth: 650, baseAttack: 24, radius: 26,
@@ -288,13 +317,15 @@ const CONFIG = {
         imageName: 'boss_colossus', art: 'boss_dragon', imgScaleMultiplier: 4.5, artScale: 5, tint: '#2E7D32', tintStrength: 0.55,
         attackRange: 34, attackSpeed: 0.7, moveSpeed: 34, color: '#2E7D32',
         soulDrop: 50, waveSpeedIncreaseFactor: 0.004, slowResist: 0.5,
-        // 吐息：朝法師畫一塊扇形預警，蓄力後整塊扇形噴下去（大軍擠在前面會被燒一大片，法師要閃出扇形）
-        breathInterval: 6, breathWindup: 1.0, breathRange: 240, breathAngle: Math.PI / 3.5, breathTriggerRange: 280,
-        breathDamageMult: 2.5, breathPlayerHpRatio: 0.25,
-        // 飛撲：飛上天（打不到）、地上紅圈標出法師起飛時站的位置，flightTime 秒後砸下來
-        flyInterval: 11, flightTime: 1.6, flyHeight: 120, landRadius: 100, landDamageMult: 2, landPlayerHpRatio: 0.3,
-        // 血量低於這個比例後兩招都變快
-        phase2Ratio: 0.5, phase2Speed: 1.4,
+        moveGap: 1.6, phase2Ratio: 0.5, phase2Speed: 1.3,
+        moves: {
+            // 吐息：朝主角畫一塊扇形預警，蓄力後整塊噴下去（大軍擠在前面會被燒一大片，主角要閃出扇形）；半血後連噴三口、左右掃
+            breath: { cd: 6, reach: 280, windup: 1.0, range: 240, angle: Math.PI / 3.5, dmg: 2.5, hp: 0.22, sweep: 0.9, sweepEvery: 0.4, recover: 0.8 },
+            // 飛撲：飛上天（打不到）、地上紅圈標出主角起飛時站的位置，砸下來
+            fly: { cd: 11, flight: 1.6, height: 120, radius: 100, dmg: 2, hp: 0.25, recover: 1.2 },
+            // 骨火雨：仰天一吼，火球一顆接一顆砸在主角身邊（第一顆砸在主角腳下）
+            meteors: { cd: 9, windup: 0.7, count: 6, countPhase2: 10, spread: 150, radius: 38, delay: 0.9, stagger: 0.22, fall: 0.5, dmg: 1.5, hp: 0.12, recover: 0.3 },
+        },
     },
     thief: {
         type: 'Thief', name: '金魂竊賊', baseHealth: 60, baseAttack: 0, radius: 11,
@@ -446,11 +477,19 @@ const CONFIG = {
         // 施法型：站在遠處，不普攻
         attackRange: 170, attackSpeed: 0.5, moveSpeed: 32, color: '#B71C1C',
         soulDrop: 120, waveSpeedIncreaseFactor: 0.004, slowResist: 0.5,
-        summonInterval: 6, summonCount: 5,
-        novaInterval: 7, novaWindup: 1.3, novaRadius: 120, novaDamageMult: 2, novaPlayerHpRatio: 0.35,
-        curseInterval: 9, curseCount: 3, curseSpread: 70,
-        // 血量低於這個比例進第二階段，所有招式間隔 ÷ phase2Speed
-        phase2Ratio: 0.5, phase2Speed: 1.5,
+        moveGap: 1.5, phase2Ratio: 0.5, phase2Speed: 1.4,
+        moves: {
+            // 喚骨：舉杖，身邊爬出一圈敵方骷髏
+            raise: { cd: 7, windup: 0.8, count: 5, radius: 45, recover: 0.3 },
+            // 死亡新星：身邊大紅圈，填滿時炸開（身邊有主角或大軍才放）
+            nova: { cd: 7, reach: 220, windup: 1.3, radius: 120, dmg: 2, hp: 0.3, recover: 1.0 },
+            // 詛咒：往主角腳下丟幾團紫色詛咒地面（同毒池，飛行中地上有預警）
+            curse: { cd: 9, windup: 0.5, count: 3, spread: 70, recover: 0.3 },
+            // 死亡光束：從身上射出幾道紅線（其中一道對準主角），蓄力完一起發射；半血後變六道
+            beams: { cd: 10, windup: 1.2, count: 4, countPhase2: 6, length: 520, width: 22, dmg: 2, hp: 0.2, recover: 0.9 },
+            // 靈魂螺旋：先畫出第一圈彈道，再連噴幾圈、每圈轉一點，排成螺旋
+            spiral: { cd: 8, phase2: true, windup: 0.6, waves: 3, every: 0.3, count: 10, turn: 0.2, speed: 130, range: 400, hp: 0.07, recover: 0.8 },
+        },
     },
     eliteAffix: {
         // 這一波起精英怪會帶一個詞綴，牠腳下的圈換顏色
@@ -1218,7 +1257,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-    hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
+    hazards: [], enemyBolts: [], bossMarks: [], bossFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -2662,7 +2701,7 @@ const OVERTIME_EMBER_CHANCE = 0.05;   // 每隻畫面內的怪每格冒火星的
 const OVERTIME_SHAKE = 8;
 function overtimeMult() {
     if (gameState.betweenWaves) return 1;
-    const t = worldTime - gameState.waveStartAt - OVERTIME_START;
+    const t = worldTime - gameState.overtimeFrom - OVERTIME_START;
     return t > 0 ? 1 + OVERTIME_GAIN * t / OVERTIME_STEP : 1;
 }
 // 心跳：一下重一下輕（0～1）
@@ -2673,7 +2712,7 @@ function overtimeBeat() {
 }
 function drawOvertimeOverlay() {
     if (appScreen !== 'playing' || gameState.betweenWaves || !gameState.player) return;
-    const left = OVERTIME_START - (worldTime - gameState.waveStartAt);
+    const left = OVERTIME_START - (worldTime - gameState.overtimeFrom);
     if (!(left <= OVERTIME_WARN)) return;
     const W = view.cssW, y = hudTop + OVERTIME_HUD_Y;
     ctx.save();
@@ -3061,6 +3100,10 @@ const BOLT_STYLES = {
     eye: { glowIn: 'rgba(255, 179, 213, 0.85)', glowMid: 'rgba(240, 98, 146, 0.35)', glowOut: 'rgba(240, 98, 146, 0)', body: '#F06292', core: '#FCE4EC' },
     soul: { glowIn: 'rgba(214, 251, 251, 0.9)', glowMid: 'rgba(127, 240, 240, 0.38)', glowOut: 'rgba(127, 240, 240, 0)', body: '#7FF0F0', core: '#E8FFFF' },
     blood: { glowIn: 'rgba(255, 138, 128, 0.95)', glowMid: 'rgba(213, 0, 0, 0.45)', glowOut: 'rgba(213, 0, 0, 0)', body: '#D50000', core: '#FFCDD2' },
+    // 首領的彈幕：每隻一個顏色，看彈的顏色就知道是誰打的
+    plague: { glowIn: 'rgba(204, 255, 144, 0.95)', glowMid: 'rgba(100, 221, 23, 0.45)', glowOut: 'rgba(100, 221, 23, 0)', body: '#64DD17', core: '#F1F8E9' },
+    shadow: { glowIn: 'rgba(179, 157, 219, 0.95)', glowMid: 'rgba(98, 0, 234, 0.45)', glowOut: 'rgba(98, 0, 234, 0)', body: '#6200EA', core: '#EDE7F6' },
+    lich: { glowIn: 'rgba(234, 128, 252, 0.95)', glowMid: 'rgba(213, 0, 249, 0.45)', glowOut: 'rgba(213, 0, 249, 0)', body: '#D500F9', core: '#F3E5F5' },
 };
 // 預先畫好一整顆朝右的彗星：拖尾是一串越來越小、越來越淡的光暈（只有光、不帶描邊，疊起來才不會一節一節），
 // 最前面是光暈＋描邊彈體。畫面上幾十顆同時飛，每顆每格只貼一張圖
@@ -3808,6 +3851,19 @@ class BloaterMonster extends Monster {
     }
 }
 
+// ---------- 首領 ----------
+// 出招節奏：一次只出一招，每招都是「前搖（身上發光、地上畫預警）→ 出招 → 破綻」。
+// 破綻時首領站著喘、頭上冒星星、受到的傷害 ×BOSS_OPENING_TAKEN：閃過一招就有一段反擊的空檔，打首領才有來回。
+// 好幾招同時壓上來的話，看得到預警也閃不掉（第一版各招各自計時就是這樣，死靈法師的大軍在第 10 波首領被一口氣打光）
+const BOSS_OPENING_TAKEN = 1.5;
+const BOSS_OPENING_TEXT_MIN = 0.9;   // 破綻這麼久以上才跳「破綻」兩個字（短的只冒星星，不然字太多）
+// 落地後第一招前先給幾秒看清楚牠；開場各招冷卻先走掉一部分，不會一落地就全部一起好
+const BOSS_FIRST_MOVE_DELAY = 1.5;
+const BOSS_FIRST_CD = 0.5;
+// 打主角的比例照第幾隻首領打折：第一隻首領要讓第一次碰到的人學得會躲
+const BOSS_TIER_HIT = [0.7, 0.85, 1];
+const BOSS_AIM_LEN = 150;            // 彈幕前搖時畫出來的彈道線多長
+const BOSS_STAR_COUNT = 3;
 class BossMonster extends Monster {
     constructor(x, y, waveNumber, config) {
         super(x, y, config, waveNumber, false);
@@ -3815,11 +3871,152 @@ class BossMonster extends Monster {
         this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult * (1 + BOSS_HP_PER_TIER * this.tier));
         this.attack *= 1 + BOSS_ATK_PER_TIER * this.tier;
         this.spawnedAt = worldTime;
+        this.enraged = false;
+        this.cd = {};
+        for (const id in config.moves) this.cd[id] = config.moves[id].cd * BOSS_FIRST_CD;
+        this.gap = BOSS_FIRST_MOVE_DELAY;
+        this.act = null;
+        this.recover = 0;
+        this.lastMove = null;
+        this.lift = 0;       // 往上抬多高（跳起、起飛），地上留影子
+        this.fade = 1;       // 透明度（遁入陰影）
+        this.airborne = false;
+    }
+    // 飛在天上時誰都打不到、也不會被當成目標（格子不收潛行中的單位）
+    get stealthed() { return this.airborne; }
+    get speedMult() { return this.enraged ? this.config.phase2Speed : 1; }
+    playerHit(ratio) { return ratio * BOSS_TIER_HIT[Math.min(this.tier, BOSS_TIER_HIT.length) - 1]; }
+    playerWithin(p, r) { return p.isAlive && distanceSq(this.pos, p.pos) <= r * r; }
+    playerBeyond(p, r) { return p.isAlive && distanceSq(this.pos, p.pos) >= r * r; }
+    targetWithin(r) { return !!this.target && this.target.isAlive && distanceSq(this.pos, this.target.pos) <= r * r; }
+    // 這隻首領的招式：id → { when(player) 現在能不能出、start(player) 回傳一段動作 }。id 對到 config.moves
+    buildMoves() { return {}; }
+    // 一段動作：dur 秒；tick(t, dt) 每格；done() 結束時（裡面再 startAct 就是連段，不進破綻）；
+    // charge 秒數內身上的光越來越亮；aim 是前搖時畫出來的彈道角度；recover 是收招後的破綻
+    startAct(a) {
+        this.act = { t: 0, recover: 0, charge: 0, ...a };
+    }
+    newCast() { return { hit: new Set(), wasIn: false, left: 0 }; }
+    takeDamage(amount) {
+        if (this.airborne) return;
+        super.takeDamage(amount * (this.recover > 0 ? BOSS_OPENING_TAKEN : 1));
     }
     applySlow(amount, duration) {
         super.applySlow(amount * (1 - this.config.slowResist), duration);
     }
+    // 血量掉到 phase2Ratio 以下進第二階段（只觸發一次）：招式變快、多出新招
+    checkEnrage() {
+        if (this.enraged || this.currentHealth >= this.maxHealth * this.config.phase2Ratio) return;
+        this.enraged = true;
+        spawnFloatText(this.pos.x, this.pos.y - 40, '狂怒', '#FF8A80', 20, 1.4);
+        spawnParticles(this.pos.x, this.pos.y, this.auraColor, 30, 160, 0.7, 4);
+        addBossFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 160, life: 0.7, color: this.auraColor, width: 8 });
+        addShake(8);
+        Sfx.play('boss');
+    }
+    get auraColor() { return this.config.color; }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        if (!this.moves) this.moves = this.buildMoves();
+        this.checkEnrage();
+        const sp = this.speedMult;
+        for (const id in this.cd) this.cd[id] -= deltaTime * sp;
+        if (this.act) {
+            this.tickFlash(deltaTime);
+            const a = this.act;
+            a.t += deltaTime;
+            if (a.tick) a.tick(a.t, deltaTime);
+            if (a.t >= a.dur) {
+                this.act = null;
+                if (a.done) a.done();
+                if (!this.act) this.startRecover(a.recover);
+            }
+            return;
+        }
+        if (this.recover > 0) { this.tickFlash(deltaTime); this.recover -= deltaTime; return; }
+        this.gap -= deltaTime * sp;
+        if (this.gap <= 0 && player.isAlive) {
+            const id = this.pickMove(player);
+            if (id) {
+                this.cd[id] = this.config.moves[id].cd;
+                this.lastMove = id;
+                this.gap = this.config.moveGap;
+                this.startAct(this.moves[id].start(player));
+                return;
+            }
+        }
+        super.update(deltaTime, player, summons);
+    }
+    // 冷卻好了、條件也符合的招裡隨機挑一招；能換就不連出同一招
+    pickMove(player) {
+        const ready = [];
+        for (const id in this.moves) {
+            const M = this.config.moves[id];
+            if (this.cd[id] > 0 || (M.phase2 && !this.enraged) || !this.moves[id].when(player)) continue;
+            ready.push(id);
+        }
+        const pool = ready.length > 1 ? ready.filter(id => id !== this.lastMove) : ready;
+        return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+    }
+    startRecover(sec) {
+        this.drawScale = 1;
+        this.lift = 0;
+        if (!(sec > 0)) return;
+        this.recover = sec;
+        if (sec >= BOSS_OPENING_TEXT_MIN) spawnFloatText(this.pos.x, this.pos.y - this.imageHeight * 0.6, '破綻', '#FFE082', 15, 0.9);
+    }
+    faceTo(pos) { this.updateFacingDirection(pos.x - this.pos.x); }
     drawHealthBar() { }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        const a = this.act;
+        // 前搖：身上的光越來越亮
+        if (a && a.charge > 0 && a.t < a.charge) {
+            const k = a.t / a.charge, g = this.imageWidth * (1.5 + 0.7 * k);
+            ctx.globalAlpha = 0.25 + 0.55 * k;
+            ctx.drawImage(getGlowSprite(this.auraColor), this.pos.x - g / 2, this.pos.y - this.lift - g / 2, g, g);
+            ctx.globalAlpha = 1;
+        }
+        // 彈幕前搖：先把彈道畫出來，看得到空隙在哪
+        if (a && a.aim && a.t < a.charge) {
+            const k = a.t / a.charge;
+            ctx.save();
+            ctx.setLineDash([8, 7]);
+            ctx.lineCap = 'round';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = BOSS_MARK_EDGE;
+            ctx.globalAlpha = 0.25 + 0.6 * k;
+            ctx.beginPath();
+            for (const ang of a.aim) {
+                ctx.moveTo(this.pos.x + Math.cos(ang) * this.radius, this.pos.y + Math.sin(ang) * this.radius);
+                ctx.lineTo(this.pos.x + Math.cos(ang) * BOSS_AIM_LEN, this.pos.y + Math.sin(ang) * BOSS_AIM_LEN);
+            }
+            ctx.stroke();
+            ctx.restore();
+        }
+        if (a && a.drawUnder) a.drawUnder(ctx, a.t);
+        if (this.lift > 0) {
+            const s = Math.max(0.4, 1 - this.lift / 260);
+            ctx.fillStyle = BOSS_SHADOW;
+            ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.35, this.radius * 1.6 * s, this.radius * 0.6 * s, 0, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.save();
+        if (this.fade < 1) ctx.globalAlpha = this.fade;
+        if (this.lift) ctx.translate(0, -this.lift);
+        super.draw(ctx);
+        ctx.restore();
+        // 破綻：頭上繞圈的星星
+        if (this.recover > 0) {
+            const top = this.pos.y - this.imageHeight * 0.55;
+            ctx.fillStyle = '#FFE082';
+            ctx.strokeStyle = '#5D4037';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < BOSS_STAR_COUNT; i++) {
+                const ang = worldTime * 4 + i * Math.PI * 2 / BOSS_STAR_COUNT;
+                drawStarShape(ctx, this.pos.x + Math.cos(ang) * this.radius * 0.9, top + Math.sin(ang) * 6, 6);
+            }
+        }
+    }
     die() {
         super.die();
         gameState.bossKills[this.constructor.name] = true;
@@ -3827,294 +4024,570 @@ class BossMonster extends Monster {
         if (classDef().onBossKill) classDef().onBossKill(this);
         if (gameState.currentWave >= ACHV_BOSS_CHALLENGE_WAVE && worldTime - this.spawnedAt <= ACHV_BLITZ_SECONDS) gameState.run.flags.bossBlitz = true;
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
+        addBossFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 220, life: 0.9, color: '#E1BEE7', width: 10 });
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
         spawnFloatText(this.pos.x, this.pos.y - 8, `+${CRYSTALS_PER_BOSS}`, '#CE93D8', 17, 1.6, 'crystal');
         gameState.rerollsLeft += REROLLS_PER_BOSS;
         spawnFloatText(this.pos.x, this.pos.y + 14, `+${REROLLS_PER_BOSS}`, '#90CAF9', 17, 1.6, 'reroll');
+        // 首領倒下時牠放出去還沒落下的預警一起消失：贏了就不該再被打
+        gameState.bossMarks = gameState.bossMarks.filter(m => m.source !== this);
         addShake(14);
         Sfx.play('bossDie');
     }
 }
+const BOSS_SHADOW = 'rgba(0, 0, 0, 0.35)';
+function drawStarShape(ctx, x, y, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+        const ang = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * 0.45 : r;
+        if (i === 0) ctx.moveTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr); else ctx.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+}
+function angleTo(from, to) { return Math.atan2(to.y - from.y, to.x - from.x); }
 
-class ColossusBoss extends BossMonster {
-    constructor(x, y, waveNumber) {
-        super(x, y, waveNumber, CONFIG.boss);
-        this.slamTimer = CONFIG.boss.slamInterval;
-        this.windup = 0;
+// ---------- 首領的地面預警 ----------
+// 紅色越填越滿、邊框越閃越快，滿了那一下打中範圍裡的召喚物與主角。放出去就不歸首領管：首領走開也照樣落下（看得到的預警都要算數）。
+// shape 'circle'：x, y, r；'line'：從 (x, y) 往單位向量 (dx, dy) 延伸 len、半寬 w；'cone'：從 (x, y) 朝角度 a、半徑 range、半角 half。
+// dmg 打召喚物；hp 打主角（主角最大生命的比例）。同一招（cast）的預警，同一個目標最多被打一次：
+// 骨刺一串、火雨一片會重疊，各打各的話擠在一起的大軍會被同一招打好幾下。
+// 落下時：fx 'spikes' 地面竄出骨刺、'ring' 震波、'beam' 光束殘影、'cone' 扇形火焰；fall 'meteor' 最後 fallTime 秒從天上掉下來；
+// lob {sx, sy} 從那裡拋過來；after() 落下後再做的事（留毒池之類）
+const BOSS_MARK_FILL = 'rgba(229, 57, 53, ';
+const BOSS_MARK_EDGE = 'rgba(255, 82, 82, 0.9)';
+const BOSS_MARK_HOT = 'rgba(255, 235, 238, 0.95)';   // 快落下時邊框變白熱
+const BOSS_MARK_HOT_TIME = 0.25;
+const BOSS_MARK_LINE_SPARK_STEP = 28;
+const BOSS_FALL_HEIGHT = 300;
+const BOSS_LOB_ARC = 110;
+const BOSS_DODGE_TEXT = '閃過！';
+const BOSS_DODGE_COLOR = '#80DEEA';
+function addBossMark(m, cast) {
+    cast.left++;
+    gameState.bossMarks.push({ ...m, cast, total: m.delay });
+}
+function bossMarkHits(m, pos) {
+    if (m.shape === 'circle') return distanceSq(m, pos) <= m.r * m.r;
+    const tx = pos.x - m.x, ty = pos.y - m.y;
+    if (m.shape === 'cone') {
+        const dSq = tx * tx + ty * ty;
+        if (dSq > m.range * m.range) return false;
+        const d = Math.sqrt(dSq) || 1;
+        return (tx * Math.cos(m.a) + ty * Math.sin(m.a)) / d >= Math.cos(m.half);
     }
-    update(deltaTime, player, summons) {
-        if (!this.isAlive) return;
-        const c = this.config;
-        if (this.windup > 0) {
-            this.tickFlash(deltaTime);
-            this.windup -= deltaTime;
-            if (this.windup <= 0) this.slam(player, summons);
-            return;
+    const along = tx * m.dx + ty * m.dy;
+    if (along < 0 || along > m.len) return false;
+    return Math.abs(tx * -m.dy + ty * m.dx) <= m.w;
+}
+function bossMarkReach(m) {
+    if (m.shape === 'circle') return { c: m, r: m.r };
+    if (m.shape === 'cone') return { c: m, r: m.range };
+    return { c: { x: m.x + m.dx * m.len / 2, y: m.y + m.dy * m.len / 2 }, r: m.len / 2 + m.w };
+}
+function fireBossMark(m) {
+    const cast = m.cast, { c, r } = bossMarkReach(m);
+    summonGrid.forEachInRadius(c, r, s => {
+        if (s.isAlive && !cast.hit.has(s) && bossMarkHits(m, s.pos)) { cast.hit.add(s); s.takeDamage(m.dmg); }
+    });
+    const p = gameState.player;
+    if (p && p.isAlive && !cast.hit.has(p) && bossMarkHits(m, p.pos)) { cast.hit.add(p); p.takeDamage(p.maxHealth * m.hp, m.source); }
+    const color = m.color;
+    if (m.shape === 'line') {
+        addBossFx({ kind: 'beam', x: m.x, y: m.y, dx: m.dx, dy: m.dy, len: m.len, w: m.w, life: 0.35, color });
+        for (let d = 0; d <= m.len; d += BOSS_MARK_LINE_SPARK_STEP) spawnParticles(m.x + m.dx * d, m.y + m.dy * d, color, 2, 80, 0.4, 3);
+    } else if (m.shape === 'cone') {
+        addBossFx({ kind: 'cone', x: m.x, y: m.y, a: m.a, range: m.range, half: m.half, life: 0.4, color });
+        for (let i = 0; i < 40; i++) {
+            const ang = m.a + (Math.random() * 2 - 1) * m.half, rr = Math.random() * m.range;
+            spawnParticles(m.x + Math.cos(ang) * rr, m.y + Math.sin(ang) * rr, color, 1, 50, 0.5, 4);
         }
-        this.slamTimer -= deltaTime;
-        if (this.slamTimer <= 0 && this.target && distanceSq(this.pos, this.target.pos) < (c.slamRadius * 1.5) ** 2) {
-            this.windup = c.slamWindup;
-            this.slamTimer = c.slamInterval;
-            return;
-        }
-        super.update(deltaTime, player, summons);
-    }
-    slam(player, summons) {
-        const c = this.config;
-        const rSq = c.slamRadius * c.slamRadius;
-        const dmg = this.attack * c.slamDamageMult;
-        for (let i = 0; i < summons.length; i++) {
-            const s = summons[i];
-            if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg);
-        }
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(dmg, this);
+    } else {
         const effect = getVisualEffectFromPool(ExplosionEffect);
-        if (effect) { effect.init(this.pos, c.slamRadius); gameState.visualEffects.push(effect); }
-        spawnParticles(this.pos.x, this.pos.y, '#BA68C8', 30, 180, 0.6, 3);
-        addShake(10);
-        Sfx.play('slam');
+        if (effect) { effect.init(m, m.r); gameState.visualEffects.push(effect); }
+        spawnParticles(m.x, m.y, color, 12, 130, 0.5, 3);
+        if (m.fx === 'ring' || m.fx === 'both') addBossFx({ kind: 'ring', x: m.x, y: m.y, r0: m.r * 0.6, r1: m.r * 1.6, life: 0.45, color, width: 7 });
+        if (m.fx === 'spikes' || m.fx === 'both') addBossFx({ kind: 'spikes', x: m.x, y: m.y, r: m.r, life: 0.5, seed: Math.random() * 10 });
     }
-    draw(ctx) {
-        if (this.isAlive && this.windup > 0) {
-            const c = this.config;
-            const p = 1 - this.windup / c.slamWindup;
-            ctx.save();
-            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.18 * p).toFixed(2)})`;
-            ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, c.slamRadius * p, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgba(229, 57, 53, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, c.slamRadius, 0, Math.PI * 2); ctx.stroke();
-            ctx.restore();
-        }
-        super.draw(ctx);
+    addShake(m.shake || 4);
+    if (m.sfx) Sfx.play(m.sfx);
+    if (m.after) m.after();
+    // 這一招最後一個預警落下：主角站進去過、最後卻沒被打到 → 閃過
+    if (--cast.left === 0 && cast.wasIn && p && p.isAlive && !cast.hit.has(p)) {
+        spawnFloatText(p.pos.x, p.pos.y - 34, BOSS_DODGE_TEXT, BOSS_DODGE_COLOR, 16, 0.8);
     }
 }
-
-class PlagueBoss extends BossMonster {
-    constructor(x, y, waveNumber) {
-        super(x, y, waveNumber, CONFIG.plagueBoss);
-        this.spawnTimer = CONFIG.plagueBoss.spawnInterval * 0.5;
+function updateBossMarks(deltaTime) {
+    if (!gameState.bossMarks.length) return;
+    const p = gameState.player;
+    for (const m of gameState.bossMarks) {
+        m.delay -= deltaTime;
+        if (p && p.isAlive && bossMarkHits(m, p.pos)) m.cast.wasIn = true;
+        if (m.delay <= 0) fireBossMark(m);
     }
-    update(deltaTime, player, summons) {
-        if (!this.isAlive) return;
-        super.update(deltaTime, player, summons);
-        const c = this.config;
-        this.spawnTimer -= deltaTime;
-        if (this.spawnTimer > 0) return;
-        this.spawnTimer = c.spawnInterval;
-        const n = c.spawnCountBase + c.spawnCountPerTier * (this.tier - 1);
-        for (let i = 0; i < n; i++) {
-            const a = (i / n) * Math.PI * 2;
-            const x = this.pos.x + Math.cos(a) * c.spawnRadius, y = this.pos.y + Math.sin(a) * c.spawnRadius;
-            gameState.monsters.push(new BloaterMonster(x, y, this.waveNumber, false));
-            spawnParticles(x, y, '#9CCC65', 8, 60, 0.5);
-        }
-        this.hitFlash = CONFIG.visuals.hitFlashDuration * 2;
-        Sfx.play('spawn');
-    }
+    gameState.bossMarks = gameState.bossMarks.filter(m => m.delay > 0);
 }
-
-class HunterBoss extends BossMonster {
-    constructor(x, y, waveNumber) {
-        super(x, y, waveNumber, CONFIG.hunterBoss);
-        this.dashTimer = CONFIG.hunterBoss.dashInterval;
-        this.windup = 0;
-        this.dashLeft = 0;
-        this.dashDir = { x: 0, y: 0 };
-        this.dashHit = null;
-    }
-    update(deltaTime, player, summons) {
-        if (!this.isAlive) return;
-        const c = this.config;
-        if (this.dashLeft > 0) {
-            this.tickFlash(deltaTime);
-            const step = Math.min(this.dashLeft, c.dashSpeed * deltaTime);
-            this.pos.x += this.dashDir.x * step;
-            this.pos.y += this.dashDir.y * step;
-            this.dashLeft -= step;
-            this.updateFacingDirection(this.dashDir.x);
-            const dmg = this.attack * c.dashDamageMult;
-            const wSq = c.dashWidth * c.dashWidth;
-            summonGrid.forEachInRadius(this.pos, c.dashWidth, s => {
-                if (s.isAlive && !this.dashHit.has(s) && distanceSq(this.pos, s.pos) <= wSq) { this.dashHit.add(s); s.takeDamage(dmg); }
-            });
-            if (player.isAlive && !this.dashHit.has(player) && distanceSq(this.pos, player.pos) <= wSq) { this.dashHit.add(player); player.takeDamage(dmg, this); }
-            if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 2, 30, 0.35, 3);
-            return;
-        }
-        if (this.windup > 0) {
-            this.tickFlash(deltaTime);
-            this.windup -= deltaTime;
-            if (this.windup <= 0) {
-                this.dashLeft = c.dashDistance;
-                this.dashHit = new Set();
-                addShake(5);
-                Sfx.play('dash');
+// 畫在召喚物之上（同毒團預警）：大軍擠成一團時才不會被蓋住
+function drawBossMarks() {
+    for (const m of gameState.bossMarks) {
+        const k = 1 - m.delay / m.total;
+        const hot = m.delay < BOSS_MARK_HOT_TIME;
+        // 越接近落下閃得越快
+        const blink = 0.65 + 0.35 * Math.sin(worldTime * (8 + 20 * k));
+        ctx.save();
+        ctx.fillStyle = `${BOSS_MARK_FILL}${(0.12 + 0.22 * k).toFixed(2)})`;
+        ctx.strokeStyle = hot ? BOSS_MARK_HOT : BOSS_MARK_EDGE;
+        ctx.lineWidth = hot ? 3 : 2;
+        if (m.shape === 'circle') {
+            if (inView(m)) {
+                ctx.beginPath(); ctx.arc(m.x, m.y, m.r * k, 0, Math.PI * 2); ctx.fill();
+                ctx.globalAlpha = blink;
+                ctx.beginPath(); ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2); ctx.stroke();
             }
-            return;
-        }
-        this.dashTimer -= deltaTime;
-        if (this.dashTimer <= 0 && this.target && distanceSq(this.pos, this.target.pos) < c.dashTriggerRange * c.dashTriggerRange) {
-            this.dashTimer = c.dashInterval;
-            this.windup = c.dashWindup;
-            this.dashDir = normalizeVector({ x: this.target.pos.x - this.pos.x, y: this.target.pos.y - this.pos.y });
-            return;
-        }
-        super.update(deltaTime, player, summons);
-    }
-    draw(ctx) {
-        if (this.isAlive && this.windup > 0) {
-            const c = this.config;
-            const p = 1 - this.windup / c.dashWindup;
-            const ex = this.pos.x + this.dashDir.x * c.dashDistance, ey = this.pos.y + this.dashDir.y * c.dashDistance;
-            ctx.save();
+        } else if (m.shape === 'cone') {
+            ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.arc(m.x, m.y, m.range * k, m.a - m.half, m.a + m.half); ctx.closePath(); ctx.fill();
+            ctx.globalAlpha = blink;
+            ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.arc(m.x, m.y, m.range, m.a - m.half, m.a + m.half); ctx.closePath(); ctx.stroke();
+        } else {
+            // 整條淡紅帶越來越深，中間一條亮線從起點長到終點
+            const ex = m.x + m.dx * m.len, ey = m.y + m.dy * m.len;
             ctx.lineCap = 'round';
-            ctx.strokeStyle = `rgba(229, 57, 53, ${(0.15 + 0.25 * p).toFixed(2)})`;
-            ctx.lineWidth = c.dashWidth * 2;
-            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(ex, ey); ctx.stroke();
-            ctx.strokeStyle = 'rgba(229, 57, 53, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y); ctx.lineTo(this.pos.x + (ex - this.pos.x) * p, this.pos.y + (ey - this.pos.y) * p); ctx.stroke();
-            ctx.restore();
+            ctx.strokeStyle = `${BOSS_MARK_FILL}${(0.15 + 0.25 * k).toFixed(2)})`;
+            ctx.lineWidth = m.w * 2;
+            ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.globalAlpha = blink;
+            ctx.strokeStyle = hot ? BOSS_MARK_HOT : BOSS_MARK_EDGE;
+            ctx.lineWidth = hot ? 3 : 2;
+            ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x + m.dx * m.len * k, m.y + m.dy * m.len * k); ctx.stroke();
         }
-        super.draw(ctx);
+        ctx.restore();
+        // 從天上掉下來的火球／拋過來的骨塊：影子在落點越來越大
+        if (m.fall && m.delay < m.fallTime) drawFallingThing(m, 1 - m.delay / m.fallTime);
+        if (m.lob) drawLobbedBone(m, k);
+    }
+}
+const METEOR_CORE = '#F4FF81';
+function drawFallingThing(m, k) {
+    const y = m.y - (1 - k) * BOSS_FALL_HEIGHT, s = m.r * 0.55;
+    ctx.fillStyle = BOSS_SHADOW;
+    ctx.beginPath(); ctx.ellipse(m.x, m.y, m.r * 0.6 * k, m.r * 0.25 * k, 0, 0, Math.PI * 2); ctx.fill();
+    const g = s * 4;
+    ctx.globalAlpha = 0.8;
+    ctx.drawImage(getGlowSprite(m.color), m.x - g / 2, y - g / 2 - s, g, g * 1.4);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = METEOR_CORE;
+    ctx.strokeStyle = m.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(m.x, y, s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+}
+const BONE_FILL = '#EFEBE9', BONE_EDGE = '#4E342E';
+function drawLobbedBone(m, k) {
+    const x = m.lob.sx + (m.x - m.lob.sx) * k, y = m.lob.sy + (m.y - m.lob.sy) * k - Math.sin(k * Math.PI) * BOSS_LOB_ARC;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(k * Math.PI * 4);
+    ctx.fillStyle = BONE_FILL;
+    ctx.strokeStyle = BONE_EDGE;
+    ctx.lineWidth = 2.5;
+    // 一根兩頭圓的骨頭
+    const L = m.r * 0.5, R = m.r * 0.18;
+    ctx.beginPath();
+    ctx.rect(-L, -R * 0.6, L * 2, R * 1.2);
+    for (const sx of [-L, L]) for (const sy of [-R * 0.7, R * 0.7]) { ctx.moveTo(sx + R, sy); ctx.arc(sx, sy, R, 0, Math.PI * 2); }
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+}
+
+// ---------- 首領招式的特效（不會傷人，只是好看）：震波、骨刺、光束殘影、扇形火焰 ----------
+function addBossFx(f) {
+    gameState.bossFx.push({ ...f, max: f.life });
+}
+function updateBossFx(deltaTime) {
+    if (!gameState.bossFx.length) return;
+    for (const f of gameState.bossFx) f.life -= deltaTime;
+    gameState.bossFx = gameState.bossFx.filter(f => f.life > 0);
+}
+const SPIKE_COUNT = 6;
+function drawBossFx() {
+    for (const f of gameState.bossFx) {
+        const k = 1 - f.life / f.max;
+        ctx.save();
+        if (f.kind === 'ring') {
+            const r = f.r0 + (f.r1 - f.r0) * (1 - (1 - k) * (1 - k));
+            ctx.globalAlpha = 1 - k;
+            ctx.strokeStyle = f.color;
+            ctx.lineWidth = f.width * (1 - k) + 1;
+            ctx.beginPath(); ctx.arc(f.x, f.y, r, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = BOSS_MARK_HOT;
+            ctx.lineWidth = Math.max(1, f.width * 0.3 * (1 - k));
+            ctx.stroke();
+        } else if (f.kind === 'spikes') {
+            // 骨刺：一下竄出來、再慢慢縮回地裡
+            const h = f.r * 1.3 * Math.min(1, k * 5) * (1 - k * 0.7);
+            ctx.globalAlpha = 1 - k * k;
+            ctx.fillStyle = BONE_FILL;
+            ctx.strokeStyle = BONE_EDGE;
+            ctx.lineWidth = 2;
+            for (let i = 0; i < SPIKE_COUNT; i++) {
+                const ang = f.seed + i * 2.4, rr = f.r * 0.55 * ((i * 0.37 + f.seed) % 1);
+                const bx = f.x + Math.cos(ang) * rr, by = f.y + Math.sin(ang) * rr * 0.6, hw = f.r * 0.16, hh = h * (0.6 + 0.4 * ((i * 0.53) % 1));
+                ctx.beginPath(); ctx.moveTo(bx - hw, by); ctx.lineTo(bx + (i % 2 ? 3 : -3), by - hh); ctx.lineTo(bx + hw, by); ctx.closePath(); ctx.fill(); ctx.stroke();
+            }
+        } else if (f.kind === 'beam') {
+            const ex = f.x + f.dx * f.len, ey = f.y + f.dy * f.len;
+            ctx.lineCap = 'round';
+            ctx.globalAlpha = 1 - k;
+            ctx.strokeStyle = f.color;
+            ctx.lineWidth = f.w * 2 * (1 + k * 0.5);
+            ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(ex, ey); ctx.stroke();
+            ctx.strokeStyle = BOSS_MARK_HOT;
+            ctx.lineWidth = f.w * 0.6 * (1 - k);
+            ctx.stroke();
+        } else if (f.kind === 'cone') {
+            ctx.globalAlpha = 0.55 * (1 - k);
+            ctx.fillStyle = f.color;
+            ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.arc(f.x, f.y, f.range * (0.7 + 0.3 * k), f.a - f.half, f.a + f.half); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+// 首領的彈幕（飛過大軍、只打主角，見 updateEnemyBolts）：給 spread 是朝 base 方向的扇形，沒給是一整圈
+function bossBoltAngles(count, base, spread) {
+    const out = [];
+    for (let i = 0; i < count; i++) out.push(spread === undefined ? base + i / count * Math.PI * 2 : base + (count === 1 ? 0 : (i / (count - 1) - 0.5) * spread));
+    return out;
+}
+function fireBossBolts(src, angles, { speed, range, hp, style }) {
+    for (const a of angles) gameState.enemyBolts.push({ pos: { x: src.pos.x, y: src.pos.y }, dir: { x: Math.cos(a), y: Math.sin(a) }, travel: 0, source: src, speed, range, hpRatio: src.playerHit(hp), style });
+}
+
+const COLOSSUS_DUST = '#BCAAA4';
+const COLOSSUS_GLOW = '#BA68C8';
+const COLOSSUS_JUMP = 34;
+class ColossusBoss extends BossMonster {
+    constructor(x, y, waveNumber) { super(x, y, waveNumber, CONFIG.boss); }
+    get auraColor() { return COLOSSUS_GLOW; }
+    buildMoves() {
+        const M = this.config.moves;
+        return {
+            slam: { when: () => this.targetWithin(M.slam.reach), start: () => this.actSlam(M.slam) },
+            fissure: { when: p => this.playerWithin(p, M.fissure.reach), start: p => this.actFissure(p, M.fissure) },
+            throw: { when: p => this.playerBeyond(p, M.throw.minRange) && this.playerWithin(p, M.throw.reach), start: p => this.actThrow(p, M.throw) },
+            quake: { when: p => this.playerWithin(p, M.quake.reach), start: () => this.actQuake(M.quake) },
+        };
+    }
+    stompMark(cast, M, delay, shake) {
+        addBossMark({ shape: 'circle', x: this.pos.x, y: this.pos.y, r: M.radius, delay, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: COLOSSUS_GLOW, fx: 'both', sfx: 'slam', shake }, cast);
+    }
+    // 從身邊 startDist 處往角度 a 一路竄出 count 根骨刺，一根接一根
+    spikeLine(cast, M, a, count, startDist, delay, radius) {
+        const dx = Math.cos(a), dy = Math.sin(a);
+        for (let i = 0; i < count; i++) {
+            const d = startDist + M.step * (i + 0.5);
+            addBossMark({
+                shape: 'circle', x: this.pos.x + dx * d, y: this.pos.y + dy * d, r: radius,
+                delay: delay + i * M.stagger, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: COLOSSUS_DUST, fx: 'spikes', sfx: i === 0 ? 'slam' : null,
+            }, cast);
+        }
+    }
+    // 重踏：跳起來、腳下紅圈填滿時剛好落地
+    actSlam(M) {
+        this.stompMark(this.newCast(), M, M.windup, 10);
+        return { dur: M.windup, charge: M.windup, recover: M.recover, tick: (t) => { this.lift = Math.sin(t / M.windup * Math.PI) * COLOSSUS_JUMP; } };
+    }
+    // 地裂：舉拳，地上先裂出一道往主角的裂痕，再一路竄出骨刺
+    actFissure(p, M) {
+        const a = angleTo(this.pos, p.pos), len = this.radius + M.step * M.count;
+        this.faceTo(p.pos);
+        this.spikeLine(this.newCast(), M, a, M.count, this.radius, M.windup, M.radius);
+        return {
+            dur: M.windup, charge: M.windup, recover: M.recover,
+            tick: (t) => { this.drawScale = 1 + 0.12 * Math.sin(t / M.windup * Math.PI); },
+            drawUnder: (ctx, t) => {
+                const k = Math.min(1, t / M.windup);
+                ctx.save();
+                ctx.strokeStyle = BONE_EDGE; ctx.lineWidth = 4; ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(this.pos.x, this.pos.y);
+                // 鋸齒狀的裂痕往前長
+                const steps = Math.max(1, Math.round(M.count * 2 * k));
+                for (let i = 1; i <= steps; i++) {
+                    const d = len * k * i / steps, j = (i % 2 ? 1 : -1) * 6;
+                    ctx.lineTo(this.pos.x + Math.cos(a) * d - Math.sin(a) * j, this.pos.y + Math.sin(a) * d + Math.cos(a) * j);
+                }
+                ctx.stroke();
+                ctx.restore();
+            },
+        };
+    }
+    // 擲骨：連丟三塊，每塊瞄準丟出那一刻主角的位置
+    actThrow(p, M) {
+        const cast = this.newCast();
+        let thrown = 0;
+        return {
+            dur: M.every * M.count, charge: M.every, recover: M.recover,
+            tick: (t) => {
+                const player = gameState.player;
+                while (thrown < M.count && t >= M.every * (thrown + 0.5) && player) {
+                    thrown++;
+                    this.faceTo(player.pos);
+                    const sx = this.pos.x, sy = this.pos.y - this.imageHeight * 0.4;
+                    addBossMark({ shape: 'circle', x: player.pos.x, y: player.pos.y, r: M.radius, delay: M.flight, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: COLOSSUS_DUST, fx: 'both', sfx: 'slam', lob: { sx, sy } }, cast);
+                    this.drawScale = 1.15;
+                    Sfx.play('dash');
+                }
+                this.drawScale += (1 - this.drawScale) * 0.2;
+            },
+        };
+    }
+    // 震地連踏：踩三下，每下都往十字竄骨刺，一下正十字一下斜十字
+    actQuake(M) {
+        const cast = this.newCast();
+        const base = Math.random() * Math.PI / 2;
+        for (let i = 0; i < M.stomps; i++) {
+            const at = M.windup + i * M.every;
+            this.stompMark(cast, M, at, 8);
+            for (let j = 0; j < 4; j++) this.spikeLine(cast, M, base + (i % 2) * Math.PI / 4 + j * Math.PI / 2, M.lineCount, M.radius, at + 0.1, M.lineRadius);
+        }
+        const dur = M.windup + (M.stomps - 1) * M.every;
+        return {
+            dur, charge: M.windup, recover: M.recover,
+            tick: (t) => {
+                // 每一下前都跳起來
+                const ph = t < M.windup ? t / M.windup : ((t - M.windup) % M.every) / M.every;
+                this.lift = Math.sin(ph * Math.PI) * COLOSSUS_JUMP * 0.8;
+            },
+        };
+    }
+}
+
+const PLAGUE_GREEN = '#9CCC65';
+class PlagueBoss extends BossMonster {
+    constructor(x, y, waveNumber) { super(x, y, waveNumber, CONFIG.plagueBoss); }
+    get auraColor() { return PLAGUE_GREEN; }
+    buildMoves() {
+        const M = this.config.moves;
+        return {
+            brood: { when: () => true, start: () => this.actBrood(M.brood) },
+            rain: { when: p => p.isAlive, start: () => this.actRain(M.rain) },
+            burst: { when: p => p.isAlive, start: () => this.actBurst(M.burst) },
+            erupt: { when: () => true, start: () => this.actErupt(M.erupt) },
+        };
+    }
+    // 鼓脹：整隻一脹一縮
+    swell(t, dur, times) { this.drawScale = 1 + 0.16 * Math.abs(Math.sin(t / dur * Math.PI * times)); }
+    actBrood(M) {
+        return {
+            dur: M.windup, charge: M.windup, recover: M.recover,
+            tick: (t) => this.swell(t, M.windup, 3),
+            done: () => {
+                const n = M.countBase + M.countPerTier * (this.tier - 1);
+                for (let i = 0; i < n; i++) {
+                    const a = (i / n) * Math.PI * 2;
+                    const x = this.pos.x + Math.cos(a) * M.radius, y = this.pos.y + Math.sin(a) * M.radius;
+                    gameState.monsters.push(new BloaterMonster(x, y, this.waveNumber, false));
+                    spawnParticles(x, y, PLAGUE_GREEN, 8, 60, 0.5);
+                }
+                Sfx.play('spawn');
+            },
+        };
+    }
+    // 毒團的傷害、大小、持續時間都照瘟疫投手（同一種毒），只是一次丟一圈
+    actRain(M) {
+        return {
+            dur: M.windup, charge: M.windup, recover: M.recover,
+            tick: (t) => this.swell(t, M.windup, 1),
+            done: () => {
+                const p = gameState.player, S = CONFIG.spitter;
+                if (!p) return;
+                const n = this.enraged ? M.countPhase2 : M.count;
+                for (let i = 0; i < n; i++) {
+                    const spread = i === 0 ? 0 : M.spread;
+                    gameState.hazards.push({
+                        source: this, sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.3,
+                        x: p.pos.x + randomInRange(-spread, spread), y: p.pos.y + randomInRange(-spread, spread),
+                        r: S.puddleRadius, flight: S.lobTime, life: S.puddleLife, tick: 0, dmg: this.attack * S.puddleDamageMult,
+                    });
+                }
+                spawnParticles(this.pos.x, this.pos.y - this.imageHeight * 0.3, POISON_LIGHT, 18, 100, 0.4, 3);
+                Sfx.play('splat');
+            },
+        };
+    }
+    actBurst(M) {
+        const base = Math.random() * Math.PI * 2;
+        const ring1 = bossBoltAngles(M.count, base), ring2 = bossBoltAngles(M.count, base + Math.PI / M.count);
+        const twice = this.enraged;
+        let fired = 0;
+        return {
+            dur: M.windup + (twice ? M.again : 0), charge: M.windup, recover: M.recover,
+            aim: twice ? ring1.concat(ring2) : ring1,
+            tick: (t) => {
+                if (t < M.windup) { this.swell(t, M.windup, 2); return; }
+                if (fired === 0) { fired = 1; this.burst(ring1, M); }
+                if (twice && fired === 1 && t >= M.windup + M.again) { fired = 2; this.burst(ring2, M); }
+            },
+        };
+    }
+    burst(angles, M) {
+        this.drawScale = 1;
+        fireBossBolts(this, angles, { speed: M.speed, range: M.range, hp: M.hp, style: 'plague' });
+        spawnParticles(this.pos.x, this.pos.y, PLAGUE_GREEN, 24, 150, 0.5, 3);
+        addBossFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: this.radius * 3, life: 0.4, color: PLAGUE_GREEN, width: 6 });
+        addShake(5);
+        Sfx.play('splat');
+    }
+    // 膿爆：身邊大紅圈，炸開後四周留一圈毒池
+    actErupt(M) {
+        const S = CONFIG.spitter;
+        addBossMark({
+            shape: 'circle', x: this.pos.x, y: this.pos.y, r: M.radius, delay: M.windup, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp),
+            source: this, color: PLAGUE_GREEN, fx: 'ring', sfx: 'bloat', shake: 10,
+            after: () => {
+                for (let i = 0; i < M.pools; i++) {
+                    const a = i / M.pools * Math.PI * 2;
+                    gameState.hazards.push({
+                        source: this, sx: this.pos.x, sy: this.pos.y, x: this.pos.x + Math.cos(a) * M.radius, y: this.pos.y + Math.sin(a) * M.radius,
+                        r: S.puddleRadius, flight: S.lobTime * 0.3, life: S.puddleLife, tick: 0, dmg: this.attack * S.puddleDamageMult,
+                    });
+                }
+            },
+        }, this.newCast());
+        return { dur: M.windup, charge: M.windup, recover: M.recover, tick: (t) => this.swell(t, M.windup, 4) };
+    }
+}
+
+const HUNTER_SHADOW = '#7E57C2';
+const HUNTER_FADE = 0.3;
+class HunterBoss extends BossMonster {
+    constructor(x, y, waveNumber) { super(x, y, waveNumber, CONFIG.hunterBoss); }
+    get auraColor() { return HUNTER_SHADOW; }
+    buildMoves() {
+        const M = this.config.moves;
+        return {
+            dash: { when: () => this.targetWithin(M.dash.reach), start: () => this.actDash(this.target, M.dash, M.dash.windup, this.enraged ? M.dash.chain - 1 : 0) },
+            knives: { when: p => this.playerBeyond(p, M.knives.minRange) && this.playerWithin(p, M.knives.reach), start: p => this.actKnives(p, M.knives) },
+            cross: { when: p => this.playerWithin(p, M.cross.reach), start: p => this.actCross(p, M.cross) },
+        };
+    }
+    // 衝刺：紅線預警，填滿時沿線衝過去（傷害由預警落下時結算，人只是看起來衝過去）；還有連段就接著瞄主角再衝
+    actDash(target, M, windup, chainLeft) {
+        const dir = normalizeVector({ x: target.pos.x - this.pos.x, y: target.pos.y - this.pos.y });
+        const from = { x: this.pos.x, y: this.pos.y };
+        this.updateFacingDirection(dir.x);
+        addBossMark({ shape: 'line', x: from.x, y: from.y, dx: dir.x, dy: dir.y, len: M.length, w: M.width, delay: windup, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: HUNTER_SHADOW, sfx: 'dash', shake: 5 }, this.newCast());
+        return {
+            dur: windup + M.travel, charge: windup, recover: M.recover,
+            tick: (t) => {
+                if (t < windup) return;
+                const k = Math.min(1, (t - windup) / M.travel);
+                this.pos.x = from.x + dir.x * M.length * k;
+                this.pos.y = from.y + dir.y * M.length * k;
+                if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 3, 40, 0.35, 3);
+            },
+            done: () => {
+                const p = gameState.player;
+                if (chainLeft > 0 && p && p.isAlive) this.startAct(this.actDash(p, M, M.chainWindup, chainLeft - 1));
+            },
+        };
+    }
+    // 影刃：先畫出扇形彈道再甩；半血後隔一下再朝主角甩第二排（錯開半格）
+    actKnives(p, M) {
+        const a = angleTo(this.pos, p.pos), step = M.spread / (M.count - 1);
+        const fan1 = bossBoltAngles(M.count, a, M.spread);
+        const twice = this.enraged;
+        let fired = 0;
+        this.faceTo(p.pos);
+        return {
+            dur: M.windup + (twice ? M.again : 0), charge: M.windup, recover: M.recover, aim: fan1,
+            tick: (t) => {
+                if (fired === 0 && t >= M.windup) { fired = 1; this.throwFan(fan1, M); }
+                const pl = gameState.player;
+                if (twice && fired === 1 && t >= M.windup + M.again && pl) {
+                    fired = 2;
+                    this.throwFan(bossBoltAngles(M.count + 1, angleTo(this.pos, pl.pos), M.spread + step), M);
+                }
+            },
+        };
+    }
+    throwFan(angles, M) {
+        fireBossBolts(this, angles, { speed: M.speed, range: M.range, hp: M.hp, style: 'shadow' });
+        spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 10, 90, 0.3, 3);
+        Sfx.play('bloodShot');
+    }
+    // 影十字：遁入陰影（半透明），主角腳下交錯三道紅線；斬下後現身在交會處
+    actCross(p, M) {
+        const cast = this.newCast(), cx = p.pos.x, cy = p.pos.y;
+        const base = Math.random() * Math.PI;
+        for (let i = 0; i < M.lines; i++) {
+            const a = base + i * Math.PI / M.lines, dx = Math.cos(a), dy = Math.sin(a);
+            addBossMark({ shape: 'line', x: cx - dx * M.length / 2, y: cy - dy * M.length / 2, dx, dy, len: M.length, w: M.width, delay: M.windup, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: HUNTER_SHADOW, sfx: i === 0 ? 'dash' : null, shake: 6 }, cast);
+        }
+        spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 20, 100, 0.5, 3);
+        return {
+            dur: M.windup, charge: M.windup, recover: M.recover,
+            tick: (t) => { this.fade = 1 - (1 - HUNTER_FADE) * Math.min(1, t / (M.windup * 0.4)); },
+            done: () => {
+                this.fade = 1;
+                spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 16, 90, 0.4, 3);
+                this.pos.x = cx; this.pos.y = cy;
+                spawnParticles(cx, cy, HUNTER_SHADOW, 24, 140, 0.5, 3);
+                addBossFx({ kind: 'ring', x: cx, y: cy, r0: 10, r1: 90, life: 0.4, color: HUNTER_SHADOW, width: 6 });
+            },
+        };
     }
 }
 
 const DRAGON_FIRE = '#76FF03';
-const DRAGON_SHADOW = 'rgba(0, 0, 0, 0.35)';
 class DragonBoss extends BossMonster {
-    constructor(x, y, waveNumber) {
-        super(x, y, waveNumber, CONFIG.dragonBoss);
-        const c = this.config;
-        this.breathT = c.breathInterval * 0.6;
-        this.flyT = c.flyInterval;
-        this.windup = 0;
-        this.breathDir = { x: 1, y: 0 };
-        this.flight = 0;
-        this.from = null; this.land = null;
-        this.enraged = false;
+    constructor(x, y, waveNumber) { super(x, y, waveNumber, CONFIG.dragonBoss); }
+    get auraColor() { return DRAGON_FIRE; }
+    buildMoves() {
+        const M = this.config.moves;
+        return {
+            breath: { when: p => this.playerWithin(p, M.breath.reach), start: p => this.actBreath(p, M.breath) },
+            fly: { when: p => p.isAlive, start: p => this.actFly(p, M.fly) },
+            meteors: { when: p => p.isAlive, start: p => this.actMeteors(p, M.meteors) },
+        };
     }
-    // 飛在天上時誰都打不到、也不會被當成目標（格子不收潛行中的單位）
-    get stealthed() { return this.flight > 0; }
-    takeDamage(amount) {
-        if (this.flight > 0) return;
-        super.takeDamage(amount);
+    // 吐息：扇形預警；半血後連噴三口（中、左、右），一口接一口
+    actBreath(p, M) {
+        const a = angleTo(this.pos, p.pos), cast = this.newCast();
+        const angles = this.enraged ? [a, a - M.sweep, a + M.sweep] : [a];
+        this.faceTo(p.pos);
+        angles.forEach((ang, i) => addBossMark({ shape: 'cone', x: this.pos.x, y: this.pos.y, a: ang, range: M.range, half: M.angle / 2, delay: M.windup + i * M.sweepEvery, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: DRAGON_FIRE, sfx: 'nova', shake: 8 }, cast));
+        return { dur: M.windup + (angles.length - 1) * M.sweepEvery, charge: M.windup, recover: M.recover, tick: (t) => { this.drawScale = t < M.windup ? 1 + 0.1 * t / M.windup : 1.05; } };
     }
-    update(deltaTime, player, summons) {
-        if (!this.isAlive) return;
-        const c = this.config;
-        if (!this.enraged && this.currentHealth < this.maxHealth * c.phase2Ratio) {
-            this.enraged = true;
-            spawnFloatText(this.pos.x, this.pos.y - 40, '狂怒', '#CCFF90', 20, 1.4);
-            spawnParticles(this.pos.x, this.pos.y, DRAGON_FIRE, 30, 160, 0.7, 4);
-            addShake(8);
-            Sfx.play('boss');
-        }
-        const sp = this.enraged ? c.phase2Speed : 1;
-        if (this.flight > 0) {
-            this.tickFlash(deltaTime);   // 起飛前剛被打到的閃白要繼續退，不然整段飛行都是白色剪影
-            this.flight -= deltaTime;
-            const k = 1 - Math.max(0, this.flight) / c.flightTime;
-            this.pos.x = this.from.x + (this.land.x - this.from.x) * k;
-            this.pos.y = this.from.y + (this.land.y - this.from.y) * k;
-            this.updateFacingDirection(this.land.x - this.from.x);
-            if (this.flight <= 0) this.slamDown(player, summons);
-            return;
-        }
-        if (this.windup > 0) {
-            this.tickFlash(deltaTime);
-            this.windup -= deltaTime;
-            if (this.windup <= 0) this.breathe(player, summons);
-            return;
-        }
-        this.breathT -= deltaTime * sp;
-        this.flyT -= deltaTime * sp;
-        if (this.flyT <= 0 && player.isAlive) {
-            this.flyT = c.flyInterval;
-            this.flight = c.flightTime;
-            this.from = { x: this.pos.x, y: this.pos.y };
-            this.land = { x: player.pos.x, y: player.pos.y };
-            spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 20, 120, 0.5, 3);
-            Sfx.play('dash');
-            return;
-        }
-        if (this.breathT <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.breathTriggerRange * c.breathTriggerRange) {
-            this.breathT = c.breathInterval;
-            this.windup = c.breathWindup;
-            this.breathDir = normalizeVector({ x: player.pos.x - this.pos.x, y: player.pos.y - this.pos.y });
-            this.updateFacingDirection(this.breathDir.x);
-            return;
-        }
-        super.update(deltaTime, player, summons);
+    // 飛撲：飛上天（打不到），地上紅圈標出主角起飛時站的位置，影子一路滑過去，砸下來
+    actFly(p, M) {
+        const from = { x: this.pos.x, y: this.pos.y }, land = { x: p.pos.x, y: p.pos.y };
+        addBossMark({ shape: 'circle', x: land.x, y: land.y, r: M.radius, delay: M.flight, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: COLOSSUS_DUST, fx: 'both', sfx: 'slam', shake: 12 }, this.newCast());
+        this.airborne = true;
+        this.updateFacingDirection(land.x - from.x);
+        spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 20, 120, 0.5, 3);
+        Sfx.play('dash');
+        return {
+            dur: M.flight, recover: M.recover,
+            tick: (t) => {
+                const k = Math.min(1, t / M.flight);
+                this.pos.x = from.x + (land.x - from.x) * k;
+                this.pos.y = from.y + (land.y - from.y) * k;
+                this.lift = Math.sin(k * Math.PI) * M.height;
+            },
+            done: () => { this.airborne = false; this.lift = 0; },
+        };
     }
-    inBreath(pos) {
-        const c = this.config;
-        const dx = pos.x - this.pos.x, dy = pos.y - this.pos.y;
-        const dSq = dx * dx + dy * dy;
-        if (dSq > c.breathRange * c.breathRange) return false;
-        const d = Math.sqrt(dSq) || 1;
-        return (dx * this.breathDir.x + dy * this.breathDir.y) / d >= Math.cos(c.breathAngle / 2);
-    }
-    breathe(player, summons) {
-        const c = this.config;
-        const dmg = this.attack * c.breathDamageMult;
-        summonGrid.forEachInRadius(this.pos, c.breathRange, s => { if (s.isAlive && this.inBreath(s.pos)) s.takeDamage(dmg); });
-        if (player.isAlive && this.inBreath(player.pos)) player.takeDamage(player.maxHealth * c.breathPlayerHpRatio, this);
-        const base = Math.atan2(this.breathDir.y, this.breathDir.x);
-        for (let i = 0; i < 40; i++) {
-            const a = base + (Math.random() - 0.5) * c.breathAngle, r = Math.random() * c.breathRange;
-            spawnParticles(this.pos.x + Math.cos(a) * r, this.pos.y + Math.sin(a) * r, DRAGON_FIRE, 1, 40, 0.5, 4);
+    // 骨火雨：仰天一吼，火球一顆接一顆砸在主角身邊
+    actMeteors(p, M) {
+        const cast = this.newCast(), n = this.enraged ? M.countPhase2 : M.count;
+        for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2, r = i === 0 ? 0 : Math.sqrt(Math.random()) * M.spread;
+            addBossMark({ shape: 'circle', x: p.pos.x + Math.cos(a) * r, y: p.pos.y + Math.sin(a) * r, r: M.radius, delay: M.windup + M.delay + i * M.stagger, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: DRAGON_FIRE, fx: 'ring', sfx: 'slam', fall: 'meteor', fallTime: M.fall }, cast);
         }
-        addShake(8);
-        Sfx.play('nova');
-    }
-    slamDown(player, summons) {
-        const c = this.config;
-        const rSq = c.landRadius * c.landRadius;
-        const dmg = this.attack * c.landDamageMult;
-        summonGrid.forEachInRadius(this.pos, c.landRadius, s => { if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg); });
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.landPlayerHpRatio, this);
-        const effect = getVisualEffectFromPool(ExplosionEffect);
-        if (effect) { effect.init(this.pos, c.landRadius); gameState.visualEffects.push(effect); }
-        spawnParticles(this.pos.x, this.pos.y, '#BCAAA4', 34, 200, 0.6, 3);
-        addShake(12);
-        Sfx.play('slam');
-    }
-    draw(ctx) {
-        if (!this.isAlive) return;
-        const c = this.config;
-        if (this.windup > 0) {
-            // 扇形預警：外框先畫滿，裡面的紅色隨蓄力往外長
-            const p = 1 - this.windup / c.breathWindup;
-            const base = Math.atan2(this.breathDir.y, this.breathDir.x);
-            ctx.save();
-            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.2 * p).toFixed(2)})`;
-            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y);
-            ctx.arc(this.pos.x, this.pos.y, c.breathRange * p, base - c.breathAngle / 2, base + c.breathAngle / 2); ctx.closePath(); ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 82, 82, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(this.pos.x, this.pos.y);
-            ctx.arc(this.pos.x, this.pos.y, c.breathRange, base - c.breathAngle / 2, base + c.breathAngle / 2); ctx.closePath(); ctx.stroke();
-            ctx.restore();
-        }
-        if (this.flight > 0) {
-            // 落點紅圈越填越滿；影子在地上跟著移動，身體在空中劃一道弧
-            const k = 1 - this.flight / c.flightTime;
-            ctx.save();
-            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.2 * k).toFixed(2)})`;
-            ctx.beginPath(); ctx.arc(this.land.x, this.land.y, c.landRadius * k, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 82, 82, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(this.land.x, this.land.y, c.landRadius, 0, Math.PI * 2); ctx.stroke();
-            ctx.fillStyle = DRAGON_SHADOW;
-            ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.35, this.radius * 1.6, this.radius * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-            ctx.translate(0, -Math.sin(k * Math.PI) * c.flyHeight);
-            super.draw(ctx);
-            ctx.restore();
-            return;
-        }
-        super.draw(ctx);
+        return {
+            dur: M.windup, charge: M.windup, recover: M.recover,
+            tick: (t) => { this.drawScale = 1 + 0.15 * Math.sin(Math.min(1, t / M.windup) * Math.PI); },
+            done: () => { spawnParticles(this.pos.x, this.pos.y - this.imageHeight * 0.3, DRAGON_FIRE, 24, 140, 0.5, 3); Sfx.play('boss'); },
+        };
     }
 }
 
@@ -4124,98 +4597,191 @@ function getBossClass(wave) {
     const tier = Math.max(1, Math.floor(wave / CONFIG.wave.bossEvery));
     return BOSS_ROTATION[(tier - 1) % BOSS_ROTATION.length];
 }
-// 最終首領：召喚敵方骷髏、在身邊放新星（先紅圈預警）、往法師腳下丟詛咒地面；半血後所有招式變快
+// 最終首領：施法型，站在遠處不普攻
+const LICH_GLOW = '#E040FB';
 class LichBoss extends BossMonster {
-    constructor(x, y, waveNumber) {
-        super(x, y, waveNumber, CONFIG.lichBoss);
-        const c = this.config;
-        this.summonT = c.summonInterval * 0.5;
-        this.novaT = c.novaInterval;
-        this.curseT = c.curseInterval * 0.6;
-        this.windup = 0;
-        this.enraged = false;
-    }
-    update(deltaTime, player, summons) {
-        if (!this.isAlive) return;
-        const c = this.config;
-        if (!this.enraged && this.currentHealth < this.maxHealth * c.phase2Ratio) {
-            this.enraged = true;
-            spawnFloatText(this.pos.x, this.pos.y - 40, '狂怒', '#FF8A80', 20, 1.4);
-            spawnParticles(this.pos.x, this.pos.y, '#E040FB', 30, 160, 0.7, 4);
-            addShake(8);
-            Sfx.play('boss');
-        }
-        const sp = this.enraged ? c.phase2Speed : 1;
-        if (this.windup > 0) {
-            this.tickFlash(deltaTime);
-            this.windup -= deltaTime;
-            if (this.windup <= 0) this.castNova(player, summons);
-            return;
-        }
-        this.summonT -= deltaTime * sp;
-        this.novaT -= deltaTime * sp;
-        this.curseT -= deltaTime * sp;
-        if (this.summonT <= 0) {
-            this.summonT = c.summonInterval;
-            for (let i = 0; i < c.summonCount; i++) {
-                const a = (i / c.summonCount) * Math.PI * 2;
-                const x = this.pos.x + Math.cos(a) * 45, y = this.pos.y + Math.sin(a) * 45;
-                gameState.monsters.push(new RaisedSkeletonMonster(x, y, this.waveNumber, false));
-                spawnParticles(x, y, '#E53935', 8, 60, 0.5, 3);
-            }
-            Sfx.play('spawn');
-        }
-        if (this.curseT <= 0 && player.isAlive) {
-            this.curseT = c.curseInterval;
-            for (let i = 0; i < c.curseCount; i++) {
-                const off = i === 0 ? 0 : c.curseSpread;
-                gameState.hazards.push({
-                    kind: 'curse', source: this, sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.3,
-                    x: player.pos.x + randomInRange(-off, off), y: player.pos.y + randomInRange(-off, off),
-                    r: CURSE_POOL_RADIUS, flight: CONFIG.spitter.lobTime, life: CURSE_POOL_LIFE, tick: 0, dmg: this.attack * CURSE_POOL_DAMAGE_MULT,
-                });
-            }
-        }
-        if (this.novaT <= 0) {
-            this.novaT = c.novaInterval;
-            this.windup = c.novaWindup;
-            return;
-        }
-        super.update(deltaTime, player, summons);
+    constructor(x, y, waveNumber) { super(x, y, waveNumber, CONFIG.lichBoss); }
+    get auraColor() { return LICH_GLOW; }
+    buildMoves() {
+        const M = this.config.moves;
+        return {
+            raise: { when: () => true, start: () => this.actRaise(M.raise) },
+            nova: { when: p => this.playerWithin(p, M.nova.reach) || this.targetWithin(M.nova.radius), start: () => this.actNova(M.nova) },
+            curse: { when: p => p.isAlive, start: () => this.actCurse(M.curse) },
+            beams: { when: p => p.isAlive, start: p => this.actBeams(p, M.beams) },
+            spiral: { when: p => p.isAlive, start: () => this.actSpiral(M.spiral) },
+        };
     }
     attackTarget() { this.attackCooldown = 1.0 / this.attackSpeed; }
-    castNova(player, summons) {
-        const c = this.config;
-        const rSq = c.novaRadius * c.novaRadius, dmg = this.attack * c.novaDamageMult;
-        for (let i = 0; i < summons.length; i++) {
-            const s = summons[i];
-            if (s.isAlive && distanceSq(this.pos, s.pos) <= rSq) s.takeDamage(dmg);
-        }
-        if (player.isAlive && distanceSq(this.pos, player.pos) <= rSq) player.takeDamage(player.maxHealth * c.novaPlayerHpRatio, this);
-        const effect = getVisualEffectFromPool(ExplosionEffect);
-        if (effect) { effect.init(this.pos, c.novaRadius); gameState.visualEffects.push(effect); }
-        spawnParticles(this.pos.x, this.pos.y, '#E040FB', 36, 200, 0.6, 3);
-        addShake(10);
-        Sfx.play('nova');
+    actRaise(M) {
+        return {
+            dur: M.windup, charge: M.windup, recover: M.recover,
+            done: () => {
+                for (let i = 0; i < M.count; i++) {
+                    const a = (i / M.count) * Math.PI * 2;
+                    const x = this.pos.x + Math.cos(a) * M.radius, y = this.pos.y + Math.sin(a) * M.radius;
+                    gameState.monsters.push(new RaisedSkeletonMonster(x, y, this.waveNumber, false));
+                    spawnParticles(x, y, '#E53935', 8, 60, 0.5, 3);
+                }
+                Sfx.play('spawn');
+            },
+        };
     }
-    draw(ctx) {
-        if (this.isAlive && this.windup > 0) {
-            const c = this.config;
-            const p = 1 - this.windup / c.novaWindup;
-            ctx.save();
-            ctx.fillStyle = `rgba(229, 57, 53, ${(0.12 + 0.2 * p).toFixed(2)})`;
-            ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, c.novaRadius * p, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 82, 82, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, c.novaRadius, 0, Math.PI * 2); ctx.stroke();
-            ctx.restore();
+    actNova(M) {
+        addBossMark({ shape: 'circle', x: this.pos.x, y: this.pos.y, r: M.radius, delay: M.windup, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: LICH_GLOW, fx: 'ring', sfx: 'nova', shake: 10 }, this.newCast());
+        return { dur: M.windup, charge: M.windup, recover: M.recover };
+    }
+    actCurse(M) {
+        return {
+            dur: M.windup, charge: M.windup, recover: M.recover,
+            done: () => {
+                const p = gameState.player;
+                if (!p) return;
+                for (let i = 0; i < M.count; i++) {
+                    const off = i === 0 ? 0 : M.spread;
+                    gameState.hazards.push({
+                        kind: 'curse', source: this, sx: this.pos.x, sy: this.pos.y - this.imageHeight * 0.3,
+                        x: p.pos.x + randomInRange(-off, off), y: p.pos.y + randomInRange(-off, off),
+                        r: CURSE_POOL_RADIUS, flight: CONFIG.spitter.lobTime, life: CURSE_POOL_LIFE, tick: 0, dmg: this.attack * CURSE_POOL_DAMAGE_MULT,
+                    });
+                }
+            },
+        };
+    }
+    // 死亡光束：從身上往外射幾道、平均分開，其中一道對準主角；亡靈王站定到光束射完
+    actBeams(p, M) {
+        const cast = this.newCast(), base = angleTo(this.pos, p.pos), n = this.enraged ? M.countPhase2 : M.count;
+        for (let i = 0; i < n; i++) {
+            const a = base + i * Math.PI * 2 / n, dx = Math.cos(a), dy = Math.sin(a);
+            addBossMark({ shape: 'line', x: this.pos.x + dx * this.radius, y: this.pos.y + dy * this.radius, dx, dy, len: M.length, w: M.width, delay: M.windup, dmg: this.attack * M.dmg, hp: this.playerHit(M.hp), source: this, color: LICH_GLOW, sfx: i === 0 ? 'nova' : null, shake: 8 }, cast);
         }
-        super.draw(ctx);
+        return { dur: M.windup, charge: M.windup, recover: M.recover };
+    }
+    // 靈魂螺旋：先畫出第一圈彈道，再一圈一圈噴，每圈轉一點
+    actSpiral(M) {
+        const base = Math.random() * Math.PI * 2;
+        let fired = 0;
+        return {
+            dur: M.windup + (M.waves - 1) * M.every, charge: M.windup, recover: M.recover, aim: bossBoltAngles(M.count, base),
+            tick: (t) => {
+                while (fired < M.waves && t >= M.windup + fired * M.every) {
+                    fireBossBolts(this, bossBoltAngles(M.count, base + fired * M.turn), { speed: M.speed, range: M.range, hp: M.hp, style: 'lich' });
+                    spawnParticles(this.pos.x, this.pos.y, LICH_GLOW, 10, 100, 0.35, 3);
+                    Sfx.play('bloodShot');
+                    fired++;
+                }
+            },
+        };
     }
 }
 const CURSE_POOL_RADIUS = 46;
 const CURSE_POOL_LIFE = 4;
 const CURSE_POOL_DAMAGE_MULT = 0.5;
+
+// ---------- 首領登場：首領波先清小怪，場上清光才登場 ----------
+// 小怪和首領一起出的話，首領的預警淹在怪堆裡，玩家沒辦法專心看牠出招。
+// 清光後：畫面四周轉暗、地上大紅圈倒數，最後從天而降，落地震波把身邊的人推開（不傷人）
+const BOSS_ENTRANCE_TIME = 2.4;
+const BOSS_DROP_TIME = 0.55;          // 最後這段看得到牠從天上掉下來
+const BOSS_ENTRANCE_DIST = 220;       // 落點離主角多遠
+const BOSS_LAND_RADIUS = 130;
+const BOSS_DROP_HEIGHT = 420;
+const BOSS_ENTRANCE_DARK = 0.85;      // 畫面四周最暗到多暗
+const BOSS_LAND_FLASH = 0.3;
+function bossDisplayName(Cls) { return BOSS_CONFIG_OF.get(Cls)().name; }
+function updateBossEntrance(deltaTime) {
+    if (gameState.betweenWaves) return;
+    if (gameState.screenFlash > 0) gameState.screenFlash -= deltaTime;
+    const e = gameState.bossEntrance;
+    if (!e) {
+        const p = gameState.player;
+        if (!gameState.pendingBoss || gameState.spawnQueue.length || !p) return;
+        for (const m of gameState.monsters) if (m.isAlive) return;
+        const a = Math.random() * Math.PI * 2;
+        const Cls = gameState.pendingBoss;
+        gameState.pendingBoss = null;
+        gameState.bossEntrance = { Cls, x: p.pos.x + Math.cos(a) * BOSS_ENTRANCE_DIST, y: p.pos.y + Math.sin(a) * BOSS_ENTRANCE_DIST, t: 0 };
+        gameState.banner = Cls === LichBoss
+            ? { text: '最終決戰', sub: `${bossDisplayName(Cls)}降臨`, color: '#FF8A65', life: CONFIG.wave.bannerDuration * 1.5, icon: 'boss' }
+            : { text: '首領來襲', sub: bossDisplayName(Cls), color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
+        Sfx.play('boss');
+        return;
+    }
+    e.t += deltaTime;
+    if (e.t < BOSS_ENTRANCE_TIME) return;
+    gameState.bossEntrance = null;
+    landBoss(e);
+}
+function landBoss(e) {
+    const b = new e.Cls(e.x, e.y, gameState.currentWave);
+    gameState.monsters.push(b);
+    // 怨氣沸騰從首領落地才開始算：前面清小怪的時間不算進首領戰
+    gameState.overtimeFrom = worldTime;
+    const push = (u) => {
+        const dx = u.pos.x - e.x, dy = u.pos.y - e.y, d = Math.hypot(dx, dy) || 1;
+        if (d < BOSS_LAND_RADIUS) { u.pos.x = e.x + dx / d * BOSS_LAND_RADIUS; u.pos.y = e.y + dy / d * BOSS_LAND_RADIUS; }
+    };
+    for (const s of gameState.summons) if (s.isAlive) push(s);
+    if (gameState.player) push(gameState.player);
+    addBossFx({ kind: 'ring', x: e.x, y: e.y, r0: 20, r1: BOSS_LAND_RADIUS * 1.8, life: 0.7, color: b.auraColor, width: 12 });
+    addBossFx({ kind: 'ring', x: e.x, y: e.y, r0: 10, r1: BOSS_LAND_RADIUS, life: 0.5, color: '#FFFFFF', width: 6 });
+    addBossFx({ kind: 'spikes', x: e.x, y: e.y, r: BOSS_LAND_RADIUS * 0.7, life: 0.8, seed: Math.random() * 10 });
+    spawnParticles(e.x, e.y, COLOSSUS_DUST, 40, 220, 0.8, 4);
+    gameState.screenFlash = BOSS_LAND_FLASH;
+    addShake(16);
+    Sfx.play('slam');
+}
+// 落點：大紅圈、轉動的符文圈；最後一段首領從天上掉下來，影子越來越大
+function drawBossEntrance() {
+    const e = gameState.bossEntrance;
+    if (!e) return;
+    const k = e.t / BOSS_ENTRANCE_TIME, R = BOSS_LAND_RADIUS;
+    ctx.save();
+    ctx.fillStyle = `${BOSS_MARK_FILL}${(0.1 + 0.25 * k).toFixed(2)})`;
+    ctx.beginPath(); ctx.arc(e.x, e.y, R * k, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.65 + 0.35 * Math.sin(worldTime * (6 + 14 * k));
+    ctx.strokeStyle = BOSS_MARK_EDGE;
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(e.x, e.y, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([14, 10]);
+    ctx.lineDashOffset = -worldTime * 40;
+    ctx.beginPath(); ctx.arc(e.x, e.y, R * 0.72, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    const left = BOSS_ENTRANCE_TIME - e.t;
+    if (left > BOSS_DROP_TIME) return;
+    const d = 1 - left / BOSS_DROP_TIME;
+    const cfg = BOSS_CONFIG_OF.get(e.Cls)(), look = monsterLook(cfg), img = images[look.imageName];
+    ctx.fillStyle = BOSS_SHADOW;
+    ctx.beginPath(); ctx.ellipse(e.x, e.y + cfg.radius, cfg.radius * 1.8 * d, cfg.radius * 0.7 * d, 0, 0, Math.PI * 2); ctx.fill();
+    if (!img) return;
+    const w = cfg.radius * look.scale, h = img.naturalWidth ? w * img.naturalHeight / img.naturalWidth : w;
+    ctx.drawImage(img, e.x - w / 2, e.y - h / 2 - (1 - d) * (1 - d) * BOSS_DROP_HEIGHT, w, h);
+}
+// 螢幕座標：等首領的那幾秒畫面四周轉暗、紅光跟著倒數脈動；落地瞬間閃白
+function drawBossEntranceOverlay() {
+    if (appScreen !== 'playing') return;
+    const W = view.cssW, H = view.cssH;
+    const e = gameState.bossEntrance;
+    if (e) {
+        const k = Math.min(1, e.t / (BOSS_ENTRANCE_TIME * 0.5));
+        const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.18, W / 2, H / 2, Math.max(W, H) * 0.6);
+        g.addColorStop(0, 'rgba(20, 0, 5, 0)');
+        g.addColorStop(0.5, 'rgba(30, 0, 8, 0.6)');
+        g.addColorStop(1, 'rgba(40, 0, 10, 1)');
+        ctx.save();
+        ctx.globalAlpha = BOSS_ENTRANCE_DARK * k * (0.8 + 0.2 * Math.sin(worldTime * 8));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+    if (gameState.screenFlash > 0) {
+        ctx.save();
+        ctx.globalAlpha = gameState.screenFlash / BOSS_LAND_FLASH * 0.6;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
+}
 
 const BOSS_CONFIG_OF = new Map([[ColossusBoss, () => CONFIG.boss], [PlagueBoss, () => CONFIG.plagueBoss], [HunterBoss, () => CONFIG.hunterBoss], [DragonBoss, () => CONFIG.dragonBoss], [LichBoss, () => CONFIG.lichBoss]]);
 
@@ -4455,12 +5021,13 @@ class BloodEyeMonster extends Monster {
     }
 }
 
+// 敵方飛彈：飛過大軍頭上、只打主角。血瞳的照 CONFIG.bloodEye；首領的彈幕自己帶速度、射程、傷害與顏色（見 fireBossBolts）
 function updateEnemyBolts(deltaTime) {
     const c = CONFIG.bloodEye;
     const p = gameState.player;
-    const step = c.boltSpeed * deltaTime;
     const cls = classDef();
     for (const b of gameState.enemyBolts) {
+        const step = (b.speed || c.boltSpeed) * deltaTime;
         b.pos.x += b.dir.x * step;
         b.pos.y += b.dir.y * step;
         b.travel += step;
@@ -4473,12 +5040,12 @@ function updateEnemyBolts(deltaTime) {
             const hit = p.radius + c.boltRadius;
             if (distanceSq(b.pos, p.pos) <= hit * hit) {
                 b.travel = Infinity;
-                spawnParticles(b.pos.x, b.pos.y, BLOOD_EYE_GLOW, BLOOD_BOLT_HIT_SPARKS, 110, 0.35, 3);
-                p.takeDamage(p.maxHealth * c.boltPlayerHpRatio, b.source);
+                spawnParticles(b.pos.x, b.pos.y, BOLT_STYLES[b.style || 'blood'].body, BLOOD_BOLT_HIT_SPARKS, 110, 0.35, 3);
+                p.takeDamage(p.maxHealth * (b.hpRatio || c.boltPlayerHpRatio), b.source);
             }
         }
     }
-    gameState.enemyBolts = gameState.enemyBolts.filter(b => b.travel < c.boltRange);
+    gameState.enemyBolts = gameState.enemyBolts.filter(b => b.travel < (b.range || c.boltRange));
 }
 
 function drawEnemyBolts() {
@@ -4486,7 +5053,7 @@ function drawEnemyBolts() {
     for (const b of gameState.enemyBolts) {
         if (!inView(b.pos)) continue;
         const idx = ((Math.round(Math.atan2(b.dir.y, b.dir.x) / (Math.PI * 2) * BOLT_DIRECTIONS) % BOLT_DIRECTIONS) + BOLT_DIRECTIONS) % BOLT_DIRECTIONS;
-        const sp = getBoltDirSprite('blood', idx);
+        const sp = getBoltDirSprite(b.style || 'blood', idx);
         const w = sp.width / k * BLOOD_BOLT_DRAW_SCALE, h = sp.height / k * BLOOD_BOLT_DRAW_SCALE;
         const tail = BOLT_TAIL_LEN / 2 * BLOOD_BOLT_DRAW_SCALE;
         ctx.drawImage(sp, b.pos.x - b.dir.x * tail - w / 2, b.pos.y - b.dir.y * tail - h / 2, w, h);
@@ -5549,10 +6116,12 @@ function buildWaveQueue(wave) {
     let eliteChance = getEliteChance(wave) * cm.eliteMult;
     if (ev && ev.eliteMult) eliteChance = Math.min(ev.eliteMax, Math.max(CONFIG.elite.chanceBase, eliteChance) * ev.eliteMult);
     // 墓碑不當精英：分裂詞綴會裂成三座墓碑
-    const queue = classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Cls !== TombstoneMonster && Math.random() < eliteChance }));
-    if (isFinalWave(wave)) queue.unshift({ Cls: LichBoss, elite: false });
-    else if (isBossWave) queue.unshift({ Cls: getBossClass(wave), elite: false });
-    return queue;
+    // 首領不在佇列裡：小怪清光後才登場（見 updateBossEntrance）
+    return classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Cls !== TombstoneMonster && Math.random() < eliteChance }));
+}
+function bossClassOf(wave) {
+    if (isFinalWave(wave)) return LichBoss;
+    return wave % CONFIG.wave.bossEvery === 0 ? getBossClass(wave) : null;
 }
 
 function getSpawnInterval(wave) {
@@ -5625,6 +6194,9 @@ function prepareNextWave() {
     gameState.monsters = [];
     gameState.hazards = [];
     gameState.enemyBolts = [];
+    gameState.bossMarks = [];
+    gameState.bossFx = [];
+    gameState.bossEntrance = null;
     gameState.projectiles.forEach(returnProjectileToPool);
     gameState.projectiles = [];
     gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -5639,19 +6211,16 @@ function prepareNextWave() {
     if (classDef().onWaveStart) classDef().onWaveStart();
     gameState.run.flags.waveHit = false;
     gameState.waveStartAt = worldTime;
+    gameState.overtimeFrom = worldTime;
+    gameState.pendingBoss = bossClassOf(waveNum);
     gameState.overtimeShown = false;
     gameState.lastWaveSouls = gameState.waveSouls;
     gameState.waveSouls = 0;
     scheduleRelic(waveNum);
     const isBossWave = waveNum % CONFIG.wave.bossEvery === 0;
     const ev = getWaveEvent();
-    if (isBossWave) {
-        if (isFinalWave(waveNum)) {
-            gameState.banner = { text: '最終決戰', sub: `${CONFIG.lichBoss.name}降臨`, color: '#FF8A65', life: CONFIG.wave.bannerDuration * 1.5, icon: 'boss' };
-        } else {
-            const bossName = BOSS_CONFIG_OF.get(getBossClass(waveNum))().name;
-            gameState.banner = { text: '首領來襲', sub: `第 ${waveNum} 波 · ${bossName}`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
-        }
+    if (gameState.pendingBoss) {
+        gameState.banner = { text: '首領波', sub: `清光小怪，${bossDisplayName(gameState.pendingBoss)}就會登場`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
     } else if (waveNum === 1 && dailyDef()) {
         const d = dailyDef();
         gameState.banner = { text: d.name, sub: dailyRulesText(d), color: '#FF8A80', life: CONFIG.wave.bannerDuration * 1.8, icon: d.icon };
@@ -5673,7 +6242,7 @@ function countRemainingMonsters() {
     for (let i = 0; i < gameState.monsters.length; i++) {
         if (gameState.monsters[i].isAlive) alive++;
     }
-    return alive + gameState.spawnQueue.length;
+    return alive + gameState.spawnQueue.length + (gameState.pendingBoss || gameState.bossEntrance ? 1 : 0);
 }
 
 function checkWaveEndCondition() {
@@ -5702,6 +6271,8 @@ function checkWaveEndCondition() {
         gameState.visualEffects = [];
         gameState.hazards = [];
         gameState.enemyBolts = [];
+        gameState.bossMarks = [];
+        gameState.bossFx = [];
         const won = isFinalWave(gameState.currentWave) && !gameState.endless;
         if (won) gameState.endless = true;
         saveGameState();
@@ -7449,7 +8020,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-        hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
+        hazards: [], enemyBolts: [], bossMarks: [], bossFx: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -7571,6 +8142,9 @@ function updateGame(deltaTime) {
         if (gameState.monsters[i].isAlive) gameState.monsters[i].update(deltaTime, gameState.player, gameState.summons);
     }
     updateHazards(deltaTime);
+    updateBossMarks(deltaTime);
+    updateBossFx(deltaTime);
+    updateBossEntrance(deltaTime);
     updateRelics(deltaTime);
     updateEnemyBolts(deltaTime);
     for (let i = 0; i < gameState.projectiles.length; i++) {
@@ -8037,6 +8611,9 @@ function drawGame() {
         if (m.isAlive && m.mark) m.drawMark(ctx);
     }
     drawLobs();
+    drawBossEntrance();
+    drawBossMarks();
+    drawBossFx();
     drawEnemyBolts();
     // 標題畫面上法師是 HTML 立繪，畫布這邊只留地面
     if (gameState.player && gameState.player.isAlive && appScreen !== 'title') gameState.player.draw(ctx);
@@ -8070,6 +8647,7 @@ function drawGame() {
     drawEventOverlay();
     drawFrenzyOverlay();
     drawOvertimeOverlay();
+    drawBossEntranceOverlay();
     if (drawCls.drawScreen && gameState.player && appScreen !== 'title') drawCls.drawScreen(ctx);
     drawBossBar();
     drawStreak();

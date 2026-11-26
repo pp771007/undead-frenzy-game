@@ -119,16 +119,21 @@ for (;;) {
                         // 被貼身就退開（戰士不退：他要站在怪堆前砍）
                         if (d < 70 && !BOT_MELEE[runClass()]) { hx += dx / d; hy += dy / d; }
                         if (m.mark && noticed(m.mark)) { const ex = p.pos.x - m.mark.x, ey = p.pos.y - m.mark.y, e = Math.hypot(ex, ey) || 1; if (e < 60) { hx += ex / e * 3; hy += ey / e * 3; } }
-                        if (m instanceof DragonBoss) {
-                            if (m.windup > 0 && noticed(m) && m.inBreath(p.pos)) { const s = (dx * -m.breathDir.y + dy * m.breathDir.x) >= 0 ? 1 : -1; hx += -m.breathDir.y * s * 4; hy += m.breathDir.x * s * 4; }
-                            if (m.flight > 0 && m.land && noticed(m.land)) { const ex = p.pos.x - m.land.x, ey = p.pos.y - m.land.y, e = Math.hypot(ex, ey) || 1; if (e < m.config.landRadius + 15) { hx += ex / e * 4; hy += ey / e * 4; } }
-                            continue;
-                        }
+                        // 首領的招式全部走地面預警（gameState.bossMarks），在下面閃
+                        if (m instanceof BossMonster) continue;
                         if (m.windup > 0 && !(m instanceof BloodEyeMonster) && noticed(m)) { const R = (m.config.novaRadius || m.config.slamRadius || 80) + 20; if (d < R) { hx += dx / d * 3; hy += dy / d * 3; } }
                     }
                     // 吸血鬼站進靈泉（聖水）會燙：當成地上的危險圈走出去
                     if (runClass() === 'vampire') for (const rl of gameState.relics) { if (rl.done || rl.kind !== 'spring') continue; const dx = p.pos.x - rl.x, dy = p.pos.y - rl.y, d = Math.hypot(dx, dy) || 1; if (d < RELIC_RADIUS + 12) { hx += dx / d * 3; hy += dy / d * 3; } }
                     for (const h of gameState.hazards) { if (!noticed(h)) continue; const dx = p.pos.x - h.x, dy = p.pos.y - h.y, d = Math.hypot(dx, dy) || 1; if (d < h.r + 12) { hx += dx / d * 3; hy += dy / d * 3; } }
+                    // 首領的地面預警：紅圈往外走、紅線往垂直方向走、扇形往側邊走
+                    for (const mk of gameState.bossMarks) {
+                        if (!noticed(mk)) continue;
+                        if (mk.shape === 'circle') { const dx = p.pos.x - mk.x, dy = p.pos.y - mk.y, d = Math.hypot(dx, dy) || 1; if (d < mk.r + 15) { hx += dx / d * 3; hy += dy / d * 3; } continue; }
+                        if (mk.shape === 'cone') { if (bossMarkHits(mk, p.pos)) { const cx = Math.cos(mk.a), cy = Math.sin(mk.a), tx = p.pos.x - mk.x, ty = p.pos.y - mk.y, s = (tx * -cy + ty * cx) >= 0 ? 1 : -1; hx += -cy * s * 4; hy += cx * s * 4; } continue; }
+                        const tx = p.pos.x - mk.x, ty = p.pos.y - mk.y, along = tx * mk.dx + ty * mk.dy, perp = tx * -mk.dy + ty * mk.dx;
+                        if (along > -15 && along < mk.len + 15 && Math.abs(perp) < mk.w + 15) { const s = perp >= 0 ? 1 : -1; hx += -mk.dy * s * 3; hy += mk.dx * s * 3; }
+                    }
                     for (const bo of gameState.enemyBolts) { if (!noticed(bo)) continue; const tx = p.pos.x - bo.pos.x, ty = p.pos.y - bo.pos.y, along = tx * bo.dir.x + ty * bo.dir.y; if (along < 0) continue; const perp = tx * -bo.dir.y + ty * bo.dir.x; if (Math.abs(perp) < 30 && along < 200) { const s = perp >= 0 ? 1 : -1; hx += -bo.dir.y * s * 3; hy += bo.dir.x * s * 3; } }
                     // 戰士：沒有要閃的東西時迎上去打（陣型面向走的方向，逃跑等於把背後讓給怪），走到 BOT_WAR_HOLD 內就站定讓陣型接戰。
                     // 殘血也不撤：撤退會一路逃、整波拖到卡關，真人也不會這樣打
@@ -221,7 +226,7 @@ for (;;) {
             if (B.cur && !gameState.betweenWaves && B.t - B.cur.start > STUCK_SECONDS) {
                 // queue：還沒出場的怪（countRemainingMonsters 也算它們）；tgtD：牠跟牠的目標隔多遠；near：離牠最近的召喚物多遠、那隻在幹嘛
                 B.stuck = {
-                    wave: gameState.currentWave, summons: gameState.summons.length, souls: Math.round(gameState.souls), heroHp: Math.round(p.currentHealth / p.maxHealth * 100), queue: gameState.spawnQueue.length, straggling: gameState.straggling,
+                    wave: gameState.currentWave, summons: gameState.summons.length, souls: Math.round(gameState.souls), heroHp: Math.round(p.currentHealth / p.maxHealth * 100), queue: gameState.spawnQueue.length, spawnTimer: gameState.spawnTimer, pendingBoss: !!gameState.pendingBoss, entrance: !!gameState.bossEntrance, straggling: gameState.straggling,
                     mons: gameState.monsters.filter(m => m.isAlive).slice(0, 10).map(m => {
                         const s = summonGrid.nearest(m.pos, 2000);
                         return {
