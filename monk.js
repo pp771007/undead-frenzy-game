@@ -119,6 +119,11 @@ CLASSES.monk = {
     monsterPressure: 1.0,
     unlock: 'streak1000',
     cards: ['Fist', 'Step', 'Qi'], schools: ['external', 'hardstyle', 'lightfoot', 'internal', 'qigong', 'soul'],
+    metaUpgrades: {
+        evade: { icon: 'evade', name: '金剛身法', max: 5, per: 0.02, costBase: 30, desc: m => `${pct(m.per)} 機率閃過攻擊`, total: (m, lv) => `${pct(m.per * lv)}` },
+        comboCap: { icon: 'comboCap', name: '連打修練', max: 5, per: 0.1, costBase: 30, desc: m => `連擊加成上限 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        zenHeal: { icon: 'zenHeal', name: '吐納心法', max: 4, per: 0.15, costBase: 25, desc: m => `入定回血 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    },
     hero: { imageName: 'monk', baseHealth: MONK.baseHealth, moveSpeed: MONK.moveSpeed },
     attack: (p, dt) => monkPunch(p, dt),
     update: (dt) => monkUpdate(dt),
@@ -154,7 +159,7 @@ CLASSES.monk = {
             gameState.visualEffects.push(new BellEffect(p.pos));
             return 0;
         }
-        if (Math.random() < MONK.dodge + blessVal('evade') + (getTier(gameState.units.Step.level) >= 1 ? STEP_TIER1_DODGE : 0)) {
+        if (Math.random() < MONK.dodge + blessVal('evade') + classMeta('evade') + (getTier(gameState.units.Step.level) >= 1 ? STEP_TIER1_DODGE : 0)) {
             if (res('lightfoot') >= 1) k.swallow = true;
             spawnFloatText(p.pos.x, p.pos.y - 30, '閃', '#B2EBF2', 12, 0.5);
             return 0;
@@ -213,7 +218,7 @@ function newMonkState() {
 function monkState() { return gameState.monk || (gameState.monk = newMonkState()); }
 function comboMult() {
     const k = monkState();
-    return 1 + Math.min(MONK.comboMax + blessVal('comboCap'), Math.floor(k.combo / 10) * MONK.comboStep * (1 + blessVal('comboGain')));
+    return 1 + Math.min(MONK.comboMax + blessVal('comboCap') + classMeta('comboCap'), Math.floor(k.combo / 10) * MONK.comboStep * (1 + blessVal('comboGain')));
 }
 function punchDamage() {
     return MONK.punch.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult
@@ -237,7 +242,7 @@ function monkUpdate(dt) {
             k.zenT += dt;
             k.bestZen = Math.max(k.bestZen, k.zenT);
             const boost = spring ? ZEN_SPRING_MULT : 1;
-            p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * MONK.zenHeal * (1 + blessVal('zenHeal')) * boost * dt);
+            p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * MONK.zenHeal * (1 + blessVal('zenHeal') + classMeta('zenHeal')) * boost * dt);
             k.charge = Math.min(MONK.zenCharge + blessVal('zenCharge'), k.charge + dt * boost);
             if (res('internal') < 2) k.combo = Math.max(0, k.combo - MONK.zenDecay * dt);
             // 達摩面壁：入定滿 9 秒頓悟

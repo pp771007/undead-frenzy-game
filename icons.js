@@ -598,6 +598,10 @@ const ICON_BODIES = {
         <path d="M20 10 L44 10 L44 14 C44 24 36 28 36 32 C36 36 44 40 44 50 L44 54 L20 54 L20 50 C20 40 28 36 28 32 C28 28 20 24 20 14 Z" fill="#f1ead6"/>
         <path d="M24 50 L40 50 L32 42 Z M26 16 L38 16 L32 24 Z" fill="#ffd54f" stroke="none"/>`,
     // 軍團體魄（召喚物血量）：骨頭加一顆心
+    // 永久強化「骸骨先鋒」（開局就帶幾隻骷髏）：紫色圓盾前面排著三顆骷髏頭
+    boneVanguard: `<circle cx="32" cy="28" r="22" fill="#5e35b1"/><circle cx="32" cy="28" r="15" fill="none" stroke="#ffd54f" stroke-width="3"/>
+        ${[[18, 44], [46, 44], [32, 50]].map(([x, y]) => `<path d="M${x - 9} ${y - 2} C${x - 9} ${y - 12} ${x + 9} ${y - 12} ${x + 9} ${y - 2} C${x + 9} ${y + 3} ${x + 6} ${y + 5} ${x + 5} ${y + 5} L${x + 5} ${y + 10} L${x - 5} ${y + 10} L${x - 5} ${y + 5} C${x - 6} ${y + 5} ${x - 9} ${y + 3} ${x - 9} ${y - 2} Z" fill="#f1ead6" stroke-width="3"/><circle cx="${x - 3.5}" cy="${y - 1}" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="${x + 3.5}" cy="${y - 1}" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/>`).join('')}
+        ${shine(22, 14, 5, 3)}`,
     boneMarrow: `<path d="M12 44 C6 40 10 32 16 36 L40 12 C36 6 44 2 48 8 C54 6 58 14 52 18 L28 42 C32 48 24 52 20 46 C16 52 8 48 12 44 Z" fill="#f1ead6"/>
         <path d="M45 61 C32 53 28 45 32 38 C36 33 42 34 45 39 C48 34 54 33 58 38 C62 45 58 53 45 61 Z" fill="#e5484d"/>`,
     // 靈魂親和（靈魂掉落）：滿出靈魂的豐饒角

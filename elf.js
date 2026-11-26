@@ -112,6 +112,11 @@ CLASSES.elf = {
     monsterPressure: 1.3,
     unlock: 'win',
     cards: ['Archery', 'Traps', 'Companion'], schools: ['parthian', 'longbow', 'elemental', 'trapper', 'wildfriends', 'soul'],
+    metaUpgrades: {
+        summonHp: META_SUMMON_HP,
+        stride: { icon: 'stride', name: '風之步伐', max: 5, per: 0.04, costBase: 30, desc: m => `你的移速 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        trapCount: { icon: 'trapCount', name: '陷阱行囊', max: 3, per: 1, costBase: 40, desc: m => `同時可放的陷阱 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+    },
     hero: { imageName: 'elf_archer', baseHealth: ELF.baseHealth, moveSpeed: ELF.moveSpeed },
     attack: (p, dt) => elfShoot(p, dt),
     update: (dt) => elfUpdate(dt),
@@ -119,7 +124,7 @@ CLASSES.elf = {
     onWaveStart: () => { elfState().waveStill = false; },
     onWaveEnd: () => { const e = elfState(); if (gameState.currentWave >= ELF_ACHV.movingWave && !e.waveStill) gameState.run.flags.elfMoving = true; },
     onBossKill: (b) => { if (b.lastArrowHit && !inView(b.pos)) gameState.run.flags.elfSnipe = true; },
-    heroSpeedMult: () => (1 + blessVal('stride')) * (elfState().galeT > 0 ? GALE_MULT : 1),
+    heroSpeedMult: () => (1 + blessVal('stride') + classMeta('stride')) * (elfState().galeT > 0 ? GALE_MULT : 1),
     // 戰鼓祭壇變成「疾風」：一陣子移速、射速 ×1.5
     buffs: () => elfState().galeT > 0 ? [{ icon: 'parthian', t: elfState().galeT, color: '#B2EBF2' }] : [],
     onRelic: (r) => {
@@ -375,7 +380,7 @@ class ZapEffect extends TimedEffect {
 
 // ---------- 陷阱 ----------
 const TRAP_KINDS = ['blast', 'slow', 'root'];
-function trapMax() { return ELF.trap.max + blessVal('trapCount') + (getTier(gameState.units.Traps.level) >= 2 ? TRAPS_TIER2_MAX : 0); }
+function trapMax() { return ELF.trap.max + blessVal('trapCount') + classMeta('trapCount') + (getTier(gameState.units.Traps.level) >= 2 ? TRAPS_TIER2_MAX : 0); }
 function placeTrap(x, y, scale) {
     const e = elfState();
     if (e.traps.length >= trapMax()) e.traps.shift();

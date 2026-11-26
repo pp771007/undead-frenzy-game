@@ -139,6 +139,11 @@ CLASSES.vampire = {
     monsterPressure: 1.5,
     unlock: 'pacts',
     cards: ['Thrall', 'BloodBat', 'BloodMagic'], schools: ['bloodmagic', 'kin', 'bats', 'werewolf', 'undying', 'soul'],
+    metaUpgrades: {
+        summonHp: META_SUMMON_HP,
+        kinRate: { icon: 'kinRate', name: '血之饋贈', max: 4, per: 0.02, costBase: 35, desc: m => `轉化機率 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        sunWard: { icon: 'sunWard', name: '夜之斗篷', max: 4, per: 0.12, costBase: 25, desc: m => `白天曬傷 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
+    },
     hero: { imageName: 'vampire', baseHealth: VAMPIRE.baseHealth, moveSpeed: VAMPIRE.moveSpeed },
     currency: { icon: 'blood', glow: [198, 40, 40] },
     attack: (p, dt) => vampAttack(p, dt),
@@ -259,7 +264,7 @@ function vampState() { return gameState.vamp || (gameState.vamp = newVampState()
 function thrallCap() { return VAMPIRE.thrallCap + Math.floor(gameState.units.Thrall.level / VAMPIRE.capPerLevels) + blessVal('kinCap'); }
 function convertChance() {
     const t = gameState.units.Thrall;
-    return (VAMPIRE.convertChance + blessVal('kinRate')) * (getTier(t.level) >= 2 ? 2 : 1) * (vampState().night ? VAMPIRE.nightConvert : 1);
+    return (VAMPIRE.convertChance + blessVal('kinRate') + classMeta('kinRate')) * (getTier(t.level) >= 2 ? 2 : 1) * (vampState().night ? VAMPIRE.nightConvert : 1);
 }
 function nightMult() {
     const v = vampState();
@@ -325,7 +330,7 @@ function vampUpdate(dt) {
     v.batFormCd = Math.max(0, v.batFormCd - dt);
     // 白天曬傷（不會曬到 sunFloor 以下）；夜裡「夜息」回血
     if (fighting && !v.night && !bl('garlic') && p.currentHealth > p.maxHealth * VAMPIRE.sunFloor) {
-        p.currentHealth = Math.max(p.maxHealth * VAMPIRE.sunFloor, p.currentHealth - p.maxHealth * VAMPIRE.sunBurn * (1 - blessVal('sunWard')) * dt);
+        p.currentHealth = Math.max(p.maxHealth * VAMPIRE.sunFloor, p.currentHealth - p.maxHealth * VAMPIRE.sunBurn * Math.max(0, 1 - blessVal('sunWard') - classMeta('sunWard')) * dt);
     }
     if (v.night && bl('nightRegen')) healHero(p.maxHealth * blessVal('nightRegen') * dt);
     // 強化身邊眷屬的「墓碑」：先列出來，眷屬出手時查

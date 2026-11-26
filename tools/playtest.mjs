@@ -32,6 +32,9 @@ await page.evaluate(([policy, cls, pick, metaLvl]) => {
     meta.classSel = cls;
     const metaLvOf = (m) => metaLvl === 'max' ? m.max : metaLvl === 'half' && m.max > 1 ? Math.round(m.max / 2) : 0;
     for (const id in META_UPGRADES) meta.upgrades[id] = metaLvOf(META_UPGRADES[id]);
+    const classDefs = CLASSES[cls].metaUpgrades || {};
+    meta.classUpgrades[cls] = {};
+    for (const id in classDefs) meta.classUpgrades[cls][id] = metaLvOf(classDefs[id]);
     resetGame(); enterPlaying(); tutorial = null;
     window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, pick, seen: new WeakMap(), decide: 0, src: {} };
     // 記每種怪一共掉了多少靈魂：經濟有沒有被哪隻怪放大（吞魂者第一版就是這樣抓到的）

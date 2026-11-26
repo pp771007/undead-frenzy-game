@@ -174,6 +174,11 @@ CLASSES.warrior = {
     cards: ['Shieldman', 'Spearman', 'Crossbowman'], schools: ['shieldwall', 'phalanx', 'crossbow', 'berserk', 'legion', 'soul'],
     hero: { imageName: 'warrior', baseHealth: WARRIOR.baseHealth, moveSpeed: WARRIOR.moveSpeed },
     troopCap: () => warTroopCap(),
+    metaUpgrades: {
+        summonHp: META_SUMMON_HP,
+        troopCap: { icon: 'legionCap', name: '編制擴充', max: 4, per: 1, costBase: 40, desc: m => `人數上限 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+        armor: { icon: 'ironBody', name: '鐵甲', max: 5, per: 0.04, costBase: 30, desc: m => `你受到的傷害 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
+    },
     upgradeCostMult: () => 1 - blessVal('legionPay'),
     // 每波開始：鷹旗重新可用；英靈殿讓上一波陣亡的老兵歸隊
     onWaveStart: () => {
@@ -247,7 +252,7 @@ CLASSES.warrior = {
         ],
     },
     heroSpeedMult: () => warState().berserkT > 0 ? WARRIOR.berserkSpeed : warState().exhaustT > 0 ? WARRIOR.exhaustSpeed : 1,
-    heroDamageTakenMult: () => WARRIOR.armorTaken * (warState().berserkT > 0 ? WARRIOR.berserkTaken : 1) * turtleTaken(),
+    heroDamageTakenMult: () => WARRIOR.armorTaken * (1 - classMeta('armor')) * (warState().berserkT > 0 ? WARRIOR.berserkTaken : 1) * turtleTaken(),
     onHeroHurt: (lostFrac) => addRage(lostFrac * 100 * WARRIOR.ragePerHp),
     drawHero: (ctx, p) => drawWarriorHud(ctx, p),
     // 軍團長跟著部下一起操練：每升級一次任何兵種，戰士最大血量長得跟「平均一個士兵」一樣快
@@ -303,7 +308,7 @@ function newWarState() { return { waveLosses: 0, rage: 0, berserkT: 0, exhaustT:
 function warState() { return gameState.war || (gameState.war = newWarState()); }
 function troopCount() { return classDef().cards.reduce((n, t) => n + gameState.units[t].count, 0); }
 function warTroopCap() {
-    const c = WARRIOR.troopCap + blessVal('legionCap');
+    const c = WARRIOR.troopCap + blessVal('legionCap') + classMeta('troopCap');
     return bl('spartans') ? Math.floor(c / 2) : c;
 }
 function vetFromKills(kills) {

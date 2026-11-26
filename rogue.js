@@ -115,6 +115,11 @@ CLASSES.rogue = {
     name: '刺客', title: '阿拉穆特之影', portrait: 'rogue.png', tagline: '潛進怪堆，刺殺標記的目標',
     unlock: 'elite500',
     cards: ['Knives', 'Venom', 'Shadow'], schools: ['assassination', 'venomschool', 'shadowschool', 'smoke', 'intel', 'soul'],
+    metaUpgrades: {
+        longHide: { icon: 'longHide', name: '影之修練', max: 5, per: 0.4, costBase: 30, desc: m => `每次隱身 +${m.per} 秒`, total: (m, lv) => `+${(m.per * lv).toFixed(1)} 秒` },
+        ambushPower: { icon: 'ambushPower', name: '致命一擊', max: 5, per: 0.3, costBase: 30, desc: m => `伏擊多打 ${m.per} 倍`, total: (m, lv) => `+${(m.per * lv).toFixed(1)} 倍` },
+        executeUp: { icon: 'executeUp', name: '斷頭台', max: 5, per: 0.02, costBase: 35, desc: m => `處決門檻 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    },
     hero: { imageName: 'rogue', baseHealth: ROGUE.baseHealth, moveSpeed: ROGUE.moveSpeed },
     attack: (p, dt) => rogueKnives(p, dt),
     update: (dt) => rogueUpdate(dt),
@@ -184,7 +189,7 @@ function knifeDamage() {
 }
 function enterHide() {
     const r = rogueState(), p = gameState.player;
-    r.hideT = (ROGUE.hideTime + blessVal('longHide')) * (bl('fidai') ? 2 : 1);
+    r.hideT = (ROGUE.hideTime + blessVal('longHide') + classMeta('longHide')) * (bl('fidai') ? 2 : 1);
     r.ambush = true;
     r.waveHides++;
     spawnParticles(p.pos.x, p.pos.y, '#4527A0', 14, 80, 0.5, 3);
@@ -318,7 +323,7 @@ function rogueKnives(p, dt) {
         let dmg = knifeDamage();
         let crit = false;
         // 伏擊：隱身後的第一刀
-        if (r.ambush && i === 0) { dmg *= (ROGUE.ambushMult + blessVal('ambushPower')) * (1 + blessVal('critDamage')); r.ambush = false; crit = true; }
+        if (r.ambush && i === 0) { dmg *= (ROGUE.ambushMult + blessVal('ambushPower') + classMeta('ambushPower')) * (1 + blessVal('critDamage')); r.ambush = false; crit = true; }
         else if (Math.random() < blessVal('critChance')) { dmg *= 2 * (1 + blessVal('critDamage')); crit = true; }
         if (r.targets.includes(t) && res('assassination') >= 1) dmg *= RES_MARKED_TAKEN;
         if (t.poisonStacks > 0 && res('venomschool') >= 1) dmg *= RES_CORRODE_TAKEN;
@@ -330,7 +335,7 @@ function rogueKnives(p, dt) {
     }
     Sfx.play('mageBolt');
 }
-function executeThreshold() { return ROGUE.execute + blessVal('executeUp') + (getTier(gameState.units.Knives.level) >= 3 ? KNIVES_TIER3_EXECUTE : 0); }
+function executeThreshold() { return ROGUE.execute + blessVal('executeUp') + classMeta('executeUp') + (getTier(gameState.units.Knives.level) >= 3 ? KNIVES_TIER3_EXECUTE : 0); }
 function knifeHit(m) {
     if (m.isAlive && !(m instanceof BossMonster) && m.currentHealth < m.maxHealth * executeThreshold()) {
         if (m.isElite) gameState.run.flags.rogueExecElite = true;

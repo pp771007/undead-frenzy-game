@@ -2309,6 +2309,39 @@
             margin-top: 2px;
         }
 
+        /* 通用＋各職業的分頁 */
+        /* 「通用」沒有頭像，撐到跟職業分頁一樣高 */
+        .meta-tab-all {
+            min-height: 40px;
+            padding: 3px 16px;
+            justify-content: center;
+        }
+
+        .meta-class-tabs {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+
+        .meta-class-tabs .achv-tab {
+            position: relative;
+        }
+
+        .meta-class-tabs .achv-tab:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        .meta-class-tabs .tab-lock {
+            position: absolute;
+            left: 10px;
+            top: 6px;
+            width: 22px;
+            height: 22px;
+        }
+
         .meta-row .btn {
             min-height: 40px;
             min-width: 72px;

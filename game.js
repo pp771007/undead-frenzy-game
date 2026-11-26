@@ -785,7 +785,6 @@ const META_KEY = 'undeadFrenzy_meta';
 const META_UPGRADES = {
     might: { icon: 'might', name: '亡者之力', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     mageHp: { icon: 'heart', name: '主角體魄', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    boneMarrow: { icon: 'boneMarrow', name: '軍團體魄', max: 6, per: 0.1, costBase: 35, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     ultMastery: { icon: 'ultMastery', name: '大招精通', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     soulAffinity: { icon: 'soulAffinity', name: '靈魂親和', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
@@ -796,15 +795,24 @@ const META_UPGRADES = {
     extraChoice: { icon: 'extraChoice', name: '多一條路', max: 1, per: 1, costBase: 250, desc: () => '祝福多一張可選' },
     headStart: { icon: 'draft', name: '開局祝福', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
 };
-// 強化表換過一次（數值類改成百分比、加了傷害與復活）：舊存檔買過的全部退還結晶，照新表重新買
-const META_TABLE_VERSION = 2;
-// 舊表每一項的起價（退還時照它算花了多少），新表沒有這一項的也要退
+// 強化表換過兩次，舊存檔買過、新表沒有的都照當時的價錢退還結晶：
+// v2 數值類改成百分比、加了傷害與復活（整張表重買）；v3「軍團體魄」移到各職業的專精（只退那一項）
+const META_TABLE_VERSION = 3;
 const META_V1_COST_BASE = { startSouls: 30, mageHp: 30, novaMastery: 40, boneMarrow: 50, soulAffinity: 50, freeReroll: 80, banish: 60, extraChoice: 250, headStart: 150 };
+const META_V2_BONE_MARROW_COST = 35;
 function migrateMetaTable(m) {
-    if ((m.metaTable || 1) >= META_TABLE_VERSION) return m;
-    let back = 0;
-    for (const [id, lv] of Object.entries(m.upgrades || {})) back += (META_V1_COST_BASE[id] || 0) * lv * (lv + 1) / 2;
-    return { ...m, crystals: (m.crystals || 0) + back, upgrades: {}, metaTable: META_TABLE_VERSION };
+    let v = m.metaTable || 1, crystals = m.crystals || 0, upgrades = { ...(m.upgrades || {}) };
+    if (v < 2) {
+        for (const [id, lv] of Object.entries(upgrades)) crystals += (META_V1_COST_BASE[id] || 0) * lv * (lv + 1) / 2;
+        upgrades = {};
+        v = 2;
+    }
+    if (v < 3) {
+        const lv = upgrades.boneMarrow || 0;
+        crystals += META_V2_BONE_MARROW_COST * lv * (lv + 1) / 2;
+        delete upgrades.boneMarrow;
+    }
+    return { ...m, crystals, upgrades, metaTable: META_TABLE_VERSION };
 }
 // 怪物的基本強度（見 META_UPGRADES 的說明）。量過的曲線（機器人、沒強化）：前 30 波幾乎沒有壓力、首領波不比旁邊的波難，
 // 難度全擠在 35 波以後（波數成長 expGrowth 是指數），所以前半局很空、後面一口氣斷崖。
@@ -841,13 +849,13 @@ const REVIVE_SHIELD_SECONDS = 2.5;
 const CRYSTALS_PER_WAVE = 4;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, metaTable: META_TABLE_VERSION, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
+    return { crystals: 0, upgrades: {}, classUpgrades: {}, metaTable: META_TABLE_VERSION, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
 }
 function loadMeta() {
     try {
         const saved = JSON.parse(SaveStore.get(META_KEY));
         const m = saved && migrateMetaTable(saved);
-        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) }, leaderboard: m.leaderboard || seedLeaderboard(m.bestClear) };
+        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, classUpgrades: { ...(m.classUpgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) }, leaderboard: m.leaderboard || seedLeaderboard(m.bestClear) };
     } catch (e) { }
     return defaultMeta();
 }
@@ -859,6 +867,28 @@ const meta = defaultMeta();
 function metaLv(id) { return meta.upgrades[id] || 0; }
 function metaVal(id) { return META_UPGRADES[id].per * metaLv(id); }
 function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
+
+// ---------- 職業專精：每個職業自己的永久強化，等級各職業分開記，結晶跟通用強化共用 ----------
+// 同類遊戲（靈石倖存者）也是「共用天賦＋每個角色一小塊專屬」：強化的是那個職業自己的特色，
+// 而且換職業不用從頭存結晶。比通用強化便宜，練一個新職業的門檻低。
+// 各職業在 CLASSES[id].metaUpgrades 登記（格式同 META_UPGRADES），職業的程式用 classMeta(id) 讀「這一局職業」那一項的效果
+// 「召喚物血量」是同一個概念，有召喚物的職業共用這一份（名字、圖示都一樣）
+const META_SUMMON_HP = { icon: 'boneMarrow', name: '軍團體魄', max: 5, per: 0.1, costBase: 25, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` };
+// scope：'g' 是通用強化，其他是職業 id
+const META_GLOBAL = 'g';
+function upgradeDefs(scope) { return scope === META_GLOBAL ? META_UPGRADES : (CLASSES[scope].metaUpgrades || {}); }
+function upgradeLevels(scope) {
+    if (scope === META_GLOBAL) return meta.upgrades;
+    return meta.classUpgrades[scope] || (meta.classUpgrades[scope] = {});
+}
+function upgradeLv(scope, id) { return upgradeLevels(scope)[id] || 0; }
+function upgradeCost(scope, id) { return upgradeDefs(scope)[id].costBase * (upgradeLv(scope, id) + 1); }
+function upgradeSpent(scope, id) { const lv = upgradeLv(scope, id); return upgradeDefs(scope)[id].costBase * lv * (lv + 1) / 2; }
+function metaScopes() { return [META_GLOBAL, ...Object.keys(CLASSES)]; }
+function classMeta(id) {
+    const d = upgradeDefs(runClass())[id];
+    return d ? d.per * upgradeLv(runClass(), id) : 0;
+}
 
 // ---------- 成就：第一次達成就給結晶（跨局保留） ----------
 // 同類遊戲的成就都是上百個（PokéSurvivor 149 個）：每一類都有「近的」與「遠的」目標，每一局都至少有幾個摸得到。
@@ -1151,6 +1181,21 @@ const CLASSES = {
         hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
         attack: (p, dt) => p.shootBolt(dt),
         ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', hintRadius: () => CONFIG.nova.radius, cooldown: () => getNovaCooldown(), use: () => useNova() },
+        metaUpgrades: {
+            summonHp: META_SUMMON_HP,
+            vanguard: { icon: 'boneVanguard', name: '骸骨先鋒', max: 3, per: 2, costBase: 40, desc: m => `開局多帶 ${m.per} 隻骷髏`, total: (m, lv) => `${m.per * lv} 隻` },
+            frenzyTime: { icon: 'frenzyTime', name: '狂潮餘韻', max: 4, per: 0.5, costBase: 30, desc: m => `新星的大軍狂暴 +${m.per} 秒`, total: (m, lv) => `+${m.per * lv} 秒` },
+        },
+        // 骸骨先鋒：開局就站在身邊的骷髏（算進大軍、跟召喚的一樣）
+        onRunStart: () => {
+            const p = gameState.player, n = classMeta('vanguard');
+            for (let i = 0; i < n; i++) {
+                const pos = p.getSummonPosition();
+                gameState.summons.push(new SkeletonWarrior(pos.x, pos.y, gameState.units.SkeletonWarrior.level, p));
+                gameState.units.SkeletonWarrior.count++;
+                gameState.totalSummons.SkeletonWarrior++;
+            }
+        },
     },
 };
 const DEFAULT_CLASS = 'necro';
@@ -2224,7 +2269,7 @@ class SummonUnit extends GameObject {
     computeStats() {
         const type = this.config.type;
         const multiplier = 1 + (this.level * this.config.upgradeBonus);
-        this.maxHealth = Math.round(this.config.baseHealth * multiplier * (1 + blessVal('boneArmor')) * (1 + metaVal('boneMarrow')));
+        this.maxHealth = Math.round(this.config.baseHealth * multiplier * (1 + blessVal('boneArmor')) * (1 + classMeta('summonHp')));
         let attack = (this.config.baseAttack > 0) ? (this.config.baseAttack * multiplier) : 0;
         if (type === 'SkeletonWarrior') attack *= 1 + blessVal('boneBlade');
         const rm = runMods();
@@ -6896,7 +6941,7 @@ function useNova() {
     gameState.run.novas++;
     gameState.run.novaBest = Math.max(gameState.run.novaBest, novaKills);
     stats().novas++;
-    gameState.frenzyTimer = c.frenzyDuration + blessVal('frenzyTime');
+    gameState.frenzyTimer = c.frenzyDuration + blessVal('frenzyTime') + classMeta('frenzyTime');
     for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].attracted = true;
     // 寫效果不寫招式名：「狂潮」沒人知道是什麼，「大軍狂暴」一看就懂是自己的兵變強；兵身上同時冒紫火花（挑一部分，上千隻全冒會塞爆粒子上限）
     spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'armyFrenzy');
@@ -7336,6 +7381,7 @@ function continueRun() {
 let metaReturnTo = 'title';
 function openMeta(returnTo) {
     metaReturnTo = returnTo;
+    metaClassTab = META_GLOBAL;
     renderMeta();
     showScreen(uiElements.metaScreen, true);
 }
@@ -7344,46 +7390,61 @@ function closeMeta() {
     if (metaReturnTo === 'title') refreshTitle();
     uiElements.gameoverMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
 }
+// 「有東西買得起」的提示只看通用與選定職業：沒在玩的職業買得起不算（不然幾乎永遠在發光）
 function canBuyAnyMeta() {
-    return Object.keys(META_UPGRADES).some(id => metaLv(id) < META_UPGRADES[id].max && meta.crystals >= metaCost(id));
+    return [META_GLOBAL, selectedClass()].some(scope => Object.keys(upgradeDefs(scope)).some(id => upgradeLv(scope, id) < upgradeDefs(scope)[id].max && meta.crystals >= upgradeCost(scope, id)));
 }
-// 已經花在某一項上的結晶（第 n 級花 costBase × n）
-function metaSpent(id) {
-    const lv = metaLv(id);
-    return META_UPGRADES[id].costBase * lv * (lv + 1) / 2;
-}
-// 全部退還（同吸血鬼倖存者）：結晶全數退回，可以換一套搭配再試
-function refundMeta() {
+// 全部退還（同吸血鬼倖存者）：通用與每個職業的專精一起，結晶全數退回，可以換一套搭配再試
+function metaRefundTotal() {
     let back = 0;
-    for (const id of Object.keys(META_UPGRADES)) back += metaSpent(id);
+    for (const scope of metaScopes()) for (const id of Object.keys(upgradeDefs(scope))) back += upgradeSpent(scope, id);
+    return back;
+}
+function refundMeta() {
+    const back = metaRefundTotal();
     if (back <= 0) return;
     meta.crystals += back;
     meta.upgrades = {};
+    meta.classUpgrades = {};
     saveMeta();
     Sfx.play('pick');
     renderMeta();
 }
 
+// 強化畫面現在看哪一組：通用（打開時）或某個職業
+let metaClassTab = META_GLOBAL;
+function metaRowHtml(scope, id, m) {
+    const lv = upgradeLv(scope, id), maxed = lv >= m.max, cost = upgradeCost(scope, id);
+    const pips = Array.from({ length: m.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
+    const btn = maxed
+        ? '<button class="btn btn-dark" disabled>已滿</button>'
+        : `<button class="btn btn-gold" data-meta="${scope}:${id}" ${meta.crystals < cost ? 'disabled' : ''}><span class="price">${iconHtml('crystal')}${cost}</span></button>`;
+    return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${m.desc(m)}${lv > 0 && m.total && m.max > 1 ? ` · 目前 <b>${m.total(m, lv)}</b>` : ''}</div></div>${btn}</div>`;
+}
 function renderMeta() {
     uiElements.metaCrystals.innerHTML = `${iconHtml('crystal')}${meta.crystals}`;
     uiElements.metaEarn.innerHTML = `<span>${iconHtml('skull')}每撐過 1 波 +${CRYSTALS_PER_WAVE}</span><span>${iconHtml('boss')}首領 +${CRYSTALS_PER_BOSS}</span><span>${iconHtml('crown')}通關 +${VICTORY_CRYSTALS}</span>`;
-    uiElements.metaRefundBtn.disabled = !Object.keys(META_UPGRADES).some(id => metaLv(id) > 0);
-    uiElements.metaList.innerHTML = Object.entries(META_UPGRADES).map(([id, m]) => {
-        const lv = metaLv(id), maxed = lv >= m.max, cost = metaCost(id);
-        const pips = Array.from({ length: m.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
-        const btn = maxed
-            ? '<button class="btn btn-dark" disabled>已滿</button>'
-            : `<button class="btn btn-gold" data-meta="${id}" ${meta.crystals < cost ? 'disabled' : ''}><span class="price">${iconHtml('crystal')}${cost}</span></button>`;
-        return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${m.desc(m)}${lv > 0 && m.total && m.max > 1 ? ` · 目前 <b>${m.total(m, lv)}</b>` : ''}</div></div>${btn}</div>`;
-    }).join('');
+    uiElements.metaRefundBtn.disabled = metaRefundTotal() <= 0;
+    // 一排分頁：通用＋每個職業（頭像＋名字，沒解鎖的上鎖、點不了），只列選中那一組
+    const tabs = `<button class="achv-tab achv-subtab meta-tab-all${metaClassTab === META_GLOBAL ? ' on' : ''}" data-meta-cls="${META_GLOBAL}"><div>通用</div></button>` +
+        Object.keys(CLASSES).map(cls => {
+            const ok = classUnlocked(cls), C = CLASSES[cls];
+            return `<button class="achv-tab achv-subtab${cls === metaClassTab ? ' on' : ''}" data-meta-cls="${cls}" ${ok ? '' : 'disabled'}><img src="${C.portrait}" alt="">${ok ? '' : iconHtml('lock', 'icon tab-lock')}<div>${C.name}</div></button>`;
+        }).join('');
+    uiElements.metaList.innerHTML = `<div class="meta-class-tabs">${tabs}</div>` +
+        Object.entries(upgradeDefs(metaClassTab)).map(([id, m]) => metaRowHtml(metaClassTab, id, m)).join('');
+    // 選中的分頁捲到看得見的地方（職業多，一排放不下）
+    const bar = uiElements.metaList.querySelector('.meta-class-tabs'), on = bar.querySelector('.on');
+    if (on) bar.scrollLeft = on.offsetLeft - bar.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2;
 }
-function buyMeta(id) {
-    const m = META_UPGRADES[id];
-    if (!m || metaLv(id) >= m.max) return;
-    const cost = metaCost(id);
+function buyMeta(key) {
+    const [scope, id] = key.split(':');
+    const m = upgradeDefs(scope)[id];
+    if (!m || upgradeLv(scope, id) >= m.max) return;
+    const cost = upgradeCost(scope, id);
     if (meta.crystals < cost) return;
     meta.crystals -= cost;
-    meta.upgrades[id] = metaLv(id) + 1;
+    upgradeLevels(scope)[id] = upgradeLv(scope, id) + 1;
     saveMeta();
     checkAchievements(true);
     Sfx.unlock();
@@ -9427,6 +9488,8 @@ function init() {
     onTap(uiElements.victoryContinueBtn, continueEndless);
     onTap(uiElements.victoryEndBtn, endRunFromVictory);
     uiElements.metaList.addEventListener('click', (e) => {
+        const tab = e.target.closest('[data-meta-cls]');
+        if (tab && !tab.disabled) { metaClassTab = tab.dataset.metaCls; Sfx.play('click'); renderMeta(); return; }
         const b = e.target.closest('[data-meta]');
         if (b && !b.disabled) buyMeta(b.dataset.meta);
     });
