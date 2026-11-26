@@ -2638,6 +2638,87 @@ class SummonUnit extends GameObject {
     }
 }
 
+// 一波打超過 OVERTIME_START 秒，場上的怪開始狂暴：之後每 OVERTIME_STEP 秒移動與攻擊再多 OVERTIME_GAIN。
+// 沒有大軍的主角跑得比吞魂者快、自己又磨不死牠（第 39 波一隻要 20 秒）時，會被追著繞圈好幾分鐘，不會死也打不完；
+// 蝙蝠磨不死吞魂者時也一樣。狂暴讓這種局一定分出結果；正常一波 20～90 秒，碰不到
+const OVERTIME_START = 120;
+const OVERTIME_STEP = 10;
+const OVERTIME_GAIN = 0.1;
+// 叫「怨氣沸騰」不叫狂暴：精英詞綴（腳下冒火）和大招的大軍狂暴（紫框）已經叫狂暴了。顏色也跟那兩個分開（深紅）
+const OVERTIME_NAME = '怨氣沸騰';
+const OVERTIME_COLOR = '#FF1744';
+const OVERTIME_TEXT = '#FF8A80';      // 字用淺紅：深紅字在昏暗的戰場上讀不清楚
+const OVERTIME_DEEP = 'rgba(120, 0, 20, 0.85)';
+// 開始前幾秒在畫面上方倒數，最後 OVERTIME_BLINK 秒閃：讓玩家來得及收尾，不是突然變強
+const OVERTIME_WARN = 15;
+const OVERTIME_BLINK = 5;
+const OVERTIME_HUD_Y = 58;            // 倒數／倍率那一行離狀態列頂多遠（避開首領血條）
+const OVERTIME_BEAT_HZ = 1.3;         // 四周紅光跟著心跳脈動
+const OVERTIME_VIGNETTE_MIN = 0.65;   // 剛開始的濃度，越沸騰越濃
+// 怪背後紅光 × 圖寬、濃度：怪擠成一團時一隻隻的紅光會疊成一顆大紅球、看不清怪，所以小而淡
+const OVERTIME_GLOW_SCALE = 1.5;
+const OVERTIME_GLOW_ALPHA = 0.4;
+const OVERTIME_EMBER_CHANCE = 0.05;   // 每隻畫面內的怪每格冒火星的機率
+const OVERTIME_SHAKE = 8;
+function overtimeMult() {
+    if (gameState.betweenWaves) return 1;
+    const t = worldTime - gameState.waveStartAt - OVERTIME_START;
+    return t > 0 ? 1 + OVERTIME_GAIN * t / OVERTIME_STEP : 1;
+}
+// 心跳：一下重一下輕（0～1）
+function overtimeBeat() {
+    const ph = (worldTime * OVERTIME_BEAT_HZ) % 1;
+    const bump = (c, w) => Math.max(0, 1 - Math.abs(ph - c) / w);
+    return Math.max(bump(0.1, 0.1), bump(0.32, 0.1) * 0.6);
+}
+function drawOvertimeOverlay() {
+    if (appScreen !== 'playing' || gameState.betweenWaves || !gameState.player) return;
+    const left = OVERTIME_START - (worldTime - gameState.waveStartAt);
+    if (!(left <= OVERTIME_WARN)) return;
+    const W = view.cssW, y = hudTop + OVERTIME_HUD_Y;
+    ctx.save();
+    if (left > 0) {
+        const blink = left < OVERTIME_BLINK ? 0.55 + 0.45 * Math.cos(worldTime * Math.PI * 4) : 1;
+        ctx.globalAlpha = blink;
+        drawIconLabel('warning', `${OVERTIME_NAME} ${Math.ceil(left)}`, W / 2, y, 18, OVERTIME_TEXT);
+        ctx.restore();
+        return;
+    }
+    const lv = overtimeMult(), beat = overtimeBeat();
+    const H = view.cssH;
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.28, W / 2, H / 2, Math.max(W, H) * 0.62);
+    g.addColorStop(0, 'rgba(120, 0, 20, 0)');
+    g.addColorStop(1, OVERTIME_DEEP);
+    ctx.globalAlpha = Math.min(1, OVERTIME_VIGNETTE_MIN + (lv - 1) * 0.6) * (0.7 + 0.3 * beat);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+    // 橫幅（含剛跳出來的「怨氣沸騰」）還在的時候不畫倍率，兩行字會疊在一起
+    if (gameState.banner) { ctx.restore(); return; }
+    // 倍率跟著心跳微微放大：一直在漲，不是一次性的提示
+    ctx.translate(W / 2, y);
+    ctx.scale(1 + 0.08 * beat, 1 + 0.08 * beat);
+    drawIconLabel('flame', `怪物 ×${lv.toFixed(1)}`, 0, 0, 18, OVERTIME_TEXT);
+    ctx.restore();
+}
+// 沸騰中，畫面內的怪往上冒火星
+const OVERTIME_EMBER_RISE = 110;
+const OVERTIME_EMBER_LIFE = 0.8;
+const OVERTIME_EMBER_SIZE = 3;
+function spawnOvertimeEmbers() {
+    if (overtimeMult() <= 1) return;
+    const ps = gameState.particles;
+    for (const m of gameState.monsters) {
+        if (ps.length >= CONFIG.visuals.maxParticles) return;
+        if (!m.isAlive || Math.random() > OVERTIME_EMBER_CHANCE || !inView(m.pos)) continue;
+        ps.push({
+            x: m.pos.x + randomInRange(-m.radius, m.radius), y: m.pos.y - m.imageHeight * 0.2,
+            vx: randomInRange(-15, 15), vy: -OVERTIME_EMBER_RISE * (0.6 + Math.random() * 0.4),
+            life: OVERTIME_EMBER_LIFE, maxLife: OVERTIME_EMBER_LIFE, color: Math.random() < 0.5 ? OVERTIME_COLOR : '#FFAB40', size: OVERTIME_EMBER_SIZE * (0.6 + Math.random() * 0.6),
+        });
+    }
+}
+
 // 這一波的怪出完、場上只剩最後幾隻時，整支大軍放大索敵範圍去追。
 // 不然最後一隻停在所有召喚物的索敵範圍外（實測：墓地祭司隔著一隻怨靈站在法師 270 外，骷髏 150、眼魔 180、法師 150 都搆不到），波次永遠打不完
 const STRAGGLER_MAX = 3;
@@ -3412,6 +3493,14 @@ class Monster extends GameObject {
             ctx.stroke();
             ctx.restore();
         }
+        // 怨氣沸騰（一波拖太久）：背後一團紅光跟著心跳脈動，越沸騰越亮
+        const ot = this.isAlive ? overtimeMult() : 1;
+        if (ot > 1) {
+            const g = this.imageWidth * OVERTIME_GLOW_SCALE;
+            ctx.globalAlpha = Math.min(1, OVERTIME_GLOW_ALPHA + (ot - 1) * 0.3) * (0.75 + 0.25 * overtimeBeat());
+            ctx.drawImage(getGlowSprite(OVERTIME_COLOR), this.pos.x - g / 2, this.pos.y - g / 2, g, g);
+            ctx.globalAlpha = 1;
+        }
         const fx = this.affix && this.isAlive;
         if (fx) this.drawAffix(ctx, true);
         super.draw(ctx);
@@ -3493,7 +3582,7 @@ class Monster extends GameObject {
                 this.slowTimer = 0;
             }
         }
-        this.moveSpeed = this.baseMoveSpeed * this.speedMultiplier;
+        this.moveSpeed = this.baseMoveSpeed * this.speedMultiplier * overtimeMult();
 
         if (this.attackCooldown > 0) { this.attackCooldown -= deltaTime; }
 
@@ -3566,7 +3655,7 @@ class Monster extends GameObject {
 
     attackTarget() {
         if (!this.target || !this.target.isAlive) return;
-        let dmg = this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1);
+        let dmg = this.attack * (this.weakenTimer > 0 ? 1 - CONFIG.evolution.wraithWeaken : 1) * overtimeMult();
         if (this.target === gameState.player) dmg = Math.min(dmg, this.target.maxHealth * MELEE_HERO_HIT_RATIO);
         this.target.takeDamage(dmg, this);
 
@@ -5550,6 +5639,7 @@ function prepareNextWave() {
     if (classDef().onWaveStart) classDef().onWaveStart();
     gameState.run.flags.waveHit = false;
     gameState.waveStartAt = worldTime;
+    gameState.overtimeShown = false;
     gameState.lastWaveSouls = gameState.waveSouls;
     gameState.waveSouls = 0;
     scheduleRelic(waveNum);
@@ -7459,6 +7549,13 @@ function updateGame(deltaTime) {
     rebuildEyeTargetCounts(gameState.summons);
     gameState.priests = gameState.monsters.filter(m => m.isAlive && m instanceof GravePriestMonster);
     gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;
+    if (overtimeMult() > 1 && !gameState.overtimeShown) {
+        gameState.overtimeShown = true;
+        gameState.banner = { text: OVERTIME_NAME, sub: '拖太久了，怪會越來越快、越來越痛', color: OVERTIME_COLOR, life: CONFIG.wave.bannerDuration * 1.3, icon: 'flame' };
+        addShake(OVERTIME_SHAKE);
+        Sfx.play('boss');
+    }
+    spawnOvertimeEmbers();
 
     const cls = classDef();
     if (cls.update && gameState.player) cls.update(deltaTime);
@@ -7972,6 +8069,7 @@ function drawGame() {
     setScreenTransform();
     drawEventOverlay();
     drawFrenzyOverlay();
+    drawOvertimeOverlay();
     if (drawCls.drawScreen && gameState.player && appScreen !== 'title') drawCls.drawScreen(ctx);
     drawBossBar();
     drawStreak();
