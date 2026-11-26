@@ -327,7 +327,7 @@ const CONFIG = {
         // 潛行時召喚物看不到她（見 SpatialGrid.rebuild）；蓄力時也還隱身，刺完才現形 revealTime 秒，這段時間會被大軍圍毆，所以每隻都會出手一次。
         // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
         // 傷害是法師最大生命的固定比例、不隨波數變大：站著不動才會中，一直走一定閃得掉（法師走速 × 蓄力 0.75 秒 ≫ 判定半徑）
-        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 0.75, strikeRadius: 34, strikeHpRatio: 0.3,
+        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 0.75, strikeRadius: 34, strikeHpRatio: 0.2,
         // 平常半透明（潛行），蓄力到瞬移後這段時間現形
         stealthAlpha: 0.5, revealTime: 2.2,
     },
