@@ -47,5 +47,6 @@ python tools/key-chroma.py 生好的圖.jpg 新怪.png flip   # 角色朝左時�
 | 紫、紅、粉、黑紅 | 綠 `#00FF00` |
 | 綠、黃、褐 | 洋紅 `#FF00FF` |
 | 藍、青、白光 | 黃 `#FFFF00` 或洋紅 |
+| 紫＋毒綠（兩個都有） | 青 `#00FFFF` |
 
 輸出後加進 `game.js` 的 `OPTIONAL_ART`，並在怪物設定寫 `art` 與 `artScale`。
