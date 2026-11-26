@@ -736,14 +736,14 @@ function blessVal(id) { return BLESSINGS[id].per * bl(id); }
 const META_KEY = 'undeadFrenzy_meta';
 // 局外成長的目標（同 PokéSurvivor、吸血鬼倖存者、Halls of Torment）：沒買任何強化打不過亡靈王，
 // 一局一局買上去會明顯變強，大約買到一半以上才通關。怪物的基本強度（MONSTER_BASE_*）跟這張表是一起調的：
-// 沒強化時被怪物壓過，戰鬥類全滿時比怪物強。數值類每一項全滿約 +30%～+60%，七個職業都吃得到；
+// 沒強化時被怪物壓過，戰鬥類全滿時比怪物強。數值類每一項全滿約 +30%～+80%，七個職業都吃得到；
 // 再穿插幾個一次買斷、改變玩法的（復活、多一張祝福、開局祝福），體感變強主要靠這幾個。
 // 價格：第 n 級是 costBase × n，第一級一局就買得起
 // total(m, lv)：買了 lv 級時合計的效果，強化畫面寫「目前 …」
 const META_UPGRADES = {
-    might: { icon: 'claws', name: '亡者之力', max: 6, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    mageHp: { icon: 'heart', name: '主角體魄', max: 5, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    boneMarrow: { icon: 'boneArmor', name: '軍團體魄', max: 5, per: 0.1, costBase: 35, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    might: { icon: 'claws', name: '亡者之力', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    mageHp: { icon: 'heart', name: '主角體魄', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    boneMarrow: { icon: 'boneArmor', name: '軍團體魄', max: 6, per: 0.1, costBase: 35, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     ultMastery: { icon: 'burst', name: '大招精通', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     soulAffinity: { icon: 'soulHarvest', name: '靈魂親和', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
@@ -773,8 +773,12 @@ function migrateMetaTable(m) {
 // （血量一口氣加滿的話，加滿那幾波死亡率從 0 跳到四成，是斷崖；而且血量灌太多只會拖棚）。
 // 從第 1 波就加的話，沒有大軍的職業（武僧）傷害一路累積、第 10 波首領就倒
 // 血量 ×2.8 時後期常常卡住打不完（蝙蝠磨不死吞魂者、整支軍隊沒了打不動），所以血量少一點、攻擊多一點：危險但不拖棚
-const MONSTER_ATK_RAMP = { from: 3, full: 20, mult: 2.2 };
-const MONSTER_HP_RAMP = { from: 5, full: 30, mult: 2.4 };
+// 加滿的波數決定新手倒在哪：加滿在第 20／30 波時，亂挑祝福、沒強化的機器人多半撐到第 30～40 波，
+// 比其他倖存者遊戲的新手（一局一半左右，約第 22～27 波）晚太多，失敗一局要花十幾分鐘，循環太慢
+// 加滿在第 15／25 波、攻擊 ×2.4 時又太早太硬（會挑祝福的機器人沒強化 0/7 通關、有人第 9 波就倒）；
+// 第 18／28 波、×2.3／×2.1 時亂挑祝福也有 4/14 通關。取兩者中間，再細的差距已經小於機器人一局一局的雜訊
+const MONSTER_ATK_RAMP = { from: 3, full: 16, mult: 2.35 };
+const MONSTER_HP_RAMP = { from: 5, full: 26, mult: 2.25 };
 // 首領要是每 10 波那一輪的高峰：量過的首領波反而比旁邊的波輕鬆（大軍幾秒就把首領磨掉）。
 // 照第幾隻首領加：第一隻只加一點（第一局要打得過它），越後面加越多
 const BOSS_HP_PER_TIER = 0.25;
@@ -4634,7 +4638,9 @@ class WitchDoctorMonster extends Monster {
         const c = this.config;
         const rSq = c.healRadius * c.healRadius;
         monsterGrid.forEachInRadius(this.pos, c.healRadius, m => {
-            if (m === this || !m.isAlive || m.currentHealth >= m.maxHealth || distanceSq(this.pos, m.pos) > rSq) return;
+            // 巫醫不補巫醫：兩三隻互補的話，傷害打不贏補血就永遠殺不死，整波卡住打不完（自動遊玩量到的卡關多半是這樣）；
+            // 不互補的話，先殺巫醫一定殺得掉，也就是說明文字講的「先殺牠」
+            if (m === this || m instanceof WitchDoctorMonster || !m.isAlive || m.currentHealth >= m.maxHealth || distanceSq(this.pos, m.pos) > rSq) return;
             m.currentHealth = Math.min(m.maxHealth, Math.round(m.currentHealth + m.maxHealth * c.healRatio));
             if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(m.pos.x, m.pos.y, '#AED581', 4, 40, 0.5, 3);
         });
