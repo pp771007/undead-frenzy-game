@@ -1242,6 +1242,108 @@
             to { transform: translateY(-6px) scale(1.08); }
         }
 
+        /* ---------- 職業玩法介紹 ---------- */
+        .class-guide-btn {
+            min-height: 30px;
+            margin: 6px auto 0;
+            padding: 2px 12px 2px 8px;
+            font-size: 13px;
+            border-width: 2px;
+            border-radius: 10px;
+        }
+
+        .class-guide-btn .btn-icon {
+            width: 16px;
+            height: 16px;
+        }
+
+        #class-guide {
+            z-index: 17;
+        }
+
+        #class-guide .overlay-content {
+            max-width: 380px;
+            text-align: left;
+        }
+
+        .cg-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cg-head img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            flex: none;
+        }
+
+        .cg-name {
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 20px;
+            color: var(--gold);
+            text-shadow: var(--text-outline);
+        }
+
+        .cg-tagline {
+            margin-top: 2px;
+            font-size: 14px;
+            color: var(--bone);
+        }
+
+        .cg-rules {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 14px;
+            line-height: 1.55;
+            color: var(--bone);
+        }
+
+        .cg-rules li + li {
+            margin-top: 4px;
+        }
+
+        .cg-rules b {
+            color: #ffe082;
+        }
+
+        .cg-cards {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .cg-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .cg-card img,
+        .cg-card .icon {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+            flex: none;
+        }
+
+        .cg-card b {
+            display: block;
+            font-size: 14px;
+            color: var(--gold);
+        }
+
+        .cg-card span {
+            font-size: 13px;
+            color: var(--bone-dim);
+            line-height: 1.4;
+        }
+
         /* 上榜的祝賀詞：照這一局的成績換一句（新榜首、通關、職業第一、超越對手…） */
         .lb-cheer {
             margin: -2px 0 8px;
@@ -2464,6 +2566,7 @@
         <img class="title-hero" id="title-hero" src="player.png" alt="">
         <div id="class-picker"></div>
         <div id="class-info"></div>
+        <button id="class-guide-btn" class="btn btn-dark class-guide-btn"><span class="btn-icon" data-icon="classGuide"></span>玩法介紹</button>
         <div class="title-menu">
             <button id="title-continue-btn" class="btn btn-gold btn-big hidden"></button>
             <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
@@ -2601,6 +2704,7 @@
             <label class="setting-row setting-toggle"><span data-icon="battery"></span><span class="setting-label">省電模式</span><input type="checkbox" id="pause-saver-toggle" class="switch"></label>
             <label class="setting-row setting-toggle"><span data-icon="fullscreen"></span><span class="setting-label">全螢幕</span><input type="checkbox" id="pause-fullscreen-toggle" class="switch"></label>
             <div class="stack">
+                <button id="pause-guide-btn" class="btn btn-dark"><span class="btn-icon" data-icon="classGuide"></span>職業玩法</button>
                 <button id="resume-game-btn" class="btn btn-green btn-big"><span class="btn-icon" data-icon="play"></span>繼續</button>
                 <div class="btn-row" style="margin-top:0">
                     <button id="pause-title-btn" class="btn btn-dark"><span class="btn-icon" data-icon="home"></span>標題</button>
@@ -2661,6 +2765,22 @@
     </div>
 
     <!-- 結算時上榜：恭喜＋留名字 -->
+    <!-- 職業玩法介紹：標題「玩法介紹」、暫停選單、第一次用某個職業開局時 -->
+    <div id="class-guide" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <div class="cg-head"><img id="cg-portrait" src="" alt=""><div><div class="cg-name" id="cg-name"></div><div class="cg-tagline" id="cg-tagline"></div></div></div>
+            <div class="section-title">怎麼玩</div>
+            <ul class="cg-rules" id="cg-rules"></ul>
+            <div class="section-title">底部三張卡</div>
+            <div class="cg-cards" id="cg-cards"></div>
+            <div class="section-title">大招</div>
+            <div class="cg-cards" id="cg-ult"></div>
+            <div class="stack">
+                <button id="cg-ok-btn" class="btn btn-gold btn-big">知道了</button>
+            </div>
+        </div>
+    </div>
+
     <div id="lb-congrats" class="overlay-screen">
         <canvas id="lb-fireworks" aria-hidden="true"></canvas>
         <div class="overlay-content panel screen-in">

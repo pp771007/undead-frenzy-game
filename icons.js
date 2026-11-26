@@ -500,6 +500,10 @@ const ICON_BODIES = {
         <path d="M32 18 C25 14 24 8 28 2 C29 7 33 8 34 4 C39 9 39 15 32 18 Z" fill="#4fc3f7" stroke-width="2.5"/>
         <path d="M10 40 C4 30 6 20 12 15" stroke-width="7"/><path d="M10 40 C4 30 6 20 12 15" stroke="#e1f5fe" stroke-width="3"/><path d="M12 15 L4 16 L10 22 Z" fill="#e1f5fe" stroke-width="2"/>
         <path d="M54 24 C60 34 58 44 52 49" stroke-width="7"/><path d="M54 24 C60 34 58 44 52 49" stroke="#e1f5fe" stroke-width="3"/><path d="M52 49 L60 48 L54 42 Z" fill="#e1f5fe" stroke-width="2"/>${shine(25, 26, 3, 5, 20)}`,
+    // 職業玩法介紹（標題畫面、暫停選單打開職業介紹）：藍色圓牌上一個問號
+    classGuide: `<circle cx="32" cy="32" r="26" fill="#42a5f5"/><circle cx="32" cy="32" r="19" fill="#90caf9" stroke="none"/>
+        <path d="M24 25 C24 17 40 16 40 25 C40 31 32 31 32 38" stroke-width="10"/><path d="M24 25 C24 17 40 16 40 25 C40 31 32 31 32 38" stroke="#ffffff" stroke-width="5"/>
+        <circle cx="32" cy="48" r="4.5" fill="#ffffff" stroke-width="3"/>${shine(20, 18, 4, 2.5)}`,
     // 地上的毒池：綠骷髏加交叉骨
     poisonPool: duoStroke('M12 48 L52 60 M52 48 L12 60', '#c5e1a5', 4) + `<path d="M32 6 C20 6 13 14 13 25 C13 32 16 36 21 39 L21 47 L43 47 L43 39 C48 36 51 32 51 25 C51 14 44 6 32 6 Z" fill="#9ccc65"/>
         <ellipse cx="25" cy="26" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="39" cy="26" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><path d="M32 32 L29 38 L35 38 Z" fill="${ICON_OUTLINE}" stroke="none"/>`,

@@ -74,6 +74,8 @@ const uiElements = {
     titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'), finalTarget: $id('final-target'),
     lbScreen: $id('lb-screen'), lbTabs: $id('lb-tabs'), lbList: $id('lb-list'), lbCloseBtn: $id('lb-close-btn'),
     lbDetail: $id('lb-detail'), lbDetailBody: $id('lb-detail-body'), lbDetailCloseBtn: $id('lb-detail-close-btn'),
+    classGuide: $id('class-guide'), classGuideBtn: $id('class-guide-btn'), pauseGuideBtn: $id('pause-guide-btn'), cgOkBtn: $id('cg-ok-btn'),
+    cgPortrait: $id('cg-portrait'), cgName: $id('cg-name'), cgTagline: $id('cg-tagline'), cgRules: $id('cg-rules'), cgCards: $id('cg-cards'), cgUlt: $id('cg-ult'),
     lbCongrats: $id('lb-congrats'), lbCongratsTitle: $id('lb-congrats-title'), lbCongratsCheer: $id('lb-congrats-cheer'), lbFireworks: $id('lb-fireworks'), lbCongratsRanks: $id('lb-congrats-ranks'), lbCongratsResult: $id('lb-congrats-result'), lbNameInput: $id('lb-name-input'),
     lbCongratsOkBtn: $id('lb-congrats-ok-btn'), lbCongratsCloseBtn: $id('lb-congrats-close-btn'),
     pauseReward: $id('pause-reward'),
@@ -6817,6 +6819,7 @@ function handleBackButton() {
     if (appScreen !== 'playing') return;
     armBackButton();
     // 結算上面疊的排行榜視窗：一次收一層，上榜恭喜收掉時照樣用預設名字登錄
+    if (uiElements.classGuide.style.display === 'flex') { closeClassGuide(); return; }
     if (lbPending) { closeLbCongrats(); return; }
     if (uiElements.lbDetail.style.display === 'flex') { showScreen(uiElements.lbDetail, false); return; }
     if (uiElements.lbScreen.style.display === 'flex') { closeLeaderboard(); return; }
@@ -6840,7 +6843,16 @@ function enterPlaying() {
 }
 
 function startNewRun() {
-    const begin = () => { resetGame(); enterPlaying(); };
+    const id = selectedClass();
+    const begin = () => {
+        if (id !== 'necro' && !(meta.classGuideSeen || {})[id]) {
+            meta.classGuideSeen = { ...(meta.classGuideSeen || {}), [id]: true };
+            saveMeta();
+            openClassGuide(id, () => { resetGame(); enterPlaying(); });
+            return;
+        }
+        resetGame(); enterPlaying();
+    };
     const save = peekSave();
     if (save && save.currentWave > 0) showConfirm('開始新的一局？', `第 ${save.currentWave} 波的進度會被覆蓋`, '開始', begin);
     else begin();
@@ -6852,6 +6864,65 @@ function startDailyRun() {
     const overwrite = save && save.currentWave > 0 ? `\n第 ${save.currentWave} 波的進度會被覆蓋` : '';
     const bonus = meta.dailyClaimed === todayKey() ? '' : `\n今天第一場結晶 ×${DAILY_CRYSTAL_MULT}`;
     showConfirm(`每日變異 · ${d.name}`, `${dailyRulesText(d)}${bonus}${overwrite}`, '出發', () => { resetGame(d); enterPlaying(); });
+}
+
+// ---------- 職業玩法介紹 ----------
+// 標題的「玩法介紹」、暫停選單的「職業玩法」、第一次用某個職業開局時自動跳出來。
+// 只講「這個職業跟別人哪裡不一樣」：怎麼變強、錢怎麼用、要注意什麼；三張卡各一句、大招一句。重點字用 <b>
+const CLASS_GUIDES = {
+    necro: {
+        rules: ['用靈魂召喚骷髏、怨靈、眼魔，<b>數量沒有上限</b>', '同一種兵越多，再召喚就越貴：<b>升級鈕發金光就升級</b>', '法師很脆，<b>躲在大軍後面、邊走邊打</b>'],
+        cards: ['近戰主力，便宜又耐打', '光環讓身邊的怪變慢，陣亡時爆炸', '遠程射擊，躲在後排輸出'],
+    },
+    warrior: {
+        rules: ['士兵跟著你<b>排成陣型</b>，面向你移動的方向', '從背後、側面挨打傷害加倍：<b>把陣型轉過去對著怪</b>', '人數有上限，士兵越打越老練：<b>保住老兵比補新兵重要</b>', '受傷、砍怪會累積怒氣（腳下的橘條），<b>滿了自動發狂 8 秒</b>，之後虛脫 4 秒'],
+        cards: ['站前排，嘲諷身邊的怪、擋下射向你的血彈', '越過盾牌刺擊，對首領、大型、會飛的怪加倍', '站後排遠程射擊，射程長但裝填慢'],
+    },
+    druid: {
+        rules: ['用靈魂<b>在腳下種橡樹</b>，橡樹聚成你的林地', '野獸數量上限看林地：<b>每棵橡樹養 3 隻</b>', '野獸守著最近的橡樹，離林地越遠越弱：<b>選好地方打這一仗</b>', '橡樹和野獸活得越久長得越大（最多 3 階）'],
+        cards: ['在腳下種一棵會長大的橡樹', '快又便宜，成群包圍', '慢但血厚，擋在最前面'],
+    },
+    vampire: {
+        rules: ['沒有靈魂：怪掉的是<b>血珠</b>，撿到先補血，多的存成血池', '召喚、升級花血池，不夠就<b>花自己的血</b>（最多花到剩四分之一）', '打倒的怪有機會<b>站起來變成眷屬</b>，保留原本的能力', '<b>白天會被曬傷</b>、眷屬變弱；<b>入夜</b>轉化變多、眷屬變強', '靈泉是聖水，<b>別站進去</b>'],
+        cards: ['按「轉化」把身邊最近的一隻怪變成手下', '吸血蝙蝠，吸到的血回給你', '只能修練：定時花一點自己的血炸開身邊，越殘越痛'],
+    },
+    elf: {
+        rules: ['<b>移動中射速 +60%</b>，停下來就掉回去', '朝背後射的箭<b>傷害 ×2</b>：邊退邊回頭射', '射程全職業最遠，但很脆：<b>別讓怪圍住</b>'],
+        cards: ['只能修練：箭的傷害，進化後多射一支、穿透、爆擊', '只能修練：移動時在腳下放陷阱，爆炸、緩速、定身輪流', '靈狐、鷹輪流加入，最多 4 隻但很強'],
+    },
+    rogue: {
+        rules: ['場上最有威脅的一隻怪會被標成<b>目標</b>（頭上金色準星）', '殺掉目標拿<b>一大筆賞金</b>、身邊的怪嚇跑；雜兵只給一半靈魂', '1.6 秒沒被打就<b>隱身</b>，怪看不到你；隱身後第一刀 ×4', '血量低於兩成的怪，被飛刀打中<b>直接處決</b>'],
+        cards: ['只能修練：飛刀的傷害，進化後多一把、會彈射', '只能修練：命中上毒，毒會一層層疊上去', '召喚 20 秒後消失的分身'],
+    },
+    monk: {
+        rules: ['<b>沒有手下</b>：靈魂全拿來修練自己，每修練一次血量也會長', '自動瞬步出拳，每打中一下連擊 +1，越高越痛；<b>被打中連擊歸零</b>', '所有怪都衝著你來：<b>在怪群裡穿梭、別被碰到</b>', '身邊沒怪時站著不動會<b>入定</b>：回血、蓄氣，下一拳更痛'],
+        cards: ['出拳傷害，進化後一拳兩下、擊退', '瞬步距離，進化後閃避、瞬步無敵', '每幾拳打出一道直線氣功波'],
+    },
+};
+let classGuideThen = null;
+function openClassGuide(id = selectedClass(), then = null) {
+    const C = CLASSES[id], G = CLASS_GUIDES[id];
+    if (!C || !G) { if (then) then(); return; }
+    classGuideThen = then;
+    uiElements.cgPortrait.src = C.portrait;
+    uiElements.cgName.textContent = C.title === C.name ? C.name : `${C.name} · ${C.title}`;
+    uiElements.cgTagline.textContent = C.tagline;
+    uiElements.cgRules.innerHTML = G.rules.map(r => `<li>${r}</li>`).join('');
+    uiElements.cgCards.innerHTML = C.cards.map((t, i) => {
+        const U = UNIT_TYPES[t];
+        return `<div class="cg-card"><img src="${U.img}" alt=""><div><b>${U.name}</b><span>${G.cards[i] || ''}</span></div></div>`;
+    }).join('');
+    const ult = C.ultimate || CLASSES.necro.ultimate;
+    const hint = ult.hint.includes('：') ? ult.hint.slice(ult.hint.indexOf('：') + 1) : ult.hint;
+    uiElements.cgUlt.innerHTML = `<div class="cg-card">${iconHtml(ult.icon)}<div><b>${ult.name}</b><span>${hint}</span></div></div>`;
+    uiElements.cgOkBtn.textContent = then ? '開始' : '知道了';
+    showScreen(uiElements.classGuide, true);
+}
+function closeClassGuide() {
+    showScreen(uiElements.classGuide, false);
+    const then = classGuideThen;
+    classGuideThen = null;
+    if (then) then();
 }
 
 // ---------- 標題畫面選職業：一排頭像，選中的金框；還沒解鎖的暗下來壓一個鎖，點了說怎麼解鎖 ----------
@@ -8952,6 +9023,9 @@ function init() {
     // 觸控的 pointerdown 不算使用者手勢，第一次解鎖音效要等到 click
     const onTap = (el, fn) => el.addEventListener('click', () => { Sfx.unlock(); fn(); });
     onTap(uiElements.titleStartBtn, startNewRun);
+    onTap(uiElements.classGuideBtn, () => openClassGuide());
+    onTap(uiElements.pauseGuideBtn, () => openClassGuide(runClass()));
+    onTap(uiElements.cgOkBtn, closeClassGuide);
     onTap(uiElements.titleDailyBtn, startDailyRun);
     uiElements.classPicker.addEventListener('click', (e) => { const b = e.target.closest('[data-class]'); if (b) pickClass(b.dataset.class); });
     onTap(uiElements.titleContinueBtn, continueRun);
