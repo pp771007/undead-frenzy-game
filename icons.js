@@ -478,6 +478,12 @@ const ICON_BODIES = {
     arrowUp: `<path d="M32 7 L55 32 L42 32 L42 57 L22 57 L22 32 L9 32 Z" fill="#9ccc65"/>${shine(30, 18, 3, 5, 0)}`,
     summon: `<circle cx="32" cy="32" r="25" fill="#7e57c2"/><circle cx="32" cy="32" r="17" stroke="#d1c4e9" stroke-width="2.5"/><path d="M32 20 L32 44 M20 32 L44 32" stroke-width="10"/><path d="M32 20 L32 44 M20 32 L44 32" stroke="#f3e5f5" stroke-width="5"/>`,
     home: `<path d="M8 32 L32 10 L56 32 L49 32 L49 55 L15 55 L15 32 Z" fill="#f1ead6"/><rect x="27" y="38" width="10" height="17" fill="#8d6e63"/>`,
+    // 怨氣沸騰（一波拖太久，game.js 的 OVERTIME_*）：深紅火焰裡的怒目骷髏
+    overtime: `<path d="M32 3 C36 11 41 11 43 5 C48 13 52 17 50 25 C55 23 59 29 57 36 L57 46 L7 46 L7 36 C5 29 9 23 14 25 C12 17 16 13 21 5 C23 11 28 11 32 3 Z" fill="#b71c1c"/>
+        <path d="M32 13 C35 19 39 19 41 15 C44 21 46 27 45 34 L19 34 C18 27 20 21 23 15 C25 19 29 19 32 13 Z" fill="#ff1744" stroke="none"/>
+        <path d="M32 24 C21 24 13 31 13 40 C13 46 16 50 21 52 L21 60 L43 60 L43 52 C48 50 51 46 51 40 C51 31 43 24 32 24 Z" fill="#ffcdd2"/>
+        <path d="M18 36 L29 41 L28 47 L19 45 Z" fill="#ffd54f" stroke-width="3"/><path d="M46 36 L35 41 L36 47 L45 45 Z" fill="#ffd54f" stroke-width="3"/>
+        <path d="M32 48 L29.5 53 L34.5 53 Z" fill="${ICON_OUTLINE}" stroke="none"/><path d="M27 60 L27 56 M32 60 L32 56 M37 60 L37 56" stroke-width="2.5"/>`,
     warning: `<path d="M32 7 L59 54 L5 54 Z" fill="#ff5252"/><path d="M32 22 L32 38" stroke="#fff" stroke-width="6"/><circle cx="32" cy="46" r="3.5" fill="#fff" stroke="none"/>`,
     close: duoStroke('M16 16 L48 48 M48 16 L16 48', '#f1ead6', 6),
     // ---- 祝福 ----

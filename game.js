@@ -2680,7 +2680,7 @@ function drawOvertimeOverlay() {
     if (left > 0) {
         const blink = left < OVERTIME_BLINK ? 0.55 + 0.45 * Math.cos(worldTime * Math.PI * 4) : 1;
         ctx.globalAlpha = blink;
-        drawIconLabel('warning', `${OVERTIME_NAME} ${Math.ceil(left)}`, W / 2, y, 18, OVERTIME_TEXT);
+        drawIconLabel('overtime', `${OVERTIME_NAME} ${Math.ceil(left)}`, W / 2, y, 18, OVERTIME_TEXT);
         ctx.restore();
         return;
     }
@@ -2698,7 +2698,7 @@ function drawOvertimeOverlay() {
     // 倍率跟著心跳微微放大：一直在漲，不是一次性的提示
     ctx.translate(W / 2, y);
     ctx.scale(1 + 0.08 * beat, 1 + 0.08 * beat);
-    drawIconLabel('flame', `怪物 ×${lv.toFixed(1)}`, 0, 0, 18, OVERTIME_TEXT);
+    drawIconLabel('overtime', `怪物 ×${lv.toFixed(1)}`, 0, 0, 18, OVERTIME_TEXT);
     ctx.restore();
 }
 // 沸騰中，畫面內的怪往上冒火星
@@ -7551,7 +7551,7 @@ function updateGame(deltaTime) {
     gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;
     if (overtimeMult() > 1 && !gameState.overtimeShown) {
         gameState.overtimeShown = true;
-        gameState.banner = { text: OVERTIME_NAME, sub: '拖太久了，怪會越來越快、越來越痛', color: OVERTIME_COLOR, life: CONFIG.wave.bannerDuration * 1.3, icon: 'flame' };
+        gameState.banner = { text: OVERTIME_NAME, sub: '拖太久了，怪會越來越快、越來越痛', color: OVERTIME_COLOR, life: CONFIG.wave.bannerDuration * 1.3, icon: 'overtime' };
         addShake(OVERTIME_SHAKE);
         Sfx.play('boss');
     }
