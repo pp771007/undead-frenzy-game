@@ -75,13 +75,14 @@ CONFIG.crossbowman = {
     projectileColor: '#D7CCC8', boltStyle: 'crossbowBolt', projectileSpeed: 420, projectileRadius: 3,
     summonCost: 16, upgradeCostBase: 35, upgradeCostInc: 14,
 };
-// 弩箭：短而粗的木桿、方錐鐵頭、紅色尾羽，永遠朝飛行方向
+// 弩箭：短而粗的木桿、方錐鐵頭、軍團藍尾羽，永遠朝飛行方向（我方飛彈不用紅，見專案 CLAUDE.md）
+const LEGION_BLUE = '#1E88E5', CHARGE_ORANGE = '#FFAB40';
 SHAPE_SPRITES.crossbowBolt = {
     len: 20, wid: 7, spin: 0, streak: 14,
     draw(g) {
         g.lineWidth = 1.5; g.strokeStyle = SHAPE_OUTLINE;
         // 尾羽（上下各一片）
-        g.fillStyle = '#C62828';
+        g.fillStyle = LEGION_BLUE;
         g.beginPath(); g.moveTo(-9.5, -0.8); g.lineTo(-6, -0.8); g.lineTo(-8.5, -3.2); g.lineTo(-10.5, -3.2); g.closePath(); g.fill(); g.stroke();
         g.beginPath(); g.moveTo(-9.5, 0.8); g.lineTo(-6, 0.8); g.lineTo(-8.5, 3.2); g.lineTo(-10.5, 3.2); g.closePath(); g.fill(); g.stroke();
         // 木桿
@@ -467,8 +468,8 @@ function useJavelin() {
     gameState.frenzyTimer = Math.max(gameState.frenzyTimer, J.chargeTime);
     gameState.ultCooldown = J.cooldown;
     spawnFloatText(p.pos.x, p.pos.y - 34, '衝鋒！', '#FFCC80', 18, 1.1, 'javelin');
-    // 戰吼：從戰士身上衝出兩圈橘紅衝擊波
-    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 20, r1: 160, life: 0.55, color: '#FF7043', width: 9 });
+    // 戰吼：從戰士身上衝出兩圈橘金衝擊波
+    addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 20, r1: 160, life: 0.55, color: CHARGE_ORANGE, width: 9 });
     addWorldFx({ kind: 'ring', x: p.pos.x, y: p.pos.y, r0: 10, r1: 100, life: 0.4, color: '#FFCC80', width: 5, delay: 0.1 });
     addShake(6);
     Sfx.play('nova');
@@ -510,14 +511,14 @@ class JavelinEffect extends TimedEffect {
         ctx.globalAlpha = 1;
     }
 }
-// 標槍：細長木桿、葉形鐵槍頭、槍頭下綁一截紅布
+// 標槍：細長木桿、葉形鐵槍頭、槍頭下綁一截軍團藍布
 SHAPE_SPRITES.javelin = {
     len: 36, wid: 7, spin: 0, streak: 0,
     draw(g) {
         g.lineWidth = 1.5; g.strokeStyle = SHAPE_OUTLINE;
         g.fillStyle = '#6D4C41';
         g.beginPath(); g.rect(-17, -1, 26, 2); g.fill(); g.stroke();
-        g.fillStyle = '#C62828';
+        g.fillStyle = LEGION_BLUE;
         g.beginPath(); g.moveTo(7, -1); g.lineTo(3, -3.2); g.lineTo(4, 0); g.lineTo(3, 3.2); g.lineTo(7, 1); g.closePath(); g.fill(); g.stroke();
         g.fillStyle = '#CFD8DC';
         g.beginPath(); g.moveTo(8.5, 0); g.quadraticCurveTo(12, -3, 17.5, 0); g.quadraticCurveTo(12, 3, 8.5, 0); g.closePath(); g.fill(); g.stroke();
