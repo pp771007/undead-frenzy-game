@@ -30,14 +30,22 @@ FIX=0 node tools/ui-check.mjs http://localhost:8765/ logs/ui-raw # 看不補償�
 
 那個瀏覽器會把字放大、框不變，而且不理會 `text-size-adjust`；遊戲啟動時用 `cancelTextZoom()`（`game.js`）量出倍率、把字級除回去。所以介面裡的字級請一律寫在 CSS 樣式表、用 px —— 寫在 JS 的行內樣式裡就不會被補償到。
 
-## 洋紅去背（加新圖用）
+## 純色去背（加新圖用）
 
-Gemini 生圖不支援透明背景，請它畫在純洋紅（#FF00FF）背景上，再用這支去背：
+Gemini 生圖不支援透明背景，請它畫在一種純色背景上，再用這支去背（背景色自動從四個角判斷）：
 
 ```sh
 pip install pillow               # 第一次用才需要
-python tools/key-magenta.py 生好的圖.jpg 新怪.png        # 角色朝右
-python tools/key-magenta.py 生好的圖.jpg 新怪.png flip   # 角色朝左時翻成朝右
+python tools/key-chroma.py 生好的圖.jpg 新怪.png        # 角色朝右
+python tools/key-chroma.py 生好的圖.jpg 新怪.png flip   # 角色朝左時翻成朝右
 ```
 
-角色身上不能有洋紅、粉紅、紫色，不然會被一起去掉。輸出後加進 `game.js` 的 `OPTIONAL_ART`，並在怪物設定寫 `art` 與 `artScale`。
+**背景挑跟角色顏色差最遠的那一種**，撞色的部分會被一起扣掉：
+
+| 角色主色 | 背景 |
+|---|---|
+| 紫、紅、粉、黑紅 | 綠 `#00FF00` |
+| 綠、黃、褐 | 洋紅 `#FF00FF` |
+| 藍、青、白光 | 黃 `#FFFF00` 或洋紅 |
+
+輸出後加進 `game.js` 的 `OPTIONAL_ART`，並在怪物設定寫 `art` 與 `artScale`。
