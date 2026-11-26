@@ -500,6 +500,18 @@ const ICON_BODIES = {
         <path d="M32 18 C25 14 24 8 28 2 C29 7 33 8 34 4 C39 9 39 15 32 18 Z" fill="#4fc3f7" stroke-width="2.5"/>
         <path d="M10 40 C4 30 6 20 12 15" stroke-width="7"/><path d="M10 40 C4 30 6 20 12 15" stroke="#e1f5fe" stroke-width="3"/><path d="M12 15 L4 16 L10 22 Z" fill="#e1f5fe" stroke-width="2"/>
         <path d="M54 24 C60 34 58 44 52 49" stroke-width="7"/><path d="M54 24 C60 34 58 44 52 49" stroke="#e1f5fe" stroke-width="3"/><path d="M52 49 L60 48 L54 42 Z" fill="#e1f5fe" stroke-width="2"/>${shine(25, 26, 3, 5, 20)}`,
+    // 首領的護甲（打破才傷得到）：金色的圓盾，盾面一圈鉚釘
+    bossArmor: `<circle cx="32" cy="32" r="26" fill="#ffd54f"/><circle cx="32" cy="32" r="17" fill="#ffb300" stroke-width="3"/>
+        ${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<circle cx="${(32 + Math.cos(a) * 21.5).toFixed(1)}" cy="${(32 + Math.sin(a) * 21.5).toFixed(1)}" r="1.8" fill="${ICON_OUTLINE}" stroke="none"/>`; }).join('')}
+        <path d="M32 21 L35 29 L43 32 L35 35 L32 43 L29 35 L21 32 L29 29 Z" fill="#fff8e1" stroke-width="2.5"/>${shine(22, 20, 4, 2.5)}`,
+    // 首領破防（護甲打光、暈眩、受傷加重）：裂成兩半的金盾，中間一道天藍裂光
+    bossBreak: `<path d="M29 6 C16 8 7 19 7 32 C7 45 16 56 29 58 L25 44 L31 34 L24 24 Z" fill="#ffd54f"/>
+        <path d="M35 6 C48 8 57 19 57 32 C57 45 48 56 35 58 L39 46 L33 36 L40 24 Z" fill="#ffd54f"/>
+        <path d="M32 4 L27 22 L35 33 L28 46 L32 60" stroke="#80deea" stroke-width="4"/>
+        ${[[12, 12], [54, 14], [50, 54]].map(([x, y]) => `<path d="${starPath(x, y, 6, 2.5, 4)}" fill="#e0f7fa" stroke-width="2"/>`).join('')}`,
+    // 首領換階段（怒吼、變強、叫小怪）：紫色的三道爪痕上一個往上的箭頭
+    bossPhase: duoStroke('M12 52 L26 14', '#ce93d8', 6) + duoStroke('M26 56 L40 18', '#ce93d8', 6) + duoStroke('M40 58 L52 26', '#ce93d8', 6)
+        + `<path d="M48 4 L60 18 L53 18 L53 28 L43 28 L43 18 L36 18 Z" fill="#f3e5f5" stroke-width="2.5"/>`,
     // 職業玩法介紹（標題畫面、暫停選單打開職業介紹）：藍色圓牌上一個問號
     classGuide: `<circle cx="32" cy="32" r="26" fill="#42a5f5"/><circle cx="32" cy="32" r="19" fill="#90caf9" stroke="none"/>
         <path d="M24 25 C24 17 40 16 40 25 C40 31 32 31 32 38" stroke-width="10"/><path d="M24 25 C24 17 40 16 40 25 C40 31 32 31 32 38" stroke="#ffffff" stroke-width="5"/>
