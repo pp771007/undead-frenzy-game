@@ -3,8 +3,8 @@
 //   human：像真人 —— 地上的預警圈、首領蓄力、血彈要 REACT 秒後才反應，每 DECIDE 秒重新決定往哪走，打得正熱就放新星；
 //          沒有要閃的東西時走去拿戰場遺跡（祭壇／靈泉／寶棺），再來才是撿靈魂
 //   still：站著不動，只有被包圍才放新星（量「不會走位的玩家」撐到哪）
-// 兩種都每 0.5 秒把錢花光（升級鈕發光就升級，否則隨機召喚），祝福隨機挑、有傳說先拿傳說、血量低於 BOT_HEAL_BELOW 就選「補滿血」
-// —— 花錢和選卡比真人有效率，勝率會偏高。
+// 兩種都每 0.5 秒把錢花光（升級鈕發光就升級，否則隨機召喚），祝福挑自己在疊的流派、有傳說先拿傳說、血量低於 BOT_HEAL_BELOW 就選「補滿血」
+// —— 花錢比真人快，但選卡、走位、召喚搭配都比真人粗糙得多：機器人打得到的地方，會玩的人只會更遠。
 // 需要 playwright（npm i playwright）；遊戲要先用任何靜態伺服器跑起來，例如 python -m http.server 8765。
 // 直接讀寫遊戲的全域變數與函式（gameState、updateGame、trySummon…），遊戲裡改名的話這裡要跟著改。
 import { chromium } from 'playwright';
@@ -70,12 +70,24 @@ for (;;) {
             if (gameState.draftOpen && gameState.pendingDraft) {
                 const BOT_HEAL_BELOW = 0.5;
                 if (gameState.player.currentHealth < gameState.player.maxHealth * BOT_HEAL_BELOW) { healDraft(); continue; }
+                // 像真人一樣挑：傳說先拿；否則挑自己已經在疊的流派（衝共鳴），全軍通用的算中等，契約最後才拿。
+                // 完全亂挑的話同一個設定兩局可以差三十波（有一局剛好疊成、有一局全是雜牌），拿來比較職業強弱全是雜訊
                 const opts = gameState.pendingDraft.options; const leg = opts.find(id => BLESSINGS[id].legendary);
-                pickBlessing(leg || opts[Math.floor(Math.random() * opts.length)]); continue;
+                const BOT_ARMY_SCORE = 1.5, BOT_PACT_SCORE = -1, BOT_JITTER = 0.5;
+                const score = (id) => { const B = BLESSINGS[id]; return (B.pact ? BOT_PACT_SCORE : B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + Math.random() * BOT_JITTER; };
+                pickBlessing(leg || opts.reduce((a, b) => score(b) > score(a) ? b : a)); continue;
             }
             const p = gameState.player;
-            if (!gameState.betweenWaves && (!B.cur || B.cur.wave !== gameState.currentWave)) B.cur = { wave: gameState.currentWave, start: B.t, minHp: 1, dmg: 0, peak: 0, ev: gameState.waveEvent };
-            if (gameState.betweenWaves && B.cur && !B.cur.end) { B.cur.end = B.t; B.cur.dur = +(B.cur.end - B.cur.start).toFixed(1); B.cur.summons = gameState.summons.length; B.waves.push(B.cur); }
+            // lost：這一波陣亡的召喚物佔開戰時大軍的比例（開戰時的數量＋這一波召的－結束時還在的）。
+            // 法師躲在大軍後面時主角幾乎不掉血，壓力全落在大軍身上，只看主角掉血會以為很輕鬆
+            const summonedTotal = () => Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
+            if (!gameState.betweenWaves && (!B.cur || B.cur.wave !== gameState.currentWave)) B.cur = { wave: gameState.currentWave, start: B.t, minHp: 1, dmg: 0, peak: 0, ev: gameState.waveEvent, army0: gameState.summons.length, summoned0: summonedTotal() };
+            if (gameState.betweenWaves && B.cur && !B.cur.end) {
+                B.cur.end = B.t; B.cur.dur = +(B.cur.end - B.cur.start).toFixed(1); B.cur.summons = gameState.summons.length;
+                const lost = B.cur.army0 + (summonedTotal() - B.cur.summoned0) - gameState.summons.length;
+                B.cur.lost = Math.max(0, lost) / Math.max(1, B.cur.army0);
+                B.waves.push(B.cur);
+            }
             let near = 0, fight = 0;
             for (const m of gameState.monsters) { if (!m.isAlive) continue; const d = Math.hypot(p.pos.x - m.pos.x, p.pos.y - m.pos.y); if (d < 90) near++; if (d < 300) fight++; }
             if (B.policy === 'human') {
@@ -221,6 +233,6 @@ console.log('ACHV', out.achv.length, out.achv.join(' '), 'maxArmy', out.maxArmy)
 // 每種怪一局打倒幾隻：圖鑑成就的門檻照這個定
 console.log('KILLS', JSON.stringify(out.kills));
 console.log('RESONANCE', JSON.stringify(out.resonance), JSON.stringify(out.blessings));
-console.log('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tevent');
-for (const w of out.waves) console.log([w.wave, w.dur, w.minHp.toFixed(2), w.dmg.toFixed(2), w.peak, w.summons, w.ev || ''].join('\t'));
+console.log('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tlost\tevent');
+for (const w of out.waves) console.log([w.wave, w.dur, w.minHp.toFixed(2), w.dmg.toFixed(2), w.peak, w.summons, w.lost.toFixed(2), w.ev || ''].join('\t'));
 await browser.close();
