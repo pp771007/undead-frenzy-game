@@ -221,11 +221,11 @@ for (;;) {
             if (B.cur && !gameState.betweenWaves && B.t - B.cur.start > STUCK_SECONDS) {
                 // queue：還沒出場的怪（countRemainingMonsters 也算它們）；tgtD：牠跟牠的目標隔多遠；near：離牠最近的召喚物多遠、那隻在幹嘛
                 B.stuck = {
-                    wave: gameState.currentWave, summons: gameState.summons.length, queue: gameState.spawnQueue.length, straggling: gameState.straggling,
+                    wave: gameState.currentWave, summons: gameState.summons.length, souls: Math.round(gameState.souls), heroHp: Math.round(p.currentHealth / p.maxHealth * 100), queue: gameState.spawnQueue.length, straggling: gameState.straggling,
                     mons: gameState.monsters.filter(m => m.isAlive).slice(0, 10).map(m => {
                         const s = summonGrid.nearest(m.pos, 2000);
                         return {
-                            type: m.config.type, d: Math.round(Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y)), stealthed: !!m.stealthed, flying: !!m.flying,
+                            type: m.config.type, hp: Math.round(m.currentHealth), maxHp: Math.round(m.maxHealth), d: Math.round(Math.hypot(m.pos.x - p.pos.x, m.pos.y - p.pos.y)), stealthed: !!m.stealthed, flying: !!m.flying,
                             tgt: m.target ? (m.target === p ? 'player' : (m.target.config?.type || 'orb')) : null, tgtD: m.target ? Math.round(Math.hypot(m.pos.x - m.target.pos.x, m.pos.y - m.target.pos.y)) : null,
                             near: s ? { type: s.config.type, d: Math.round(Math.hypot(m.pos.x - s.pos.x, m.pos.y - s.pos.y)), hasTarget: !!s.target, returning: !!s.isReturning, retreat: !!(s.isRetreatingFromMonster || s.isRetreatingToPlayer) } : null,
                         };
