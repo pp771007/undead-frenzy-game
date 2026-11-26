@@ -411,7 +411,9 @@ const CONFIG = {
         // 去吃地上還沒被吸走的靈魂：每吃 1 靈魂，血量 +出生血量的 hpPerSoul、體型 +growPerSoul（封頂 +maxGrow）；
         // 打死原數吐回吃掉的。跟玩家搶錢：牠吃得越多越硬、越難打回來，要嘛走過去撿、要嘛放新星一口氣吸走。
         // 不多吐：吐 1.5 倍時牠變成收入放大器（大軍腳下滿地靈魂都被牠吃、殺掉多拿五成），一局多出上萬靈魂
-        orbSearchRadius: 260, hpPerSoul: 0.12, growPerSoul: 0.03, maxGrow: 1.0, refundMult: 1,
+        // 血量最多長到出生的 maxHpMult 倍（跟體型同時到頂：0.12 × 33 顆 ≈ +400%）：不封頂的話後期大軍腳下滿地靈魂，
+        // 一隻吃到一百多萬血、大軍打不死，波次永遠結束不了（自動遊玩死靈法師、精靈各卡過一次）。到頂之後照樣吃、照樣吐回來
+        orbSearchRadius: 260, hpPerSoul: 0.12, growPerSoul: 0.03, maxGrow: 1.0, maxHpMult: 5, refundMult: 1,
     },
     tombstone: {
         type: 'Tombstone', name: '招魂墓碑', baseHealth: 260, baseAttack: 0, radius: 18,
@@ -5481,7 +5483,7 @@ class SoulDevourerMonster extends Monster {
         const c = this.config;
         o.isAlive = false;
         this.eaten += o.value;
-        const gain = Math.round(this.birthHealth * c.hpPerSoul * o.value);
+        const gain = Math.max(0, Math.min(Math.round(this.birthHealth * c.hpPerSoul * o.value), Math.round(this.birthHealth * c.maxHpMult) - this.maxHealth));
         this.maxHealth += gain;
         this.currentHealth += gain;
         this.drawScale = 1 + Math.min(c.maxGrow, this.eaten * c.growPerSoul);
