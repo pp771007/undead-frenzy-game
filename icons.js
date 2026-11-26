@@ -494,6 +494,12 @@ const ICON_BODIES = {
     tombstone: `<path d="M14 58 L14 24 C14 12 22 6 32 6 C42 6 50 12 50 24 L50 58 Z" fill="#90a4ae"/><path d="M8 58 L56 58" stroke-width="5"/>
         <path d="M32 18 L32 42 M24 26 L40 26" stroke="#607d8b" stroke-width="4"/>
         <path d="M52 30 C46 26 46 20 50 14 C50 20 56 22 56 28 C56 32 54 34 52 34 Z" fill="#69f0ae" stroke-width="2.5"/>${shine(22, 16, 3, 5, 20)}`,
+    // 招魂反轉（打倒招魂墓碑、墓碑換邊替你招狼）：天藍的墓碑頂著一團天藍魂火，兩側一對翻轉箭頭
+    tombClaim: `<path d="M18 60 L18 30 C18 20 24 15 32 15 C40 15 46 20 46 30 L46 60 Z" fill="#81d4fa"/><path d="M12 60 L52 60" stroke-width="5"/>
+        <path d="M32 30 L32 50 M25 37 L39 37" stroke="#e1f5fe" stroke-width="4"/>
+        <path d="M32 18 C25 14 24 8 28 2 C29 7 33 8 34 4 C39 9 39 15 32 18 Z" fill="#4fc3f7" stroke-width="2.5"/>
+        <path d="M10 40 C4 30 6 20 12 15" stroke-width="7"/><path d="M10 40 C4 30 6 20 12 15" stroke="#e1f5fe" stroke-width="3"/><path d="M12 15 L4 16 L10 22 Z" fill="#e1f5fe" stroke-width="2"/>
+        <path d="M54 24 C60 34 58 44 52 49" stroke-width="7"/><path d="M54 24 C60 34 58 44 52 49" stroke="#e1f5fe" stroke-width="3"/><path d="M52 49 L60 48 L54 42 Z" fill="#e1f5fe" stroke-width="2"/>${shine(25, 26, 3, 5, 20)}`,
     // 地上的毒池：綠骷髏加交叉骨
     poisonPool: duoStroke('M12 48 L52 60 M52 48 L12 60', '#c5e1a5', 4) + `<path d="M32 6 C20 6 13 14 13 25 C13 32 16 36 21 39 L21 47 L43 47 L43 39 C48 36 51 32 51 25 C51 14 44 6 32 6 Z" fill="#9ccc65"/>
         <ellipse cx="25" cy="26" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="39" cy="26" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><path d="M32 32 L29 38 L35 38 Z" fill="${ICON_OUTLINE}" stroke="none"/>`,

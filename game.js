@@ -1216,7 +1216,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
     hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -1771,6 +1771,8 @@ const SFX_DEFS = {
     streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
     splat: { gap: 0.15, fn: s => { s.noise(0.2, { vol: 0.15, filterFreq: 700 }); s.tone(140, 0.18, { vol: 0.08, slideTo: 70 }); } },
+    // 招魂反轉：一聲低沉的碎裂，接一串往上翻的亮音
+    tombClaim: { gap: 0.5, fn: s => { s.noise(0.4, { vol: 0.18, filterFreq: 700 }); [330, 494, 659, 988].forEach((f, i) => s.tone(f, 0.28, { type: 'triangle', vol: 0.12, delay: 0.08 + i * 0.07 })); } },
     // 上榜：一串往上爬的和弦；煙火每炸一顆一聲悶響
     lbCheer: { gap: 1, fn: s => { [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.3, { type: 'triangle', vol: 0.14, delay: i * 0.09 })); s.tone(1568, 0.6, { type: 'sine', vol: 0.08, delay: 0.5 }); } },
     firework: { gap: 0.08, fn: s => { s.noise(0.35, { vol: 0.12, filterFreq: 900 }); s.tone(1800 + Math.random() * 900, 0.25, { type: 'sine', vol: 0.03, slideTo: 900, delay: 0.05 }); } },
@@ -3485,6 +3487,7 @@ class Monster extends GameObject {
 
     soulValue() {
         if (this.noSouls) return 0;
+        if (this.bounty) return this.bounty;
         return this.config.soulDrop * (this.isElite ? CONFIG.elite.soulMult : 1);
     }
 
@@ -4621,6 +4624,12 @@ class TombstoneMonster extends Monster {
         }
         if (n > 0 && inView(this.pos)) Sfx.play('spawn');
     }
+    // 被打倒：招魂反轉（牠招的狼全部被鎖鏈拖倒、化成靈魂，墓碑翻成你的、替你招狼）
+    die() {
+        const wolves = this.spawned.filter(m => m.isAlive);
+        super.die();
+        claimTomb(this, wolves);
+    }
     // 時間到自己垮掉：不算擊殺、不掉靈魂
     crumble() {
         this.isAlive = false;
@@ -4657,6 +4666,199 @@ class TombstoneMonster extends Monster {
         ctx.fillRect(this.pos.x - 2, y + h * 0.25, 4, h * 0.45);
         ctx.fillRect(this.pos.x - w * 0.25, y + h * 0.38, w * 0.5, 4);
         ctx.globalAlpha = 1;
+    }
+}
+
+// ---------- 招魂反轉：打倒招魂墓碑 → 牠招的狼全倒下噴靈魂，墓碑翻成你的、替你招狼 ----------
+// 拆墓碑原本只拿一點靈魂、不拆 30 秒後也會自己垮，沒人想專程過去。現在：
+//   1. 拆的那一刻，牠招出來還活著的狼被靈魂鎖鏈一條條拖倒，每隻噴 bountyShare × 墓碑的靈魂（越拖越多狼、越危險，拆的時候噴得越多）
+//   2. 墓碑翻成你的顏色，接下來 life 秒每 spawnInterval 秒替你招 spawnCount 隻狼（同時最多 maxAlive 隻），每隻活 wolfLife 秒
+// 我方的顏色用天藍：敵方墓碑是灰石綠火、牠的狼是紅的；戰鬥畫面上紅色只留給敵人（見 CLAUDE.md）
+const TOMB_CLAIM = { life: 15, spawnInterval: 2.5, spawnCount: 2, maxAlive: 8, wolfLife: 20, wolfHpMult: 4, wolfAtkMult: 2, bountyShare: 0.3, novaRadius: 130 };
+const TOMB_ALLY = '#4FC3F7';
+const TOMB_ALLY_LIGHT = '#E1F5FE';
+const TOMB_ALLY_TINT = 0.6;           // 狼與墓碑染天藍的強度：原圖是紅狼、灰石，要一眼看得出換邊了
+const TOMB_CLAIM_COLORS = { fill: '79, 195, 247', stroke: '225, 245, 254' };
+const TOMB_CHAIN_TIME = 0.55;         // 鎖鏈從墓碑射到每隻狼、狼化成靈魂的這一段多長
+const TOMB_CHAIN_STAGGER = 0.05;      // 每條鎖鏈之間錯開一點，看得出是一條一條拖過去的
+CONFIG.tombWolf = {
+    type: 'TombWolf', name: '招魂狼', baseHealth: CONFIG.basicMeleeMonster.baseHealth, baseAttack: CONFIG.basicMeleeMonster.baseAttack, radius: 11,
+    imageName: 'basic_melee', imgScaleMultiplier: 4.6, attackRange: 22, attackSpeed: 1.1, moveSpeed: 95, color: TOMB_ALLY, upgradeBonus: 0,
+    targetSearchRadius: 200, returnDistance: 60, avoidanceRadius: 14, avoidanceForce: 100, playerAvoidanceForce: 40,
+    wanderRadius: 30, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
+};
+
+function claimTomb(t, wolves) {
+    const p = gameState.player;
+    const bounty = Math.max(1, Math.round(t.soulValue() * TOMB_CLAIM.bountyShare));
+    wolves.forEach((w, i) => {
+        gameState.visualEffects.push(new TombChainEffect(t.pos, w.pos, i * TOMB_CHAIN_STAGGER));
+        w.noSouls = false;
+        w.bounty = bounty;
+        w.die();
+        spawnParticles(w.pos.x, w.pos.y, TOMB_ALLY, 12, 90, 0.6, 3);
+    });
+    if (!gameState.ownedTombs) gameState.ownedTombs = [];
+    gameState.ownedTombs.push({
+        x: t.pos.x, y: t.pos.y, life: TOMB_CLAIM.life, spawnT: 0.6, wolves: [], phase: Math.random() * Math.PI * 2,
+        image: t.image, w: t.imageWidth * (t.drawScale || 1), h: t.imageHeight * (t.drawScale || 1),
+    });
+    gameState.visualEffects.push(new NovaEffect(t.pos, TOMB_CLAIM.novaRadius, TOMB_CLAIM_COLORS));
+    spawnParticles(t.pos.x, t.pos.y, TOMB_ALLY, 36, 160, 0.8, 3.5);
+    spawnParticles(t.pos.x, t.pos.y, TOMB_ALLY_LIGHT, 14, 80, 0.6, 2.5);
+    // 第一次用橫幅講清楚規則；之後只在墓碑上飄字（同時出現會重複兩次「招魂反轉」）
+    const first = !(meta.relicSeen && meta.relicSeen.tombClaim);
+    introduceRelic('tombClaim', '招魂反轉', `墓碑歸你了，接下來 ${TOMB_CLAIM.life} 秒替你招狼`, TOMB_ALLY, 'tombClaim');
+    if (!(first && gameState.banner && gameState.banner.icon === 'tombClaim')) spawnFloatText(t.pos.x, t.pos.y - 46, '招魂反轉！', TOMB_ALLY, 20, 1.5, 'tombClaim');
+    if (wolves.length) spawnFloatText(t.pos.x, t.pos.y - 22, `${wolves.length} 隻化為靈魂`, TOMB_ALLY_LIGHT, 13, 1.4);
+    addShake(6);
+    Sfx.play('tombClaim');
+}
+
+// 佔領的墓碑：只在打的時候倒數、招狼（波與波之間停住）
+function updateOwnedTombs(deltaTime) {
+    const list = gameState.ownedTombs;
+    if (!list || !list.length || !gameState.player) return;
+    const C = TOMB_CLAIM;
+    for (const o of list) {
+        if (gameState.betweenWaves) continue;
+        o.life -= deltaTime;
+        if (Math.random() < deltaTime * 6) spawnParticles(o.x + randomInRange(-10, 10), o.y - o.h * 0.35, TOMB_ALLY, 1, 25, 0.7, 2.5);
+        if (o.life <= 0) {
+            spawnParticles(o.x, o.y, '#B0BEC5', 22, 90, 0.6, 3);
+            spawnParticles(o.x, o.y, TOMB_ALLY, 12, 70, 0.5, 2.5);
+            continue;
+        }
+        o.spawnT -= deltaTime;
+        if (o.spawnT > 0) continue;
+        o.spawnT = C.spawnInterval;
+        o.wolves = o.wolves.filter(w => w.isAlive);
+        const n = Math.min(C.spawnCount, C.maxAlive - o.wolves.length);
+        for (let i = 0; i < n; i++) {
+            const a = Math.random() * Math.PI * 2;
+            const w = new TombWolf(o.x + Math.cos(a) * 26, o.y + Math.sin(a) * 26, gameState.currentWave, gameState.player);
+            gameState.summons.push(w);
+            o.wolves.push(w);
+            spawnParticles(w.pos.x, w.pos.y, TOMB_ALLY, 10, 70, 0.45, 2.5);
+        }
+        if (n > 0 && inView(o)) Sfx.play('raise');
+    }
+    gameState.ownedTombs = list.filter(o => o.life > 0);
+}
+
+// 地上：天藍光暈、倒數圈、染成天藍的墓碑（畫在召喚物底下，狼從牠身邊跑出來）
+function drawOwnedTombs() {
+    const list = gameState.ownedTombs;
+    if (!list || !list.length) return;
+    const t = worldTime;
+    for (const o of list) {
+        if (!inView(o)) continue;
+        const pulse = 0.75 + 0.25 * Math.sin(t * 4 + o.phase);
+        const g = o.w * 2.6 * pulse;
+        ctx.globalAlpha = 0.55;
+        ctx.drawImage(getGlowSprite(TOMB_ALLY), o.x - g / 2, o.y - g / 2, g, g);
+        ctx.globalAlpha = 1;
+        const rx = Math.max(26, o.w * 0.55), ry = rx * 0.38, gy = o.y + o.h * 0.4;
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = 'rgba(14, 10, 20, 0.7)';
+        ctx.beginPath(); ctx.ellipse(o.x, gy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = TOMB_ALLY;
+        const k = Math.max(0, o.life / TOMB_CLAIM.life);
+        ctx.globalAlpha = o.life < 3 ? 0.45 + 0.55 * Math.abs(Math.sin(t * 6)) : 1;
+        ctx.beginPath(); ctx.ellipse(o.x, gy, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
+        ctx.globalAlpha = 1;
+        if (o.image) ctx.drawImage(getSprite(o.image, o.w, o.h, TOMB_ALLY, 0.35), o.x - o.w / 2, o.y - o.h / 2, o.w, o.h);
+    }
+}
+
+// 我方的招魂狼：跟敵方的血狼同一張圖、染成天藍，腳下一圈天藍；不算進任何兵種、時間到自己散掉
+class TombWolf extends SummonUnit {
+    constructor(x, y, wave, p) {
+        super(x, y, CONFIG.tombWolf, 0, p);
+        this.wave = wave;
+        this.life = TOMB_CLAIM.wolfLife;
+        this.refreshStats();
+        this.currentHealth = this.maxHealth;
+    }
+    computeStats() {
+        super.computeStats();
+        const k = getWaveStatMultiplier(Math.max(1, this.wave || gameState.currentWave));
+        this.maxHealth = Math.round(CONFIG.tombWolf.baseHealth * TOMB_CLAIM.wolfHpMult * k * (1 + blessVal('boneArmor')) * (1 + metaVal('boneMarrow')));
+        this.attack = CONFIG.tombWolf.baseAttack * TOMB_CLAIM.wolfAtkMult * k * runMods().summonDmgMult;
+        this.tint = TOMB_ALLY; this.tintStrength = TOMB_ALLY_TINT; this.drawScale = 1;
+    }
+    update(deltaTime, ...rest) {
+        if (!this.isAlive) return;
+        if (!gameState.betweenWaves) {
+            this.life -= deltaTime;
+            if (this.life <= 0) { this.fade(); return; }
+        }
+        super.update(deltaTime, ...rest);
+    }
+    attackTarget() {
+        const t = this.target;
+        if (!t || !t.isAlive) return;
+        const dmg = Math.round(this.attack * (this.auraDamageMult || 1));
+        t.takeDamage(dmg);
+        this.healFromDamage(dmg);
+        const fx = getVisualEffectFromPool(SlashEffect);
+        if (fx) { fx.init(this.pos, t.pos); gameState.visualEffects.push(fx); }
+        this.attackCooldown = 1 / this.attackSpeed;
+    }
+    // 時間到：化成一縷天藍散掉（不算陣亡、祭司也拉不起來）
+    fade() {
+        this.isAlive = false;
+        spawnParticles(this.pos.x, this.pos.y, TOMB_ALLY, 8, 50, 0.5, 2.5);
+    }
+    die() {
+        this.isAlive = false;
+        onSummonDeath(this);
+        spawnParticles(this.pos.x, this.pos.y, TOMB_ALLY, 10, 70, 0.45);
+    }
+    drawHealthBar(ctx) {
+        ctx.strokeStyle = 'rgba(79, 195, 247, 0.8)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.38, this.radius * 1.1, this.radius * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+        super.drawHealthBar(ctx);
+    }
+}
+
+// 鎖鏈：從墓碑射向牠招的每一隻狼，一節一節的天藍光，打到的那一刻狼那邊炸一圈
+class TombChainEffect extends TimedEffect {
+    constructor(from, to, delay) {
+        super(from, TOMB_CHAIN_TIME + delay);
+        this.to = { ...to };
+        this.delay = delay;
+        this.seed = Math.random() * 10;
+    }
+    draw(ctx) {
+        const age = this.duration - this.life - this.delay;
+        if (age < 0) return;
+        const k = Math.min(1, age / (TOMB_CHAIN_TIME * 0.35));          // 射出去的進度
+        const fade = 1 - Math.max(0, (age - TOMB_CHAIN_TIME * 0.35) / (TOMB_CHAIN_TIME * 0.65));
+        const x0 = this.pos.x, y0 = this.pos.y - 10, x1 = x0 + (this.to.x - x0) * k, y1 = y0 + (this.to.y - y0) * k;
+        const nx = -(y1 - y0), ny = x1 - x0, len = Math.hypot(nx, ny) || 1;
+        const SEG = 7;
+        ctx.save();
+        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        for (const [w, col, a] of [[9, TOMB_ALLY, 0.35], [3.5, TOMB_ALLY, 0.9], [1.5, TOMB_ALLY_LIGHT, 1]]) {
+            ctx.globalAlpha = a * fade;
+            ctx.strokeStyle = col; ctx.lineWidth = w;
+            ctx.beginPath();
+            for (let i = 0; i <= SEG; i++) {
+                const f = i / SEG, wob = (i === 0 || i === SEG) ? 0 : Math.sin(f * 9 + this.seed + worldTime * 20) * 5;
+                const x = x0 + (x1 - x0) * f + nx / len * wob, y = y0 + (y1 - y0) * f + ny / len * wob;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        }
+        if (k >= 1) {
+            const r = 6 + 22 * (1 - fade);
+            ctx.globalAlpha = fade;
+            ctx.strokeStyle = TOMB_ALLY_LIGHT; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(this.to.x, this.to.y, r, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
     }
 }
 
@@ -5464,6 +5666,8 @@ function activeBuffs() {
     if (gameState.frenzyTimer > 0) list.push({ icon: 'armyFrenzy', t: gameState.frenzyTimer, color: FRENZY_CHIP_COLOR });
     if (gameState.wardTimer > 0) list.push({ icon: 'altarWard', t: gameState.wardTimer, color: ALTAR_EFFECTS.ward.color });
     if (gameState.altarSlowTimer > 0) list.push({ icon: 'altarSlow', t: gameState.altarSlowTimer, color: ALTAR_EFFECTS.slow.color });
+    const owned = gameState.ownedTombs;
+    if (owned && owned.length) list.push({ icon: 'tombClaim', t: Math.max(...owned.map(o => o.life)), color: TOMB_ALLY });
     const cls = classDef();
     if (cls.buffs) list.push(...cls.buffs());
     return list;
@@ -7631,7 +7835,7 @@ function resetGameInternalState() {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
         hazards: [], enemyBolts: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -7756,6 +7960,7 @@ function updateGame(deltaTime) {
     }
     updateHazards(deltaTime);
     updateRelics(deltaTime);
+    updateOwnedTombs(deltaTime);
     updateEnemyBolts(deltaTime);
     for (let i = 0; i < gameState.projectiles.length; i++) {
         if (gameState.projectiles[i].isAlive) gameState.projectiles[i].update(deltaTime);
@@ -8210,6 +8415,7 @@ function drawGame() {
     drawGround();
     drawHazards();
     drawRelicsGround();
+    drawOwnedTombs();
     for (let i = 0; i < gameState.orbs.length; i++) if (inView(gameState.orbs[i].pos)) gameState.orbs[i].draw(ctx);
 
     drawAuraLayer();

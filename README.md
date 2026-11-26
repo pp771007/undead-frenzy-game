@@ -89,7 +89,7 @@
     <td align="center"><img src="soul_devourer.png" width="72" alt="" /><br/><b>吞魂者</b><br/><sub>搶吃地上的靈魂，越吃越大</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="tombstone.png" width="72" alt="" /><br/><b>招魂墓碑</b><br/><sub>在遠處一直冒小怪，畫面邊緣標出方位，帶人去拆有大獎</sub></td>
+    <td align="center"><img src="tombstone.png" width="72" alt="" /><br/><b>招魂墓碑</b><br/><sub>在遠處一直冒血狼，畫面邊緣標出方位。拆掉的瞬間牠的狼全部倒下噴靈魂，墓碑翻成你的，替你招狼 15 秒</sub></td>
     <td></td>
     <td></td>
   </tr>
