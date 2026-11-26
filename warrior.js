@@ -149,9 +149,9 @@ Object.assign(UNIT_TYPES, {
 
 CLASSES.warrior = {
     name: '戰士', title: '鐵血軍團長', portrait: 'warrior.png', tagline: '少數精兵排成陣型，自己站最前線',
-    // 主角血量跟著操練長到兩千多，同一套怪物加強下沒強化常常通關（見 game.js 的 monsterRamp）。
-    // 1.5 倍時強化全滿也一樣在第 40 波前後倒給刺客，那是剋制關係、不是強度，所以只加一點
-    monsterPressure: 1.2,
+    // 主角站最前線，刺客的紅圈閃不開時最吃虧：同一套怪物加強下，各種強化等級都常在第 26～40 波倒給刺客、很少通關
+    // （見 game.js 的 monsterRamp），所以加強得比其他職業少
+    monsterPressure: 0.9,
     unlock: 'wave20',
     cards: ['Shieldman', 'Spearman', 'Crossbowman'], schools: ['shieldwall', 'phalanx', 'crossbow', 'berserk', 'legion', 'soul'],
     hero: { imageName: 'warrior', baseHealth: WARRIOR.baseHealth, moveSpeed: WARRIOR.moveSpeed },

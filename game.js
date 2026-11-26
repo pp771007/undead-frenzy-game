@@ -490,7 +490,7 @@ const CONFIG = {
         scalePerWave: 0.02, lateWave: 50, lateScalePerWave: 0.007,
         // 召喚物不設上限時，玩家收入隨怪物「數量」成長、戰力隨累積收入成長，線性變強的怪物永遠追不上
         // （舊版就是這樣撐到無限波）。從 expStartWave 起再乘上 expGrowth^(超過的波數)，保證終究會被淹沒
-        // 前中期的壓力改由 MONSTER_RAMP_* 補上，這裡比原本的 1.11 小：後期一樣難，但不會最後幾波一口氣斷崖
+        // 前中期的壓力改由 MONSTER_ATK_RAMP／MONSTER_HP_RAMP 補上，這裡比原本的 1.11 小：後期一樣難，但不會最後幾波一口氣斷崖
         expStartWave: 20, expGrowth: 1.09,
         // 一局的目標：第 finalWave 波最終首領墮落亡靈王出場，打贏算通關（約 25 分鐘）。
         // 之後可以選擇繼續無盡模式，每波再多乘 endlessGrowth，通常十幾波內結束，不會變成一小時的慢慢輸
@@ -498,7 +498,9 @@ const CONFIG = {
         // 狼群是「填充」用的；中後期的壓力主要交給各種新威脅，所以每波增加的數量不多。
         // 底數給高一點是為了開場：第 1 波只有 2～4 隻時，前幾波畫面上幾乎沒東西可打
         basicBase: 8, basicPerWave: 1.0,
-        bossEvery: 10, bossWaveCountFactor: 0.5,
+        // 首領的大招都有預警、閃得掉，首領波只靠首領本身沒有壓力（量過：首領波常常比旁邊的波輕鬆）；
+        // 帶多一點小怪，變成「一邊閃首領一邊頂住怪群」
+        bossEvery: 10, bossWaveCountFactor: 0.8,
         // 每 10 波一輪的怪物數量（索引 = 波數 % 10，0 是首領波另外算）：
         // 首領剛打完的兩波明顯變少，讓大軍爽割一輪，再一路加壓到下一隻首領（鋸齒形難度）
         cycleCountFactors: [1, 0.55, 0.75, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3],
@@ -764,24 +766,25 @@ function migrateMetaTable(m) {
 }
 // 怪物的基本強度（見 META_UPGRADES 的說明）。量過的曲線（機器人、沒強化）：前 30 波幾乎沒有壓力、首領波不比旁邊的波難，
 // 難度全擠在 35 波以後（波數成長 expGrowth 是指數），所以前半局很空、後面一口氣斷崖。
-// 改成從第 1 波就慢慢加、到 MONSTER_RAMP_FULL_WAVE 波加滿，同時把 expGrowth 調小：前中期有壓力、後期一樣難但不再斷崖。
+// 改成從前幾波就慢慢加（MONSTER_ATK_RAMP、MONSTER_HP_RAMP），同時把 expGrowth 調小：前中期有壓力、後期一樣難但不再斷崖。
 // 整局一律加的話前期就被壓垮（死靈法師第 9 波就倒），只加後期的話斷崖更陡，兩種都試過。
 // 詛咒、契約、每日變異的倍率另外疊在上面
-// 從第 1 波就加的話，沒有大軍的職業（武僧）傷害一路累積、第 10 波首領就倒，所以從第 5 波才開始加
-const MONSTER_RAMP_FROM_WAVE = 5;
-const MONSTER_RAMP_FULL_WAVE = 25;
-const MONSTER_LATE_HP_MULT = 2.6;
-const MONSTER_LATE_ATK_MULT = 1.8;
+// 攻擊與血量分開加：攻擊早點加（玩家第三到五分鐘就該第一次掉到半血，才有挑戰），血量晚點加、拉長
+// （血量一口氣加滿的話，加滿那幾波死亡率從 0 跳到四成，是斷崖；而且血量灌太多只會拖棚）。
+// 從第 1 波就加的話，沒有大軍的職業（武僧）傷害一路累積、第 10 波首領就倒
+// 血量 ×2.8 時後期常常卡住打不完（蝙蝠磨不死吞魂者、整支軍隊沒了打不動），所以血量少一點、攻擊多一點：危險但不拖棚
+const MONSTER_ATK_RAMP = { from: 3, full: 20, mult: 2.2 };
+const MONSTER_HP_RAMP = { from: 5, full: 30, mult: 2.4 };
 // 首領要是每 10 波那一輪的高峰：量過的首領波反而比旁邊的波輕鬆（大軍幾秒就把首領磨掉）。
-// 第一隻首領不加：第一局要打得過它（難度研究：第一局倒在第一隻首領之後），從第 BOSS_BOOST_FROM_WAVE 波的首領起才加
-const BOSS_HP_MULT = 1.6;
-const BOSS_ATK_MULT = 1.2;
-const BOSS_BOOST_FROM_WAVE = 20;
+// 照第幾隻首領加：第一隻只加一點（第一局要打得過它），越後面加越多
+const BOSS_HP_PER_TIER = 0.25;
+const BOSS_ATK_PER_TIER = 0.1;
 // 職業的 monsterPressure 乘在加成幅度上：同一套加成下，主角能長到兩千血的職業（武僧、戰士）沒強化照樣通關，
 // 靠大軍的死靈法師卻在中期整支軍隊被磨光，同一條曲線對不同職業差太多。用機器人（會挑同流派的祝福）一個職業一個職業量出來
-function monsterRamp(wave) {
-    const t = Math.min(1, Math.max(0, (wave - MONSTER_RAMP_FROM_WAVE) / (MONSTER_RAMP_FULL_WAVE - MONSTER_RAMP_FROM_WAVE)));
-    return t * (classDef().monsterPressure || 1);
+// 回傳這一波怪物的倍率（1 = 不加）
+function monsterRamp(wave, ramp) {
+    const t = Math.min(1, Math.max(0, (wave - ramp.from) / (ramp.full - ramp.from)));
+    return 1 + (ramp.mult - 1) * t * (classDef().monsterPressure || 1);
 }
 // 不死執念：復活時血量回幾成、身邊的怪推多遠、之後幾秒不會受傷
 const REVIVE_HP = 0.5;
@@ -3373,9 +3376,9 @@ class Monster extends GameObject {
                 this.fxSeed = Math.random() * 10;
             }
         }
-        const cm = runMods(), ramp = monsterRamp(waveNumber);
-        this.maxHealth = Math.round(this.maxHealth * cm.hpMult * (1 + (MONSTER_LATE_HP_MULT - 1) * ramp));
-        this.attack *= cm.atkMult * (1 + (MONSTER_LATE_ATK_MULT - 1) * ramp);
+        const cm = runMods();
+        this.maxHealth = Math.round(this.maxHealth * cm.hpMult * monsterRamp(waveNumber, MONSTER_HP_RAMP));
+        this.attack *= cm.atkMult * monsterRamp(waveNumber, MONSTER_ATK_RAMP);
         this.baseMoveSpeed *= cm.speedMult;
         this.moveSpeed = this.baseMoveSpeed;
         this.currentHealth = this.maxHealth;
@@ -3705,9 +3708,8 @@ class BossMonster extends Monster {
     constructor(x, y, waveNumber, config) {
         super(x, y, config, waveNumber, false);
         this.tier = Math.max(1, Math.floor(waveNumber / CONFIG.wave.bossEvery));
-        const boost = waveNumber >= BOSS_BOOST_FROM_WAVE;
-        this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult * (boost ? BOSS_HP_MULT : 1));
-        if (boost) this.attack *= BOSS_ATK_MULT;
+        this.maxHealth = this.currentHealth = Math.round(this.maxHealth * runMods().bossHpMult * (1 + BOSS_HP_PER_TIER * this.tier));
+        this.attack *= 1 + BOSS_ATK_PER_TIER * this.tier;
         this.spawnedAt = worldTime;
     }
     applySlow(amount, duration) {
