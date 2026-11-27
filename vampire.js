@@ -273,7 +273,7 @@ CLASSES.vampire = {
     },
     ultimate: {
         name: '血月', icon: 'bloodmoon', hint: '血月降臨：立刻入夜、全軍狂暴、吸血三倍',
-        hintRadius: () => VAMPIRE.blade.range, cooldown: () => VAMPIRE.bloodMoon.cooldown, use: () => useBloodMoon(),
+        reach: () => VAMPIRE.blade.range, use: () => useBloodMoon(),
     },
 };
 const HOLY_WATER_TICK = 0.5, HOLY_WATER_BURN = 0.06;

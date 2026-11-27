@@ -99,7 +99,7 @@ for (;;) {
                 if (B.pick === 'first') { pickBlessing(opts[0]); continue; }
                 // 召喚卡：越少張越想拿（兵是戰力的底）
                 const BOT_ARMY_SCORE = 1.5, BOT_RARE_SCORE = 3, BOT_JITTER = 0.5, BOT_UNIT_SCORE = 4, BOT_UNIT_DECAY = 0.4;
-                const score = (id) => { const B = BLESSINGS[id]; if (B.unitCard) return BOT_UNIT_SCORE - BOT_UNIT_DECAY * bl(id) + Math.random() * BOT_JITTER; return (B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + (B.rare ? BOT_RARE_SCORE : 0) + Math.random() * BOT_JITTER; };
+                const score = (id) => { const B = BLESSINGS[id]; if (B.unitCard) return BOT_UNIT_SCORE - BOT_UNIT_DECAY * bl(id) + Math.random() * BOT_JITTER; if (B.ultCard) return BOT_UNIT_SCORE + Math.random() * BOT_JITTER; return (B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + (B.rare ? BOT_RARE_SCORE : 0) + Math.random() * BOT_JITTER; };
                 pickBlessing(leg || opts.reduce((a, b) => score(b) > score(a) ? b : a)); continue;
             }
             const p = gameState.player;
@@ -195,13 +195,8 @@ for (;;) {
                     const mag = Math.hypot(hx, hy);
                     inputState.movementVector = mag > 0 ? { x: hx / mag * Math.min(1, mag), y: hy / mag * Math.min(1, mag) } : { x: 0, y: 0 };
                 }
-                // 屍爆：引爆範圍內骸骨夠多、旁邊又有怪就放新星（首領戰場上常只剩首領一隻，照「身邊很多怪」永遠不會放）
-                const BOT_BONE_PILES = 6;
-                const bones = runClass() === 'necro' ? gameState.bonePiles.filter(b => distanceSq(b, p.pos) <= boneReach() ** 2).length : 0;
-                if ((near >= 4 || fight >= 8 || (bones >= BOT_BONE_PILES && fight >= 1)) && gameState.ultCooldown <= 0) useUltimate();
             } else {
                 inputState.movementVector = { x: 0, y: 0 };
-                if (near >= 4 && gameState.ultCooldown <= 0) useUltimate();
             }
 
             const h0 = p.currentHealth;

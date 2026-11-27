@@ -36,7 +36,7 @@ const WARRIOR = {
     berserkTime: 8, exhaustTime: 4,
     berserkSwingRate: 1.7, berserkTaken: 0.5, berserkSpeed: 1.15, berserkRange: 1.25,
     exhaustSpeed: 0.5, exhaustSwingRate: 0.5,
-    // 大招「標槍齊射」：全軍朝面向擲出標槍（長條範圍），每個士兵讓傷害再多 perTroop；之後全軍衝鋒 chargeTime 秒
+    // 大招「標槍齊射」：全軍朝最近的怪擲出標槍（長條範圍），每個士兵讓傷害再多 perTroop；之後全軍衝鋒 chargeTime 秒
     javelin: { cooldown: 20, length: 290, width: 90, damage: 14, perTroop: 0.12, chargeTime: 3, chargeSpeed: 1.6, flight: 0.3 },
     // 盾牆：血彈離盾兵這麼近就被擋下，盾兵吃最大血量的 boltBlockCost
     boltBlockRadius: 16, boltBlockCost: 0.06,
@@ -319,8 +319,8 @@ CLASSES.warrior = {
         warState().fallen = data.fallen || [];
     },
     ultimate: {
-        name: '標槍', icon: 'javelin', hint: '標槍：全軍朝前方齊射，再衝鋒',
-        hintRadius: () => WARRIOR.javelin.length * 0.5, cooldown: () => WARRIOR.javelin.cooldown, use: () => useJavelin(),
+        name: '標槍', icon: 'javelin', hint: '標槍：全軍朝最近的怪齊射，再衝鋒',
+        reach: () => WARRIOR.javelin.length * 0.5, use: () => useJavelin(),
     },
 };
 
@@ -527,6 +527,9 @@ function warriorSwing(p, dt) {
 // ---------- 大招：標槍齊射，然後衝鋒 ----------
 function useJavelin() {
     const p = gameState.player, w = warState(), J = WARRIOR.javelin;
+    // 自動放：轉向最近的怪再擲（面向是走路的方向，邊退邊放的話會擲向空地）
+    const aim = monsterGrid.nearestShared(p.pos, J.length);
+    if (aim) { const ax = aim.pos.x - p.pos.x, ay = aim.pos.y - p.pos.y, ad = Math.hypot(ax, ay) || 1; w.fx = ax / ad; w.fy = ay / ad; }
     const troops = troopCount();
     const dmg = J.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + troops * J.perTroop);
     const halfW = J.width / 2;

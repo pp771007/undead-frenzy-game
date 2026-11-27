@@ -25,7 +25,7 @@ const ROGUE = {
     trashSouls: 0.8, bountyShare: 0.6, bountyMin: 15,
     // 目標死時，身邊 fearRadius 內的怪逃跑 fearTime 秒；下一個目標隔 markDelay 秒才標（隱身是獎勵不是常態：一輪大約十秒，隱身佔兩三成）
     fearRadius: 150, fearTime: 3, markDelay: 6,
-    // 大招「斬首」：瞬移到目標身邊連斬 hits 下；沒有目標就斬最近的幾隻。斬完隱身 hide 秒脫身
+    // 大招「斬首」：影子飛到目標身邊連斬 hits 下，主角留在原地（大招自動放，瞬移會把人丟進怪堆）；沒有目標就斬最近的幾隻。斬完隱身 hide 秒
     behead: { cooldown: 18, hits: 5, damage: 14, fallback: 8, hide: 1.5 },
 };
 
@@ -202,8 +202,10 @@ CLASSES.rogue = {
         ],
     },
     ultimate: {
-        name: '斬首', icon: 'behead', hint: '斬首：瞬移到目標身邊連斬',
-        hintRadius: () => ROGUE.knife.range, cooldown: () => ROGUE.behead.cooldown, use: () => useBehead(),
+        name: '斬首', icon: 'behead', hint: '斬首：影子飛到目標身邊連斬',
+        // 目標進了飛刀射程也放：斬首主要是拿來收目標的
+        reach: () => ROGUE.knife.range, wanted: () => ultCrowdNear(ROGUE.knife.range) || rogueState().targets.some(t => t.isAlive && distanceSq(t.pos, gameState.player.pos) <= ROGUE.knife.range ** 2),
+        use: () => useBehead(),
     },
 };
 const RELIC_STEALTH_CHANNEL = 3;
@@ -575,10 +577,9 @@ function useBehead() {
     }
     const main = victims[0];
     spawnParticles(p.pos.x, p.pos.y, '#4527A0', 16, 90, 0.4, 3);
-    // 瞬移：從原地到目標身邊留一道紫色殘影
+    // 影子：從主角到目標身邊一道紫色殘影
     const fromX = p.pos.x, fromY = p.pos.y, toX = main.pos.x - 14, toY = main.pos.y, dist = Math.hypot(toX - fromX, toY - fromY) || 1;
     addWorldFx({ kind: 'beam', x: fromX, y: fromY, dx: (toX - fromX) / dist, dy: (toY - fromY) / dist, len: dist, w: 7, life: 0.45, color: BEHEAD_SHADOW });
-    p.pos.x = toX; p.pos.y = toY;
     let kills = 0;
     victims.forEach((v, vi) => {
         const hits = v === main ? B.hits : 1;

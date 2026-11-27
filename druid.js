@@ -113,7 +113,7 @@ Object.assign(BLESSINGS, {
     wolfCrit: { school: 'pack', name: '咬喉', max: 3, per: 0.12, desc: b => `狼有 ${pct(b.per)} 機率咬出雙倍傷害` },
     bearHide: { school: 'bear', name: '厚皮', max: 5, per: 0.35, desc: b => `熊的血量 +${pct(b.per)}` },
     bearMaul: { school: 'bear', name: '熊掌', max: 5, per: 0.3, desc: b => `熊的傷害 +${pct(b.per)}` },
-    bearTime: { school: 'bear', name: '冬眠甦醒', max: 2, per: 3, desc: b => `巨熊化身多 ${b.per} 秒` },
+    bearTime: { school: 'bear', name: '冬眠甦醒', needsUlt: true, max: 2, per: 3, desc: b => `巨熊化身多 ${b.per} 秒` },
     bearStun: { school: 'bear', name: '震懾', max: 3, per: 0.2, desc: b => `被熊打中的怪緩速 ${pct(b.per)}` },
     seedPower: { school: 'wild', name: '毒棘', max: 5, per: 0.35, desc: b => `荊棘種子傷害 +${pct(b.per)}` },
     seedRoot: { school: 'wild', name: '纏根', max: 3, per: 0.4, desc: b => `種子纏住怪的時間 +${b.per} 秒` },
@@ -259,7 +259,7 @@ CLASSES.druid = {
     },
     ultimate: {
         name: '化身', icon: 'bearform', hint: '野性化身：變成巨熊橫掃身邊、野獸狂暴',
-        hintRadius: () => DRUID.bearForm.radius * 1.5, cooldown: () => DRUID.bearForm.cooldown, use: () => useBearForm(),
+        reach: () => DRUID.bearForm.radius * 1.5, use: () => useBearForm(),
     },
 };
 

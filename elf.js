@@ -173,7 +173,7 @@ CLASSES.elf = {
     },
     ultimate: {
         name: '箭雨', icon: 'arrowrain', hint: '箭雨：整個畫面降下箭雨',
-        hintRadius: () => ELF.bow.range, cooldown: () => ELF.rain.cooldown, use: () => useArrowRain(),
+        reach: () => ELF.bow.range, use: () => useArrowRain(),
     },
 };
 const GALE_TIME = 8, GALE_MULT = 1.5;

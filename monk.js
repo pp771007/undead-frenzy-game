@@ -222,7 +222,7 @@ CLASSES.monk = {
     },
     ultimate: {
         name: '羅漢陣', icon: 'arhats', hint: '十八羅漢陣：陣裡的怪挨打，你無敵',
-        hintRadius: () => MONK.arhats.radius, cooldown: () => MONK.arhats.cooldown, use: () => useArhats(),
+        reach: () => MONK.arhats.radius, use: () => useArhats(),
     },
 };
 const ALTAR_COMBO = 50;

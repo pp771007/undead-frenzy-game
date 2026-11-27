@@ -97,7 +97,6 @@ const uiElements = {
     pauseResumeBtn: $id('pause-resume-btn'),
     skipWaveBtn: $id('skip-wave-btn'),
     finalKiller: $id('final-killer'),
-    ultBtn: $id('nova-btn'),
     messageArea: $id('message-area'),
     titleScreen: $id('title-screen'),
     titleContinueBtn: $id('title-continue-btn'),
@@ -760,6 +759,21 @@ function summonCardDesc(type) {
     const n = bl(unitCardId(type)), next = Math.min(n + 1, SUMMON_CARD_MAX), every = oneDecimal(summonEvery(type, next));
     return n === 0 ? `每 ${every} 秒補 1 隻，最多 ${summonCap(type, 1)} 隻` : `最多 ${summonCap(type, n)} → ${summonCap(type, next)} 隻，每 ${every} 秒補 1 隻`;
 }
+// ---------- 大招卡：每個職業的大招是一張祝福卡，抽到之後冷卻好、身邊有怪就自己放（見 tryAutoUltimate） ----------
+// 沒有按鈕：玩家只專心走位與選卡
+const ULT_SCHOOL = 'ult';
+const ULT_CARD_WEIGHT = 2;
+function ultCardId(cls = runClass()) { return `ult_${cls}`; }
+function hasUlt() { return bl(ultCardId()) > 0; }
+// 大招的 hint 寫成「名字：效果」，卡片和職業介紹只要冒號後面那段
+function ultEffectText(U) { return U.hint.includes('：') ? U.hint.slice(U.hint.indexOf('：') + 1) : U.hint; }
+function buildUltBlessings() {
+    for (const [cid, c] of Object.entries(CLASSES)) {
+        const id = ultCardId(cid);
+        if (!c.ultimate || BLESSINGS[id]) continue;
+        BLESSINGS[id] = { school: ULT_SCHOOL, ultCard: cid, icon: c.ultimate.icon, name: c.ultimate.name, max: 1, desc: () => `自動施放：${ultEffectText(c.ultimate)}` };
+    }
+}
 // 各職業的兵種都登記完才建得出來（init 一開始呼叫）。修練類（武僧的拳、精靈的箭術…）沒有卡：等級跟著主角自己長
 function buildSummonBlessings() {
     for (const c of Object.values(CLASSES)) for (const type of c.cards) {
@@ -1169,8 +1183,9 @@ const UNIT_TYPES = {
 // 職業：這一局的底部三張卡是哪三種兵、有哪幾個流派（祝福池跟著流派走）、主角的立繪與基本數值、普攻、大招。規劃見 docs/characters.md
 //   hero：imageName（images 的鍵）、baseHealth、moveSpeed
 //   attack(player, dt)：主角每格的普攻
-//   ultimate：右下大招按鈕。use() 成功回傳 true；cooldown() 是滿的冷卻秒數；hint 是第一次教玩家時的那句話，
-//             hintRadius() 內有好幾隻怪時才教（這時候按下去最有感）
+//   ultimate：大招卡（抽到之後自動放，見 tryAutoUltimate）。use() 放出去回傳 true、自己設 gameState.ultCooldown；
+//             hint 是「名字：效果」，卡片與職業介紹用；reach() 內有好幾隻怪（或首領）時放，wanted() 選填、寫了就用它判斷要不要放
+//   ultSchool：選填，整個流派都繞著大招打轉（亡靈法師的新星），拿到大招卡之前這個流派的卡不會出現
 // 以下選填（其他職業在自己的檔案裡定義，例如 warrior.js）：
 //   name／title／portrait／tagline：標題畫面選職業時顯示；unlock：解鎖它的成就 id（沒有就是一開始就能玩）
 //   troopCap()：三種兵加起來的人數上限
@@ -1204,11 +1219,11 @@ const CLASSES = {
         monsterPressure: 0.7,
         // 開局不送召喚卡：開打前先跳一次三選一，三張都是兵，第一種兵自己挑（見 resetGame、rollDraftOptions）
         startCards: [],
-        cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'nova', 'soul'],
+        cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'nova', 'soul'], ultSchool: 'nova',
         hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
         attack: (p, dt) => p.shootBolt(dt),
         drawWorld: (ctx) => drawNecroWorld(ctx),
-        ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', hintRadius: () => CONFIG.nova.radius, cooldown: () => getNovaCooldown(), use: () => useNova() },
+        ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', reach: () => CONFIG.nova.radius, wanted: () => ultCrowdNear(CONFIG.nova.radius) || bonesReady(), use: () => useNova() },
         metaUpgrades: {
             summonHp: META_SUMMON_HP,
             vanguard: { icon: 'boneVanguard', name: '開局骷髏', max: 3, per: 2, costBase: 40, desc: m => `開局多帶 ${m.per} 隻骷髏`, total: (m, lv) => `${m.per * lv} 隻` },
@@ -5997,8 +6012,8 @@ function boneBurst(s) {
 function onSummonDeath(summon) {
     const ps = gameState.priests;
     if (ps) for (let i = 0; i < ps.length; i++) if (ps[i].isAlive && ps[i].tryRaise(summon)) return;
-    // 被墓地祭司拉起來變敵人的不留骸骨（屍體已經被拿走了）
-    if (runClass() === 'necro') leaveBonePile(summon.pos);
+    // 被墓地祭司拉起來變敵人的不留骸骨（屍體已經被拿走了）；還沒拿到新星卡的話骸骨引爆不了，不留
+    if (runClass() === 'necro' && hasUlt()) leaveBonePile(summon.pos);
 }
 
 // ---------- 屍爆（亡靈法師）：陣亡的召喚物留下一堆骸骨，新星把範圍內的骸骨全部引爆 ----------
@@ -6014,6 +6029,14 @@ const BONE_PILE = {
 };
 const BONE_PILE_GLOW = '#B39DDB', BONE_BLAST_LIGHT = '#EDE7F6', BONE_BLAST_SHARDS = 7;
 function boneReach() { return CONFIG.nova.radius * (bl('frostNova') > 0 ? FROST_NOVA_RADIUS_MULT : 1) * BONE_PILE.reachMult; }
+// 新星自動放的另一個時機：範圍裡的骸骨夠多、旁邊又有怪（首領戰場上常只剩首領一隻，照「身邊很多怪」永遠引爆不了屍爆）
+const NOVA_AUTO_BONES = 6;
+function bonesReady() {
+    const p = gameState.player.pos, R = boneReach(), rSq = R * R;
+    let n = 0;
+    for (const b of gameState.bonePiles) if (distanceSq(b, p) <= rSq) n++;
+    return n >= NOVA_AUTO_BONES && monsterGrid.anyWithin(p, R);
+}
 function leaveBonePile(pos) {
     const piles = gameState.bonePiles;
     if (piles.length >= BONE_PILE.max) piles.shift();
@@ -6096,7 +6119,7 @@ function drawBonePiles() {
 const BONE_MOTES = 3, BONE_MOTE_RISE = 26;
 function drawBonePileReady() {
     const piles = gameState.bonePiles, p = gameState.player;
-    if (!piles.length || !p || !p.isAlive || gameState.ultCooldown > 0 || runClass() !== 'necro') return;
+    if (!piles.length || !p || !p.isAlive || gameState.ultCooldown > 0 || runClass() !== 'necro' || !hasUlt()) return;
     const R = boneReach(), rSq = R * R, pulse = 0.5 + 0.5 * Math.sin(worldTime * 6);
     let anyInReach = false;
     ctx.fillStyle = BONE_BLAST_LIGHT;
@@ -7396,15 +7419,26 @@ class NovaEffect extends TimedEffect {
     }
 }
 
-// 右下的大招按鈕、空白鍵：交給這一局職業的大招
-function useUltimate() {
+// 大招卡：冷卻好、身邊夠多怪（或有首領）就自己放。波與波之間不放：沒有怪可打，白白耗掉冷卻
+const ULT_AUTO_NEAR = 4;
+function tryAutoUltimate() {
     const p = gameState.player;
-    if (!p || !p.isAlive || gameState.ultCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
-    if (!classDef().ultimate.use()) return false;
+    if (!hasUlt() || gameState.ultCooldown > 0 || gameState.betweenWaves || !p || !p.isAlive) return;
+    const U = classDef().ultimate;
+    if (!(U.wanted ? U.wanted() : ultCrowdNear(U.reach()))) return;
+    if (!U.use()) return;
     // 各職業的大招自己設冷卻；局外的「大招冷卻」在這裡統一打折，七個職業都吃得到
     gameState.ultCooldown *= ultCooldownMult();
-    markUltTaught();
-    return true;
+}
+function ultCrowdNear(R) {
+    const p = gameState.player.pos, rSq = R * R;
+    let near = 0, boss = false;
+    monsterGrid.forEachInRadius(p, R, m => {
+        if (!m.isAlive || m.stealthed || distanceSq(m.pos, p) > rSq) return;
+        near++;
+        if (m instanceof BossMonster) boss = true;
+    });
+    return boss || near >= ULT_AUTO_NEAR;
 }
 function ultCooldownMult() { return 1 - metaVal('ultMastery'); }
 
@@ -7468,6 +7502,7 @@ const DRAFT_WEIGHT_MAX = 3;
 function draftWeight(id) {
     if (BLESSINGS[id].school === DUO_SCHOOL) return DRAFT_WEIGHT_MAX;
     if (BLESSINGS[id].school === UNIT_SCHOOL) return UNIT_CARD_WEIGHT;
+    if (BLESSINGS[id].school === ULT_SCHOOL) return ULT_CARD_WEIGHT;
     return Math.min(DRAFT_WEIGHT_MAX, 1 + DRAFT_SCHOOL_WEIGHT * schoolPoints(BLESSINGS[id].school));
 }
 function weightedPick(ids, n) {
@@ -7488,7 +7523,10 @@ function draftOptionCount() {
 function blessingInClass(id) {
     const s = BLESSINGS[id].school;
     if (s === UNIT_SCHOOL) return classDef().cards.includes(BLESSINGS[id].unitCard);
+    if (s === ULT_SCHOOL) return BLESSINGS[id].ultCard === runClass();
     if (BLESSINGS[id].needsSummon && !classCanSummon()) return false;
+    // needsUlt：只對大招有用的卡（化身時間…），拿到大招卡之前抽到等於空卡
+    if ((BLESSINGS[id].needsUlt || s === classDef().ultSchool) && !hasUlt()) return false;
     if (s === DUO_SCHOOL) return BLESSINGS[id].duo.every(d => classDef().schools.includes(d) && res(d) >= 1);
     return s === ARMY_SCHOOL || classDef().schools.includes(s);
 }
@@ -7537,6 +7575,7 @@ function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
     if (school === UNIT_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>召喚</span></span>`;
+    if (school === ULT_SCHOOL) return '<span class="school-chip"><span>大招</span></span>';
     // 兩個流派的頭像並排就講完了，不另外取名字：玩家只要看到「這張跟我在疊的兩條路有關」
     if (school === DUO_SCHOOL) return `<span class="school-chip duo-chip">${BLESSINGS[id].duo.map(schoolBadgeHtml).join('')}</span>`;
     const S = SCHOOLS[school];
@@ -7839,8 +7878,7 @@ function openClassGuide(id = selectedClass(), then = null) {
         return `<div class="cg-card"><img src="${U.img}" alt=""><div><b>${U.name}</b><span>${G.cards[i] || ''}</span></div></div>`;
     }).join('');
     const ult = C.ultimate || CLASSES.necro.ultimate;
-    const hint = ult.hint.includes('：') ? ult.hint.slice(ult.hint.indexOf('：') + 1) : ult.hint;
-    uiElements.cgUlt.innerHTML = `<div class="cg-card">${iconHtml(ult.icon)}<div><b>${ult.name}</b><span>${hint}</span></div></div>`;
+    uiElements.cgUlt.innerHTML = `<div class="cg-card">${iconHtml(ult.icon)}<div><b>${ult.name}</b><span>${ultEffectText(ult)}</span></div></div>`;
     uiElements.cgOkBtn.textContent = then ? '開始' : '知道了';
     showScreen(uiElements.classGuide, true);
 }
@@ -8097,49 +8135,6 @@ function updateTutorial() {
     }
 }
 
-// 大招提示：開戰後主角身邊第一次有好幾隻怪、大招又剛好能用時，指著按鈕講它能幹嘛；每個職業按過一次就不再出現
-const ULT_HINT_NEAR = 3;
-let ultHint = false;
-// 亡靈法師的舊紀錄存在 meta.novaTaught
-function ultTaught() { return !!((meta.ultTaught || {})[runClass()] || (runClass() === 'necro' && meta.novaTaught)); }
-function updateUltHint() {
-    if (ultTaught() || !gameState.player || gameState.betweenWaves || gameState.currentWave < 1) { setUltHint(false); return; }
-    if (ultHint || gameState.ultCooldown > 0) return;
-    const p = gameState.player.pos, R = classDef().ultimate.hintRadius(), rSq = R * R;
-    let near = 0;
-    for (let i = 0; i < gameState.monsters.length; i++) {
-        const m = gameState.monsters[i];
-        if (m.isAlive && !m.stealthed && distanceSq(m.pos, p) <= rSq) near++;
-    }
-    if (near >= ULT_HINT_NEAR) setUltHint(true);
-}
-function setUltHint(on) {
-    if (ultHint === on) return;
-    ultHint = on;
-    uiElements.ultBtn.classList.toggle('hint-pulse', on);
-}
-function markUltTaught() {
-    if (ultTaught()) return;
-    meta.ultTaught = { ...(meta.ultTaught || {}), [runClass()]: true };
-    saveMeta();
-    setUltHint(false);
-}
-function drawUltHint() {
-    if (!ultHint) return;
-    const t = performance.now() / 1000;
-    const r = uiElements.ultBtn.getBoundingClientRect();
-    const x = r.left + r.width / 2, y = r.top - 8 + Math.sin(t * 5) * 4;
-    ctx.save();
-    ctx.lineJoin = 'round';
-    ctx.fillStyle = '#e9c46a';
-    ctx.strokeStyle = '#0e0a14';
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y - 16); ctx.lineTo(x + 12, y - 16); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    ctx.textAlign = 'right';
-    drawOutlinedText(classDef().ultimate.hint, Math.min(view.cssW - 8, x + 30), y - 30, 17, '#f4ecd8');
-    ctx.restore();
-}
 function drawTutorial() {
     if (!tutorial) return;
     const t = performance.now() / 1000;
@@ -8165,6 +8160,7 @@ function updateTimers(deltaTime) {
     if (tutorial && gameState.currentWave === 0) return;
     updateSpawner(deltaTime);
     gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
+    tryAutoUltimate();
     gameState.reviveShield = Math.max(0, (gameState.reviveShield || 0) - deltaTime);
     // 波與波之間沒有怪打，狂暴不扣時間：不會白白耗在空檔裡
     if (!gameState.betweenWaves) gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
@@ -8380,7 +8376,6 @@ function updateUI() {
     uiElements.wavePlate.classList.toggle('urgent', gameState.betweenWaves && !holding && secs <= COUNTDOWN_SECONDS);
 
     setStyleIfChanged(uiElements.skipWaveBtn, 'display', gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none');
-    updateUltButton();
 }
 
 // updateUI 每格都跑。寫進 DOM 就算內容一模一樣，瀏覽器也要重新排版、重畫那一塊 ——
@@ -8396,28 +8391,6 @@ function setTextIfChanged(el, text) {
 }
 function setStyleIfChanged(el, prop, value) {
     if (el.style[prop] !== value) el.style[prop] = value;
-}
-
-function updateUltButton() {
-    const btn = uiElements.ultBtn;
-    const cd = gameState.ultCooldown;
-    const U = classDef().ultimate;
-    const off = gameState.gameOver || gameState.isPaused || gameState.draftOpen;
-    if (btn.disabled !== off) btn.disabled = off;
-    if (cd > 0) {
-        // 取整數百分比：肉眼看不出差別，按鈕從每格重畫變成冷卻期間總共重畫一百次
-        const done = Math.floor((1 - cd / (U.cooldown() * ultCooldownMult())) * 100);
-        setHtmlIfChanged(btn, `${iconHtml(U.icon)}<span>${Math.ceil(cd)}</span>`);
-        if (btn.dataset.cd !== String(done)) {
-            btn.dataset.cd = String(done);
-            btn.style.background = `conic-gradient(rgba(156, 39, 176, 0.9) ${done}%, #1d1628 ${done}%)`;
-        }
-        btn.classList.remove('nova-ready');
-    } else {
-        setHtmlIfChanged(btn, `${iconHtml(U.icon)}<span>${U.name}</span>`);
-        if (btn.dataset.cd) { btn.dataset.cd = ''; btn.style.background = ''; }
-        btn.classList.add('nova-ready');
-    }
 }
 
 // 撐過的波數：波次之間代表這一波已經清完；打到一半就只算到上一波
@@ -9370,7 +9343,6 @@ function drawGame() {
     drawBanner();
     drawJoystick();
     drawTutorial();
-    drawUltHint();
     if (appScreen === 'title') drawTitleWisps();
 
     if (gameState.hurtFlash > 0) {
@@ -9426,7 +9398,6 @@ function gameLoop(currentTime) {
     const workStart = performance.now();
     if (!frozen) updateGame(deltaTime);
     updateTutorial();
-    updateUltHint();
     // 戰場停住時畫面一格都不會變（教學提示會動，所以有教學時照畫），畫一次留在畫布上就好
     if (!frozen || tutorial || !frozenFrameDrawn) drawGame();
     frozenFrameDrawn = frozen;
@@ -9796,6 +9767,7 @@ function cancelTextZoom() {
 function init() {
     buildRareBlessings();
     buildSummonBlessings();
+    buildUltBlessings();
     cancelTextZoom();
     hydrateIcons();
     resizeCanvas();
@@ -9896,11 +9868,6 @@ function init() {
     });
     uiElements.levelInfo.addEventListener('animationend', () => uiElements.levelInfo.classList.remove('bump'));
 
-    uiElements.ultBtn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        if (!useUltimate() && gameState.ultCooldown > 0 && !gameState.isPaused) denyFeedback(uiElements.ultBtn);
-    });
-
     window.addEventListener('keydown', (e) => {
         // 在輸入框打字（排行榜留名字）時，按鍵不能變成移動、召喚、暫停
         if (e.target instanceof HTMLInputElement && e.target.type === 'text') return;
@@ -9912,7 +9879,6 @@ function init() {
         if (appScreen !== 'playing') return;
         if (e.code === 'Escape' || e.code === 'KeyP') { togglePause(); return; }
         if (gameState.isPaused || gameState.gameOver) return;
-        if (e.code === 'Space') { e.preventDefault(); useUltimate(); return; }
         if (MOVE_KEYS[e.code]) { keysDown.add(e.code); e.preventDefault(); ensureMusicPlaying(); return; }
     });
     window.addEventListener('keyup', (e) => keysDown.delete(e.code));
