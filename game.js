@@ -7738,11 +7738,20 @@ function metaBanHtml(cls) {
     const head = `<div class="meta-row">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">點選的祝福每局都不會出現</div></div>` +
         `<button class="btn btn-dark" data-ban-open>${metaBanOpen ? '收起' : '選擇'}<span class="price">${list.length}/${n}</span></button></div>`;
     if (!metaBanOpen) return head;
-    const chips = banCandidates(cls).map(id => {
-        const on = list.includes(id);
-        return `<button class="bless-chip ban-chip${on ? ' banned' : ''}" data-ban="${id}" ${!on && full ? 'disabled' : ''}>${iconHtml(blessIcon(id))}<span>${BLESSINGS[id].name}</span></button>`;
+    // 只有圖示和名字的話根本不知道該放逐哪張：每張都寫出效果，照流派分組（看得出每條路有哪些卡）
+    const ids = banCandidates(cls);
+    const groups = [...CLASSES[cls].schools, ARMY_SCHOOL].map(s => {
+        const rows = ids.filter(id => BLESSINGS[id].school === s).map(id => {
+            const B = BLESSINGS[id], on = list.includes(id), tier = blessingTier(id);
+            const tag = tier === 'common' ? '' : `<span class="ban-tier">${TIER_LABELS[tier]}</span>`;
+            return `<button class="meta-row ban-row${on ? ' banned' : ''}${tier === 'rare' ? ' rare' : ''}" data-ban="${id}" ${!on && full ? 'disabled' : ''}>${iconHtml(blessIcon(id))}` +
+                `<div class="meta-info"><div class="meta-name"><span class="nm">${B.name}</span>${tag}</div><div class="meta-desc">${B.desc(B)}</div></div>${on ? iconHtml('banish', 'icon ban-mark') : ''}</button>`;
+        }).join('');
+        if (!rows) return '';
+        const title = s === ARMY_SCHOOL ? `${iconHtml('summon', 'icon school-img')}全軍` : `${schoolBadgeHtml(s)}${SCHOOLS[s].name}`;
+        return `<div class="ban-group-title">${title}</div>${rows}`;
     }).join('');
-    return head + `<div class="ban-list">${chips}</div>`;
+    return head + `<div class="ban-list">${groups}</div>`;
 }
 function toggleBan(cls, id) {
     const list = bannedBlessings(cls);

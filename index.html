@@ -1893,38 +1893,77 @@
             flex: none;
         }
 
-        /* 局外放逐：可以點的祝福小卡，被放逐的變紅、名字劃掉；放滿時其他的變暗點不了 */
+        /* 局外放逐：照流派分組、每張寫出效果的一列列祝福；點一下放逐（變紅、名字劃掉、右邊一個放逐圖示），放滿時其他的變暗點不了 */
         .ban-list {
             display: flex;
-            flex-wrap: wrap;
-            gap: 8px 4px;
-            justify-content: center;
-            padding: 6px 0 12px;
+            flex-direction: column;
+            gap: 6px;
+            padding: 4px 0 12px;
         }
 
-        .ban-chip {
-            padding: 4px 0;
-            border: 2px solid transparent;
-            border-radius: 10px;
-            background: none;
+        .ban-group-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 8px 0 0 4px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 14px;
+            color: var(--gold);
+        }
+
+        .ban-group-title .school-img {
+            width: 22px;
+            height: 22px;
+        }
+
+        .ban-row {
+            width: 100%;
+            text-align: left;
+            color: var(--bone);
             font-family: var(--font-ui);
             cursor: pointer;
         }
 
-        .ban-chip.banned {
-            background: rgba(229, 57, 53, 0.25);
-            border-color: #e53935;
-            color: #ffcdd2;
-            text-decoration: line-through;
+        .ban-row.rare {
+            border-color: #64b5f6;
         }
 
-        .ban-chip.banned .icon {
+        .ban-tier {
+            padding: 0 6px;
+            border-radius: 8px;
+            border: 2px solid var(--ink);
+            background: #64b5f6;
+            color: #1b1424;
+            font-family: var(--font-ui);
+            font-size: 11px;
+            font-weight: 800;
+        }
+
+        .ban-row.banned {
+            background: rgba(229, 57, 53, 0.22);
+            border-color: #e53935;
+        }
+
+        .ban-row.banned .nm,
+        .ban-row.banned .meta-desc {
+            text-decoration: line-through;
+            color: #ef9a9a;
+        }
+
+        .ban-row.banned>.icon:first-child {
             opacity: 0.5;
             filter: grayscale(0.7);
         }
 
-        .ban-chip:disabled {
-            opacity: 0.35;
+        .ban-row .ban-mark {
+            width: 26px;
+            height: 26px;
+            flex: none;
+        }
+
+        .ban-row:disabled {
+            opacity: 0.4;
             cursor: default;
         }
 
