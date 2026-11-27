@@ -7973,23 +7973,19 @@ function queueDraft(boss = false) {
 const REROLLS_PER_RUN = 2;
 const REROLLS_PER_BOSS = 1;
 
-// 卡片上的流派標籤：頭像＋名字＋共鳴進度（每一段 RESONANCE_STEPS 一組點，這張選下去會亮的那一點閃爍）
+// 卡片上的流派標籤：頭像＋名字。不放流派進度點：跟名字下面「這張卡的等級」的點長得一樣、玩家看不懂；
+// 選卡時要知道的只有「這張會不會觸發共鳴」，標籤剛好湊滿時整個變金色寫「共鳴」
 function schoolBadgeHtml(school) {
     const S = SCHOOLS[school];
     return S.img ? `<img class="school-img" src="${S.img}" alt="">` : iconHtml(S.icon, 'icon school-img');
 }
-// 每一段點的後面接一個共鳴圖示：讀起來是「集滿這幾個點換到這個」（只有點的話看不出是在集什麼）。
-// 達成的段圖示亮起來；這張選下去剛好湊滿的那段，圖示跟著閃
-function resonancePipsHtml(school, preview) {
+// 暫停選單用：這個流派疊了幾層（每一段 RESONANCE_STEPS 一組點）
+function resonancePipsHtml(school) {
     const pts = schoolPoints(school), max = RESONANCE_STEPS[RESONANCE_STEPS.length - 1];
     let html = '';
     for (let i = 0; i < max; i++) {
-        const cls = i < pts ? 'pip on' : (preview && i === pts ? 'pip next' : 'pip');
-        html += `<span class="${cls}"></span>`;
-        if (RESONANCE_STEPS.includes(i + 1)) {
-            const mark = pts >= i + 1 ? ' on' : (preview && pts + 1 === i + 1 ? ' next' : '');
-            html += `<span class="res-mark${mark}">${iconHtml('resonance')}</span>`;
-        }
+        if (RESONANCE_STEPS.includes(i) && i > 0) html += '<span class="res-gap"></span>';
+        html += `<span class="${i < pts ? 'pip on' : 'pip'}"></span>`;
     }
     return `<span class="pips res-pips">${html}</span>`;
 }
@@ -8001,7 +7997,7 @@ function schoolChipHtml(id) {
     const S = SCHOOLS[school];
     // 這張選下去剛好湊滿一段：整個標籤亮起來
     const willResonate = RESONANCE_STEPS.includes(schoolPoints(school) + 1);
-    return `<span class="school-chip${willResonate ? ' resonates' : ''}" style="--school:${S.color}">${schoolBadgeHtml(school)}<span>${willResonate ? '共鳴' : S.name}</span></span>${resonancePipsHtml(school, true)}`;
+    return `<span class="school-chip${willResonate ? ' resonates' : ''}" style="--school:${S.color}">${schoolBadgeHtml(school)}<span>${willResonate ? '共鳴' : S.name}</span></span>`;
 }
 
 // 雙流派傳說只在玩家第一次看到時說明「為什麼出現」；同一次抽卡重畫（重抽、放逐）時照樣顯示
@@ -8179,7 +8175,7 @@ function renderResonance(container) {
     const rows = Object.keys(SCHOOLS).filter(s => schoolPoints(s) > 0).map(s => {
         const S = SCHOOLS[s], t = res(s);
         const active = S.res.slice(0, t).map(r => `<div class="bless-effect"><b>${r.name}</b> ${r.desc}</div>`).join('');
-        return `<div class="bless-row res-row" style="--school:${S.color}">${schoolBadgeHtml(s)}<div class="bless-text"><div class="bless-name"><span class="nm">${S.name}</span>${resonancePipsHtml(s, false)}</div>${active}</div></div>`;
+        return `<div class="bless-row res-row" style="--school:${S.color}">${schoolBadgeHtml(s)}<div class="bless-text"><div class="bless-name"><span class="nm">${S.name}</span>${resonancePipsHtml(s)}</div>${active}</div></div>`;
     });
     container.classList.toggle('hidden', rows.length === 0);
     container.innerHTML = rows.join('');
