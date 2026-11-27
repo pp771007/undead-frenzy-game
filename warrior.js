@@ -115,9 +115,9 @@ const SOLDIER_TIER3_ELITE_MULT = 2;
 // ---------- 五個流派（規劃見 docs/characters.md）：各 4 張祝福、3 層與 6 層各一段共鳴；每個流派一張傳說 ----------
 // 圖示名稱 = 祝福 id（icons.js）
 Object.assign(SCHOOLS, {
-    shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', res: [{ name: '龜甲陣', desc: '戰士站著不動時，全軍受傷 -30%' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },
+    shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', res: [{ name: '龜甲陣', desc: '站著不動時，盾兵圍成一圈，全軍受傷 -30%、你每秒回 2% 血' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },
     phalanx: { name: '長槍方陣', img: 'soldier_spear.png', color: '#CFD8DC', res: [{ name: '槍林', desc: '每 2 秒陣型前方整排刺擊' }, { name: '馬其頓方陣', desc: '長槍兵攻速 ×1.5' }] },
-    crossbow: { name: '弩陣', img: 'soldier_crossbow.png', color: '#BCAAA4', res: [{ name: '三段射', desc: '弩手攻速 +40%' }, { name: '箭雨', desc: '每 6 秒弩手對最大一群怪齊射' }] },
+    crossbow: { name: '弩陣', img: 'soldier_crossbow.png', color: '#BCAAA4', res: [{ name: '三段射', desc: '弩手攻速 +40%、先射貼近你的怪，射倒時你回血' }, { name: '箭雨', desc: '每 6 秒弩手對最大一群怪齊射' }] },
     berserk: { name: '狂戰', icon: 'rage', color: '#FFAB40', res: [{ name: '熊皮戰士', desc: '狂怒結束不會虛脫' }, { name: '戰神降臨', desc: '狂怒時全軍一起狂暴' }] },
     legion: { name: '軍團紀律', icon: 'legion', color: '#FFE082', res: [{ name: '鐵律', desc: '陣型轉向快一倍' }, { name: '最後一線', desc: '人數剩三分之一時，倖存者全部視為百戰老兵' }] },
 });
@@ -160,6 +160,10 @@ Object.assign(BLESSINGS, {
 const WAR_ACHV = { veterans: 10, noLossWave: 20, javelinKills: 50, noRecruitWave: 10 };
 // 共鳴與傳說的細部數值（說明文字只講會影響選擇的那個數）
 const RES_TURTLE_TAKEN = 0.7;
+// 龜甲陣收攏：盾兵圍成一圈的半徑（人多就撐大一點）；三段射護衛：離戰士這麼近的怪弩手先射。
+// 戰士多半是被繞過陣型的蝙蝠、從地底鑽出的屍蟲貼身磨死，只顧前方的流派保不住他。
+// 光減傷不夠：狂戰挨的打比誰都多卻活最久，因為一直在回血（自動遊玩量的），所以這兩段也各給一種回血
+const TURTLE_RING_R = 28, TURTLE_RING_PER = 2, TURTLE_REGEN = 0.02, GUARD_SHOT_RADIUS = 80, GUARD_SHOT_HEAL = 0.01;
 const RES_IRONWALL_BLOCK = 2;
 const RES_SPEARWALL_EVERY = 2, RES_SPEARWALL_LENGTH = 70;
 const RES_PHALANX_RATE = 1.5;
@@ -452,6 +456,17 @@ function warriorUpdate(dt) {
             monsterGrid.forEachInRadius(s.pos, r, m => { if (m.isAlive && !(m instanceof BossMonster)) { m.tauntBy = s; m.tauntT = WARRIOR.tauntTime; } });
         }
     }
+    // 龜甲陣：站著不動時戰士回血（身上冒小小的綠色光點）
+    if (res('shieldwall') >= 1 && w.still && p.currentHealth < p.maxHealth) {
+        p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * TURTLE_REGEN * dt);
+        if (Math.random() < dt * 6) spawnParticles(p.pos.x + randomInRange(-10, 10), p.pos.y, '#A5D6A7', 1, 25, 0.6, 3);
+    }
+    // 龜甲陣：站著不動時，前排的盾兵收攏成一圈圍住戰士（從面向那一側開始排）
+    if (res('shieldwall') >= 1 && w.still && groups[0].length) {
+        const ring = groups[0].sort((a, b) => a.uid - b.uid), R = TURTLE_RING_R + ring.length * TURTLE_RING_PER, a0 = Math.atan2(w.fy, w.fx);
+        ring.forEach((s, i) => { const a = a0 + i * Math.PI * 2 / ring.length; s.slot.x = p.pos.x + Math.cos(a) * R; s.slot.y = p.pos.y + Math.sin(a) * R; });
+        groups[0] = [];
+    }
     // 戰士站在陣型中間：盾兵、長槍從前方 frontDist 往後排，弩手、休息的盾兵從後方 rearDist 往後排
     const rx = -w.fy, ry = w.fx;
     let row = 0;
@@ -662,7 +677,10 @@ class Soldier extends SummonUnit {
             const grid = this.config.type === 'Shieldman' ? groundMonsterGrid : monsterGrid;
             const from = ranged ? this.pos : this.slot;
             const r = ranged ? this.attackRange : WARRIOR.engageRadius + this.attackRange;
-            const m = grid.nearestShared(from, gameState.straggling ? STRAGGLER_SEARCH_RADIUS : r);
+            // 三段射：弩手先射貼近戰士的怪（射程內才算）
+            const guard = ranged && res('crossbow') >= 1 ? monsterGrid.nearestShared(p.pos, GUARD_SHOT_RADIUS) : null;
+            const m = guard && guard.isAlive && !guard.stealthed && distanceSq(this.pos, guard.pos) <= this.attackRangeSq ? guard
+                : grid.nearestShared(from, gameState.straggling ? STRAGGLER_SEARCH_RADIUS : r);
             this.target = m && m.isAlive && !m.stealthed ? m : null;
         }
         // 移動：近戰走到目標身邊，其他時候回自己的位置；離位置太遠加速歸隊，遠到出了畫面直接傳送
@@ -740,6 +758,13 @@ class Soldier extends SummonUnit {
     onHit(m) {
         if (m.isAlive && this.config.type === 'Crossbowman' && bl('scorpio')) pinMonster(m);
         if (m.isAlive) return;
+        // 三段射：射倒貼近戰士的怪，戰士回血
+        const p = gameState.player;
+        if (this.config.type === 'Crossbowman' && res('crossbow') >= 1 && p && distanceSq(m.pos, p.pos) <= GUARD_SHOT_RADIUS * GUARD_SHOT_RADIUS && p.currentHealth < p.maxHealth) {
+            const heal = Math.max(1, Math.round(p.maxHealth * GUARD_SHOT_HEAL));
+            p.currentHealth = Math.min(p.maxHealth, p.currentHealth + heal);
+            spawnFloatText(p.pos.x, p.pos.y - 26, `+${formatNumberK(heal)}`, '#81C784', 12, 0.6);
+        }
         this.kills++;
         const v = vetFromKills(this.kills);
         if (v <= this.vet) return;
