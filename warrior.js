@@ -176,9 +176,10 @@ const SCORPIO_SPEAR_MULT = 2;
 const UNBREAKABLE_TEXT_EVERY = 0.6;
 
 Object.assign(UNIT_TYPES, {
-    Shieldman: { cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
-    Spearman: { cfg: () => CONFIG.spearman, Cls: () => Spearman, name: '長槍兵', img: 'soldier_spear.png' },
-    Crossbowman: { cfg: () => CONFIG.crossbowman, Cls: () => Crossbowman, name: '弩手', img: 'soldier_crossbow.png' },
+    // 精兵少而貴：三種加起來還是受人數上限（troopCap）管
+    Shieldman: { card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
+    Spearman: { card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.spearman, Cls: () => Spearman, name: '長槍兵', img: 'soldier_spear.png' },
+    Crossbowman: { card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.crossbowman, Cls: () => Crossbowman, name: '弩手', img: 'soldier_crossbow.png' },
 });
 
 CLASSES.warrior = {
@@ -190,6 +191,10 @@ CLASSES.warrior = {
     cards: ['Shieldman', 'Spearman', 'Crossbowman'], schools: ['shieldwall', 'phalanx', 'crossbow', 'berserk', 'legion', 'soul'],
     hero: { imageName: 'warrior', baseHealth: WARRIOR.baseHealth, moveSpeed: WARRIOR.moveSpeed },
     troopCap: () => warTroopCap(),
+    // 開局那支小隊（盾、槍、弩）陣亡了也要補得回來：三種兵的卡一開始都會
+    startCards: ['Shieldman', 'Spearman', 'Crossbowman'],
+    // 寶棺的軍餉另外送全軍升級，跟著主角走的部分比別人慢一點
+    unitLevelPerHero: 0.35,
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
         troopCap: { icon: 'legionCap', name: '人數上限', max: 4, per: 1, costBase: 40, desc: m => `人數上限 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },

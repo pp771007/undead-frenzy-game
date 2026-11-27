@@ -129,6 +129,7 @@ Object.assign(UNIT_TYPES, {
     Knives: { cfg: () => CONFIG.knives, Cls: () => null, name: '飛刀', img: iconDataUrl('critChance'), upgradeOnly: true, upgradeLabel: '修練' },
     Venom: { cfg: () => CONFIG.venom, Cls: () => null, name: '毒', img: iconDataUrl('venomschool'), upgradeOnly: true, upgradeLabel: '修練' },
     Shadow: {
+        card: { cap: 1, capPer: 1, every: 6 },
         cfg: () => CONFIG.shadowClone, Cls: () => ShadowClone, name: '影', img: 'rogue.png', summonLabel: '分身',
         cap: () => SHADOW_CAP + Math.floor(gameState.units.Shadow.level / SHADOW_CAP_PER_LEVELS) + blessVal('shadowCap'),
     },
@@ -137,6 +138,8 @@ Object.assign(UNIT_TYPES, {
 CLASSES.rogue = {
     name: '刺客', title: '阿拉穆特之影', portrait: 'rogue.png', tagline: '潛進怪堆，刺殺標記的目標',
     unlock: 'elite500',
+    // 戰力大多在飛刀、毒的等級上（以前一波練一級），跟著主角升得比召喚類快
+    unitLevelPerHero: 0.7,
     cards: ['Knives', 'Venom', 'Shadow'], schools: ['assassination', 'venomschool', 'shadowschool', 'smoke', 'intel', 'soul'],
     metaUpgrades: {
         longHide: { icon: 'longHide', name: '隱身時間', max: 5, per: 0.4, costBase: 30, desc: m => `每次隱身 +${m.per} 秒`, total: (m, lv) => `+${(m.per * lv).toFixed(1)} 秒` },

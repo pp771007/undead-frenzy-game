@@ -133,6 +133,8 @@ CLASSES.monk = {
     monsterPressure: 1.0,
     // unlockOld：已經沒有的舊解鎖條件（連殺 1000），舊存檔靠它解鎖的照樣算數
     unlock: 'wave40', unlockOld: 'streak1000',
+    // 三張都是修練：戰力全在拳、步、氣的等級上（以前一波練一級），跟著主角升得比召喚類快
+    unitLevelPerHero: 0.7,
     cards: ['Fist', 'Step', 'Qi'], schools: ['external', 'hardstyle', 'lightfoot', 'internal', 'qigong', 'soul'],
     metaUpgrades: {
         evade: { icon: 'evade', name: '閃避率', max: 5, per: 0.02, costBase: 30, desc: m => `${pct(m.per)} 機率閃過攻擊`, total: (m, lv) => `${pct(m.per * lv)}` },

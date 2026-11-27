@@ -155,12 +155,13 @@ const DRUID_ACHV = { oaks: 10, evergreenWaves: 8, kings: 5, loneOakWave: 15 };
 
 Object.assign(UNIT_TYPES, {
     SacredOak: {
+        card: { cap: 2, capPer: 1, every: 10 },
         cfg: () => CONFIG.sacredOak, Cls: () => SacredOak, name: '橡樹', img: 'sacred_oak.png', summonLabel: '種樹',
         // 種在德魯伊腳下（不是身後）：據點要種在自己選的位置
         summon: (level) => plantOak(level),
     },
-    Wolf: { cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', capLabel: '缺林地', cap: () => beastRoom('Wolf') },
-    Bear: { cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', capLabel: '缺林地', cap: () => beastRoom('Bear') },
+    Wolf: { card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', capLabel: '缺林地', cap: () => beastRoom('Wolf') },
+    Bear: { card: { cap: 1, capPer: 1, every: 8 }, cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', capLabel: '缺林地', cap: () => beastRoom('Bear') },
 });
 
 CLASSES.druid = {
@@ -168,6 +169,8 @@ CLASSES.druid = {
     // 同一套怪物加強下沒強化常常通關（見 game.js 的 monsterRamp）
     monsterPressure: 1.2,
     unlock: 'relics30',
+    // 橡樹自己不打人：開局光有樹撐不過前幾波，狼一開始就會
+    startCards: ['SacredOak', 'Wolf'],
     cards: ['SacredOak', 'Wolf', 'Bear'], schools: ['grove', 'pack', 'bear', 'wild', 'seasons', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
@@ -293,8 +296,10 @@ function beastRoom(type) {
 // free：開局送的那棵（不算「自己種的」）
 function plantOak(level, free = false) {
     const p = gameState.player, d = druidState();
-    // 種在腳下；那裡有樹了就照蜂巢格由內往外找最近的空位（按住連種時會排成一片林子，而不是疊成一團）
-    const spot = freeOakSpot(p.pos);
+    // 新的樹長在林地裡（最老那棵旁邊，照蜂巢格由內往外找空位）：自動種的時候主角在到處閃，種在腳下會東一棵西一棵。
+    // 一棵都沒了才種在主角腳下，那裡就是新的林地
+    const home = eldestOak();
+    const spot = freeOakSpot(home ? home.anchor : p.pos);
     gameState.summons.push(new SacredOak(spot.x, spot.y, level, p));
     const x = spot.x, y = spot.y;
     gameState.units.SacredOak.count++;

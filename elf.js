@@ -116,6 +116,7 @@ Object.assign(UNIT_TYPES, {
     Archery: { cfg: () => CONFIG.archery, Cls: () => null, name: '箭術', img: iconDataUrl('longbow'), upgradeOnly: true, upgradeLabel: '修練' },
     Traps: { cfg: () => CONFIG.traps, Cls: () => null, name: '陷阱', img: iconDataUrl('trapper'), upgradeOnly: true, upgradeLabel: '修練' },
     Companion: {
+        card: { cap: 1, capPer: 1, every: 8 },
         cfg: () => CONFIG.companion, Cls: () => Companion, name: '夥伴', img: 'spirit_fox.png',
         cap: () => ELF.companionCap + blessVal('compCap'),
     },
@@ -126,6 +127,8 @@ CLASSES.elf = {
     // 同一套怪物加強下沒強化照樣通關（見 game.js 的 monsterRamp）
     monsterPressure: 1.3,
     unlock: 'win',
+    // 戰力大多在箭術、陷阱的等級上（以前一波練一級），跟著主角升得比召喚類快
+    unitLevelPerHero: 0.7,
     cards: ['Archery', 'Traps', 'Companion'], schools: ['parthian', 'longbow', 'elemental', 'trapper', 'wildfriends', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,

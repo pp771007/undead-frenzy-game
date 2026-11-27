@@ -12,8 +12,6 @@ const VAMPIRE = {
     blade: { interval: 0.8, range: 170, damage: 6, leech: 0.15 },
     // 撿到 1 點血珠補幾點血（補滿才存進血池）
     hpPerBlood: 1,
-    // 血池不夠時用自己的血付：1 點血池 = payHpPerBlood 點血，但付完至少要留 payFloor 的血
-    payHpPerBlood: 0.5, payFloor: 0.25,
     // 晝夜：只有開戰中才走時間；白天 dayTime 秒、黑夜 nightTime 秒輪流
     dayTime: 20, nightTime: 20,
     // 白天每秒曬掉最大血量的 sunBurn（不會曬到 sunFloor 以下）、眷屬傷害 ×dayMult；黑夜眷屬 ×nightMult
@@ -110,7 +108,7 @@ Object.assign(BLESSINGS, {
     mistForm: { school: 'undying', name: '霧化', max: 3, per: 0.08, desc: b => `${pct(b.per)} 機率閃過攻擊` },
     sunWard: { school: 'undying', name: '斗篷', max: 3, per: 0.3, desc: b => `白天曬傷 -${pct(b.per)}` },
     nightRegen: { school: 'undying', name: '夜息', max: 3, per: 0.004, desc: b => `入夜時每秒回 ${pct(b.per)} 血` },
-    bloodBank: { school: 'undying', name: '血庫', max: 3, per: 0.03, desc: b => `每波結束時血池多 ${pct(b.per)}` },
+    bloodBank: { school: 'undying', name: '血庫', max: 3, per: 0.3, desc: b => `撿血珠回的血 +${pct(b.per)}` },
     dracula: { school: 'kin', name: '德古拉', legendary: true, max: 1, per: 0.5, desc: () => '打倒的首領會站起來成為你的眷屬' },
     countess: { school: 'bloodmagic', name: '血伯爵夫人', legendary: true, max: 1, per: 0.2, desc: b => `補到滿血以上的部分，${pct(b.per)} 變成最大血量` },
     garlic: { school: 'undying', name: '蒜也不怕', legendary: true, max: 1, per: 1, desc: () => '白天不再曬傷，眷屬白天也不變弱' },
@@ -137,6 +135,7 @@ const VAMP_ACHV = { horde: 80, kinds: 8 };
 
 Object.assign(UNIT_TYPES, {
     Thrall: {
+        card: { cap: 3, capPer: 3, every: 3 },
         cfg: () => CONFIG.thrall, Cls: () => Thrall, name: '眷屬', img: iconDataUrl('kin'), summonLabel: '轉化',
         capLabel: () => gameState.units.Thrall.count >= thrallCap() ? '滿編' : '無目標',
         cap: () => thrallCap(),
@@ -144,17 +143,19 @@ Object.assign(UNIT_TYPES, {
         canSummon: () => !!convertTarget(),
         summon: (level) => { const m = convertTarget(); if (m) { m.isAlive = false; raiseThrall(m, level); } },
     },
-    BloodBat: { cfg: () => CONFIG.bloodBat, Cls: () => BloodBat, name: '蝠群', img: 'blood_bat.png' },
+    BloodBat: { card: { cap: 4, capPer: 3, every: 3 }, cfg: () => CONFIG.bloodBat, Cls: () => BloodBat, name: '蝠群', img: 'blood_bat.png' },
     BloodMagic: { cfg: () => CONFIG.bloodMagic, Cls: () => null, name: '血魔法', img: iconDataUrl('bloodmagic'), upgradeOnly: true, upgradeLabel: '精煉' },
 });
 
 CLASSES.vampire = {
-    name: '吸血鬼', title: '血月伯爵', portrait: 'vampire.png', tagline: '血就是錢，打倒的怪站起來為你而戰',
+    name: '吸血鬼', title: '血月伯爵', portrait: 'vampire.png', tagline: '吸血續命，打倒的怪站起來為你而戰',
     // 同一套怪物加強下沒強化照樣通關（見 game.js 的 monsterRamp）。2 倍時怪物血量疊到四倍，
     // 蝙蝠打不贏巫醫補血、第 49 波卡住打不完 —— 血量灌太多只會變成拖棚，不會變好玩
     monsterPressure: 1.5,
     // unlockOld：已經沒有的舊解鎖條件（一局立下 3 份契約），舊存檔靠它解鎖的照樣算數
     unlock: 'wave30', unlockOld: 'pacts',
+    // 轉化要身邊有怪才轉得到：開局光靠眷屬撐不過前幾波，蝠群一開始就會
+    startCards: ['Thrall', 'BloodBat'],
     cards: ['Thrall', 'BloodBat', 'BloodMagic'], schools: ['bloodmagic', 'kin', 'bats', 'werewolf', 'undying', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
@@ -167,8 +168,7 @@ CLASSES.vampire = {
     update: (dt) => vampUpdate(dt),
     reset: () => { gameState.vamp = newVampState(); },
     onOrbCollect: (value) => bloodPickup(value),
-    canAfford: (cost) => gameState.souls >= cost || bloodHpCost(cost) > 0,
-    pay: (cost) => payBlood(cost),
+    unitLevelPerHero: 0.5,
     onMonsterKill: (m) => {
         // 饗宴：眷屬或蝙蝠打倒的怪，你回一點血
         if (m.lastHitByThrall && res('kin') >= 1) healHero(gameState.player.maxHealth * RES_FEAST_HEAL);
@@ -189,7 +189,6 @@ CLASSES.vampire = {
             spawnThrall(pos.x, pos.y, 'wolf', gameState.units.Thrall.level, false);
         }
     },
-    onWaveEnd: () => { if (bl('bloodBank')) gameState.souls = Math.round(gameState.souls * (1 + blessVal('bloodBank'))); },
     onBossKill: () => { if (!vampState().night) gameState.run.flags.vampDayBoss = true; },
     heroSpeedMult: () => (1 + blessVal('vwSpeed')) * (vampState().night && res('werewolf') >= 1 ? RES_WOLFWALK_SPEED : 1) * (moonWolfActive() ? MOONWOLF_SPEED : 1),
     heroDamageTakenMult: () => {
@@ -317,27 +316,9 @@ function healHero(amount) {
     }
     return healed;
 }
+// 撿到血珠：回血（經驗照算，見 game.js 的 gainXp）
 function bloodPickup(value) {
-    const healed = healHero(value * VAMPIRE.hpPerBlood);
-    return Math.max(0, Math.round(value - healed / VAMPIRE.hpPerBlood));
-}
-// 血池不夠時要拿多少血來付（付不起回傳 0）
-function bloodHpCost(cost) {
-    const p = gameState.player;
-    if (!p) return 0;
-    const short = cost - gameState.souls;
-    if (short <= 0) return 0;
-    const hp = Math.ceil(short * VAMPIRE.payHpPerBlood);
-    return p.currentHealth - hp >= p.maxHealth * VAMPIRE.payFloor ? hp : 0;
-}
-function payBlood(cost) {
-    if (gameState.souls >= cost) { gameState.souls -= cost; return true; }
-    const hp = bloodHpCost(cost), p = gameState.player;
-    if (hp <= 0) return false;
-    gameState.souls = 0;
-    p.currentHealth -= hp;
-    spawnFloatText(p.pos.x, p.pos.y - 24, `-${formatNumberK(hp)}`, '#EF5350', 12, 0.7, 'blood');
-    return true;
+    healHero(value * VAMPIRE.hpPerBlood * (1 + blessVal('bloodBank')));
 }
 
 // ---------- 每格 ----------

@@ -718,7 +718,7 @@ function onHeroLevelUp() {
     if (gameState.pendingDraft && !gameState.draftOpen && !gameState.victoryOpen) openDraft();
 }
 function syncUnitLevels() {
-    const want = Math.floor((gameState.heroLevel - 1) * UNIT_LEVEL_PER_HERO);
+    const want = Math.floor((gameState.heroLevel - 1) * (classDef().unitLevelPerHero ?? UNIT_LEVEL_PER_HERO));
     while (gameState.autoUnitLevels < want) {
         for (const t of classDef().cards) levelUpUnit(t);
         gameState.autoUnitLevels++;
@@ -1145,9 +1145,10 @@ function getNovaDamage() {
 //   cap()：這種兵自己的上限（德魯伊的野獸看林地）；capLabel：召不了時按鈕上的字（可以是函式）
 //   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（付完費之後呼叫，要自己把 count 加上去）
 const UNIT_TYPES = {
-    SkeletonWarrior: { cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
-    Wraith: { cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
-    EyeMonster: { cfg: () => CONFIG.eyeMonster, Cls: () => EyeMonster, name: '眼魔', img: 'eye_monster.png' },
+    // card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）。骷髏是便宜的人海、眼魔中量、怨靈少而精
+    SkeletonWarrior: { card: { cap: 6, capPer: 5, every: 1.5 }, cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
+    Wraith: { card: { cap: 2, capPer: 2, every: 4 }, cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
+    EyeMonster: { card: { cap: 3, capPer: 3, every: 2.5 }, cfg: () => CONFIG.eyeMonster, Cls: () => EyeMonster, name: '眼魔', img: 'eye_monster.png' },
 };
 // 職業：這一局的底部三張卡是哪三種兵、有哪幾個流派（祝福池跟著流派走）、主角的立繪與基本數值、普攻、大招。規劃見 docs/characters.md
 //   hero：imageName（images 的鍵）、baseHealth、moveSpeed
@@ -1156,17 +1157,19 @@ const UNIT_TYPES = {
 //             hintRadius() 內有好幾隻怪時才教（這時候按下去最有感）
 // 以下選填（其他職業在自己的檔案裡定義，例如 warrior.js）：
 //   name／title／portrait／tagline：標題畫面選職業時顯示；unlock：解鎖它的成就 id（沒有就是一開始就能玩）
-//   troopCap()：底部三種兵加起來的人數上限
+//   troopCap()：三種兵加起來的人數上限
+//   startCards：開局就學會的召喚卡（沒寫就是第一張）；unitLevelPerHero：主角每升 1 級，兵種升幾級（沒寫照 UNIT_LEVEL_PER_HERO；
+//               修練類職業的戰力全在技能等級上，要比召喚類高）
 //   update(dt)：每格在主角與召喚物之前跑一次；reset()：開新局、讀檔時清掉職業自己的狀態
 //   heroSpeedMult()／heroDamageTakenMult()：主角移速、受到的傷害倍率；onHeroHurt(lostFrac)：主角掉了幾成血
 //   drawHero(ctx, player)：畫在主角血條之後（怒氣條之類）
 //   saveExtra()／loadExtra(data)：存檔時多存、讀檔重建召喚物後還原的東西
 //   onRunStart()：開新局（不是讀檔）時跑一次，例如開局就帶的兵
 //   blockBolt(bolt)：射向主角的血彈飛行途中每格問一次，回傳 true 就被擋下（戰士的盾兵）
-//   onUpgrade(type)：底部卡片升級成功之後；upgradeCostMult()：升級費用倍率
+//   onUpgrade(type)：兵種升一級之後（跟著主角等級、或寶棺開出來的）
 //   onWaveStart()／onWaveEnd()：每一波開始時、清完時
 //   onBossKill(boss)：打倒首領時；onRelic(relic)：遺跡讀條完成時，回傳 true 就取代預設效果
-//   canAfford(cost)／pay(cost)：用什麼付召喚與升級（吸血鬼可以拿自己的血付）；onOrbCollect(value)：撿到靈魂時，回傳要存進錢包的量
+//   onOrbCollect(value)：撿到靈魂時（吸血鬼的血珠回血；經驗照算）
 //   soulMult(monster)：這隻怪掉的靈魂倍率；onMonsterKill(monster)：怪死掉時
 //   heroHidden()：主角這一格怪看不到（刺客隱身）；heroAlpha()：主角身體的透明度；drawHeroUnder(ctx, player)：畫在主角身體之前（腳下）
 //   targetableSummons()：怪找目標時看得到的召喚物（沒有就是全部）；德魯伊離得太遠的橡樹會沉睡、怪不理
@@ -8518,9 +8521,9 @@ function setupNewRun() {
     gameState.player.maxHealth = Math.round(classDef().hero.baseHealth * (1 + metaVal('mageHp')) * runMods().mageHpMult);
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.xp = metaVal('startSouls');
-    // 開局就會一種兵：第一張召喚卡先送（沒有召喚卡的職業靠自己打）
+    // 開局就會的兵種：職業的 startCards，沒寫就是第一張召喚卡（沒有召喚卡的職業靠自己打）
     const firstSummon = classDef().cards.find(t => !UNIT_TYPES[t].upgradeOnly);
-    if (firstSummon) gameState.blessings[unitCardId(firstSummon)] = 1;
+    for (const t of classDef().startCards || (firstSummon ? [firstSummon] : [])) gameState.blessings[unitCardId(t)] = 1;
     gameState.banished = bannedBlessings(gameState.classId);
     gameState.rerollsLeft = REROLLS_PER_RUN + metaVal('freeReroll');
     gameState.revivesLeft = metaVal('revive');
