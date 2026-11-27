@@ -195,19 +195,11 @@ const ACHV_ICON_BODIES = {
 // 傳說收藏：金色獎章框住那張傳說祝福自己的圖示
 const LEGEND_MEDAL = (inner) => `<circle cx="32" cy="32" r="28" fill="${C.goldDark}"/><circle cx="32" cy="32" r="22" fill="#3e2a12" stroke-width="3"/>${at(32, 32, 0.6, `<g transform="translate(-32 -32)">${inner}</g>`)}
     ${sparks([[54, 10, 5], [10, 54, 4]], '#fff3c4')}`;
-// 契約收藏：羊皮紙契約、蓋上那份契約的圖示當封蠟
-const PACT_SCROLL = (inner) => `<path d="M12 6 L46 6 C50 6 52 10 52 14 L52 56 L18 56 C14 56 12 52 12 48 Z" fill="#fff3e0"/><path d="M18 16 L44 16 M18 24 L44 24 M18 32 L34 32" stroke="${C.wood}" stroke-width="2.5"/>
-    <circle cx="42" cy="46" r="16" fill="${C.blood}"/>${at(42, 46, 0.36, `<g transform="translate(-32 -32)">${inner}</g>`)}`;
-for (const [id, icon] of [['bloodPact', 'pact_blood'], ['greedPact', 'pact_greed'], ['furyPact', 'pact_fury'], ['flamePact', 'pact_flame'], ['swarmPact', 'pact_swarm'], ['stormPact', 'pact_storm']]) ACHV_ICON_BODIES[`pact_${id}`] = PACT_SCROLL(ICON_BODIES[icon]);
 Object.assign(ACHV_ICON_BODIES, {
     legends: `<rect x="6" y="14" width="22" height="34" rx="3" fill="#ffe082" transform="rotate(-18 17 31)"/><rect x="36" y="14" width="22" height="34" rx="3" fill="#ffe082" transform="rotate(18 47 31)"/>
         <rect x="21" y="10" width="22" height="36" rx="3" fill="${C.gold}"/>${at(32, 28, 0.42, P.star(C.white))}${sparks([[56, 54, 4]], '#fff3c4')}`,
     legendAll: `<path d="M10 12 C20 8 28 10 32 14 C36 10 44 8 54 12 L54 54 C44 50 36 52 32 56 C28 52 20 50 10 54 Z" fill="${C.goldDark}"/><path d="M32 14 L32 56" stroke-width="3"/>
         <path d="M14 18 C20 16 26 17 29 20 L29 50 C26 47 20 46 14 48 Z M50 18 C44 16 38 17 35 20 L35 50 C38 47 44 46 50 48 Z" fill="#fff8e1" stroke-width="2.5"/>${at(22, 33, 0.3, P.star())}${at(42, 33, 0.3, P.star())}`,
-    pacts: `<path d="M20 4 L50 4 L50 46 L20 46 Z" fill="#ffe0b2" transform="rotate(10 35 25)"/><path d="M14 10 L44 10 L44 52 L14 52 Z" fill="#fff3e0" transform="rotate(-6 29 31)"/>
-        <path d="M10 16 L40 16 L40 58 L10 58 Z" fill="#fff8e1"/><path d="M16 26 L34 26 M16 34 L34 34" stroke="${C.wood}" stroke-width="2.5"/><circle cx="34" cy="48" r="8" fill="${C.blood}"/>
-        <path d="M44 34 C52 30 58 34 58 40 C54 36 50 36 46 40 Z" fill="${C.blood}"/>`,
-    pactWin: `${at(32, 36, 1, P.laurel(C.gold))}<path d="M14 22 C4 12 8 2 16 2 C14 10 18 16 24 20 Z M50 22 C60 12 56 2 48 2 C50 10 46 16 40 20 Z" fill="${C.blood}"/>${at(32, 36, 0.52, P.skull('#ffcdd2', C.blood))}`,
 
     // ---- 連殺：越燒越旺的火 ----
     streak100: `${at(32, 50, 0.7, P.bone(), 20)}${at(32, 50, 0.7, P.bone(), -20)}${at(32, 30, 0.75, P.flame())}`,

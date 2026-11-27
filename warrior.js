@@ -505,7 +505,7 @@ function warriorSwing(p, dt) {
     });
     if (!hits.length) return;
     w.swingT = WARRIOR.swingInterval;
-    const dmg = WARRIOR.swingDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * (1 + w.drills * WARRIOR.drillDamage);
+    const dmg = WARRIOR.swingDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + w.drills * WARRIOR.drillDamage);
     let kills = 0;
     for (const m of hits) { m.takeDamage(dmg); if (!m.isAlive) kills++; }
     // 大劍親手砍死的怪回血：站最前線又沒有波間回血，戰士要靠打下去撐住

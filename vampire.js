@@ -153,7 +153,8 @@ CLASSES.vampire = {
     // 同一套怪物加強下沒強化照樣通關（見 game.js 的 monsterRamp）。2 倍時怪物血量疊到四倍，
     // 蝙蝠打不贏巫醫補血、第 49 波卡住打不完 —— 血量灌太多只會變成拖棚，不會變好玩
     monsterPressure: 1.5,
-    unlock: 'pacts',
+    // unlockOld：已經沒有的舊解鎖條件（一局立下 3 份契約），舊存檔靠它解鎖的照樣算數
+    unlock: 'wave30', unlockOld: 'pacts',
     cards: ['Thrall', 'BloodBat', 'BloodMagic'], schools: ['bloodmagic', 'kin', 'bats', 'werewolf', 'undying', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
@@ -417,7 +418,7 @@ function vampAttack(p, dt) {
     vampTargets.sort((a, b) => a.d - b.d);
     v.bladeT = B.interval;
     const n = Math.min(vampTargets.length, 1 + (res('bloodmagic') >= 1 ? 1 : 0));
-    const dmg = B.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * sacrificeMult();
+    const dmg = B.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * sacrificeMult();
     for (let i = 0; i < n; i++) {
         const pr = getProjectileFromPool();
         pr.init(p.pos.x, p.pos.y - 6, vampTargets[i].m, VAMP_BLADE, dmg, vampBladeOwner, 0, false);
@@ -453,7 +454,7 @@ function moonClaw(p, dt) {
     if (!t || !t.isAlive || t.stealthed) return;
     v.clawT = MOONWOLF_EVERY;
     const ang = Math.atan2(t.pos.y - p.pos.y, t.pos.x - p.pos.x), cosHalf = Math.cos(MOONWOLF_ARC / 2), rSq = MOONWOLF_RANGE * MOONWOLF_RANGE;
-    const dmg = VAMPIRE.blade.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * sacrificeMult() * MOONWOLF_MULT;
+    const dmg = VAMPIRE.blade.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * sacrificeMult() * MOONWOLF_MULT;
     let total = 0;
     monsterGrid.forEachInRadius(p.pos, MOONWOLF_RANGE, m => {
         if (!m.isAlive || m.stealthed) return;

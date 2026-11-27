@@ -826,11 +826,7 @@ const ICON_BODIES = {
     curseBloodDebt: `<path d="M26 4 L38 4 L38 12 L26 12 Z" fill="#6d4c41"/><path d="M18 12 L46 12 L46 18 L18 18 Z" fill="#8d6e63"/>
         <path d="M26 18 L38 18 L38 44 L32 56 L26 44 Z" fill="#cfd8dc"/><path d="M26 34 L38 34 L38 44 L32 56 L26 44 Z" fill="#c62828"/>
         <path d="M44 42 C44 48 48 50 48 50 C48 50 52 48 52 42 C52 38 48 34 48 34 C48 34 44 38 44 42 Z" fill="#e53935" stroke-width="3"/>`,
-    // ---- 契約、結算、選單 ----
-    // 契約（流派標籤；每一種契約另有自己的 pact_*）：蓋紅蠟封的羊皮紙
-    pact: `<path d="M12 8 L44 8 L52 16 L52 58 L12 58 Z" fill="#f1ead6"/><path d="M44 8 L44 16 L52 16" stroke-width="3"/>
-        <path d="M19 22 L44 22 M19 30 L44 30 M19 38 L34 38" stroke="#a1887f" stroke-width="3"/>
-        <circle cx="41" cy="47" r="9" fill="#c62828"/><path d="M37 47 L45 47 M41 43 L41 51" stroke="#ffcdd2" stroke-width="2.5"/>`,
+    // ---- 結算、選單 ----
     // 挑戰無盡：無限符號
     endless: duoStroke('M32 32 C26 22 12 20 10 32 C8 44 26 42 32 32 C38 22 56 20 54 32 C52 44 38 42 32 32', '#ef5350', 7),
     // 結算（通關後收工）：方格終點旗
@@ -909,7 +905,6 @@ const ICON_BODIES = {
     novaPower: `<path d="${starPath(32, 32, 28, 13, 10)}" fill="#c06bf5"/><circle cx="32" cy="32" r="9" fill="#f6dcff"/>
         <path d="M50 40 L50 58 M41 49 L59 49" stroke-width="9"/><path d="M50 40 L50 58 M41 49 L59 49" stroke="#ffd54f" stroke-width="4.5"/>`,
     // 祝福「精打細算」（召喚費用降低）：紫色召喚陣上掛一個金色價格牌、牌上一個減號。
-    // 跟「契約」流派標籤（pact，羊皮紙）分開：同名時後面那張會蓋掉前面，兩個概念一直顯示同一張圖
     summonDiscount: `<ellipse cx="28" cy="44" rx="22" ry="11" fill="#4a2c6e"/><ellipse cx="28" cy="44" rx="15" ry="6.5" fill="none" stroke="#b388ff" stroke-width="3"/>
         <path d="M28 38 L28 50 M20 44 L36 44" stroke="#b388ff" stroke-width="2.5"/>
         <path d="M34 8 L56 8 L60 12 L60 30 L44 30 L34 20 Z" fill="#ffd54f"/><circle cx="40" cy="19" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/>
@@ -994,34 +989,6 @@ const ICON_BODIES = {
         <rect x="34" y="16" width="22" height="32" rx="3" fill="#f1ead6" transform="rotate(15 45 32)"/>
         <rect x="21" y="12" width="22" height="32" rx="3" fill="#e9c46a"/>${shine(27, 18, 2.5, 1.5)}` +
         duoStroke('M32 49 L32 61 M26 55 L38 55', '#81c784', 3),
-
-    // ---- 契約：每份契約一張自己的圖（好處那一半畫成主體，壞處那一半畫成點綴） ----
-    // 血祭：滴著血的骷髏聖杯（召喚物變強、法師流血）
-    pact_blood: `<path d="M14 10 L50 10 C50 28 42 36 32 36 C22 36 14 28 14 10 Z" fill="#c9a227"/><path d="M17 14 L47 14 C46 26 40 32 32 32 C24 32 18 26 17 14 Z" fill="#b71c1c" stroke-width="2.5"/>
-        <rect x="29" y="36" width="6" height="12" fill="#c9a227"/><path d="M18 56 C18 50 46 50 46 56 Z" fill="#c9a227"/>
-        <path d="M44 20 C46 26 46 30 44 33 C42 30 42 26 44 20 Z" fill="#e5484d" stroke-width="2"/><circle cx="26" cy="21" r="2.6" fill="#1b1424" stroke="none"/><circle cx="37" cy="21" r="2.6" fill="#1b1424" stroke="none"/>${shine(21, 15, 2.5, 1.5)}`,
-    // 貪婪：長了惡魔角的錢袋，金幣往外滿出來
-    pact_greed: `<path d="M18 26 C10 34 10 54 22 58 L42 58 C54 54 54 34 46 26 Z" fill="#a1887f"/><path d="M22 26 L42 26 L38 18 L26 18 Z" fill="#8d6e63"/>
-        <path d="M24 18 C20 8 14 6 12 8 C16 10 18 14 20 20 Z M40 18 C44 8 50 6 52 8 C48 10 46 14 44 20 Z" fill="#b71c1c"/>
-        <circle cx="32" cy="42" r="8" fill="#ffd54f"/><path d="M32 37 L32 47 M29 39 L35 39 M29 45 L35 45" stroke-width="2"/>
-        <circle cx="16" cy="56" r="5" fill="#ffd54f" stroke-width="2.5"/><circle cx="50" cy="54" r="4" fill="#ffd54f" stroke-width="2.5"/>`,
-    // 戰狂：握緊的拳頭冒著紅色怒氣、額頭兩根角
-    pact_fury: `<path d="M16 30 C16 22 22 20 26 22 C26 16 32 14 36 18 C38 14 44 14 46 20 C50 20 52 24 50 30 L48 46 C46 54 38 58 30 58 C22 58 16 52 16 44 Z" fill="#ef9a9a"/>
-        <path d="M26 22 L26 32 M36 18 L36 30 M46 20 L46 30" stroke-width="3"/>
-        <path d="M10 18 C4 12 6 4 12 2 C12 8 16 12 20 14 Z M54 18 C60 12 58 4 52 2 C52 8 48 12 44 14 Z" fill="#b71c1c"/>
-        <path d="M6 40 L12 38 M4 50 L12 48 M58 40 L52 38 M60 50 L52 48" stroke="#ff7043" stroke-width="3.5"/>`,
-    // 魂焰：藍色火焰裡的骷髏（法師的靈魂彈）
-    pact_flame: `<path d="M32 60 C16 60 8 48 14 34 C18 26 18 16 14 4 C26 10 32 18 32 26 C36 20 38 14 38 6 C50 16 56 32 50 46 C46 56 40 60 32 60 Z" fill="#4fc3f7"/>
-        <path d="M32 26 C24 26 20 32 20 38 C20 42 22 45 25 46 L25 52 L39 52 L39 46 C42 45 44 42 44 38 C44 32 40 26 32 26 Z" fill="#e1f5fe"/>
-        <ellipse cx="27" cy="38" rx="3.2" ry="3.8" fill="#1b1424" stroke="none"/><ellipse cx="37" cy="38" rx="3.2" ry="3.8" fill="#1b1424" stroke="none"/>`,
-    // 群聚：一堆擠在一起的小骷髏，上面一個打折的價籤
-    pact_swarm: `<circle cx="18" cy="44" r="10" fill="#f1ead6"/><circle cx="46" cy="44" r="10" fill="#f1ead6"/><circle cx="32" cy="48" r="11" fill="#f1ead6"/><circle cx="32" cy="30" r="9" fill="#f1ead6"/>
-        <circle cx="15" cy="43" r="2.2" fill="#1b1424" stroke="none"/><circle cx="21" cy="43" r="2.2" fill="#1b1424" stroke="none"/><circle cx="43" cy="43" r="2.2" fill="#1b1424" stroke="none"/><circle cx="49" cy="43" r="2.2" fill="#1b1424" stroke="none"/>
-        <circle cx="28" cy="47" r="2.6" fill="#1b1424" stroke="none"/><circle cx="36" cy="47" r="2.6" fill="#1b1424" stroke="none"/><circle cx="29" cy="29" r="2.2" fill="#1b1424" stroke="none"/><circle cx="35" cy="29" r="2.2" fill="#1b1424" stroke="none"/>
-        <path d="M40 6 L58 6 L58 18 L52 24 L40 18 Z" fill="#81c784" stroke-width="3"/><circle cx="46" cy="12" r="2" fill="#1b1424" stroke="none"/>`,
-    // 雷鳴：雷雲劈下紫色閃電
-    pact_storm: `<path d="M14 34 C6 34 4 24 12 22 C12 12 24 8 30 14 C34 6 50 8 50 18 C58 18 60 30 52 34 Z" fill="#78909c"/>
-        <path d="M34 30 L24 46 L32 46 L26 60 L42 40 L34 40 L40 30 Z" fill="#ce93d8"/><path d="M18 40 L14 50 M48 40 L52 48" stroke="#90caf9" stroke-width="3"/>`,
 };
 
 // ---- 雙流派傳說：每張都把兩個流派的東西畫在一起 ----

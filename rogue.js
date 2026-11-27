@@ -214,7 +214,7 @@ function newRogueState() {
 function rogueState() { return gameState.rogue || (gameState.rogue = newRogueState()); }
 function inSmoke(pos) { for (const s of rogueState().smokes) if (distanceSq(s, pos) <= SMOKE_RADIUS * SMOKE_RADIUS) return true; return false; }
 function knifeDamage() {
-    return ROGUE.knife.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * (1 + gameState.units.Knives.level * CONFIG.knives.upgradeBonus);
+    return ROGUE.knife.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Knives.level * CONFIG.knives.upgradeBonus);
 }
 // 隱身 dur 秒（藏鋒加秒）；已經在隱身就延長。剛消失的那一下：煙、「隱身」字、追著你的怪頭上冒問號
 const STEALTH_COLOR = '#B39DDB', STEALTH_DARK = '#311B92', LOST_RADIUS = 280, LOST_MAX = 6;

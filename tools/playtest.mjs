@@ -104,8 +104,8 @@ for (;;) {
                 const leg = opts.find(id => BLESSINGS[id].legendary);
                 if (B.pick === 'random') { pickBlessing(opts[Math.floor(Math.random() * opts.length)]); continue; }
                 if (B.pick === 'first') { pickBlessing(opts[0]); continue; }
-                const BOT_ARMY_SCORE = 1.5, BOT_PACT_SCORE = -1, BOT_JITTER = 0.5;
-                const score = (id) => { const B = BLESSINGS[id]; return (B.pact ? BOT_PACT_SCORE : B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + Math.random() * BOT_JITTER; };
+                const BOT_ARMY_SCORE = 1.5, BOT_JITTER = 0.5;
+                const score = (id) => { const B = BLESSINGS[id]; return (B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + Math.random() * BOT_JITTER; };
                 pickBlessing(leg || opts.reduce((a, b) => score(b) > score(a) ? b : a)); continue;
             }
             const p = gameState.player;

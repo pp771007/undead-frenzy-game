@@ -236,7 +236,7 @@ function comboMult() {
     return 1 + Math.min(MONK.comboMax + blessVal('comboCap') + classMeta('comboCap'), Math.floor(k.combo / 10) * MONK.comboStep * (1 + blessVal('comboGain')));
 }
 function punchDamage() {
-    return MONK.punch.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult
+    return MONK.punch.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave))
         * (1 + gameState.units.Fist.level * CONFIG.fist.upgradeBonus) * (1 + blessVal('punchPower')) * (monkState().enlightenT > 0 ? ENLIGHTEN_MULT : 1);
 }
 

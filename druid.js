@@ -437,7 +437,7 @@ function druidUpdate(dt) {
 
 // ---------- 普攻：荊棘種子；化身時改成拍擊 ----------
 function seedDamage() {
-    return DRUID.seed.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * (1 + blessVal('seedPower'));
+    return DRUID.seed.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('seedPower'));
 }
 const seedTargets = [];
 function druidAttack(p, dt) {
@@ -527,7 +527,7 @@ function bearSwipe(p, dt) {
     d.swipeT -= dt;
     if (d.swipeT > 0) return;
     const rSq = B.radius * B.radius;
-    const dmg = B.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult;
+    const dmg = B.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave));
     let any = false;
     monsterGrid.forEachInRadius(p.pos, B.radius, m => {
         if (!m.isAlive || distanceSq(m.pos, p.pos) > rSq) return;
@@ -821,7 +821,7 @@ class SacredOak extends SummonUnit {
         super.computeStats();
         const k = 1 + (this.stage || 0) * DRUID.stageBonus;
         this.maxHealth = Math.round(this.maxHealth * k * (1 + blessVal('oakHp')));
-        this.attack = this.config.treantAttack * (1 + this.level * this.config.upgradeBonus) * k * runMods().summonDmgMult;
+        this.attack = this.config.treantAttack * (1 + this.level * this.config.upgradeBonus) * k;
         // 樹苗小、長大才高聳；樹人換成會走的那張圖
         this.drawScale = (0.55 + 0.17 * (this.stage || 0)) * (1 + CONFIG.evolution.sizeBonusPerTier * this.tier);
         const img = images[this.treant ? 'druid_treant' : 'sacred_oak'];

@@ -606,42 +606,13 @@ const GHOSTFIRE_RADIUS = 30, GHOSTFIRE_SHARE = 0.5, SOUL_GAZE_CHANCE = 0.25, WAI
 const pct = (v) => `${Math.round(v * 100)}%`;
 // 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
 // 堅甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
-// 七個職業都抽得到的東西（全軍、靈魂流派、契約、永久強化、成就）名字不要用亡靈法師的用語（骨、亡者、新星…）
+// 七個職業都抽得到的東西（全軍、靈魂流派、永久強化、成就）名字不要用亡靈法師的用語（骨、亡者、新星…）
 const ARMY_SCHOOL = 'army';
-// 契約不屬於任何流派：不算共鳴、卡片標「契約」
-const PACT_SCHOOL = 'pact';
 // 雙流派傳說：祝福寫 duo: [流派A, 流派B]，兩個流派都疊到第一段共鳴（RESONANCE_STEPS[0] 層）才會出現。
 // 不算進任何一個流派的層數；抽傳說時權重拉滿，湊到兩條路的人首領波幾乎一定看得到
 const DUO_SCHOOL = 'duo';
-// 整局的乘數（詛咒、契約共用，見 runMods）：每個鍵的中文說法，以及「大於 1 是好事嗎」
-// 契約的說明文字從數字產生，數字改了說明跟著變
-const RUN_MOD_LABELS = {
-    summonDmgMult: { label: '召喚物傷害', good: true },
-    summonAtkSpeedMult: { label: '召喚物攻速', good: true },
-    boltDmgMult: { label: '主角普攻傷害', good: true },
-    soulMult: { label: '靈魂掉落', good: true },
-    costMult: { label: '召喚費用', good: false },
-    ultCdMult: { label: '大招冷卻', good: false },
-    mageHpMult: { label: '主角血量', good: true },
-    hpMult: { label: '怪物血量', good: false },
-    atkMult: { label: '怪物攻擊', good: false },
-    speedMult: { label: '怪物移速', good: false },
-    eliteMult: { label: '精英怪', good: false },
-    bossHpMult: { label: '首領血量', good: false },
-};
-const RUN_MOD_TIMES_FROM = 2;   // 兩倍以上寫「×2.5」，比「+150%」好懂
-function runModText(key, v) {
-    const L = RUN_MOD_LABELS[key].label;
-    if (v >= RUN_MOD_TIMES_FROM) return `${L} ×${v}`;
-    return v >= 1 ? `${L} +${pct(v - 1)}` : `${L} -${pct(1 - v)}`;
-}
-function isGoodMod(key, v) { return (v > 1) === RUN_MOD_LABELS[key].good; }
-// 好處一行綠、壞處一行紅
-function runModsHtml(mods) {
-    const keys = Object.keys(mods);
-    return keys.filter(k => isGoodMod(k, mods[k])).concat(keys.filter(k => !isGoodMod(k, mods[k])))
-        .map(k => `<span class="${isGoodMod(k, mods[k]) ? 'boon' : 'bane'}">${runModText(k, mods[k])}</span>`).join('');
-}
+// 詛咒疊出來的整局乘數（見 runMods）
+const RUN_MOD_KEYS = ['soulMult', 'mageHpMult', 'hpMult', 'atkMult', 'speedMult', 'eliteMult', 'bossHpMult'];
 // school：所屬流派（見 SCHOOLS），同流派累積層數觸發共鳴；全軍都吃的寫 ARMY_SCHOOL，不算進任何流派
 const BLESSINGS = {
     boneBlade: { school: 'skel', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
@@ -691,16 +662,8 @@ const BLESSINGS = {
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
     deathPact: { school: 'soul', name: '殘魂回收', legendary: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
-    // ---- 契約：好處很大、壞處跟著整局。一般波次偶爾出一張（PACT_CHANCE），每種一局只能立一次。
-    // 效果寫在 mods，跟詛咒共用 runMods() 的乘數；圖示是 icons.js 的 pact_*
-    bloodPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_blood', name: '血祭契約', max: 1, mods: { summonDmgMult: 1.5, mageHpMult: 0.7 }, desc: b => runModsHtml(b.mods) },
-    greedPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_greed', name: '貪婪契約', max: 1, mods: { soulMult: 1.5, hpMult: 1.25 }, desc: b => runModsHtml(b.mods) },
-    furyPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_fury', name: '戰狂契約', max: 1, mods: { summonAtkSpeedMult: 1.3, atkMult: 1.3 }, desc: b => runModsHtml(b.mods) },
-    flamePact: { school: PACT_SCHOOL, pact: true, icon: 'pact_flame', name: '魂焰契約', max: 1, mods: { boltDmgMult: 2.5, speedMult: 1.15 }, desc: b => runModsHtml(b.mods) },
-    swarmPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_swarm', name: '群聚契約', needsSummon: true, max: 1, mods: { costMult: 0.7, eliteMult: 2 }, desc: b => runModsHtml(b.mods) },
-    stormPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_storm', name: '雷鳴契約', max: 1, mods: { ultCdMult: 0.6, bossHpMult: 1.4 }, desc: b => runModsHtml(b.mods) },
 };
-// 卡片、暫停選單、飄字的圖示：契約寫在 icon，其他就是祝福自己的 id
+// 卡片、暫停選單、飄字的圖示：有寫 icon 的用它，其他就是祝福自己的 id
 function blessIcon(id) { return BLESSINGS[id].icon || id; }
 
 // ---------- 流派共鳴：同一流派的祝福累積到 RESONANCE_STEPS 的層數，各觸發一次共鳴 ----------
@@ -727,7 +690,7 @@ const RES_ENDLESS_FRENZY_PER = 0.1, RES_ENDLESS_FRENZY_MAX = 6;
 const RES_MAGNET = 0.6;
 const RES_SOULS = 0.3;
 function schoolPoints(school) {
-    if (school === ARMY_SCHOOL || school === PACT_SCHOOL || school === DUO_SCHOOL) return 0;
+    if (school === ARMY_SCHOOL || school === DUO_SCHOOL) return 0;
     let n = 0;
     for (const id in BLESSINGS) if (BLESSINGS[id].school === school) n += bl(id);
     return n;
@@ -752,9 +715,6 @@ const FROST_NOVA_SLOW = 0.92;
 const MIDAS_MULT = 3;
 // 一般波次的三選一也有這個機率出一張傳說（首領波則是保證一張）
 const LEGEND_CHANCE_NORMAL = 0.12;
-// 這一波起，一般波次的三選一有 PACT_CHANCE 機率把其中一張換成契約（首領波不出：那一輪留給傳說）
-const PACT_START_WAVE = 6;
-const PACT_CHANCE = 0.18;
 const BONE_BURST_RADIUS = 40;
 
 function getTier(level) {
@@ -811,7 +771,7 @@ function migrateMetaTable(m) {
 // 難度全擠在 35 波以後（波數成長 expGrowth 是指數），所以前半局很空、後面一口氣斷崖。
 // 改成從前幾波就慢慢加（MONSTER_ATK_RAMP、MONSTER_HP_RAMP），同時把 expGrowth 調小：前中期有壓力、後期一樣難但不再斷崖。
 // 整局一律加的話前期就被壓垮（死靈法師第 9 波就倒），只加後期的話斷崖更陡，兩種都試過。
-// 詛咒、契約的倍率另外疊在上面
+// 詛咒的倍率另外疊在上面
 // 攻擊與血量分開加：攻擊早點加（玩家第三到五分鐘就該第一次掉到半血，才有挑戰），血量晚點加、拉長
 // （血量一口氣加滿的話，加滿那幾波死亡率從 0 跳到四成，是斷崖；而且血量灌太多只會拖棚）。
 // 從第 1 波就加的話，沒有大軍的職業（武僧）傷害一路累積、第 10 波首領就倒
@@ -890,7 +850,7 @@ function classMeta(id) {
 const ACHV_CATEGORIES = [
     { id: 'journey', name: '征途' }, { id: 'endless', name: '無盡' }, { id: 'curse', name: '詛咒' }, { id: 'boss', name: '首領' },
     { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '共鳴' }, { id: 'legend', name: '傳說' },
-    { id: 'pact', name: '契約' }, { id: 'streak', name: '連殺' }, { id: 'relic', name: '遺跡' },
+    { id: 'streak', name: '連殺' }, { id: 'relic', name: '遺跡' },
     { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'class', name: '職業' }, { id: 'legacy', name: '傳承' },
 ];
 const ACHV_JOURNEY = [[5, 'wave5', '破曉', 10], [10, 'wave10', '初陣', 15], [15, 'wave15', '老兵', 20], [20, 'wave20', '百戰', 25], [25, 'wave25', '過半', 30],
@@ -953,13 +913,12 @@ const ACHV_BLITZ_SECONDS = 40;
 // 前兩隻首領自動遊玩都能無傷、20 秒內打倒：這兩個挑戰從這一波的首領起才算
 const ACHV_BOSS_CHALLENGE_WAVE = 30;
 const ACHV_LEGENDS = 3;
-const ACHV_PACTS = 3;
 const ACHV_BOSS_TOTAL = 25;
 // 精英潮一波就是幾十隻精英，一局打完會超過一千隻
 const ACHV_ELITES = [[500, 'elite500', '精英剋星', 30], [5000, 'elite5000', '王者殺手', 90]];
 
 function defaultStats() {
-    return { kills: {}, totalKills: 0, elites: 0, summons: 0, souls: 0, runs: 0, novas: 0, bosses: 0, relics: {}, legends: {}, pacts: {} };
+    return { kills: {}, totalKills: 0, elites: 0, summons: 0, souls: 0, runs: 0, novas: 0, bosses: 0, relics: {}, legends: {} };
 }
 function stats() { return meta.stats; }
 // 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
@@ -998,9 +957,6 @@ function buildAchievements() {
     for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary && legendAchvIcon(b))) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
     add('legend', 'legends', '傳說加身', `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, 40, () => countTaken(b => b.legendary) >= ACHV_LEGENDS);
     add('legend', 'legendAll', '萬古傳說', '每一張傳說祝福都拿過', 120, () => Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary).every(b => S().legends[b]));
-    for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].pact)) add('pact', `pact_${id}`, BLESSINGS[id].name, `立下「${BLESSINGS[id].name}」`, 15, () => !!S().pacts[id]);
-    add('pact', 'pacts', '魔鬼交易', `一局立下 ${ACHV_PACTS} 份契約`, 40, () => countTaken(b => b.pact) >= ACHV_PACTS);
-    add('pact', 'pactWin', '與魔共舞', `帶著 ${ACHV_PACTS} 份契約通關`, 100, () => gameState.endless && countTaken(b => b.pact) >= ACHV_PACTS);
     for (const [n, id, name, r] of ACHV_STREAK) add('streak', id, name, `連殺 ${n}`, r, () => gameState.bestStreak >= n);
     for (const [id, name, desc, r, t] of ACHV_RELICS) add('relic', id, name, desc, r, () => t(S()));
     add('relic', 'relicTrio', '朝聖者', '一局內三種遺跡都用過', 40, () => Object.keys(RELIC_TYPES).every(k => gameState.run.relics[k]));
@@ -1114,7 +1070,7 @@ function renderAchievements() {
 const SUMMON_COST_STEP = 25;
 function getSummonCost(config) {
     const n = gameState.units[config.type].count;
-    return Math.max(1, Math.round(config.summonCost * (1 + n / SUMMON_COST_STEP) * (1 - blessVal('pact')) * runMods().costMult));
+    return Math.max(1, Math.round(config.summonCost * (1 + n / SUMMON_COST_STEP) * (1 - blessVal('pact'))));
 }
 function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
@@ -1196,7 +1152,7 @@ const CLASSES = {
 const DEFAULT_CLASS = 'necro';
 function runClass() { return gameState.classId || DEFAULT_CLASS; }
 function classDef() { return CLASSES[runClass()]; }
-function classUnlocked(id) { const c = CLASSES[id]; return !!c && (!c.unlock || !!meta.achv[c.unlock]); }
+function classUnlocked(id) { const c = CLASSES[id]; return !!c && (!c.unlock || !!meta.achv[c.unlock] || !!(c.unlockOld && meta.achv[c.unlockOld])); }
 // 標題畫面選的職業（沒解鎖或不存在就退回亡靈法師）
 function selectedClass() { return classUnlocked(meta.classSel) ? meta.classSel : DEFAULT_CLASS; }
 // 底部三種兵加起來到上限了沒（有上限的職業才有）
@@ -2104,11 +2060,11 @@ const PLAYER_MAX_HIT_RATIO = 0.4;
 // 這個上限是一大塊難度：0.1～0.15 時躲在大軍後面的職業（亡靈法師、刺客、精靈）沒強化也常常通關，
 // 而加怪物攻擊、血量補不回來（只會磨大軍，碰不到主角）。0.2 = 至少被咬五下才倒
 const MELEE_HERO_HIT_RATIO = 0.2;
-// 契約、詛咒的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
+// 詛咒的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
 // 上限固定時，後期怪物攻擊早就超過上限，+30% 乘上去還是被壓回 20%；主角血量少三成，上限（最大血量的 20%）也跟著小三成，
-// 一樣被咬 5 下才倒 —— 兩種代價後期都等於沒有。所以上限 × 怪物攻擊倍率 ÷ 主角血量倍率（例：戰狂契約 20% → 26%，約 4 下倒）。
+// 一樣被咬 5 下才倒 —— 兩種代價後期都等於沒有。所以上限 × 怪物攻擊倍率 ÷ 主角血量倍率（例：血債 20% → 26%，約 4 下倒）。
 // 首領大招、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
-// 疊太多時封頂在 HERO_HIT_CAP_MAX，不會一下就倒（玻璃之軀主角血量只剩四分之一，不封頂的話普攻一下 80%）
+// 疊太多時封頂在 HERO_HIT_CAP_MAX，不會一下就倒
 const HERO_HIT_CAP_MAX = { melee: 0.35, any: 0.6 };
 // 招式瞄準主角時響預警音：pos/radius 給了就只在主角站在範圍裡時響（打大軍不吵）
 function warnHero(pos = null, radius = 0) {
@@ -2161,7 +2117,7 @@ class Player extends GameObject {
         if (!boltTargets.length) return;
         if (boltTargets.length > shots) boltTargets.sort((a, b) => a.d - b.d);
         this.boltT = P.boltInterval / (res('mage') >= 1 ? RES_MAGE_RATE : 1);
-        const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade')) * runMods().boltDmgMult;
+        const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade'));
         const tip = this.staffTip();
         const n = Math.min(shots, boltTargets.length);
         for (let i = 0; i < n; i++) {
@@ -2347,10 +2303,9 @@ class SummonUnit extends GameObject {
         this.maxHealth = Math.round(this.config.baseHealth * multiplier * (1 + blessVal('boneArmor')) * (1 + classMeta('summonHp')));
         let attack = (this.config.baseAttack > 0) ? (this.config.baseAttack * multiplier) : 0;
         if (type === 'SkeletonWarrior') attack *= 1 + blessVal('boneBlade');
-        const rm = runMods();
-        this.attack = attack * rm.summonDmgMult;
+        this.attack = attack;
         this.attackSpeed = this.config.attackSpeed * (type === 'EyeMonster' ? 1 + blessVal('frenzyEye') : 1)
-            * (type === 'SkeletonWarrior' && res('skel') >= 1 ? 1 + RES_SKEL_ATK_SPEED : 1) * rm.summonAtkSpeedMult;
+            * (type === 'SkeletonWarrior' && res('skel') >= 1 ? 1 + RES_SKEL_ATK_SPEED : 1);
         this.moveSpeed = this.config.moveSpeed * (type === 'SkeletonWarrior' ? 1 + blessVal('swiftBones') : 1);
 
         if (this.config.type === 'EyeMonster') {
@@ -3131,7 +3086,7 @@ function soulSplit(m) {
     spawnParticles(m.pos.x, m.pos.y, SOUL_BOLT_GLOW, 6, 80, 0.3, 2);
 }
 function mageBoltDamage() {
-    return CONFIG.player.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade')) * runMods().boltDmgMult;
+    return CONFIG.player.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade'));
 }
 // 一發追蹤的法師魂彈（分裂、靈視共用；不再分裂）
 function fireSoulBolt(from, target, share = 1) {
@@ -6503,22 +6458,21 @@ const CURSES = [
 const CURSE_CRYSTAL_STEP = 0.3;
 const BATS_EARLY_WAVE = 4;
 const VICTORY_CRYSTALS = 100;
-// 整局的乘數：詛咒、已立的契約疊在一起（鍵見 RUN_MOD_LABELS）。
-// 生怪、算靈魂每次都要查，所以快取在 gameState.runModsCache；詛咒、契約變動時呼叫 invalidateRunMods()
+// 整局的乘數：詛咒疊出來的（鍵見 RUN_MOD_KEYS）。
+// 生怪、算靈魂每次都要查，所以快取在 gameState.runModsCache；詛咒變動時呼叫 invalidateRunMods()
 function runMods() {
     return gameState.runModsCache || (gameState.runModsCache = computeRunMods());
 }
 function invalidateRunMods() { gameState.runModsCache = null; }
 function computeRunMods() {
     const m = { batsEarly: false };
-    for (const k in RUN_MOD_LABELS) m[k] = 1;
-    const apply = (src) => { for (const k in RUN_MOD_LABELS) if (src[k]) m[k] *= src[k]; };
+    for (const k of RUN_MOD_KEYS) m[k] = 1;
+    const apply = (src) => { for (const k of RUN_MOD_KEYS) if (src[k]) m[k] *= src[k]; };
     const lv = gameState.curse || 0;
     for (let i = 0; i < lv && i < CURSES.length; i++) {
         apply(CURSES[i]);
         if (CURSES[i].batsEarly) m.batsEarly = true;
     }
-    for (const id in gameState.blessings) if (BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0) apply(BLESSINGS[id].mods);
     return m;
 }
 function curseCrystalMult(lv = gameState.curse || 0) {
@@ -7258,12 +7212,12 @@ function useUltimate() {
     const p = gameState.player;
     if (!p || !p.isAlive || gameState.ultCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
     if (!classDef().ultimate.use()) return false;
-    // 各職業的大招自己設冷卻；局外的「大招精通」、契約的大招冷卻在這裡統一打折，七個職業都吃得到
+    // 各職業的大招自己設冷卻；局外的「大招精通」在這裡統一打折，七個職業都吃得到
     gameState.ultCooldown *= ultCooldownMult();
     markUltTaught();
     return true;
 }
-function ultCooldownMult() { return (1 - metaVal('ultMastery')) * runMods().ultCdMult; }
+function ultCooldownMult() { return 1 - metaVal('ultMastery'); }
 
 function useNova() {
     const p = gameState.player;
@@ -7337,7 +7291,7 @@ function draftOptionCount() {
     return CONFIG.draft.optionCount + metaVal('extraChoice');
 }
 // exclude：這次不能出的（放逐換卡時，畫面上已有的那幾張）
-// 這個職業抽得到的祝福：自己的流派，加上全軍通用的（契約另外由 pactPool 抽，各職業共用）
+// 這個職業抽得到的祝福：自己的流派，加上全軍通用的
 function blessingInClass(id) {
     const s = BLESSINGS[id].school;
     if (BLESSINGS[id].needsSummon && !classCanSummon()) return false;
@@ -7348,21 +7302,14 @@ function blessingInClass(id) {
 function classCanSummon() { return classDef().cards.some(t => !UNIT_TYPES[t].upgradeOnly); }
 function draftPool(legendary, exclude = []) {
     return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && !BLESSINGS[id].legendary === !legendary
-        && !BLESSINGS[id].pact && blessingInClass(id) && !gameState.banished.includes(id) && !exclude.includes(id));
-}
-function pactPool(exclude = []) {
-    return Object.keys(BLESSINGS).filter(id => BLESSINGS[id].pact && bl(id) < BLESSINGS[id].max && !gameState.banished.includes(id) && !exclude.includes(id)
-        && !(BLESSINGS[id].needsSummon && !classCanSummon()));
+        && blessingInClass(id) && !gameState.banished.includes(id) && !exclude.includes(id));
 }
 function rollDraftOptions(boss) {
     const count = draftOptionCount();
     const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
     const legend = legendRoll ? weightedPick(draftPool(true), 1)[0] : null;
-    const pactRoll = !boss && gameState.currentWave >= PACT_START_WAVE && Math.random() < PACT_CHANCE;
-    const pact = pactRoll ? weightedPick(pactPool(), 1)[0] : null;
-    const special = [legend, pact].filter(Boolean);
-    const options = weightedPick(draftPool(false), count - special.length);
-    for (const id of special) options.splice(Math.floor(Math.random() * (options.length + 1)), 0, id);
+    const options = weightedPick(draftPool(false), count - (legend ? 1 : 0));
+    if (legend) options.splice(Math.floor(Math.random() * (options.length + 1)), 0, legend);
     return options;
 }
 
@@ -7395,7 +7342,6 @@ function resonancePipsHtml(school) {
 function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
-    if (school === PACT_SCHOOL) return `<span class="school-chip pact-chip">${iconHtml('pact', 'icon school-img')}<span>契約</span></span>`;
     if (school === DUO_SCHOOL) return `<span class="school-chip duo-chip">${BLESSINGS[id].duo.map(schoolBadgeHtml).join('')}<span>雙流派</span></span>`;
     const S = SCHOOLS[school];
     // 這張選下去剛好湊滿一段：整個標籤亮起來
@@ -7430,7 +7376,7 @@ function renderDraftCards() {
     gameState.pendingDraft.options.forEach(id => {
         const b = BLESSINGS[id];
         const card = document.createElement('button');
-        card.className = `draft-card panel${b.legendary ? ' legendary' : ''}${b.pact ? ' pact' : ''}`;
+        card.className = `draft-card panel${b.legendary ? ' legendary' : ''}`;
         const banish = gameState.banishLeft > 0 ? `<button class="card-banish" data-banish="${id}">${iconHtml('banish', 'icon btn-icon')}放逐</button>` : '';
         const isNew = b.legendary && !stats().legends[id] ? '<span class="card-new">新</span>' : '';
         const why = b.duo && duoIntroNow() ? `<span class="duo-why">${b.duo.map(s => SCHOOLS[s].name).join('、')}都到 ${RESONANCE_STEPS[0]} 層才出現</span>` : '';
@@ -7510,7 +7456,7 @@ function banishBlessing(id) {
     if (!d || gameState.banishLeft <= 0 || !d.options.includes(id)) return;
     gameState.banished.push(id);
     gameState.banishLeft--;
-    const replacement = weightedPick(BLESSINGS[id].pact ? pactPool(d.options) : draftPool(BLESSINGS[id].legendary, d.options), 1)[0];
+    const replacement = weightedPick(draftPool(BLESSINGS[id].legendary, d.options), 1)[0];
     if (replacement) d.options[d.options.indexOf(id)] = replacement;
     else d.options = d.options.filter(o => o !== id);
     renderDraftCards();
@@ -7530,21 +7476,11 @@ function pickBlessing(id) {
     gameState.blessings[id] = bl(id) + 1;
     gameState.run.picks++;
     if (BLESSINGS[id].legendary) stats().legends[id] = true;
-    if (BLESSINGS[id].pact) stats().pacts[id] = true;
     refreshResonance();
     if (res(school) > tierBefore) announceResonance(school, res(school));
     if (id === 'vitality' && gameState.player) {
         gameState.player.maxHealth += BLESSINGS.vitality.per;
         gameState.player.currentHealth = gameState.player.maxHealth;
-    }
-    if (BLESSINGS[id].pact) {
-        invalidateRunMods();
-        const hpMult = BLESSINGS[id].mods.mageHpMult;
-        if (hpMult && gameState.player) {
-            const p = gameState.player;
-            p.maxHealth = Math.max(1, Math.round(p.maxHealth * hpMult));
-            p.currentHealth = Math.min(p.currentHealth, p.maxHealth);
-        }
     }
     gameState.summons.forEach(s => { if (s.isAlive) s.refreshStats(); });
     if (gameState.player) {

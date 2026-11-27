@@ -243,7 +243,7 @@ function elfMoving() { return elfState().movingT > 0; }
 // ---------- 弓 ----------
 function bowRange() { return ELF.bow.range * (1 + blessVal('bowRangeUp')); }
 function arrowDamage() {
-    return ELF.bow.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult
+    return ELF.bow.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave))
         * (1 + gameState.units.Archery.level * CONFIG.archery.upgradeBonus) * (1 + blessVal('bowPowerUp'));
 }
 const elfTargets = [];
