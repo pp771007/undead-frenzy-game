@@ -112,7 +112,7 @@ const SOLDIER_TIER1_REACH = 1.25;
 const SPEAR_PIERCE_RADIUS = 28;
 const SOLDIER_TIER3_ELITE_MULT = 2;
 
-// ---------- 五個流派（規劃見 docs/characters.md）：各 4 張祝福、3 層與 6 層各一段共鳴；3 張專屬傳說 ----------
+// ---------- 五個流派（規劃見 docs/characters.md）：各 4 張祝福、3 層與 6 層各一段共鳴；每個流派一張傳說 ----------
 // 圖示名稱 = 祝福 id（icons.js）
 Object.assign(SCHOOLS, {
     shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', res: [{ name: '龜甲陣', desc: '戰士站著不動時，全軍受傷 -30%' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },

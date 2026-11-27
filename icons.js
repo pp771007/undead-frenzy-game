@@ -931,7 +931,32 @@ const ICON_BODIES = {
     soulBlade: `<path d="M46 6 L58 6 L58 18 L30 46 L18 34 Z" fill="#7ff0f0"/><path d="M52 10 L26 38" stroke="#d6fbfb" stroke-width="3"/>
         <path d="M12 32 L32 52" stroke-width="10"/><path d="M12 32 L32 52" stroke="#5c6bc0" stroke-width="5"/>
         <path d="M20 44 L9 55" stroke-width="9"/><path d="M20 44 L9 55" stroke="#9fa8da" stroke-width="5"/>${shine(50, 12, 3, 2, 45)}`,
+    // 疾骨：一根骨頭往前衝，後面拖著速度線
+    swiftBones: duoStroke('M4 22 L18 22 M2 34 L14 34 M6 46 L18 46', '#8fd3ff', 3)
+        + `<g transform="rotate(-20 38 34)"><path d="M22 30 C18 26 20 20 25 22 C26 18 32 18 32 23 L46 23 C46 18 52 18 53 22 C58 20 60 26 56 30 C60 34 58 40 53 38 C52 42 46 42 46 37 L32 37 C32 42 26 42 25 38 C20 40 18 34 22 30 Z" fill="#f1ead6"/>
+            <path d="M33 27 L45 27" stroke="#d7ccc8" stroke-width="2"/></g>${shine(30, 26, 3, 1.6, -20)}`,
+    // 破綻凝視：眼魔的眼睛外面套一圈金色準星，告訴骷髏「打這裡」
+    weakGaze: `<path d="M6 32 C16 19 48 19 58 32 C48 45 16 45 6 32 Z" fill="#f1ead6"/><circle cx="32" cy="32" r="9" fill="#26a69a"/><circle cx="32" cy="32" r="3.5" fill="${ICON_OUTLINE}" stroke="none"/>`
+        + `<circle cx="32" cy="32" r="22" stroke-width="7"/><circle cx="32" cy="32" r="22" stroke="#ffd54f" stroke-width="3"/>`
+        + duoStroke('M32 2 L32 12 M32 52 L32 62 M2 32 L10 32 M54 32 L62 32', '#ffd54f', 3) + shine(26, 28, 2, 1.4),
+    // 屍山：一堆骸骨（兩顆骷髏疊在骨頭堆上），旁邊一個沙漏
+    boneHoard: `<path d="M4 58 C8 46 18 42 30 42 C40 42 46 46 50 58 Z" fill="#6d4c41"/>
+        <path d="M8 52 L40 44 M10 44 L42 54" stroke-width="8"/><path d="M8 52 L40 44 M10 44 L42 54" stroke="#efebe9" stroke-width="4"/>
+        ${[[15, 34, 0.55], [32, 30, 0.6]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -16 C-12 -16 -18 -8 -18 2 C-18 8 -15 12 -11 14 L-11 20 L11 20 L11 14 C15 12 18 8 18 2 C18 -8 12 -16 0 -16 Z" fill="#efebe9" stroke-width="${(4 / s).toFixed(1)}"/><ellipse cx="-7" cy="2" rx="4.5" ry="5.5" fill="#7e57c2" stroke="none"/><ellipse cx="7" cy="2" rx="4.5" ry="5.5" fill="#7e57c2" stroke="none"/></g>`).join('')}
+        <path d="M46 8 L60 8 M46 36 L60 36" stroke-width="4"/><path d="M48 10 C48 18 53 20 53 22 C53 24 48 26 48 34 L58 34 C58 26 53 24 53 22 C53 20 58 18 58 10 Z" fill="#e1bee7" stroke-width="2.5"/>
+        <path d="M50 12 L56 12 C55 16 53 18 53 20 C53 18 51 16 50 12 Z M49.5 33 C50 29 53 27 53 27 C53 27 56 29 56.5 33 Z" fill="#7e57c2" stroke="none"/>`,
+    // 骨爆：一堆交叉的骨頭被淡紫色的爆炸往外炸開，角落一個金色加號
+    boneBlastUp: `<path d="${starPath(28, 34, 27, 15, 10)}" fill="#b39ddb"/><path d="${starPath(28, 34, 17, 10, 10)}" fill="#ede7f6" stroke="none"/>
+        <path d="M12 46 L44 24 M12 24 L44 46" stroke-width="9"/><path d="M12 46 L44 24 M12 24 L44 46" stroke="#efebe9" stroke-width="5"/>
+        ${[[12, 46], [44, 24], [12, 24], [44, 46]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.5" fill="#efebe9" stroke-width="2.5"/>`).join('')}
+        <path d="M51 42 L51 60 M42 51 L60 51" stroke-width="9"/><path d="M51 42 L51 60 M42 51 L60 51" stroke="#ffd54f" stroke-width="4.5"/>`,
     // ---- 傳說祝福 ----
+    // 怨靈附身：一隻青色怨靈從背後抱住一隻小怪，那隻怪的眼睛也變成青色
+    possession: `<g transform="translate(-6 14) scale(0.9)"><path d="${GHOST_PATH}" fill="#78909c"/><ellipse cx="26" cy="27" rx="4" ry="4.5" fill="#80cbc4" stroke="none"/><ellipse cx="38" cy="27" rx="4" ry="4.5" fill="#80cbc4" stroke="none"/>
+            <path d="M24 38 L28 41 L32 38 L36 41 L40 38" stroke-width="2.5"/></g>
+        <g transform="translate(18 -2) scale(0.8)" opacity="0.9"><path d="${GHOST_PATH}" fill="#80cbc4"/><ellipse cx="26" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="38" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/></g>`
+        + duoStroke('M36 30 C30 34 24 34 20 38', '#80cbc4', 3.5) + duoStroke('M52 32 C50 40 44 44 38 46', '#80cbc4', 3.5)
+        + `${[[10, 12], [56, 54]].map(([x, y]) => `<path d="${starPath(x, y, 5, 2, 4)}" fill="#e0f2f1" stroke-width="1.6"/>`).join('')}`,
     boneBurst: `<path d="${starPath(32, 34, 28, 14, 9)}" fill="#ffb74d"/><path d="${starPath(32, 34, 18, 10, 9)}" fill="#ffe0b2" stroke="none"/>
         <path d="M32 18 C23 18 18 24 18 31 C18 36 21 39 24 40 L24 46 L40 46 L40 40 C43 39 46 36 46 31 C46 24 41 18 32 18 Z" fill="#f1ead6"/>
         <ellipse cx="27" cy="31" rx="3.5" ry="4" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="37" cy="31" rx="3.5" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>`,

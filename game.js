@@ -650,6 +650,10 @@ const CONFIG = {
 
 // ---------- 祝福（每 3 波 / 首領波三選一，可疊層）；圖示名稱 = 祝福 id（icons.js） ----------
 const CLEAVE_RADIUS = 35;
+// 破綻凝視：被眼魔打中後幾秒內骷髏打牠比較痛
+const WEAK_GAZE_TIME = 3;
+// 怨靈附身：附身幾秒、怨靈爆炸範圍的幾倍內找怪
+const POSSESS_TIME = 6, POSSESS_REACH = 1.2;
 const pct = (v) => `${Math.round(v * 100)}%`;
 // 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
 // 堅甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
@@ -692,21 +696,27 @@ const BLESSINGS = {
     cleave: { school: 'skel', name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
     boneArmor: { school: ARMY_SCHOOL, name: '堅甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
     raiseDead: { school: 'skel', name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
+    swiftBones: { school: 'skel', name: '疾骨', max: 3, per: 0.2, desc: b => `骷髏移速 +${pct(b.per)}` },
     lifesteal: { school: ARMY_SCHOOL, name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
     splitGaze: { school: 'eye', name: '分裂凝視', max: 3, per: 1, desc: b => `眼魔每次多射 ${b.per} 發` },
     frenzyEye: { school: 'eye', name: '狂熱之眼', max: 4, per: 0.3, desc: b => `眼魔攻速 +${pct(b.per)}` },
     eagleEye: { school: 'eye', name: '鷹眼', max: 3, per: 0.2, desc: b => `眼魔射程 +${pct(b.per)}` },
+    // 破綻凝視：眼魔替骷髏標靶，兩個流派一起養有加成
+    weakGaze: { school: 'eye', name: '破綻凝視', max: 3, per: 0.15, desc: b => `被眼魔打中的怪 ${WEAK_GAZE_TIME} 秒內受到的骷髏傷害 +${pct(b.per)}` },
     wraithBlast: { school: 'wraith', name: '怨念爆裂', max: 4, per: 0.6, desc: b => `怨靈爆炸傷害 +${pct(b.per)}` },
     rebirth: { school: 'wraith', name: '輪迴', max: 2, per: 0.4, desc: b => `怨靈陣亡時 ${pct(b.per)} 重生` },
     frostAura: { school: 'wraith', name: '寒冥光環', max: 3, per: 5, desc: b => `怨靈光環持續傷害 ${b.per}（隨怨靈等級成長）` },
     auraMight: { school: 'wraith', name: '冥界加持', max: 3, per: 0.2, desc: b => `怨靈光環裡的骷髏、眼魔傷害 +${pct(b.per)}` },
     // totalDesc：暫停選單顯示累積效果時用（「並回滿」只在選的當下成立）
     vitality: { school: 'mage', name: '不死之軀', max: 5, per: 25, desc: b => `法師血量 +${b.per} 並回滿`, totalDesc: b => `法師血量 +${b.per}` },
-    novaPower: { school: 'mage', name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
     soulBlade: { school: 'mage', name: '靈魂之刃', max: 4, per: 0.6, desc: b => `法師靈魂彈傷害 +${pct(b.per)}` },
     soulVolley: { school: 'mage', name: '靈魂連射', max: 2, per: 1, desc: b => `法師每次多射 ${b.per} 顆` },
     shadowStep: { school: 'mage', name: '幽影步', max: 3, per: 0.12, desc: b => `法師移速 +${pct(b.per)}` },
-    frenzyTime: { school: 'mage', name: '狂潮延長', max: 3, per: 1.5, desc: b => `新星的大軍狂暴多 ${b.per} 秒` },
+    // 新星流派：大招、大軍狂暴、屍爆（陣亡的骸骨被新星引爆）。大軍越被磨光，地上骨頭越多，這一派就越能翻盤
+    novaPower: { school: 'nova', name: '新星強化', max: 4, per: 0.5, cdPer: 0.15, desc: b => `新星傷害 +${pct(b.per)}、冷卻 -${pct(b.cdPer)}` },
+    frenzyTime: { school: 'nova', name: '狂潮延長', max: 3, per: 1.5, desc: b => `新星的大軍狂暴多 ${b.per} 秒` },
+    boneHoard: { school: 'nova', name: '屍山', max: 3, per: 5, desc: b => `陣亡留下的骸骨多留 ${b.per} 秒` },
+    boneBlastUp: { school: 'nova', name: '骨爆', max: 4, per: 0.4, desc: b => `屍爆傷害 +${pct(b.per)}` },
     soulHarvest: { school: 'soul', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
     magnet: { school: 'soul', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
     // needsSummon：要有「花錢召喚」的卡才有用（武僧三張都是修練卡，抽到等於空卡），見 classCanSummon
@@ -716,8 +726,10 @@ const BLESSINGS = {
     giantBones: { school: 'skel', name: '巨骨', legendary: true, max: 1, per: 8, desc: b => `每 ${b.per} 隻骷髏出一隻巨人` },
     ricochet: { school: 'eye', name: '跳彈魔眼', legendary: true, max: 1, per: 2, desc: b => `眼魔的彈多彈射 ${b.per} 次` },
     soulfire: { school: 'mage', name: '魂火', legendary: true, max: 1, per: 0.6, desc: () => '法師的靈魂彈命中時爆炸' },
-    frostNova: { school: 'mage', name: '寒冰新星', legendary: true, max: 1, per: 3, desc: b => `新星範圍變大，凍住敵人 ${b.per} 秒` },
-    eliteHunter: { school: 'mage', name: '精英獵手', legendary: true, max: 1, per: 1, desc: () => '擊殺精英怪時新星冷卻歸零' },
+    frostNova: { school: 'nova', name: '寒冰新星', legendary: true, max: 1, per: 3, desc: b => `新星範圍變大，凍住敵人 ${b.per} 秒` },
+    eliteHunter: { school: 'nova', name: '精英獵手', legendary: true, max: 1, per: 1, desc: () => '擊殺精英怪時新星冷卻歸零' },
+    // 怨靈附身：怨靈的死變成換來一個打手，怨靈流派從「爆一下」變成「搶一隻怪過來」
+    possession: { school: 'wraith', name: '怨靈附身', legendary: true, max: 1, per: POSSESS_TIME, desc: b => `怨靈爆炸時附身身邊最強的一隻怪，牠替你打 ${b.per} 秒（首領不會）` },
     soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
@@ -740,7 +752,8 @@ const SCHOOLS = {
     skel: { name: '骷髏', img: 'skeleton_warrior.png', color: '#ECEFF1', res: [{ name: '骨潮', desc: '骷髏攻速 +25%' }, { name: '不滅骨軍', desc: '骷髏陣亡時 35% 當場重組' }] },
     eye: { name: '眼魔', img: 'eye_monster.png', color: '#FFD54F', res: [{ name: '連環凝視', desc: '眼魔的彈多彈射 1 次' }, { name: '千眼', desc: '眼魔每次多射 1 發' }] },
     wraith: { name: '怨靈', img: 'wraith.png', color: '#80CBC4', res: [{ name: '冥域', desc: '怨靈光環範圍 +30%' }, { name: '哀嚎', desc: '怨靈每 3 秒脈衝，傷害 ×2' }] },
-    mage: { name: '法師', img: 'player.png', color: '#80DEEA', res: [{ name: '魂彈連發', desc: '法師射速 +40%' }, { name: '新星湧動', desc: '新星冷卻 -35%' }] },
+    mage: { name: '法師', img: 'player.png', color: '#80DEEA', res: [{ name: '魂彈連發', desc: '法師射速 +40%' }, { name: '魂彈分裂', desc: '魂彈命中時分裂出 2 顆小魂彈，射向附近的怪' }] },
+    nova: { name: '新星', icon: 'burst', color: '#CE93D8', res: [{ name: '新星湧動', desc: '新星冷卻 -25%' }, { name: '狂潮不息', desc: '大軍狂暴時每打倒一隻怪，狂暴多 0.1 秒' }] },
     soul: { name: '靈魂', icon: 'soulSchool', color: '#B2EBF2', res: [{ name: '引魂', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '靈魂掉落 +30%' }] },
 };
 const RESONANCE_STEPS = [3, 6];
@@ -750,7 +763,10 @@ const RES_SKEL_REVIVE = 0.35;
 const RES_WRAITH_RADIUS = 1.3;
 const RES_WRAITH_PULSE_MULT = 2;
 const RES_MAGE_RATE = 1.4;
-const RES_NOVA_CD = 0.35;
+const RES_SOUL_SPLIT = 2, RES_SOUL_SPLIT_SHARE = 0.5, RES_SOUL_SPLIT_RANGE = 140;
+const RES_NOVA_CD = 0.25;
+// 狂潮不息：每打倒一隻延長幾秒，一次新星最多延長多少（不設上限的話怪夠多就永遠狂暴）
+const RES_ENDLESS_FRENZY_PER = 0.1, RES_ENDLESS_FRENZY_MAX = 6;
 const RES_MAGNET = 0.6;
 const RES_SOULS = 0.3;
 function schoolPoints(school) {
@@ -1147,7 +1163,7 @@ function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
 }
 function getNovaCooldown() {
-    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (res('mage') >= 2 ? 1 - RES_NOVA_CD : 1);
+    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (res('nova') >= 1 ? 1 - RES_NOVA_CD : 1);
 }
 function getNovaDamage() {
     return Math.round(CONFIG.nova.baseDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('novaPower')));
@@ -1198,9 +1214,10 @@ const CLASSES = {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
         // 整支大軍被磨光之後法師自己打不動硬怪，對怪物血量最敏感
         monsterPressure: 0.7,
-        cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'soul'],
+        cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'nova', 'soul'],
         hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
         attack: (p, dt) => p.shootBolt(dt),
+        drawWorld: (ctx) => drawNecroWorld(ctx),
         ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', hintRadius: () => CONFIG.nova.radius, cooldown: () => getNovaCooldown(), use: () => useNova() },
         metaUpgrades: {
             summonHp: META_SUMMON_HP,
@@ -1323,7 +1340,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -2197,7 +2214,7 @@ class Player extends GameObject {
         const n = Math.min(shots, boltTargets.length);
         for (let i = 0; i < n; i++) {
             const pr = getProjectileFromPool();
-            pr.init(tip.x, tip.y, boltTargets[i].m, P.bolt, dmg, null, 0, bl('soulfire') > 0);
+            pr.init(tip.x, tip.y, boltTargets[i].m, P.bolt, dmg, res('mage') >= 2 ? soulSplitOwner : null, 0, bl('soulfire') > 0);
             // 多發時扇形散開、一發時隨機偏一點，再由追蹤彎回目標：看起來是「放出去的魂」而不是直線射擊
             const spread = n > 1 ? (i / (n - 1) - 0.5) * SOUL_BOLT_FAN * 2 : randomInRange(-SOUL_BOLT_WOBBLE, SOUL_BOLT_WOBBLE);
             const c = Math.cos(spread), s = Math.sin(spread), d = pr.direction;
@@ -2382,7 +2399,7 @@ class SummonUnit extends GameObject {
         this.attack = attack * rm.summonDmgMult;
         this.attackSpeed = this.config.attackSpeed * (type === 'EyeMonster' ? 1 + blessVal('frenzyEye') : 1)
             * (type === 'SkeletonWarrior' && res('skel') >= 1 ? 1 + RES_SKEL_ATK_SPEED : 1) * rm.summonAtkSpeedMult;
-        this.moveSpeed = this.config.moveSpeed;
+        this.moveSpeed = this.config.moveSpeed * (type === 'SkeletonWarrior' ? 1 + blessVal('swiftBones') : 1);
 
         if (this.config.type === 'EyeMonster') {
             this.attackRange = (this.config.attackRange + (this.level * this.config.attackRangeUpgrade)) * (1 + blessVal('eagleEye'));
@@ -2776,6 +2793,7 @@ class SummonUnit extends GameObject {
         } else if (this.config.type === 'SkeletonWarrior') {
             const mainTarget = this.target;
             let dmg = currentAttackDamage;
+            if (mainTarget.gazedUntil > worldTime) dmg = Math.round(dmg * (1 + blessVal('weakGaze')));
             if (this.tier >= 1 && Math.random() < E.skelCritChance) {
                 dmg = Math.round(dmg * E.skelCritMult);
                 spawnParticles(mainTarget.pos.x, mainTarget.pos.y, '#FFEE58', 3, 60, 0.25, 2);
@@ -2966,6 +2984,8 @@ class EyeMonster extends SummonUnit {
     constructor(x, y, level, playerTransform) {
         super(x, y, CONFIG.eyeMonster, level, playerTransform);
     }
+    // 眼魔的彈打中時由 Projectile 呼叫
+    onHit(m) { if (bl('weakGaze') && m.isAlive) m.gazedUntil = worldTime + WEAK_GAZE_TIME; }
 }
 
 class Wraith extends SummonUnit {
@@ -3033,6 +3053,8 @@ class Wraith extends SummonUnit {
         addShake(6);
         Sfx.play('explode');
 
+        if (bl('possession')) possessNear(this.pos, radius * POSSESS_REACH);
+
         this.isAlive = false;
         gameState.units.Wraith.count--;
         onSummonDeath(this);
@@ -3046,6 +3068,117 @@ class Wraith extends SummonUnit {
         }
         updateUI();
     }
+}
+
+// ---------- 倒戈的怪：一段時間內改打身邊的怪（刺客的迷魂毒、亡靈法師的怨靈附身共用） ----------
+// 怪的攻擊流程只認 target 的 isAlive／pos／maxHealth／takeDamage：給牠一個代理目標，打下去的傷害放大後轉給真正的同伴
+// （怪的攻擊是照著打主角調的，打同樣血厚的怪要放大才有感）
+const TURN_RADIUS = 130, TURN_DMG_MULT = 4;
+function turnProxy(m) {
+    return m.turnProxy || (m.turnProxy = {
+        victim: null,
+        get isAlive() { return !!this.victim && this.victim.isAlive && m.turnT > 0; },
+        // 怪的 update 在發現目標死掉之前就會先讀 target.pos，所以沒有同伴時也要回得出位置
+        get pos() { return this.victim ? this.victim.pos : m.pos; },
+        get maxHealth() { return this.victim ? this.victim.maxHealth : 1; },
+        takeDamage(d) { if (this.victim) this.victim.takeDamage(d * TURN_DMG_MULT); },
+    });
+}
+// kind：誰讓牠倒戈的（各職業照 kind 畫自己的樣子）
+function turnMonster(m, time, kind) {
+    if (!(m.turnT > 0)) gameState.turned.push(m);
+    m.turnT = Math.max(m.turnT || 0, time);
+    m.turnMax = m.turnT;
+    m.turnKind = kind;
+    turnRetarget(m);
+}
+function turnRetarget(m) {
+    let best = null, bestD = TURN_RADIUS * TURN_RADIUS;
+    monsterGrid.forEachInRadius(m.pos, TURN_RADIUS, o => {
+        if (o === m || !o.isAlive || o.stealthed || o.turnT > 0) return;
+        const d = distanceSq(o.pos, m.pos);
+        if (d < bestD) { bestD = d; best = o; }
+    });
+    const proxy = turnProxy(m);
+    proxy.victim = best;
+    if (best) { m.tauntBy = proxy; m.tauntT = m.turnT; m.target = proxy; }
+    else if (m.target === proxy) { m.target = null; m.tauntBy = null; m.tauntT = 0; }
+}
+function updateTurned(dt) {
+    gameState.turned = gameState.turned.filter(m => {
+        if (!m.isAlive) return false;
+        m.turnT -= dt;
+        if (m.turnT <= 0) { m.turnT = 0; if (m.tauntBy === m.turnProxy) { m.tauntBy = null; m.tauntT = 0; m.target = null; } return false; }
+        if (!m.turnProxy.victim || !m.turnProxy.victim.isAlive) turnRetarget(m);
+        return true;
+    });
+}
+
+// ---------- 傳說「怨靈附身」：怨靈爆炸時附身身邊最強的一隻怪 ----------
+function possessNear(pos, reach) {
+    let best = null;
+    const rSq = reach * reach;
+    monsterGrid.forEachInRadius(pos, reach, m => {
+        if (!m.isAlive || m instanceof BossMonster || m.stealthed || m.turnT > 0 || distanceSq(m.pos, pos) > rSq) return;
+        if (!best || m.maxHealth > best.maxHealth) best = m;
+    });
+    if (!best) return;
+    turnMonster(best, POSSESS_TIME, 'possess');
+    addWorldFx({ kind: 'beam', x: pos.x, y: pos.y, ...beamTo(pos, best.pos), w: 6, life: 0.35, color: POSSESS_COLOR });
+    spawnParticles(best.pos.x, best.pos.y, POSSESS_COLOR, 14, 70, 0.6, 3);
+    if (inView(best.pos)) spawnFloatText(best.pos.x, best.pos.y - (best.imageHeight || 30) * 0.5 - 8, '附身', POSSESS_COLOR, 13, 1.0, 'possession');
+}
+function beamTo(a, b) { const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1; return { dx: dx / len, dy: dy / len, len }; }
+// 附身的樣子：一隻半透明的青色怨靈疊在怪身上、輕輕上下飄，最後一秒淡掉
+const POSSESS_COLOR = '#80CBC4', POSSESS_GHOST = 'rgba(128, 203, 196, 0.55)', POSSESS_EYES = '#E0F2F1';
+let possessGhostPath = null;
+function drawPossessed(ctx, m) {
+    possessGhostPath = possessGhostPath || new Path2D(GHOST_PATH);
+    const s = Math.max(16, m.imageWidth * 0.6) / 28, bob = Math.sin(worldTime * 4 + m.pos.x) * 2;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, m.turnT);
+    ctx.drawImage(getGlowSprite(POSSESS_COLOR), m.pos.x - 22 * s, m.pos.y - 26 * s + bob, 44 * s, 44 * s);
+    ctx.translate(m.pos.x - 32 * s, m.pos.y - m.imageHeight * 0.55 - 20 * s + bob);
+    ctx.scale(s, s);
+    ctx.fillStyle = POSSESS_GHOST; ctx.fill(possessGhostPath);
+    ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 2.5 / s; ctx.stroke(possessGhostPath);
+    ctx.fillStyle = POSSESS_EYES;
+    ctx.beginPath(); ctx.ellipse(26, 27, 3, 4, 0, 0, Math.PI * 2); ctx.ellipse(38, 27, 3, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+}
+// 破綻凝視：被眼魔盯上的怪頭上一隻小小的金色眼睛
+const GAZE_MARK_COLOR = '#FFD54F';
+function drawGazeMark(ctx, m) {
+    const left = m.gazedUntil - worldTime, x = m.pos.x, y = m.pos.y - m.imageHeight * 0.5 - 8;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, left / 0.5);
+    ctx.beginPath(); ctx.moveTo(x - 7, y); ctx.quadraticCurveTo(x, y - 6, x + 7, y); ctx.quadraticCurveTo(x, y + 6, x - 7, y); ctx.closePath();
+    ctx.fillStyle = GAZE_MARK_COLOR; ctx.fill();
+    ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = SHAPE_OUTLINE;
+    ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+}
+function drawNecroWorld(ctx) {
+    if (bl('weakGaze')) for (const m of gameState.monsters) if (m.isAlive && m.gazedUntil > worldTime && inView(m.pos)) drawGazeMark(ctx, m);
+    for (const m of gameState.turned) if (m.isAlive && m.turnKind === 'possess' && inView(m.pos)) drawPossessed(ctx, m);
+}
+
+// ---------- 共鳴「魂彈分裂」：魂彈命中時分裂出小魂彈 ----------
+const soulSplitOwner = { healFromDamage() {}, onHit: (m) => soulSplit(m) };
+function soulSplit(m) {
+    const P = CONFIG.player, near = [], rSq = RES_SOUL_SPLIT_RANGE * RES_SOUL_SPLIT_RANGE;
+    monsterGrid.forEachInRadius(m.pos, RES_SOUL_SPLIT_RANGE, o => { if (o !== m && o.isAlive && !o.stealthed && distanceSq(o.pos, m.pos) <= rSq) near.push(o); });
+    if (!near.length) return;
+    near.sort((a, b) => distanceSq(a.pos, m.pos) - distanceSq(b.pos, m.pos));
+    const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade')) * runMods().boltDmgMult * RES_SOUL_SPLIT_SHARE;
+    for (let i = 0; i < Math.min(RES_SOUL_SPLIT, near.length); i++) {
+        const pr = getProjectileFromPool();
+        pr.init(m.pos.x, m.pos.y, near[i], P.bolt, dmg, null, 0, false);
+        pr.homing = true;
+        gameState.projectiles.push(pr);
+    }
+    spawnParticles(m.pos.x, m.pos.y, SOUL_BOLT_GLOW, 6, 80, 0.3, 2);
 }
 
 // 飛彈飛這麼久還沒打中就消失（打空、目標先死了）。不能用「出了畫面多遠」判斷：最後幾隻怪落單時大軍會追到畫面外很遠
@@ -3999,6 +4132,12 @@ class Monster extends GameObject {
         if (bl('midas') && Math.random() < BLESSINGS.midas.per) {
             dropSouls(this.pos.x, this.pos.y, Math.max(1, whole) * (MIDAS_MULT - 1));
             spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 14, 110, 0.6, 3);
+        }
+        // 共鳴「狂潮不息」：大軍狂暴時每打倒一隻，狂暴延長一點
+        if (res('nova') >= 2 && gameState.frenzyTimer > 0 && (gameState.frenzyExtended || 0) < RES_ENDLESS_FRENZY_MAX) {
+            const add = Math.min(RES_ENDLESS_FRENZY_PER, RES_ENDLESS_FRENZY_MAX - (gameState.frenzyExtended || 0));
+            gameState.frenzyTimer += add;
+            gameState.frenzyExtended = (gameState.frenzyExtended || 0) + add;
         }
         if (!(this instanceof BossMonster) && Math.random() < blessVal('raiseDead') && gameState.player) {
             gameState.summons.push(new SkeletonWarrior(this.pos.x, this.pos.y, gameState.units.SkeletonWarrior.level, gameState.player));
@@ -6206,7 +6345,7 @@ function boneReach() { return CONFIG.nova.radius * (bl('frostNova') > 0 ? FROST_
 function leaveBonePile(pos) {
     const piles = gameState.bonePiles;
     if (piles.length >= BONE_PILE.max) piles.shift();
-    piles.push({ x: pos.x + randomInRange(-4, 4), y: pos.y + randomInRange(-4, 4), life: BONE_PILE.life, look: Math.floor(Math.random() * BONE_PILE_LOOKS) });
+    piles.push({ x: pos.x + randomInRange(-4, 4), y: pos.y + randomInRange(-4, 4), life: BONE_PILE.life + blessVal('boneHoard'), look: Math.floor(Math.random() * BONE_PILE_LOOKS) });
     introduceRelic('corpseBlast', '屍爆', '新星會引爆附近陣亡留下的骸骨', '#D1C4E9', 'corpseBlast');
 }
 // 新星施放時呼叫：範圍內的骸骨排進引爆佇列，離主角越遠炸得越晚
@@ -6232,7 +6371,7 @@ function updateBonePiles(deltaTime) {
     gameState.boneBlasts = gameState.boneBlasts.filter(e => e.delay > 0);
 }
 function explodeBonePile(e) {
-    const R = BONE_PILE.radius, rSq = R * R, dmg = getNovaDamage() * BONE_PILE.dmgMult;
+    const R = BONE_PILE.radius, rSq = R * R, dmg = getNovaDamage() * BONE_PILE.dmgMult * (1 + blessVal('boneBlastUp'));
     monsterGrid.forEachInRadius(e, R, m => {
         if (!m.isAlive || distanceSq(m.pos, e) > rSq) return;
         if (m instanceof BossMonster) m.shredArmor(m.armorMax * BONE_PILE.armorShred);
@@ -7102,6 +7241,7 @@ function prepareNextWave() {
     gameState.worldFx = [];
     gameState.bonePiles = [];
     gameState.boneBlasts = [];
+    gameState.turned = [];
     gameState.bossEntrance = null;
     gameState.projectiles.forEach(returnProjectileToPool);
     gameState.projectiles = [];
@@ -7689,6 +7829,7 @@ function useNova() {
     gameState.run.novaBest = Math.max(gameState.run.novaBest, novaKills);
     stats().novas++;
     gameState.frenzyTimer = c.frenzyDuration + blessVal('frenzyTime') + classMeta('frenzyTime');
+    gameState.frenzyExtended = 0;
     for (let i = 0; i < gameState.orbs.length; i++) gameState.orbs[i].attracted = true;
     // 寫效果不寫招式名：「狂潮」沒人知道是什麼，「大軍狂暴」一看就懂是自己的兵變強；兵身上同時冒紫火花（挑一部分，上千隻全冒會塞爆粒子上限）
     spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'armyFrenzy');
@@ -9195,7 +9336,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
-        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -9327,6 +9468,7 @@ function updateGame(deltaTime) {
     }
     updateHazards(deltaTime);
     updateBonePiles(deltaTime);
+    if (gameState.turned.length) updateTurned(deltaTime);
     updateBossMarks(deltaTime);
     updateWorldFx(deltaTime);
     updateBossEntrance(deltaTime);

@@ -64,8 +64,8 @@ const POISON_GREEN = '#76FF03', POISON_BUBBLE = '#CCFF90', POISON_BUBBLE_EDGE = 
 const POISON_GLOW_BASE = 0.35, POISON_GLOW_PER_STACK = 0.07, POISON_GLOW_MAX = 0.75, POISON_GLOW_SIZE = 1.4;  // 大小 × 圖寬
 const POISON_BUBBLES = 3, POISON_BUBBLE_RISE = 22, POISON_BUBBLE_SPEED = 0.9;
 const POISON_HIT_SPARKS = 3, POISON_DEATH_PUFF = 10;
-// 迷魂毒：發瘋幾秒、找同伴打的範圍、打同伴的傷害倍率（怪的攻擊是照著打主角調的，打同樣血厚的怪要放大才有感）、同一隻多久才能再瘋
-const MAD_TIME = 3, MAD_RADIUS = 130, MAD_DMG_MULT = 4, MAD_COOLDOWN = 2;
+// 迷魂毒：發瘋幾秒、同一隻多久才能再瘋（找同伴的範圍與傷害倍率見 game.js 的 TURN_RADIUS／TURN_DMG_MULT）
+const MAD_TIME = 3, MAD_COOLDOWN = 2;
 // 疊到幾層發瘋：固定層數，不跟著毒層上限走（不然越投資劇毒、上限越高，反而越難瘋）
 const MAD_STACKS = 4;
 // 移形換影：幾秒換一次；影子要比你離目標近這麼多才換（換了反而更遠就不換）
@@ -73,7 +73,7 @@ const SWAP_EVERY = 6, SWAP_GAIN = 40;
 // 有這張傳說時，影子在這個距離內看到目標就撲過去（要小於召喚物丟掉目標的距離，不然撲一下就放掉）
 const SWAP_HUNT = 230;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     assassination: { name: '暗殺', icon: 'assassination', color: '#FFE57F', res: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
     venomschool: { name: '劇毒', icon: 'venomschool', color: '#AED581', res: [{ name: '腐蝕', desc: '中毒的怪受到的傷害 +20%' }, { name: '瘟疫之刃', desc: '毒傷也會爆擊' }] },
@@ -205,7 +205,7 @@ const RELIC_STEALTH_CHANNEL = 3;
 // targets：目前標記的目標（共鳴「死亡宣告」時兩個）；markT：下一次標記還要等幾秒；trashValue：上一個目標之後雜兵原本該給的靈魂
 function newRogueState() {
     return { targets: [], markT: 0, trashValue: 0, knifeT: 0, hideT: 0, hideMax: 1, panicT: 0, vanishT: 0, ambush: false, smokes: [], poisoned: [], poisonT: 0,
-        daggerT: 0, waveTargets: 0, firstTargetThisWave: true, intelBonus: false, mad: [], swapT: SWAP_EVERY };
+        daggerT: 0, waveTargets: 0, firstTargetThisWave: true, intelBonus: false, swapT: SWAP_EVERY };
 }
 function rogueState() { return gameState.rogue || (gameState.rogue = newRogueState()); }
 function inSmoke(pos) { for (const s of rogueState().smokes) if (distanceSq(s, pos) <= SMOKE_RADIUS * SMOKE_RADIUS) return true; return false; }
@@ -267,7 +267,6 @@ function rogueUpdate(dt) {
     // 毒
     r.poisonT -= dt;
     if (r.poisonT <= 0) { r.poisonT = POISON.tick; tickPoison(); }
-    if (r.mad.length) updateMadness(dt);
     if (bl('shadowSwap') && !gameState.betweenWaves) { r.swapT -= dt; if (r.swapT <= 0) tryShadowSwap(); }
     // 煙：裡面的怪緩速
     for (let i = r.smokes.length - 1; i >= 0; i--) {
@@ -414,7 +413,7 @@ function addPoison(m, stacks) {
     if (!m.poisonStacks) { m.poisonStacks = 0; r.poisoned.push(m); }
     m.poisonStacks = Math.min(poisonCap(), m.poisonStacks + stacks);
     m.poisonTime = POISON.time;
-    if (bl('madVenom') && m.poisonStacks >= MAD_STACKS && !(m instanceof BossMonster) && !(m.madT > 0) && !(m.madCd > worldTime)) goMad(m);
+    if (bl('madVenom') && m.poisonStacks >= MAD_STACKS && !(m instanceof BossMonster) && !(m.turnT > 0) && !(m.madCd > worldTime)) goMad(m);
     introduceRelic('venom', '飛刀帶毒', `每刀疊一層，最多 ${poisonCap()} 層`, '#AED581', 'venomschool');
 }
 function tickPoison() {
@@ -451,49 +450,14 @@ function poisonDeath(m) {
     }
 }
 
-// ---------- 傳說「迷魂毒」：毒疊滿的怪發瘋，改打身邊的怪 ----------
-// 怪的攻擊流程只認 target 的 isAlive／pos／maxHealth／takeDamage：給牠一個代理目標，打下去的傷害放大後轉給真正的同伴
-function madProxy(m) {
-    return m.madProxy || (m.madProxy = {
-        victim: null,
-        get isAlive() { return !!this.victim && this.victim.isAlive && m.madT > 0; },
-        // 怪的 update 在發現目標死掉之前就會先讀 target.pos，所以沒有同伴時也要回得出位置
-        get pos() { return this.victim ? this.victim.pos : m.pos; },
-        get maxHealth() { return this.victim ? this.victim.maxHealth : 1; },
-        takeDamage(d) { if (this.victim) this.victim.takeDamage(d * MAD_DMG_MULT); },
-    });
-}
+// ---------- 傳說「迷魂毒」：毒疊滿的怪發瘋，改打身邊的怪（倒戈的機制在 game.js 的 turnMonster） ----------
 function goMad(m) {
-    m.madT = MAD_TIME;
     m.madCd = worldTime + MAD_TIME + MAD_COOLDOWN;
-    rogueState().mad.push(m);
-    madRetarget(m);
+    turnMonster(m, MAD_TIME, 'mad');
     if (inView(m.pos)) {
         spawnFloatText(m.pos.x, m.pos.y - (m.imageHeight || 30) * 0.5 - 8, '發瘋', MAD_GREEN, 13, 0.9, 'madVenom');
         spawnParticles(m.pos.x, m.pos.y - 10, MAD_GREEN, 8, 60, 0.4, 3);
     }
-}
-function madRetarget(m) {
-    let best = null, bestD = MAD_RADIUS * MAD_RADIUS;
-    monsterGrid.forEachInRadius(m.pos, MAD_RADIUS, o => {
-        if (o === m || !o.isAlive || o.stealthed) return;
-        const d = distanceSq(o.pos, m.pos);
-        if (d < bestD) { bestD = d; best = o; }
-    });
-    const proxy = madProxy(m);
-    proxy.victim = best;
-    if (best) { m.tauntBy = proxy; m.tauntT = m.madT; m.target = proxy; }
-    else if (m.target === proxy) { m.target = null; m.tauntBy = null; m.tauntT = 0; }
-}
-function updateMadness(dt) {
-    const r = rogueState();
-    r.mad = r.mad.filter(m => {
-        if (!m.isAlive) return false;
-        m.madT -= dt;
-        if (m.madT <= 0) { m.madT = 0; if (m.tauntBy === m.madProxy) { m.tauntBy = null; m.tauntT = 0; m.target = null; } return false; }
-        if (!m.madProxy.victim || !m.madProxy.victim.isAlive) madRetarget(m);
-        return true;
-    });
 }
 // 頭上一圈轉動的毒綠漩渦，兩顆小星星繞著轉：一眼看得出「這隻瘋了、現在是幫你打的」
 const MAD_GREEN = '#B2FF59', MAD_SPIN = 7;
@@ -705,7 +669,7 @@ function drawRogueWorld(ctx) {
         }
     }
     ctx.globalAlpha = 1;
-    for (const m of r.mad) if (m.isAlive && inView(m.pos)) drawMadness(ctx, m);
+    for (const m of gameState.turned) if (m.isAlive && m.turnKind === 'mad' && inView(m.pos)) drawMadness(ctx, m);
 }
 // 目標在畫面外時，邊緣一個金箭頭指著牠
 function drawTargetPointers(ctx) {
