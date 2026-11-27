@@ -38,7 +38,7 @@ await page.evaluate(([policy, cls, pick, metaLvl, focus]) => {
     meta.classUpgrades[cls] = {};
     for (const id in classDefs) meta.classUpgrades[cls][id] = metaLvOf(classDefs[id]);
     resetGame(); enterPlaying(); tutorial = null;
-    window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, pick, focus, seen: new WeakMap(), decide: 0, src: {} };
+    window.__bot = { t: 0, waves: [], cur: null, policy, pick, focus, seen: new WeakMap(), decide: 0, src: {} };
     // 記每種怪一共掉了多少靈魂：經濟有沒有被哪隻怪放大（吞魂者第一版就是這樣抓到的）
     const B = window.__bot;
     B.relics = {};
@@ -71,8 +71,6 @@ let r;
 for (;;) {
     r = await page.evaluate((steps) => {
         const B = window.__bot, DT = 1 / 30, REACT = 0.4, DECIDE = 0.15, STUCK_SECONDS = 240, MAX_SECONDS = 3600;
-        // 各職業三張卡的召喚比例
-        const BOT_MIX = { necro: [0.55, 0.15, 0.3], warrior: [0.4, 0.3, 0.3], druid: [0.25, 0.45, 0.3], vampire: [0.35, 0.65, 0], elf: [0, 0, 1], rogue: [0, 0, 1], monk: [0, 0, 0] };
         // 刺客：離目標超過這麼遠就走過去
         const BOT_ROGUE_HUNT = 150;
         // 近戰職業：被貼身不退（要站在怪堆前打）；武僧血低於 BOT_MONK_REST、BOT_MONK_SAFE 內沒怪時入定
@@ -80,15 +78,10 @@ for (;;) {
         const BOT_MONK_REST = 0.5, BOT_MONK_SAFE = 150, BOT_MONK_CROWD = 4, BOT_MONK_CROWD_R = 70;
         // 精靈：怪近到這麼近就往反方向退
         const BOT_ELF_KITE = 170;
-        // 吸血鬼可以拿自己的血付錢；機器人血量 BOT_VAMP_SPEND_HP 以上才拿血付（真人也不會一路把自己放到剩四分之一血）
-        const BOT_VAMP_SPEND_HP = 0.7;
-        // 收尾時走到離最後幾隻怪這麼近；只能修練的卡等級跟著波數走（BOT_TRAIN_PER_WAVE 級／波），不要一開局就把錢全砸進去
-        const BOT_FINISH_DIST = 110, BOT_TRAIN_PER_WAVE = 1;
-        const botTrainOk = (U, unit) => !U.upgradeOnly || classDef().cards.every(t => UNIT_TYPES[t].upgradeOnly) || unit.level < Math.max(1, gameState.currentWave) * BOT_TRAIN_PER_WAVE;
-        const botAfford = (cost) => runClass() !== 'vampire' || gameState.souls >= cost ? canAfford(cost)
-            : gameState.player.currentHealth > gameState.player.maxHealth * BOT_VAMP_SPEND_HP && canAfford(cost);
+        // 收尾時走到離最後幾隻怪這麼近
+        const BOT_FINISH_DIST = 110;
         // 德魯伊：沒有要閃的東西時，離林地（最近一棵橡樹）超過這麼遠就走回去
-        const BOT_GROVE_RETURN = 110, BOT_GROVE_PLANT = 90;
+        const BOT_GROVE_RETURN = 110;
         const noticed = (o) => { if (!B.seen.has(o)) B.seen.set(o, B.t); return B.t - B.seen.get(o) >= REACT; };
         for (let i = 0; i < steps; i++) {
             if (gameState.gameOver) return { over: true };
@@ -104,8 +97,9 @@ for (;;) {
                 const leg = opts.find(id => BLESSINGS[id].legendary);
                 if (B.pick === 'random') { pickBlessing(opts[Math.floor(Math.random() * opts.length)]); continue; }
                 if (B.pick === 'first') { pickBlessing(opts[0]); continue; }
-                const BOT_ARMY_SCORE = 1.5, BOT_RARE_SCORE = 3, BOT_JITTER = 0.5;
-                const score = (id) => { const B = BLESSINGS[id]; return (B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + (B.rare ? BOT_RARE_SCORE : 0) + Math.random() * BOT_JITTER; };
+                // 召喚卡：越少張越想拿（兵是戰力的底）
+                const BOT_ARMY_SCORE = 1.5, BOT_RARE_SCORE = 3, BOT_JITTER = 0.5, BOT_UNIT_SCORE = 4, BOT_UNIT_DECAY = 0.4;
+                const score = (id) => { const B = BLESSINGS[id]; if (B.unitCard) return BOT_UNIT_SCORE - BOT_UNIT_DECAY * bl(id) + Math.random() * BOT_JITTER; return (B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + (B.rare ? BOT_RARE_SCORE : 0) + Math.random() * BOT_JITTER; };
                 pickBlessing(leg || opts.reduce((a, b) => score(b) > score(a) ? b : a)); continue;
             }
             const p = gameState.player;
@@ -209,25 +203,7 @@ for (;;) {
                 inputState.movementVector = { x: 0, y: 0 };
                 if (near >= 4 && gameState.ultCooldown <= 0) useUltimate();
             }
-            B.spendTimer -= DT;
-            if (B.spendTimer <= 0) {
-                B.spendTimer = 0.5;
-                for (let g = 0; g < 50; g++) {
-                    let did = false;
-                    for (const u of UNIT_UI) { const U = UNIT_TYPES[u.type], unit = gameState.units[u.type], uc = getUpgradeCost(u.type); if ((unit.count > 0 || U.upgradeOnly) && botTrainOk(U, unit) && botAfford(uc) && isUpgradeGoodDeal(u.type, unit.level, getSummonCost(U.cfg()), uc)) { did = tryUpgrade(u.type); if (did) break; } }
-                    // 召喚比例照卡片順序（亡靈法師：骷髏 55%、怨靈 15%、眼魔 30%；戰士：盾兵 40%、長槍 30%、弩手 30%）。只能修練的卡比例是 0
-                    const share = BOT_MIX[runClass()] || [1, 1, 1];
-                    // 亡靈法師隨機抽；其他職業補最缺的那種（照比例），不然死得快的那種永遠補不回來、整隊漸漸變成同一種
-                    const open = UNIT_UI.map((u, i) => ({ i, type: u.type })).filter(o => share[o.i] > 0 && !UNIT_TYPES[o.type].upgradeOnly && !summonBlocked(o.type));
-                    let pick = null;
-                    if (open.length && runClass() === 'necro') { const x = Math.random(); pick = UNIT_UI[x < share[0] ? 0 : x < share[0] + share[1] ? 1 : 2].type; }
-                    else if (open.length) pick = open.map(o => ({ type: o.type, k: gameState.units[o.type].count / share[o.i] })).sort((a, b) => a.k - b.k)[0].type;
-                    // 德魯伊：橡樹種在林地裡（離最近一棵 BOT_GROVE_PLANT 內），不要邊走邊種、種得東一棵西一棵
-                    if (pick === 'SacredOak' && eldestOak() && distanceSq(eldestOak().pos, p.pos) > BOT_GROVE_PLANT * BOT_GROVE_PLANT) pick = null;
-                    if (!did && pick && botAfford(getSummonCost(UNIT_TYPES[pick].cfg()))) did = trySummon(pick);
-                    if (!did) break;
-                }
-            }
+
             const h0 = p.currentHealth;
             updateGame(DT);
             B.t += DT;
@@ -242,7 +218,7 @@ for (;;) {
             if (B.cur && !gameState.betweenWaves && B.t - B.cur.start > STUCK_SECONDS) {
                 // queue：還沒出場的怪（countRemainingMonsters 也算它們）；tgtD：牠跟牠的目標隔多遠；near：離牠最近的召喚物多遠、那隻在幹嘛
                 B.stuck = {
-                    wave: gameState.currentWave, summons: gameState.summons.length, souls: Math.round(gameState.souls), heroHp: Math.round(p.currentHealth / p.maxHealth * 100), queue: gameState.spawnQueue.length, spawnTimer: gameState.spawnTimer, pendingBoss: !!gameState.pendingBoss, entrance: !!gameState.bossEntrance, straggling: gameState.straggling,
+                    wave: gameState.currentWave, summons: gameState.summons.length, level: gameState.heroLevel, heroHp: Math.round(p.currentHealth / p.maxHealth * 100), queue: gameState.spawnQueue.length, spawnTimer: gameState.spawnTimer, pendingBoss: !!gameState.pendingBoss, entrance: !!gameState.bossEntrance, straggling: gameState.straggling,
                     mons: gameState.monsters.filter(m => m.isAlive).slice(0, 10).map(m => {
                         const s = summonGrid.nearest(m.pos, 2000);
                         return {

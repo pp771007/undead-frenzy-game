@@ -91,13 +91,11 @@ const uiElements = {
     lbCongratsOkBtn: $id('lb-congrats-ok-btn'), lbCongratsCloseBtn: $id('lb-congrats-close-btn'),
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
-    soulsInfo: $id('souls-info'),
+    levelInfo: $id('level-info'), xpFill: $id('xp-fill'),
     playerHealthInfo: $id('player-health-info'),
     hpFill: $id('hp-fill'),
-    unitCards: $id('unit-cards'),
     pauseResumeBtn: $id('pause-resume-btn'),
     skipWaveBtn: $id('skip-wave-btn'),
-    holdCombo: $id('hold-combo'),
     finalKiller: $id('final-killer'),
     ultBtn: $id('nova-btn'),
     messageArea: $id('message-area'),
@@ -165,7 +163,6 @@ const CONFIG = {
         // 走速要比大部分雜兵快（血狼 50、赤鷲 95、石像鬼 100），走位才甩得開；直撲法師的蝙蝠（115）刻意比法師快
         baseHealth: 50, baseMoveSpeed: 110, radius: 12, color: '#03A9F4',
         imageName: 'player', imgScaleMultiplier: 4,
-        initialSouls: 20,
         // 法師自己會打：每 boltInterval 秒對 boltRange 內最近的怪射一顆靈魂彈。
         // 傷害乘上怪物的波數成長倍率，任何一波都是兩三發打死一隻血狼——前期兵少時能自保、清掉落單的，
         // 但永遠只是補刀，主力還是召喚物。
@@ -576,10 +573,6 @@ const CONFIG = {
         wraithPulseInterval: 3, wraithPulseMult: 0.3,
         wraithBlastRadiusMult: 1.5, wraithStunDuration: 1.0,
     },
-    holdingButton: {
-        holdDelay: 350,
-        repeatInterval: 150,
-    },
     audio: {
         initialVolume: 0.3,
         initialSfxVolume: 0.5,
@@ -681,7 +674,7 @@ const RES_ENDLESS_FRENZY_PER = 0.1, RES_ENDLESS_FRENZY_MAX = 6;
 const RES_MAGNET = 0.6;
 const RES_SOULS = 0.3;
 function schoolPoints(school) {
-    if (school === ARMY_SCHOOL || school === DUO_SCHOOL) return 0;
+    if (school === ARMY_SCHOOL || school === DUO_SCHOOL || school === UNIT_SCHOOL) return 0;
     let n = 0;
     for (const id in BLESSINGS) if (BLESSINGS[id].school === school) n += bl(id);
     return n;
@@ -697,6 +690,80 @@ function refreshResonance() {
     gameState.resonance = r;
 }
 // 各職業的流派都登記完才建得出來（init 一開始呼叫）。圖示借那個流派在成就裡的圖：畫的就是這個效果
+// ---------- 經驗與升級：撿到的靈魂就是經驗值，集滿升一級、跳一次三選一 ----------
+// 升下一級要 XP_SCALE × 等級^XP_POW：開局幾秒就第一次升級（馬上選到第一張卡），之後大約一波一級，第 50 波約 55 級。
+// 次方要夠陡：兵越強殺越快、靈魂越多，平緩的曲線會越滾越快（實測 1.55 次方時一局收入 4～20 萬，升到一百多級、兵種 Lv60）
+const XP_SCALE = 3.2, XP_POW = 1.8, XP_MIN = 3;
+function xpToNext(level) { return Math.max(XP_MIN, Math.round(XP_SCALE * level ** XP_POW)); }
+// 兵種（召喚物與修練類技能）的等級跟著主角走：主角每升 1 級，兵種升 UNIT_LEVEL_PER_HERO 級。
+// 不再另外花錢升級，玩家只管選卡；進化（Lv10／25／50）也就自然跟著主角等級出現
+const UNIT_LEVEL_PER_HERO = 0.4;
+function gainXp(amount) {
+    if (!gameState.player || gameState.gameOver) return;
+    gameState.xp += amount;
+    while (gameState.xp >= xpToNext(gameState.heroLevel)) {
+        gameState.xp -= xpToNext(gameState.heroLevel);
+        gameState.heroLevel++;
+        onHeroLevelUp();
+    }
+}
+function onHeroLevelUp() {
+    syncUnitLevels();
+    const p = gameState.player;
+    spawnFloatText(p.pos.x, p.pos.y - 34, `Lv ${gameState.heroLevel}`, '#FFD54F', 18, 1.2);
+    spawnParticles(p.pos.x, p.pos.y, '#FFD54F', 18, 110, 0.6, 3);
+    Sfx.play('upgrade');
+    if (gameState.pendingDraft) { gameState.extraDrafts++; return; }
+    queueDraft(false);
+    if (gameState.pendingDraft && !gameState.draftOpen && !gameState.victoryOpen) openDraft();
+}
+function syncUnitLevels() {
+    const want = Math.floor((gameState.heroLevel - 1) * UNIT_LEVEL_PER_HERO);
+    while (gameState.autoUnitLevels < want) {
+        for (const t of classDef().cards) levelUpUnit(t);
+        gameState.autoUnitLevels++;
+    }
+}
+
+// ---------- 召喚卡：選一次就自動生產，之後每多一張，隻數上限變大、補得更快 ----------
+// 兵陣亡了會自己補回來：玩家不用盯著補兵，專心走位與選卡。一定要有上限：只有「每幾秒生一隻」的話，疊到後期兵無限多、畫面卡、怪也追不上。
+// 各兵種的數字寫在 UNIT_TYPES 的 card（沒寫照 SUMMON_CARD_DEFAULT）：cap 第一張的上限、capPer 之後每張多幾隻、every 第一張每幾秒補一隻
+const UNIT_SCHOOL = 'unit';
+const SUMMON_CARD_DEFAULT = { cap: 3, capPer: 2, every: 4 };
+const SUMMON_EVERY_STACK = 0.88;   // 每多一張，補兵間隔乘這個
+const SUMMON_CARD_MAX = 8;
+// 召喚卡在三選一裡比一般祝福常出現：兵是戰力的底，一局前段要湊得到
+const UNIT_CARD_WEIGHT = 2.5;
+function unitCardId(type) { return `unit_${type}`; }
+function summonCardDef(type) { return { ...SUMMON_CARD_DEFAULT, ...(UNIT_TYPES[type].card || {}) }; }
+function summonCap(type, n) { const d = summonCardDef(type); return d.cap + d.capPer * (n - 1); }
+function summonEvery(type, n) { return summonCardDef(type).every * SUMMON_EVERY_STACK ** (n - 1); }
+const oneDecimal = x => Math.round(x * 10) / 10;
+function summonCardDesc(type) {
+    const n = bl(unitCardId(type)), next = Math.min(n + 1, SUMMON_CARD_MAX), every = oneDecimal(summonEvery(type, next));
+    return n === 0 ? `每 ${every} 秒補 1 隻，最多 ${summonCap(type, 1)} 隻` : `最多 ${summonCap(type, n)} → ${summonCap(type, next)} 隻，每 ${every} 秒補 1 隻`;
+}
+// 各職業的兵種都登記完才建得出來（init 一開始呼叫）。修練類（武僧的拳、精靈的箭術…）沒有卡：等級跟著主角自己長
+function buildSummonBlessings() {
+    for (const c of Object.values(CLASSES)) for (const type of c.cards) {
+        const U = UNIT_TYPES[type], id = unitCardId(type);
+        if (U.upgradeOnly || BLESSINGS[id]) continue;
+        BLESSINGS[id] = { school: UNIT_SCHOOL, unitCard: type, icon: `${IMG_ICON}${U.img}`, name: U.name, max: SUMMON_CARD_MAX, desc: () => summonCardDesc(type) };
+    }
+}
+function updateSummonProduction(dt) {
+    for (const type of classDef().cards) {
+        const n = bl(unitCardId(type));
+        if (!n) continue;
+        const every = summonEvery(type, n);
+        const t = (gameState.summonTimers[type] || 0) + dt;
+        // 滿了就停在「隨時可以補」：有兵陣亡下一格就補上
+        if (t < every || gameState.units[type].count >= summonCap(type, n) || summonBlocked(type)) { gameState.summonTimers[type] = Math.min(t, every); continue; }
+        gameState.summonTimers[type] = 0;
+        spawnUnit(type);
+    }
+}
+
 function buildRareBlessings() {
     for (const [cid, c] of Object.entries(CLASSES)) for (const s of c.schools) {
         const id = rareId(s);
@@ -900,7 +967,6 @@ const ACHV_RELICS = [
     ['relics30', '巡禮者', '累計啟動 30 座戰場遺跡', 40, s => Object.values(s.relics).reduce((a, b) => a + b, 0) >= 30],
 ];
 const ACHV_SPEED_WAVE = 20, ACHV_SPEED_SECONDS = 10;
-const ACHV_WEALTH = 10000;
 const ACHV_MASSACRE = 1000;
 const ACHV_NOVA_BLAST = 50;
 const ACHV_THIEVES = 5;
@@ -972,7 +1038,6 @@ function buildAchievements() {
     add('challenge', 'massacre', '屠城', `一波內打倒 ${ACHV_MASSACRE} 隻怪`, 40, () => gameState.run.maxWaveKills >= ACHV_MASSACRE);
     add('challenge', 'novaBlast', '星爆', `一次新星打倒 ${ACHV_NOVA_BLAST} 隻怪`, 40, () => necro() && gameState.run.novaBest >= ACHV_NOVA_BLAST);
     add('challenge', 'speedClear', '秒殺', `第 ${ACHV_SPEED_WAVE} 波以後，${ACHV_SPEED_SECONDS} 秒內清完一波`, 40, () => !!gameState.run.flags.speedClear);
-    add('challenge', 'wealthy', '守財奴', `手上同時有 ${formatNumberK(ACHV_WEALTH)} 靈魂`, 30, () => gameState.souls >= ACHV_WEALTH);
     add('challenge', 'thiefChase', '追財', `一局打倒 ${ACHV_THIEVES} 隻金魂竊賊`, 40, () => gameState.run.thieves >= ACHV_THIEVES);
     // 職業：亡靈法師以外的每個職業一組——通關、三檔速通、五個流派各疊滿、再加職業自己定義的 feats
     for (const [cid, c] of Object.entries(CLASSES)) {
@@ -1063,14 +1128,6 @@ function renderAchievements() {
     }).join('');
 }
 
-// 召喚費用隨場上同種兵的數量變貴：每多 SUMMON_COST_STEP 隻，費用多一倍底價。
-// 費用固定的話一局 5～10 萬靈魂能堆出兩三千隻兵，怪物再強也碰不到法師；變貴之後大軍停在幾百隻，
-// 「多召喚」與「升級」要取捨，壓力也才漏得到法師身上
-const SUMMON_COST_STEP = 25;
-function getSummonCost(config) {
-    const n = gameState.units[config.type].count;
-    return Math.max(1, Math.round(config.summonCost * (1 + n / SUMMON_COST_STEP) * (1 - blessVal('pact'))));
-}
 function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
 }
@@ -1164,17 +1221,6 @@ function summonBlocked(type) {
     const U = UNIT_TYPES[type];
     return troopCapped() || (!!U.cap && gameState.units[type].count >= U.cap()) || (!!U.canSummon && !U.canSummon());
 }
-function canAfford(cost) {
-    const c = classDef();
-    return c.canAfford ? c.canAfford(cost) : gameState.souls >= cost;
-}
-function payCost(cost) {
-    const c = classDef();
-    if (c.pay) return c.pay(cost);
-    if (gameState.souls < cost) return false;
-    gameState.souls -= cost;
-    return true;
-}
 // 換主角的立繪（德魯伊化身巨熊）：寬度照原本，高度照新圖比例
 // 錢包的圖示（底部卡片的價格、上方的數字旁邊）
 function currencyIcon() { return (classDef().currency && classDef().currency.icon) || 'soul'; }
@@ -1238,7 +1284,7 @@ let gameState = {
     orbs: [], particles: [], floatTexts: [],
     shake: 0, hurtFlash: 0, soulCarry: 0, killedBy: null,
     sfxVolume: meta.sfxVolume,
-    souls: CONFIG.player.initialSouls,
+    xp: 0, heroLevel: 1, autoUnitLevels: 0, summonTimers: {},
     currentWave: 0,
     timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
     gameOver: false, lastTime: 0, messageTimeout: null,
@@ -1250,7 +1296,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
     waveEvent: null, lastEventWave: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], rerollsLeft: 0,
@@ -1260,15 +1306,6 @@ let gameState = {
 
 function emptySummonStats() { return Object.fromEntries(Object.keys(UNIT_TYPES).map(t => [t, 0])); }
 function emptyKillStats() { return { BasicMelee: 0, FastMelee: 0, Bloater: 0, ArmoredMelee: 0, Boss: 0 }; }
-
-let holdActionState = {
-    actionType: null,
-    unitType: null,
-    timeoutId: null,
-    intervalId: null,
-    isHolding: false,
-    pointerDownTime: 0,
-};
 
 
 let inputState = {
@@ -1281,8 +1318,6 @@ const MOVE_KEYS = {
     KeyW: [0, -1], ArrowUp: [0, -1], KeyS: [0, 1], ArrowDown: [0, 1],
     KeyA: [-1, 0], ArrowLeft: [-1, 0], KeyD: [1, 0], ArrowRight: [1, 0],
 };
-// 數字鍵 1／2／3 對應底部第幾張卡（哪一種兵看職業）
-const UNIT_HOTKEYS = { Digit1: 0, Digit2: 1, Digit3: 2 };
 
 function getMoveVector() {
     let x = 0, y = 0;
@@ -3653,7 +3688,8 @@ class SoulOrb {
             this.isAlive = false;
             if (!this.banked) {
                 const cls = classDef();
-                gameState.souls += cls.onOrbCollect ? cls.onOrbCollect(this.value) : this.value;
+                if (cls.onOrbCollect) cls.onOrbCollect(this.value);
+                gainXp(this.value);
                 if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${formatNumberK(this.value)}`, '#80DEEA');
                 updateUI();
             }
@@ -3742,7 +3778,7 @@ function dropSouls(x, y, amount) {
 
 function bankAllOrbs() {
     gameState.orbs.forEach(o => {
-        if (!o.banked) { const cls = classDef(); gameState.souls += cls.onOrbCollect ? cls.onOrbCollect(o.value) : o.value; o.banked = true; }
+        if (!o.banked) { const cls = classDef(); if (cls.onOrbCollect) cls.onOrbCollect(o.value); gainXp(o.value); o.banked = true; }
     });
 }
 
@@ -6760,7 +6796,6 @@ function showVictory() {
     if (lv >= unlockedBefore && unlockedBefore < CURSES.length) meta.curseUnlocked = lv + 1;
     saveMeta();
     gameState.victoryOpen = true;
-    stopHoldAction();
     uiElements.victoryReward.innerHTML = `${iconHtml('crystal')}+${bonus}`;
     uiElements.victoryTime.innerHTML = `${iconHtml('clock')}${formatClock(gameState.run.clearTime)}` +
         (isRecord ? '<b class="new-record">新紀錄</b>' : `<span class="best-time">最快 ${formatClock(prevBest.time)}</span>`);
@@ -7246,10 +7281,12 @@ function useNova() {
     return true;
 }
 
+// 平常的三選一靠升級（gainXp）；打完首領波另外送一次，固定有一張傳說
 function queueDraftIfDue() {
     const w = gameState.currentWave;
-    if (w <= 0 || (w % CONFIG.draft.every !== 0 && w % CONFIG.wave.bossEvery !== 0)) return;
-    queueDraft(w % CONFIG.wave.bossEvery === 0);
+    if (w <= 0 || w % CONFIG.wave.bossEvery !== 0) return;
+    if (gameState.pendingDraft) gameState.extraBossDrafts++;
+    else queueDraft(true);
 }
 
 // 首領波：三張裡固定一張傳說（還有沒拿過的才給），放在隨機位置；其他波有 LEGEND_CHANCE_NORMAL 機率也出一張。
@@ -7261,6 +7298,7 @@ const DRAFT_SCHOOL_WEIGHT = 0.4;
 const DRAFT_WEIGHT_MAX = 3;
 function draftWeight(id) {
     if (BLESSINGS[id].school === DUO_SCHOOL) return DRAFT_WEIGHT_MAX;
+    if (BLESSINGS[id].school === UNIT_SCHOOL) return UNIT_CARD_WEIGHT;
     return Math.min(DRAFT_WEIGHT_MAX, 1 + DRAFT_SCHOOL_WEIGHT * schoolPoints(BLESSINGS[id].school));
 }
 function weightedPick(ids, n) {
@@ -7280,6 +7318,7 @@ function draftOptionCount() {
 // 這個職業抽得到的祝福：自己的流派，加上全軍通用的
 function blessingInClass(id) {
     const s = BLESSINGS[id].school;
+    if (s === UNIT_SCHOOL) return classDef().cards.includes(BLESSINGS[id].unitCard);
     if (BLESSINGS[id].needsSummon && !classCanSummon()) return false;
     if (s === DUO_SCHOOL) return BLESSINGS[id].duo.every(d => classDef().schools.includes(d) && res(d) >= 1);
     return s === ARMY_SCHOOL || classDef().schools.includes(s);
@@ -7323,6 +7362,7 @@ const TIER_LABELS = { rare: '稀有', legend: '傳說' };
 function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
+    if (school === UNIT_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>召喚</span></span>`;
     // 兩個流派的頭像並排就講完了，不另外取名字：玩家只要看到「這張跟我在疊的兩條路有關」
     if (school === DUO_SCHOOL) return `<span class="school-chip duo-chip">${BLESSINGS[id].duo.map(schoolBadgeHtml).join('')}</span>`;
     const S = SCHOOLS[school];
@@ -7386,7 +7426,6 @@ function healDraft() {
 
 function openDraft() {
     if (!gameState.pendingDraft) return;
-    stopHoldAction();
     gameState.draftOpen = true;
     renderDraftCards();
     showScreen(uiElements.draftScreen, true);
@@ -7408,6 +7447,8 @@ function pickBlessing(id) {
     if (!gameState.pendingDraft || !gameState.pendingDraft.options.includes(id)) return;
     gameState.blessings[id] = bl(id) + 1;
     gameState.run.picks++;
+    // 新學會的兵種：下一格就生第一隻，不用等一整個間隔
+    if (BLESSINGS[id].unitCard && bl(id) === 1) gameState.summonTimers[BLESSINGS[id].unitCard] = Infinity;
     const picks = stats().picks[runClass()] || (stats().picks[runClass()] = {});
     picks[id] = (picks[id] || 0) + 1;
     if (BLESSINGS[id].legendary) stats().legends[id] = true;
@@ -7428,7 +7469,11 @@ function closeDraft() {
     gameState.pendingDraft = null;
     gameState.draftOpen = false;
     showScreen(uiElements.draftScreen, false);
-    if (gameState.extraDrafts > 0) {
+    // 還有排隊的：首領波那一次（有傳說）先，升級累積的接著
+    if (gameState.extraBossDrafts > 0) {
+        gameState.extraBossDrafts--;
+        queueDraft(true);
+    } else if (gameState.extraDrafts > 0) {
         gameState.extraDrafts--;
         queueDraft();
     }
@@ -7863,25 +7908,15 @@ let tutorial = null;
 function startTutorialIfNeeded() {
     // 新手教學教的是亡靈法師（第一次玩一定是它，其他職業要解鎖）
     if (meta.tutorialDone || gameState.currentWave > 0 || !gameState.player || runClass() !== DEFAULT_CLASS) return;
-    tutorial = { step: 'move', start: { ...gameState.player.pos } };
+    tutorial = { start: { ...gameState.player.pos } };
 }
+// 只教移動：召喚是自動的、選卡畫面自己看得懂，第一次升級跳出來時就會選
 function updateTutorial() {
     if (!tutorial || !gameState.player) return;
-    if (tutorial.step === 'move' && distanceSq(gameState.player.pos, tutorial.start) > TUTORIAL_MOVE_DIST * TUTORIAL_MOVE_DIST) {
-        tutorial.step = 'summon';
-        UNIT_UI[0].el.summon.classList.add('hint-pulse');
-    } else if (tutorial.step === 'summon' && gameState.totalSummons[UNIT_UI[0].type] > 0) {
-        tutorial.step = 'hold';
-    } else if (tutorial.step === 'hold') {
-        // 按住連續成功到按鈕上方浮出「×N」就算學會。第一波開打前倒數是停住的：靈魂不夠按住連發的話不能卡在這一步
-        const learned = holdCombo >= HOLD_COMBO_SHOW_FROM && holdActionState.actionType === 'summon';
-        const broke = gameState.souls < getSummonCost(UNIT_TYPES[UNIT_UI[0].type].cfg()) * HOLD_COMBO_SHOW_FROM;
-        if (learned || broke) {
-            UNIT_UI[0].el.summon.classList.remove('hint-pulse');
-            tutorial = null;
-            meta.tutorialDone = true;
-            saveMeta();
-        }
+    if (distanceSq(gameState.player.pos, tutorial.start) > TUTORIAL_MOVE_DIST * TUTORIAL_MOVE_DIST) {
+        tutorial = null;
+        meta.tutorialDone = true;
+        saveMeta();
     }
 }
 
@@ -7934,7 +7969,7 @@ function drawTutorial() {
     ctx.save();
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
-    if (tutorial.step === 'move') {
+    {
         const cx = view.cssW / 2, cy = view.cssH * 0.6;
         ctx.globalAlpha = 0.85;
         ctx.strokeStyle = 'rgba(233, 196, 106, 0.8)';
@@ -7944,29 +7979,8 @@ function drawTutorial() {
         ctx.fillStyle = 'rgba(233, 196, 106, 0.9)';
         ctx.beginPath(); ctx.arc(kx, cy, 18, 0, Math.PI * 2); ctx.fill();
         drawOutlinedText('按住畫面拖曳移動', cx, cy - JOYSTICK_RADIUS - 18, 20, '#f4ecd8');
-    } else {
-        // 卡片是蓋在畫布上的 HTML，提示要畫在卡片上緣之上才看得到
-        const r = UNIT_UI[0].el.summon.getBoundingClientRect();
-        const card = UNIT_UI[0].el.summon.closest('.unit-card').getBoundingClientRect();
-        const x = r.left + r.width / 2, y = card.top - 6 + Math.sin(t * 5) * 4;
-        ctx.fillStyle = '#e9c46a';
-        ctx.strokeStyle = '#0e0a14';
-        ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 12, y - 16); ctx.lineTo(x + 12, y - 16); ctx.closePath();
-        ctx.fill(); ctx.stroke();
-        ctx.textAlign = 'left';
-        drawOutlinedText(tutorial.step === 'hold' ? '按住不放：連續召喚、升級' : `召喚第一隻${UNIT_TYPES[UNIT_UI[0].type].name}`, Math.max(8, x - 30), y - 30, 18, '#f4ecd8');
     }
     ctx.restore();
-}
-
-function popLevelBadge(type) {
-    const card = UNIT_UI.find(u => u.type === type);
-    if (!card) return;
-    const el = card.el.level;
-    el.classList.remove('pop');
-    void el.offsetWidth;
-    el.classList.add('pop');
 }
 
 function updateTimers(deltaTime) {
@@ -8009,53 +8023,34 @@ function showMessage(msg, duration = 2000) {
     }, duration);
 }
 
-// combo：長按連段的第幾下（0 = 單點），連段時換成會往上爬的音效
-function trySummon(type, combo = 0) {
-    const U = UNIT_TYPES[type];
-    if (!U || U.upgradeOnly || summonBlocked(type)) return false;
-    const config = U.cfg(), SummonClass = U.Cls(), unit = gameState.units[type];
+// 生一隻兵：召喚卡的自動生產（updateSummonProduction）、開局就帶的兵都走這裡
+function spawnUnit(type) {
+    const U = UNIT_TYPES[type], SummonClass = U.Cls(), unit = gameState.units[type];
     const level = unit.level;
-    const cost = getSummonCost(config);
-    if (gameState.draftOpen) return false;
     if (U.summon) {
-        if (!payCost(cost)) return false;
-        gameState.run.recruits++;
         stats().summons++;
         U.summon(level);
         gameState.totalSummons[type]++;
-        Sfx.play(combo ? 'summonCombo' : 'summon', combo);
-        updateUI();
-        ensureMusicPlaying();
-        return true;
+        return;
     }
-    if (payCost(cost)) {
-        // 傳說「雙生召喚」：有機率多送一隻，多送的那隻冒金光
-        const twin = bl('twinSummon') > 0 && Math.random() < BLESSINGS.twinSummon.per;
-        gameState.run.recruits++;
-        for (let n = 0; n < (twin ? 2 : 1); n++) {
-            if (n && summonBlocked(type)) break;
-            const spawnPos = gameState.player.getSummonPosition();
-            const summon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
-            // 傳說「巨骨」：骷髏每第 N 隻是巨人
-            if (type === 'SkeletonWarrior' && bl('giantBones')) {
-                gameState.giantTick = (gameState.giantTick || 0) + 1;
-                if (gameState.giantTick % BLESSINGS.giantBones.per === 0) { summon.giant = true; summon.refreshStats(); }
-            }
-            gameState.summons.push(summon);
-            stats().summons++;
-            spawnParticles(spawnPos.x, spawnPos.y, n ? '#FFD54F' : '#7E57C2', 12, 70, 0.5);
-            gameState.totalSummons[type]++;
-            unit.count++;
+    // 傳說「雙生召喚」：有機率多補一隻，多補的那隻冒金光
+    const twin = bl('twinSummon') > 0 && Math.random() < BLESSINGS.twinSummon.per;
+    for (let n = 0; n < (twin ? 2 : 1); n++) {
+        if (n && summonBlocked(type)) break;
+        const spawnPos = gameState.player.getSummonPosition();
+        const summon = new SummonClass(spawnPos.x, spawnPos.y, level, gameState.player);
+        // 傳說「巨骨」：骷髏每第 N 隻是巨人
+        if (type === 'SkeletonWarrior' && bl('giantBones')) {
+            gameState.giantTick = (gameState.giantTick || 0) + 1;
+            if (gameState.giantTick % BLESSINGS.giantBones.per === 0) { summon.giant = true; summon.refreshStats(); }
         }
-        Sfx.play(combo ? 'summonCombo' : 'summon', combo);
-        updateUI();
-        ensureMusicPlaying();
-        return true;
-    } else {
-        return false;
+        gameState.summons.push(summon);
+        stats().summons++;
+        spawnParticles(spawnPos.x, spawnPos.y, n ? '#FFD54F' : '#7E57C2', 12, 70, 0.5);
+        gameState.totalSummons[type]++;
+        unit.count++;
     }
 }
-
 function announceEvolution(type, tier) {
     const E = CONFIG.evolution;
     const name = E.names[type][tier - 1];
@@ -8074,25 +8069,7 @@ function announceEvolution(type, tier) {
     Sfx.play('evolve');
 }
 
-// 升級要花多少（職業可以打折，例如戰士的軍餉）
-function getUpgradeCost(type) {
-    const c = classDef();
-    return Math.max(1, Math.round(gameState.units[type].upgradeCost * (c.upgradeCostMult ? c.upgradeCostMult() : 1)));
-}
-
-function tryUpgrade(type, combo = 0) {
-    if (!UNIT_TYPES[type]) return false;
-    if (gameState.draftOpen) return false;
-    const cost = getUpgradeCost(type);
-    if (!payCost(cost)) return false;
-    gameState.run.upgrades++;
-    levelUpUnit(type);
-    Sfx.play(combo ? 'upgradeCombo' : 'upgrade', combo);
-    updateUI();
-    ensureMusicPlaying();
-    return true;
-}
-// 某個兵種升一級：花費由呼叫端處理（卡片付靈魂；戰士開寶棺拿到的軍餉免費）
+// 某個兵種升一級：跟著主角等級（syncUnitLevels）、或寶棺開出來的
 function levelUpUnit(type) {
     const unit = gameState.units[type];
     const oldTier = getTier(unit.level);
@@ -8106,7 +8083,6 @@ function levelUpUnit(type) {
             spawnParticles(s.pos.x, s.pos.y, '#FFD54F', 5, 50, 0.4);
         }
     });
-    popLevelBadge(type);
     if (newTier > oldTier) announceEvolution(type, newTier);
 }
 
@@ -8190,86 +8166,6 @@ function getPointerPosition(event) {
 }
 
 
-function stopHoldActionInternal() {
-    if (holdActionState.timeoutId) {
-        clearTimeout(holdActionState.timeoutId);
-        holdActionState.timeoutId = null;
-    }
-    if (holdActionState.intervalId) {
-        clearInterval(holdActionState.intervalId);
-        holdActionState.intervalId = null;
-    }
-}
-
-function startHoldAction(actionType, unitType) {
-    if (gameState.isPaused || gameState.draftOpen || holdActionState.isHolding) return;
-
-    stopHoldActionInternal();
-
-    holdActionState.isHolding = true;
-    holdActionState.actionType = actionType;
-    holdActionState.unitType = unitType;
-    holdActionState.pointerDownTime = performance.now();
-
-    const actionFn = actionType === 'summon' ? trySummon : tryUpgrade;
-    const act = () => { if (actionFn(unitType, holdCombo + 1)) bumpHoldCombo(actionType, unitType); };
-    holdCombo = 0;
-
-    holdActionState.timeoutId = setTimeout(() => {
-        if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) return;
-
-        act();
-
-        holdActionState.intervalId = setInterval(() => {
-            if (!holdActionState.isHolding || holdActionState.unitType !== unitType || holdActionState.actionType !== actionType) {
-                stopHoldActionInternal();
-                return;
-            }
-            act();
-        }, CONFIG.holdingButton.repeatInterval);
-
-    }, CONFIG.holdingButton.holdDelay);
-}
-
-// 長按的倍數標籤：這次按住成功了幾次，浮在按鈕正上方；單點一下不顯示
-const HOLD_COMBO_SHOW_FROM = 2;
-const HOLD_COMBO_GAP = 8;      // px：標籤底到按鈕頂
-const HOLD_COMBO_EDGE = 6;     // px：不貼出螢幕邊
-const HOLD_COMBO_MILESTONE = 10;
-let holdCombo = 0;
-function bumpHoldCombo(actionType, unitType) {
-    holdCombo++;
-    if (holdCombo < HOLD_COMBO_SHOW_FROM) return;
-    const el = uiElements.holdCombo;
-    const n = el.querySelector('.hc-n');
-    n.textContent = holdCombo;
-    if (holdCombo === HOLD_COMBO_SHOW_FROM) {
-        const btn = UNIT_UI.find(u => u.type === unitType).el[actionType];
-        // 召喚畫那個單位、升級畫向上箭頭：跟按鈕上的意思一樣，不用另外寫字
-        el.querySelector('.hc-art').innerHTML = actionType === 'summon'
-            ? `<img src="${btn.closest('.unit-card').querySelector('.portrait img').src}" alt="">`
-            : ICON_SVGS.arrowUp;
-        el.className = `${actionType} show`;
-        const r = btn.getBoundingClientRect();
-        const half = el.offsetWidth / 2;
-        el.style.left = `${Math.min(window.innerWidth - half - HOLD_COMBO_EDGE, Math.max(half + HOLD_COMBO_EDGE, r.left + r.width / 2))}px`;
-        el.style.top = `${r.top - HOLD_COMBO_GAP}px`;
-    }
-    // 每滿 HOLD_COMBO_MILESTONE 下：一聲亮晶晶的和弦，整個標籤大彈一下
-    const milestone = holdCombo % HOLD_COMBO_MILESTONE === 0;
-    if (milestone) Sfx.play('comboMilestone');
-    const target = milestone ? el : n;
-    const cls = milestone ? 'milestone' : 'bump';
-    target.classList.remove(cls);
-    void target.offsetWidth;
-    target.classList.add(cls);
-}
-function hideHoldCombo() {
-    holdCombo = 0;
-    uiElements.holdCombo.classList.remove('show');
-}
-
-// 靈魂不夠 / 冷卻中還按：不能沒反應，否則玩家以為沒按到
 function denyFeedback(el) {
     Sfx.unlock();
     Sfx.play('deny');
@@ -8278,116 +8174,8 @@ function denyFeedback(el) {
     el.classList.add('deny-shake');
 }
 
-function stopHoldAction(actionType, unitType) {
-    if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) {
-
-        const holdDuration = performance.now() - holdActionState.pointerDownTime;
-        const actionFn = actionType === 'summon' ? trySummon : tryUpgrade;
-
-        if (holdActionState.timeoutId && holdDuration < CONFIG.holdingButton.holdDelay) {
-            clearTimeout(holdActionState.timeoutId);
-            holdActionState.timeoutId = null;
-            actionFn(unitType);
-        }
-
-        stopHoldActionInternal();
-        hideHoldCombo();
-        holdActionState.isHolding = false;
-        holdActionState.actionType = null;
-        holdActionState.unitType = null;
-        holdActionState.pointerDownTime = 0;
-    } else if (!actionType && !unitType && holdActionState.isHolding) {
-        stopHoldActionInternal();
-        hideHoldCombo();
-        holdActionState.isHolding = false;
-        holdActionState.actionType = null;
-        holdActionState.unitType = null;
-        holdActionState.pointerDownTime = 0;
-    }
-}
-
-
-let lastShownSouls = 0;
-// 底部的兵種卡：照這一局職業的 cards 產生（buildUnitCards），每張記著是哪種兵與自己的元素
-let UNIT_UI = [];
-let builtCardsFor = null;
-function buildUnitCards() {
-    const cards = classDef().cards;
-    $id('currency-icon').innerHTML = ICON_SVGS[currencyIcon()] || '';
-    const key = cards.join(',');
-    if (builtCardsFor === key) return;
-    builtCardsFor = key;
-    uiElements.unitCards.innerHTML = cards.map(type => {
-        const U = UNIT_TYPES[type];
-        return `<div class="unit-card panel${U.upgradeOnly ? ' upgrade-only' : ''}" data-unit="${type}">
-            <div class="unit-head">
-                <div class="portrait"><img src="${U.img}" alt=""><span class="unit-count">0</span><span class="lv-badge">0</span></div>
-                <div class="unit-info"><span class="unit-name">${U.name}</span><span class="unit-stars"></span></div>
-            </div>
-            <div class="unit-btns">
-                <button class="btn btn-green" data-act="summon"></button>
-                <button class="btn btn-gold" data-act="upgrade"></button>
-            </div>
-        </div>`;
-    }).join('');
-    UNIT_UI = cards.map((type, i) => {
-        const card = uiElements.unitCards.children[i];
-        const el = {
-            level: card.querySelector('.lv-badge'), stars: card.querySelector('.unit-stars'), count: card.querySelector('.unit-count'),
-            summon: card.querySelector('[data-act="summon"]'), upgrade: card.querySelector('[data-act="upgrade"]'),
-        };
-        setupHoldableButton(el.summon, 'summon', type);
-        setupHoldableButton(el.upgrade, 'upgrade', type);
-        return { type, el };
-    });
-}
-// 長按連發：按下開始、放開／滑出／被打斷就停
-function setupHoldableButton(button, actionType, unitType) {
-    button.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        button.setPointerCapture(e.pointerId);
-        // 一樣開始長按：按著等靈魂進帳，夠了就會自動買下去
-        if (button.classList.contains('cant-afford')) denyFeedback(button);
-        startHoldAction(actionType, unitType);
-        ensureMusicPlaying();
-    });
-    const stop = (e) => {
-        stopHoldAction(actionType, unitType);
-        if (button.hasPointerCapture(e.pointerId)) {
-            try { button.releasePointerCapture(e.pointerId); } catch (err) { }
-        }
-    };
-    button.addEventListener('pointerup', stop);
-    button.addEventListener('pointerleave', (e) => {
-        if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
-    });
-    button.addEventListener('pointercancel', (e) => {
-        if (holdActionState.isHolding && holdActionState.actionType === actionType && holdActionState.unitType === unitType) stop(e);
-    });
-}
-
-// 升級什麼時候划算，玩家用看的就知道（升級鈕發光），不用自己算：
-// 升一級 = 場上每隻同種兵都 +upgradeBonus，等於多出 upgradeBonus × 隻數 隻兵；
-// 拿同樣的錢去召喚只買得到 升級價 ÷ 召喚價 隻。前者比較多就是划算。下一級剛好進化（解鎖新能力）也算
-function isUpgradeGoodDeal(type, level, summonCost, upgradeCost) {
-    if (UNIT_TYPES[type].upgradeOnly || CONFIG.evolution.levels.includes(level + 1) || summonBlocked(type)) return true;
-    return UNIT_TYPES[type].cfg().upgradeBonus * gameState.units[type].count * summonCost >= upgradeCost;
-}
-
-function starsHtml(tier) {
-    const lv = CONFIG.evolution.levels;
-    let html = '';
-    for (let i = 0; i < lv.length; i++) html += iconHtml('star', i < tier ? 'icon' : 'icon off');
-    if (tier < lv.length) html += `<span>Lv${lv[tier]}</span>`;
-    return html;
-}
-
-function priceButtonHtml(label, cost) {
-    return `<span>${label}</span><span class="price">${iconHtml(currencyIcon())}${formatNumberK(cost)}</span>`;
-}
-
+let lastShownLevel = 0;
 function updateUI() {
-    const souls = gameState.souls;
     const p = gameState.player;
     if (p) {
         // 持續回血、曬傷是一格一格的小數：顯示時進位（還沒歸零就不會顯示 0）
@@ -8396,9 +8184,12 @@ function updateUI() {
         setStyleIfChanged(uiElements.hpFill, 'width', `${Math.round(ratio * 100)}%`);
     }
 
-    setTextIfChanged(uiElements.soulsInfo, formatNumberK(souls));
-    if (souls > lastShownSouls && !uiElements.soulsInfo.classList.contains('bump')) uiElements.soulsInfo.classList.add('bump');
-    lastShownSouls = souls;
+    // 等級與經驗條：升級那一下跳一下
+    const lv = gameState.heroLevel;
+    setTextIfChanged(uiElements.levelInfo, `Lv ${lv}`);
+    if (lv > lastShownLevel && lastShownLevel > 0 && !uiElements.levelInfo.classList.contains('bump')) uiElements.levelInfo.classList.add('bump');
+    lastShownLevel = lv;
+    setStyleIfChanged(uiElements.xpFill, 'width', `${Math.floor(Math.min(1, gameState.xp / xpToNext(lv)) * 100)}%`);
 
     // 波次之間顯示「即將來的那一波」，不是剛打完的那一波
     const holding = tutorial && gameState.currentWave === 0;
@@ -8411,30 +8202,6 @@ function updateUI() {
         setTextIfChanged(uiElements.timerInfo, `剩餘 ${countRemainingMonsters()}`);
     }
     uiElements.wavePlate.classList.toggle('urgent', gameState.betweenWaves && !holding && secs <= COUNTDOWN_SECONDS);
-
-    const canAct = !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen;
-    for (const u of UNIT_UI) {
-        const el = u.el, unit = gameState.units[u.type];
-        const level = unit.level;
-        const U = UNIT_TYPES[u.type];
-        const summonCost = getSummonCost(U.cfg());
-        const upgradeCost = getUpgradeCost(u.type);
-        setTextIfChanged(el.level, String(level));
-        setHtmlIfChanged(el.stars, starsHtml(getTier(level)));
-        setTextIfChanged(el.count, formatNumberK(unit.count));
-        const capped = summonBlocked(u.type);
-        const capLabel = typeof U.capLabel === 'function' ? U.capLabel() : U.capLabel;
-        setHtmlIfChanged(el.summon, capped ? `<span>${capLabel || '滿編'}</span>` : priceButtonHtml(U.summonLabel || '召喚', summonCost));
-        // 下一次升級剛好進化：按鈕直接寫「進化」，按下去會發生什麼一看就知道
-        const evolvesNext = CONFIG.evolution.levels.includes(level + 1);
-        setHtmlIfChanged(el.upgrade, priceButtonHtml(evolvesNext ? '進化' : U.upgradeLabel || '升級', upgradeCost));
-        if (el.summon.disabled !== !(canAct && !capped)) el.summon.disabled = !(canAct && !capped);
-        if (el.upgrade.disabled !== !canAct) el.upgrade.disabled = !canAct;
-        const affordSummon = canAfford(summonCost), affordUpgrade = canAfford(upgradeCost);
-        el.summon.classList.toggle('cant-afford', !affordSummon);
-        el.upgrade.classList.toggle('cant-afford', !affordUpgrade);
-        el.upgrade.classList.toggle('good-deal', affordUpgrade && isUpgradeGoodDeal(u.type, level, summonCost, upgradeCost));
-    }
 
     setStyleIfChanged(uiElements.skipWaveBtn, 'display', gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none');
     updateUltButton();
@@ -8573,7 +8340,7 @@ function saveGameState() {
 
     const stateToSave = {
         saveVersion: SAVE_VERSION,
-        souls: gameState.souls,
+        xp: gameState.xp, heroLevel: gameState.heroLevel, autoUnitLevels: gameState.autoUnitLevels,
         currentWave: gameState.currentWave,
         timeToNextWave: gameState.timeToNextWave,
         betweenWaves: gameState.betweenWaves,
@@ -8585,7 +8352,7 @@ function saveGameState() {
         totalKills: gameState.totalKills,
         blessings: gameState.blessings,
         pendingDraft: gameState.pendingDraft,
-        extraDrafts: gameState.extraDrafts,
+        extraDrafts: gameState.extraDrafts, extraBossDrafts: gameState.extraBossDrafts,
         banished: gameState.banished,
         revivesLeft: gameState.revivesLeft,
         rerollsLeft: gameState.rerollsLeft,
@@ -8624,14 +8391,15 @@ function loadGameState() {
 
         resetGameInternalState(false);
 
-        gameState.souls = loadedState.souls ?? CONFIG.player.initialSouls;
+        gameState.xp = loadedState.xp ?? 0;
+        gameState.heroLevel = loadedState.heroLevel ?? 1;
+        gameState.autoUnitLevels = loadedState.autoUnitLevels ?? 0;
         gameState.currentWave = loadedState.currentWave ?? 0;
         gameState.timeToNextWave = loadedState.timeToNextWave ?? CONFIG.wave.betweenTime;
         gameState.betweenWaves = loadedState.betweenWaves ?? true;
         gameState.classId = CLASSES[loadedState.classId] ? loadedState.classId : DEFAULT_CLASS;
         if (classDef().reset) classDef().reset();
         gameState.pendingClassExtra = loadedState.classExtra ?? null;
-        buildUnitCards();
         gameState.units = emptyUnits();
         if (loadedState.units) {
             for (const type in loadedState.units) if (gameState.units[type]) Object.assign(gameState.units[type], loadedState.units[type]);
@@ -8655,6 +8423,7 @@ function loadGameState() {
         gameState.rerollsLeft = loadedState.rerollsLeft ?? REROLLS_PER_RUN + metaVal('freeReroll');
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
+        gameState.extraBossDrafts = loadedState.extraBossDrafts ?? 0;
         gameState.waveSouls = loadedState.waveSouls ?? 0;
         gameState.relics = (loadedState.relics || []).map(r => ({ ...r, life: r.life ?? RELIC_LIFE, pair: r.pair || 0 }));
         gameState.relicTimer = loadedState.relicTimer ?? randomInRange(RELIC_FIRST_DELAY_MIN, RELIC_FIRST_DELAY_MAX);
@@ -8702,13 +8471,10 @@ function restoreSummonsFromLoad() {
 
 function resetGameInternalState() {
     if (gameState.messageTimeout) clearTimeout(gameState.messageTimeout);
-    stopHoldActionInternal();
-    holdActionState = { actionType: null, unitType: null, timeoutId: null, intervalId: null, isHolding: false, pointerDownTime: 0 };
 
     projectilePool.length = 0;
     visualEffectPool.length = 0;
     tutorial = null;
-    for (const u of UNIT_UI) u.el.summon.classList.remove('hint-pulse');
     heroHiddenNow = false;
 
     const musicWasStarted = gameState.musicStarted;
@@ -8719,7 +8485,7 @@ function resetGameInternalState() {
         orbs: [], particles: [], floatTexts: [],
         shake: 0, hurtFlash: 0, soulCarry: 0, killedBy: null,
         sfxVolume: meta.sfxVolume,
-        souls: CONFIG.player.initialSouls,
+        xp: 0, heroLevel: 1, autoUnitLevels: 0, summonTimers: {},
         currentWave: 0,
         timeToNextWave: CONFIG.wave.betweenTime, betweenWaves: true,
         gameOver: false, isPaused: false,
@@ -8731,7 +8497,7 @@ function resetGameInternalState() {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
         waveEvent: null, lastEventWave: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], rerollsLeft: 0,
@@ -8746,13 +8512,15 @@ function setupNewRun() {
     resetGameInternalState();
     gameState.classId = selectedClass();
     if (classDef().reset) classDef().reset();
-    buildUnitCards();
     gameState.curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     invalidateRunMods();
     gameState.player = new Player(0, 0);
     gameState.player.maxHealth = Math.round(classDef().hero.baseHealth * (1 + metaVal('mageHp')) * runMods().mageHpMult);
     gameState.player.currentHealth = gameState.player.maxHealth;
-    gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
+    gameState.xp = metaVal('startSouls');
+    // 開局就會一種兵：第一張召喚卡先送（沒有召喚卡的職業靠自己打）
+    const firstSummon = classDef().cards.find(t => !UNIT_TYPES[t].upgradeOnly);
+    if (firstSummon) gameState.blessings[unitCardId(firstSummon)] = 1;
     gameState.banished = bannedBlessings(gameState.classId);
     gameState.rerollsLeft = REROLLS_PER_RUN + metaVal('freeReroll');
     gameState.revivesLeft = metaVal('revive');
@@ -8782,7 +8550,6 @@ function togglePause() {
     if (appScreen !== 'playing' || gameState.gameOver || gameState.draftOpen || gameState.victoryOpen) return;
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
-        stopHoldAction();
         syncSettingControls();
         updatePauseMenuStats();
         showScreen(uiElements.pauseMenu, true);
@@ -8847,6 +8614,7 @@ function updateGame(deltaTime) {
 
     const cls = classDef();
     if (cls.update && gameState.player) cls.update(deltaTime);
+    if (gameState.player) updateSummonProduction(deltaTime);
     heroHiddenNow = !!(cls.heroHidden && cls.heroHidden());
     const moveVec = getMoveVector();
     if (gameState.player) gameState.player.update(deltaTime, moveVec);
@@ -9866,6 +9634,7 @@ function cancelTextZoom() {
 
 function init() {
     buildRareBlessings();
+    buildSummonBlessings();
     cancelTextZoom();
     hydrateIcons();
     resizeCanvas();
@@ -9888,8 +9657,6 @@ function init() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('popstate', handleBackButton);
-
-    buildUnitCards();
 
     // 按鍵音統一在這裡：任何按鈕一按下就響（按下不是放開，手感才即時；召喚、新星這些也有）。
     // 按不了的鈕：停用的放「不行」；買不起的召喚鈕由 denyFeedback 放，這裡不再疊一聲
@@ -9966,7 +9733,7 @@ function init() {
         confirmAction = null;
         if (action) action();
     });
-    uiElements.soulsInfo.addEventListener('animationend', () => uiElements.soulsInfo.classList.remove('bump'));
+    uiElements.levelInfo.addEventListener('animationend', () => uiElements.levelInfo.classList.remove('bump'));
 
     uiElements.ultBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -9986,8 +9753,6 @@ function init() {
         if (gameState.isPaused || gameState.gameOver) return;
         if (e.code === 'Space') { e.preventDefault(); useUltimate(); return; }
         if (MOVE_KEYS[e.code]) { keysDown.add(e.code); e.preventDefault(); ensureMusicPlaying(); return; }
-        const card = UNIT_UI[UNIT_HOTKEYS[e.code]];
-        if (card) { e.shiftKey ? tryUpgrade(card.type) : trySummon(card.type); }
     });
     window.addEventListener('keyup', (e) => keysDown.delete(e.code));
     window.addEventListener('blur', () => keysDown.clear());

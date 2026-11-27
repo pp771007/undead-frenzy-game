@@ -50,20 +50,21 @@ await page.evaluate((cls) => {
     if (CLASSES[cls].unlock) meta.achv[CLASSES[cls].unlock] = true;
     resetGame(); enterPlaying(); tutorial = null;
     gameState.currentWave = 21; prepareNextWave(); gameState.banner = null;
-    gameState.souls = 1e6;
-    const [a, b, c] = CLASSES[cls].cards;
-    for (let i = 0; i < 9; i++) tryUpgrade(a);
-    for (let i = 0; i < 25; i++) tryUpgrade(c);
-    for (let i = 0; i < 117; i++) trySummon(a);
-    for (let i = 0; i < 209; i++) trySummon(c);
-    for (let i = 0; i < 5; i++) trySummon(b);
-    gameState.souls = 16100; updateUI();
+    // 打到第 21 波的樣子：主角 30 級（兵種跟著升）、每種兵都學了幾張、場上擺滿
+    gameState.heroLevel = 30; gameState.xp = xpToNext(30) * 0.6; syncUnitLevels();
+    for (const t of CLASSES[cls].cards) {
+        if (UNIT_TYPES[t].upgradeOnly) continue;
+        gameState.blessings[unitCardId(t)] = 4;
+        for (let i = 0; i < summonCap(t, 4) && !summonBlocked(t); i++) spawnUnit(t);
+    }
+    updateUI();
 }, CLASS);
 await shot('2-playing');
 // 抽卡：說明最長的那幾張（最容易撐破框）
 const longest = (n) => page.evaluate(([cls, n]) => Object.keys(BLESSINGS).filter(id => !BLESSINGS[id].legendary && CLASSES[cls].schools.includes(BLESSINGS[id].school))
     .sort((x, y) => BLESSINGS[y].desc(BLESSINGS[y]).length - BLESSINGS[x].desc(BLESSINGS[x]).length).slice(0, n), [CLASS, n]);
-const three = CLASS === 'necro' ? ['cleave', 'eagleEye', 'frenzyTime'] : await longest(3);
+// 第一張是召喚卡：看兵的立繪當圖示、「最多 N → M 隻」那行放不放得下
+const three = CLASS === 'necro' ? ['unit_SkeletonWarrior', 'eagleEye', 'frenzyTime'] : await longest(3);
 const four = CLASS === 'necro' ? ['auraMight', 'giantBones', 'soulVolley', 'pact'] : await longest(4);
 await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; openDraft(); }, three);
 await shot('3-draft');

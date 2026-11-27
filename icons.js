@@ -1069,7 +1069,10 @@ Object.assign(ICON_BODIES, {
 
 const ICON_SVGS =Object.fromEntries(Object.entries(ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
 
+// 名字寫成「img:網址」就直接用那張圖（召喚卡用那種兵的立繪當圖示，見 game.js 的 buildSummonBlessings）
+const IMG_ICON = 'img:';
 function iconHtml(name, cls = 'icon') {
+    if (name.startsWith(IMG_ICON)) return `<span class="${cls}" aria-hidden="true"><img class="icon-img" src="${name.slice(IMG_ICON.length)}" alt=""></span>`;
     return `<span class="${cls}" aria-hidden="true">${ICON_SVGS[name] || ''}</span>`;
 }
 
@@ -1082,6 +1085,12 @@ function preloadIconImages() {
         img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
     })));
 }
-function getIconImage(name) { return iconImages[name] || null; }
+function getIconImage(name) {
+    if (name && name.startsWith(IMG_ICON)) {
+        if (!iconImages[name]) { const img = new Image(); img.src = name.slice(IMG_ICON.length); iconImages[name] = img; }
+        return iconImages[name].complete ? iconImages[name] : null;
+    }
+    return iconImages[name] || null;
+}
 // 底部卡片的頭像要一個網址：沒有立繪的卡（血魔法、武僧的拳）用圖示
 function iconDataUrl(name) { return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(ICON_SVGS[name] || '')}`; }

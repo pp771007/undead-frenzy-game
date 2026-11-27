@@ -374,13 +374,41 @@
             gap: 6px;
         }
 
-        #souls-info {
-            min-width: 30px;
+        /* 等級＋經驗條：靈魂就是經驗值，集滿升一級 */
+        .level-chip {
+            position: relative;
+            min-width: 76px;
+            justify-content: center;
+            overflow: hidden;
+            padding-bottom: 9px;
+        }
+
+        #level-info {
+            position: relative;
+            z-index: 1;
             color: var(--soul);
         }
 
-        #souls-info.bump {
+        #level-info.bump {
             animation: bump 0.25s;
+        }
+
+        .xp-bar {
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            bottom: 4px;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        #xp-fill {
+            display: block;
+            width: 0;
+            height: 100%;
+            border-radius: 2px;
+            background: var(--soul);
         }
 
         /* 結算：結晶是怎麼算出來的，一項一行 */
@@ -2849,7 +2877,7 @@
                 </div>
             </div>
             <div class="hud-right">
-                <div class="hud-chip"><span class="chip-icon" id="currency-icon"></span><span id="souls-info">0</span></div>
+                <div class="hud-chip level-chip"><span id="level-info">Lv 1</span><span class="xp-bar"><span id="xp-fill"></span></span></div>
                 <button id="pause-resume-btn" class="btn btn-dark"><span class="btn-icon" data-icon="pause"></span>暫停</button>
             </div>
         </div>
@@ -2859,8 +2887,6 @@
                 <button id="skip-wave-btn" class="btn btn-blue"><span class="btn-icon" data-icon="fastForward"></span>開戰</button>
                 <button id="nova-btn"></button>
             </div>
-            <!-- 兵種卡照這一局的職業產生（game.js 的 buildUnitCards） -->
-            <div id="unit-cards"></div>
         </div>
     </div>
 
@@ -3119,7 +3145,6 @@
         </div>
     </div>
 
-    <div id="hold-combo" aria-hidden="true"><span class="hc-art"></span><span class="hc-x">×</span><b class="hc-n">0</b></div>
 
     <!-- 確認 -->
     <div id="confirm-dialog" class="overlay-screen" style="z-index:20">
