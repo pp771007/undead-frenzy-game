@@ -109,6 +109,10 @@ Object.assign(BLESSINGS, {
     madVenom: { school: 'venomschool', name: '迷魂毒', legendary: true, max: 1, per: MAD_TIME, desc: b => `毒疊到 ${MAD_STACKS} 層的怪發瘋 ${b.per} 秒，改打身邊的怪（首領不會）` },
     // 移形換影：影子變成刺客的傳送點，影子養在目標附近就能一直貼身伏擊
     shadowSwap: { school: 'shadowschool', name: '移形換影', legendary: true, max: 1, per: SWAP_EVERY, desc: b => `影子會撲向目標；每 ${b.per} 秒和最靠近目標的影子互換位置，換完拿到一次伏擊` },
+    // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
+    poisonAmbush: { school: DUO_SCHOOL, duo: ['assassination', 'venomschool'], name: '淬毒匕首', legendary: true, max: 1, per: 1, desc: () => '伏擊的那一刀把毒直接疊滿' },
+    smokeShades: { school: DUO_SCHOOL, duo: ['shadowschool', 'smoke'], name: '煙中影', legendary: true, max: 1, per: 1, desc: () => '每放出一團煙，煙裡就站起一個影子' },
+    bountyChain: { school: DUO_SCHOOL, duo: ['intel', 'assassination'], name: '連環懸賞', legendary: true, max: 1, per: 1, desc: () => '目標一倒下，馬上標記下一個（不用等）' },
 });
 const RES_MARKED_TAKEN = 1.3;
 // 菲達伊：隱身中的飛刀都乘這個（不延長隱身：隱身時間疊太長，怪又都不理刺客了）
@@ -164,7 +168,7 @@ CLASSES.rogue = {
             enterHide(ROGUE.panicHide, '遁形');
         }
         else if (res('smoke') >= 2 && r.vanishT <= 0 && Math.random() < RES_VANISH_CHANCE) { r.vanishT = RES_VANISH_CD; enterHide(RES_VANISH_TIME); }
-        if (bl('smokeBomb') && lostFrac >= SMOKE_HIT) r.smokes.push({ x: p.pos.x, y: p.pos.y, life: SMOKE_TIME * bl('smokeBomb') });
+        if (bl('smokeBomb') && lostFrac >= SMOKE_HIT) addSmoke(p.pos, SMOKE_TIME * bl('smokeBomb'));
     },
     soulMult: (m) => {
         const r = rogueState();
@@ -232,8 +236,18 @@ function enterHide(dur, label = '隱身') {
         lost++;
         spawnFloatText(m.pos.x, m.pos.y - (m.imageHeight || 30) * 0.5 - 6, '?', '#ECEFF1', 16, 1.0);
     });
-    if (res('smoke') >= 1) r.smokes.push({ x: p.pos.x, y: p.pos.y, life: SMOKE_TIME });
+    if (res('smoke') >= 1) addSmoke(p.pos, SMOKE_TIME);
     if (res('shadowschool') >= 1) spawnShadow(p.pos.x, p.pos.y, gameState.units.Shadow.level, true);
+}
+
+// 一團煙；雙流派「煙中影」：煙裡站起一個影子
+function addSmoke(pos, life) {
+    rogueState().smokes.push({ x: pos.x, y: pos.y, life });
+    if (bl('smokeShades')) {
+        const a = Math.random() * Math.PI * 2, x = pos.x + Math.cos(a) * 20, y = pos.y + Math.sin(a) * 20;
+        spawnShadow(x, y, gameState.units.Shadow.level, true);
+        spawnParticles(x, y, '#B0BEC5', 10, 50, 0.6, 4);
+    }
 }
 
 // ---------- 每格：潛行、目標、毒、煙 ----------
@@ -322,6 +336,8 @@ function targetDown(m) {
     Sfx.play('boss');
     // 刺殺得手：消失；伏擊留給下一個目標
     enterHide(ROGUE.killHide);
+    // 雙流派「連環懸賞」：不等，馬上標下一個
+    if (bl('bountyChain')) { r.markT = 0; spawnFloatText(m.pos.x, m.pos.y - 70, '連環懸賞', '#FFE082', 14, 1.2, 'bountyChain'); }
 }
 
 // ---------- 飛刀：一次射好幾隻，射程內的目標一定分到一把；伏擊只用在射向目標的那一把 ----------
@@ -375,6 +391,7 @@ function rogueKnives(p, dt) {
             const mult = ROGUE.ambushMult + blessVal('ambushPower') + classMeta('ambushPower');
             dmg *= mult * (1 + blessVal('critDamage'));
             r.ambush = false; crit = true;
+            if (bl('poisonAmbush')) t.ambushPoison = true;
             spawnFloatText(t.pos.x, t.pos.y - (t.imageHeight || 30) * 0.5 - 10, `伏擊 ×${+mult.toFixed(1)}`, ROGUE_MARK_COLOR, 16, 1.0, 'ambush');
             Sfx.play('ambush');
         }
@@ -401,7 +418,13 @@ function knifeHit(m) {
     }
     // 每一刀都上毒，0 級就有（同飛刀：修練是讓它更強，不是解鎖）。0 級才有毒的話開局完全看不到毒，玩家不知道這張卡在做什麼
     if (m.isAlive) {
-        addPoison(m, 1);
+        // 雙流派「淬毒匕首」：伏擊那一刀一次疊滿，綠毒整團炸開
+        if (m.ambushPoison) {
+            m.ambushPoison = false;
+            addPoison(m, poisonCap());
+            spawnParticles(m.pos.x, m.pos.y, POISON_GREEN, 18, 90, 0.5, 3);
+            addWorldFx({ kind: 'ring', x: m.pos.x, y: m.pos.y, r0: 6, r1: 34, life: 0.35, color: POISON_GREEN, width: 5 });
+        } else addPoison(m, 1);
         spawnParticles(m.pos.x, m.pos.y - 4, POISON_GREEN, POISON_HIT_SPARKS, 50, 0.3, 2);
     }
 }

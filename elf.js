@@ -56,6 +56,8 @@ const COMP_TIER1_RATE = 1.25, COMP_TIER2_TAKEN = 0.7;
 // 獵人之網：網住幾秒、網比陷阱的爆炸範圍大多少、首領被拖慢多少
 const NET_TIME = 2, NET_SCALE = 1.2, NET_BOSS_SLOW = 0.5;
 // 狐火：傷害是靈狐攻擊的幾成、飛多快、找多遠的怪、爆炸範圍、飛多久沒碰到就散掉；場上最多幾團
+// 雙流派：誘敵深入（每幾秒最多留一個、陷阱大小）、元素陷阱（火加傷、冰凍幾秒、雷跳幾隻）、鷹眼標記（倍率、幾秒）
+const LURE_TRAP_EVERY = 0.8, LURE_TRAP_SCALE = 0.7, ELEM_TRAP_FIRE = 0.6, ELEM_TRAP_FREEZE = 1.5, ELEM_TRAP_CHAINS = 3, HAWK_MARK_MULT = 2, HAWK_MARK_TIME = 4;
 const FOXFIRE_SHARE = 0.6, FOXFIRE_SPEED = 230, FOXFIRE_SEEK = 170, FOXFIRE_RADIUS = 32, FOXFIRE_LIFE = 1.4, FOXFIRE_MAX = 30;
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
@@ -94,6 +96,10 @@ Object.assign(BLESSINGS, {
     hunterNet: { school: 'trapper', name: '獵人之網', legendary: true, max: 1, per: NET_TIME, desc: b => `陷阱炸開時張開一張網，網住的怪 ${b.per} 秒動不了（首領只會變慢）` },
     // 狐火：靈狐從「只打一隻」變成會往旁邊撒火，近戰夥伴也能清一群
     foxfire: { school: 'wildfriends', name: '狐火', legendary: true, max: 1, per: FOXFIRE_SHARE, desc: () => '靈狐每咬一口就點起一團狐火，飛去炸附近的怪' },
+    // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
+    lureTrap: { school: DUO_SCHOOL, duo: ['parthian', 'trapper'], name: '誘敵深入', legendary: true, max: 1, per: LURE_TRAP_EVERY, desc: () => '回頭射中的怪腳下會留一個小陷阱' },
+    elemTrap: { school: DUO_SCHOOL, duo: ['elemental', 'trapper'], name: '元素陷阱', legendary: true, max: 1, per: 1, desc: () => '陷阱炸開時帶著元素：火加傷、冰凍住、雷跳到旁邊' },
+    hawkMark: { school: DUO_SCHOOL, duo: ['longbow', 'wildfriends'], name: '鷹眼標記', legendary: true, max: 1, per: HAWK_MARK_MULT, desc: b => `鷹抓過的怪 ${HAWK_MARK_TIME} 秒內挨你的箭傷害 ×${b.per}` },
 });
 const RES_HORSEBACK_KEEP = 2;
 const RES_FARSIGHT_MAX = 3, RES_FARSIGHT_PER = 100;
@@ -172,7 +178,7 @@ const GALE_TIME = 8, GALE_MULT = 1.5;
 // movingT：還算「在移動」的剩餘秒數；trapDist：離上一個陷阱走了多遠；elem：元素箭輪到哪一個
 function newElfState() {
     return { bowT: 0, movingT: 0, stillT: 0, waveStill: false, trapDist: 0, traps: [], trapKind: 0, elem: 0, rainT: 0, rainTick: 0, rainKills: 0,
-        moonT: 0, beams: [], stampedeT: RES_STAMPEDE_EVERY, deer: [], galeT: 0, lastX: null, lastY: null, mx: 1, my: 0, nets: [], foxfires: [] };
+        moonT: 0, beams: [], stampedeT: RES_STAMPEDE_EVERY, deer: [], galeT: 0, lastX: null, lastY: null, mx: 1, my: 0, nets: [], foxfires: [], lureCd: 0 };
 }
 function elfState() { return gameState.elf || (gameState.elf = newElfState()); }
 
@@ -192,6 +198,7 @@ function elfUpdate(dt) {
         if (e.stillT > ELF.bow.keepMoving && !gameState.betweenWaves) e.waveStill = true;
     }
     e.galeT = Math.max(0, e.galeT - dt);
+    e.lureCd = Math.max(0, e.lureCd - dt);
     // 陷阱：邊走邊放
     if (e.lastX !== null && moving) e.trapDist += Math.hypot(p.pos.x - e.lastX, p.pos.y - e.lastY);
     e.lastX = p.pos.x; e.lastY = p.pos.y;
@@ -318,6 +325,7 @@ class Arrow extends TimedEffect {
         dmg *= 1 + blessVal('farShot') * dist / 100;
         if (res('longbow') >= 2) dmg *= Math.min(RES_FARSIGHT_MAX, 1 + dist / RES_FARSIGHT_PER / 2);
         if (getTier(gameState.units.Archery.level) >= 3 && Math.random() < ARCHERY_TIER3_CRIT) dmg *= 2;
+        if (m.hawkMarkUntil > worldTime) dmg *= HAWK_MARK_MULT;
         const surge = (1 + blessVal('elemSurge')) * (res('elemental') >= 1 ? RES_RESONANCE_MULT : 1);
         const el = this.elem;
         if (el === 'fire' || el === 'all') dmg *= 1 + (FIRE_BASE + blessVal('fireArrow')) * surge;
@@ -330,6 +338,9 @@ class Arrow extends TimedEffect {
         if (this.back) {
             if (!m.isAlive) stats().elfBackKills = (stats().elfBackKills || 0) + 1;
             if (bl('backSlow') && m.isAlive) m.applySlow(blessVal('backSlow'), 1);
+            // 雙流派「誘敵深入」：追著你的那隻腳下留一個小陷阱
+            const e = elfState();
+            if (bl('lureTrap') && e.lureCd <= 0) { e.lureCd = LURE_TRAP_EVERY; placeTrap(m.pos.x, m.pos.y, LURE_TRAP_SCALE); spawnParticles(m.pos.x, m.pos.y, '#FFCC80', 5, 40, 0.3, 2); }
         }
         if ((el === 'ice' || el === 'all') && m.isAlive) m.applySlow(Math.min(0.9, (ICE_BASE + blessVal('iceArrow')) * surge), ICE_TIME);
         if (el === 'thunder' || el === 'all') {
@@ -428,6 +439,7 @@ function updateTraps(dt) {
         });
         gameState.visualEffects.push(new TrapBurstEffect(t, r, t.kind));
         if (bl('hunterNet')) castNet(t, r * NET_SCALE);
+        if (bl('elemTrap')) elementalTrap(t, r, dmg);
         // 獵場、三階：炸開後原地再補一個小的
         if ((res('trapper') >= 2 || tier >= 3) && t.scale >= 1) e.traps.push({ x: t.x, y: t.y, kind: TRAP_KINDS[e.trapKind++ % 3], scale: RES_HUNTGROUND_SCALE, life: T.life, lureT: 99 });
     }
@@ -528,6 +540,40 @@ class TrapBurstEffect extends TimedEffect {
             }
             ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
         }
+        ctx.restore();
+    }
+}
+
+// ---------- 雙流派「元素陷阱」：陷阱炸開時輪流帶火、冰、雷 ----------
+const ELEM_TRAP_ORDER = ['fire', 'ice', 'thunder'], ELEM_TRAP_CHAIN_RANGE = 120;
+function elementalTrap(c, r, dmg) {
+    const e = elfState(), el = ELEM_TRAP_ORDER[(e.elemTrapIdx = ((e.elemTrapIdx || 0) + 1) % ELEM_TRAP_ORDER.length)];
+    const rSq = r * r, inside = [];
+    groundMonsterGrid.forEachInRadius(c, r, m => { if (m.isAlive && distanceSq(m.pos, c) <= rSq) inside.push(m); });
+    if (el === 'fire') for (const m of inside) m.takeDamage(dmg * ELEM_TRAP_FIRE);
+    if (el === 'ice') for (const m of inside) if (!(m instanceof BossMonster)) m.applySlow(0.95, ELEM_TRAP_FREEZE);
+    if (el === 'thunder') {
+        const near = [], cr = ELEM_TRAP_CHAIN_RANGE;
+        monsterGrid.forEachInRadius(c, cr, m => { if (m.isAlive && distanceSq(m.pos, c) <= cr * cr) near.push(m); });
+        near.sort((a, b) => distanceSq(a.pos, c) - distanceSq(b.pos, c));
+        for (const m of near.slice(0, ELEM_TRAP_CHAINS)) { m.takeDamage(dmg); gameState.visualEffects.push(new ZapEffect(c, m.pos)); }
+    }
+    addWorldFx({ kind: 'ring', x: c.x, y: c.y, r0: r * 0.3, r1: r * 1.1, life: 0.4, color: ELEM_COLORS[el], width: 6 });
+    spawnParticles(c.x, c.y, ELEM_COLORS[el], 12, 100, 0.45, 3);
+}
+// 雙流派「鷹眼標記」：被鷹抓過的怪頭上一根金色的鷹羽
+function drawHawkMarks(ctx) {
+    if (!bl('hawkMark')) return;
+    for (const m of gameState.monsters) {
+        if (!m.isAlive || !(m.hawkMarkUntil > worldTime) || !inView(m.pos)) continue;
+        const x = m.pos.x, y = m.pos.y - m.imageHeight * 0.5 - 12, left = m.hawkMarkUntil - worldTime;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, left / 0.5);
+        ctx.translate(x, y); ctx.rotate(-0.5 + Math.sin(worldTime * 3 + x) * 0.1);
+        ctx.beginPath(); ctx.moveTo(0, 9); ctx.quadraticCurveTo(-6, 0, 0, -9); ctx.quadraticCurveTo(6, 0, 0, 9); ctx.closePath();
+        ctx.fillStyle = '#FFD54F'; ctx.fill(); ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.4; ctx.stroke();
+        ctx.strokeStyle = '#8D6E63'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(0, 11); ctx.lineTo(0, -7); ctx.moveTo(0, -2); ctx.lineTo(-3, -5); ctx.moveTo(0, 2); ctx.lineTo(3, -1); ctx.stroke();
         ctx.restore();
     }
 }
@@ -746,6 +792,7 @@ function drawElfWorld(ctx) {
         ctx.restore();
     }
     for (const n of e.nets) if (inView(n)) drawNet(ctx, n);
+    drawHawkMarks(ctx);
     for (const f of e.foxfires) if (inView(f)) drawFoxfire(ctx, f);
     const deer = images.deer;
     if (deer) for (const d of e.deer) {
@@ -790,7 +837,10 @@ class Companion extends SummonUnit {
         const hits = 1 + (this.tier >= 3 ? 1 : 0) + (res('wildfriends') >= 1 ? 1 : 0);
         for (let i = 0; i < hits && t.isAlive; i++) t.takeDamage(this.attack);
         this.healFromDamage(this.attack);
-        if (this.kind === 'hawk') { spawnParticles(t.pos.x, t.pos.y, '#D7CCC8', 6, 70, 0.35, 2); }
+        if (this.kind === 'hawk') {
+            spawnParticles(t.pos.x, t.pos.y, '#D7CCC8', 6, 70, 0.35, 2);
+            if (bl('hawkMark') && t.isAlive) t.hawkMarkUntil = worldTime + HAWK_MARK_TIME;
+        }
         else if (bl('foxfire')) lightFoxfire(this);
         const fx = getVisualEffectFromPool(SlashEffect);
         if (fx) { fx.init(this.pos, t.pos); gameState.visualEffects.push(fx); }

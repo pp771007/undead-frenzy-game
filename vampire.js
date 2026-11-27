@@ -81,6 +81,8 @@ const BURST_TIER1_RADIUS = 1.25, BURST_TIER2_SLOW = 0.5;
 // 蝠群風暴：轉幾秒、繞多遠（每隻蝙蝠半徑錯開一點，看起來是一團不是一條線）、轉多快、每隻多久咬一次、咬的傷害倍率
 const STORM_TIME = 5, STORM_RADIUS = 52, STORM_SPREAD = 22, STORM_SPIN = 3.2, STORM_BITE_EVERY = 0.3, STORM_HIT_RADIUS = 18, STORM_MULT = 1.5;
 // 月狼：爪擊範圍、扇形角度、間隔、傷害是飛刃的幾倍（近戰要貼身，比遠程危險）、吸血倍率、夜裡移速
+// 雙流派：血之紐帶（眷屬回幾成血）、蝠群護主（替你擋幾成、多近的蝙蝠才擋得到、擋一下蝙蝠扣自己幾成血）
+const BLOOD_BOND_HEAL = 0.2, BAT_GUARD_CUT = 0.25, BAT_GUARD_RADIUS = 80, BAT_GUARD_COST = 0.15;
 const MOONWOLF_RANGE = 62, MOONWOLF_ARC = Math.PI * 0.75, MOONWOLF_EVERY = 0.55, MOONWOLF_MULT = 2.4, MOONWOLF_LEECH = 2, MOONWOLF_SPEED = 1.4;
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
@@ -119,6 +121,10 @@ Object.assign(BLESSINGS, {
     batStorm: { school: 'bats', name: '蝠群風暴', legendary: true, max: 1, per: STORM_TIME, desc: b => `入夜那一刻，所有蝙蝠圍著你轉 ${b.per} 秒，碰到的怪都被吸血` },
     // 月狼：夜裡從遠程換成近戰，狼化流派的「入夜變強」推到底
     moonWolf: { school: 'werewolf', name: '月狼', legendary: true, max: 1, per: MOONWOLF_LEECH, desc: b => `入夜時飛刃換成扇形爪擊，吸血 ×${b.per}、移速 +${pct(MOONWOLF_SPEED - 1)}` },
+    // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
+    bloodBond: { school: DUO_SCHOOL, duo: ['bloodmagic', 'kin'], name: '血之紐帶', legendary: true, max: 1, per: BLOOD_BOND_HEAL, desc: b => `血爆時，範圍裡的眷屬回 ${pct(b.per)} 血` },
+    batGuard: { school: DUO_SCHOOL, duo: ['bats', 'undying'], name: '蝠群護主', legendary: true, max: 1, per: BAT_GUARD_CUT, desc: b => `身邊有蝙蝠時，牠替你擋下 ${pct(b.per)} 的傷害` },
+    wolfEmbrace: { school: DUO_SCHOOL, duo: ['werewolf', 'kin'], name: '狼群初擁', legendary: true, max: 1, per: 1, desc: () => '入夜時你親手打倒的怪一定站起來成為眷屬（眷屬有空位時）' },
 });
 const RES_FEAST_HEAL = 0.01;
 const RES_NIGHTWING_RATE = 1.4;
@@ -170,6 +176,12 @@ CLASSES.vampire = {
         if (m.lastHitByThrall && res('kin') >= 1) healHero(gameState.player.maxHealth * RES_FEAST_HEAL);
         if (m instanceof BossMonster) { if (bl('dracula')) raiseThrall(m, gameState.units.Thrall.level, true); return; }
         if (gameState.units.Thrall.count >= thrallCap() || (m.isElite && res('kin') < 2)) return;
+        // 雙流派「狼群初擁」：入夜時親手打倒的一定轉化
+        if (bl('wolfEmbrace') && vampState().night && m.heroBlowAt === worldTime) {
+            raiseThrall(m, gameState.units.Thrall.level);
+            if (inView(m.pos)) spawnFloatText(m.pos.x, m.pos.y - 24, '初擁', '#E1BEE7', 12, 0.9, 'wolfEmbrace');
+            return;
+        }
         if (Math.random() < convertChance()) raiseThrall(m, gameState.units.Thrall.level);
     },
     onWaveStart: () => {
@@ -186,7 +198,7 @@ CLASSES.vampire = {
         const v = vampState();
         if (v.batFormT > 0) return 0;
         if (Math.random() < blessVal('mistForm')) { const p = gameState.player; spawnFloatText(p.pos.x, p.pos.y - 30, '霧化', '#B39DDB', 12, 0.6); return 0; }
-        return 1;
+        return batGuard() ? 1 - BAT_GUARD_CUT : 1;
     },
     onHeroHurt: (lostFrac) => {
         const v = vampState();
@@ -366,6 +378,7 @@ function vampUpdate(dt) {
             if (m && m.isAlive) {
                 v.biteT = VW_BITE_EVERY;
                 const dmg = VW_BITE_DAMAGE * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('vwBite')) * sacrificeMult();
+                m.heroBlowAt = worldTime;
                 m.takeDamage(dmg);
                 healHero(dmg * bladeLeech());
                 const fx = getVisualEffectFromPool(SlashEffect);
@@ -395,7 +408,8 @@ SHAPE_SPRITES.nightCrescent = {
     },
 };
 // 飛刃命中時吸血：Projectile 打中會呼叫 owner.healFromDamage
-const vampBladeOwner = { healFromDamage: (dealt) => healHero(dealt * bladeLeech()) };
+// preHit 在傷害之前呼叫：怪在 takeDamage 裡就會死、觸發 onMonsterKill，事後才標記就來不及（狼群初擁要認「是你親手打倒的」）
+const vampBladeOwner = { healFromDamage: (dealt) => healHero(dealt * bladeLeech()), preHit: (m) => { m.heroBlowAt = worldTime; } };
 const vampTargets = [];
 function vampAttack(p, dt) {
     const v = vampState(), B = VAMPIRE.blade;
@@ -418,6 +432,22 @@ function vampAttack(p, dt) {
     Sfx.play('mageBolt');
 }
 
+// ---------- 雙流派「蝠群護主」：身邊最近的蝙蝠替你擋一截 ----------
+// 主角每挨一下問一次：有蝙蝠在身邊就由牠扣一截血、主角少扣一截，中間拉一道紫線讓人看到是誰擋的
+function batGuard() {
+    if (!bl('batGuard')) return false;
+    const p = gameState.player;
+    let best = null, bd = BAT_GUARD_RADIUS * BAT_GUARD_RADIUS;
+    for (const s of gameState.summons) { if (!s.isAlive || !(s instanceof BloodBat)) continue; const d = distanceSq(s.pos, p.pos); if (d < bd) { bd = d; best = s; } }
+    if (!best) return false;
+    const from = { x: best.pos.x, y: best.pos.y };
+    best.takeDamage(best.maxHealth * BAT_GUARD_COST);
+    const dx = p.pos.x - from.x, dy = p.pos.y - from.y, len = Math.hypot(dx, dy) || 1;
+    addWorldFx({ kind: 'beam', x: from.x, y: from.y, dx: dx / len, dy: dy / len, len, w: 4, life: 0.25, color: '#B39DDB' });
+    spawnParticles(from.x, from.y, VAMP_ATTACK_COLOR, 4, 40, 0.3, 2);
+    return true;
+}
+
 // ---------- 傳說「月狼」：入夜時飛刃換成扇形爪擊 ----------
 const MOONWOLF_SILVER = '#E1D5FF';
 function moonWolfActive() { return bl('moonWolf') && vampState().night; }
@@ -437,6 +467,7 @@ function moonClaw(p, dt) {
         if (dSq > rSq) return;
         const d = Math.sqrt(dSq) || 1;
         if ((dx * Math.cos(ang) + dy * Math.sin(ang)) / d < cosHalf && d > m.radius) return;
+        m.heroBlowAt = worldTime;
         m.takeDamage(dmg); total += dmg;
     });
     healHero(total * bladeLeech() * MOONWOLF_LEECH);
@@ -552,6 +583,12 @@ function bloodBurst(p, dt) {
         if (tier >= 2 && m.isAlive) m.applySlow(BURST_TIER2_SLOW, 1.2);
     });
     if (bl('bmLeech')) healHero(total * blessVal('bmLeech'));
+    // 雙流派「血之紐帶」：範圍裡的眷屬回血，身上冒一圈紫色的血光
+    if (bl('bloodBond')) summonGrid.forEachInRadius(p.pos, radius, s => {
+        if (!s.isAlive || !(s instanceof Thrall) || distanceSq(s.pos, p.pos) > rSq) return;
+        s.currentHealth = Math.min(s.maxHealth, s.currentHealth + s.maxHealth * BLOOD_BOND_HEAL);
+        if (inView(s.pos)) { spawnParticles(s.pos.x, s.pos.y, '#E1BEE7', 5, 40, 0.5, 2.5); addWorldFx({ kind: 'ring', x: s.pos.x, y: s.pos.y, r0: 4, r1: 18, life: 0.35, color: VAMP_ATTACK_COLOR, width: 3 }); }
+    });
     gameState.visualEffects.push(new BloodBurstEffect(p.pos, radius));
     addShake(3);
 }

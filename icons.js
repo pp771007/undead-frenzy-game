@@ -1057,6 +1057,87 @@ const ICON_BODIES = {
         <path d="${starPath(46, 46, 12, 5, 8)}" fill="#c06bf5" stroke-width="3"/><circle cx="46" cy="46" r="3.5" fill="#f6dcff" stroke-width="2"/>`,
 };
 
+// ---- 雙流派傳說：每張都把兩個流派的東西畫在一起 ----
+const FLAME_PATH = 'M32 58 C17 58 11 46 15 35 C18 27 24 24 25 14 C34 20 37 26 37 32 C41 28 42 23 41 17 C51 26 54 38 50 47 C47 54 40 58 32 58 Z';
+const FLAME_CORE = 'M32 53 C25 53 22 47 25 41 C27 37 31 35 32 30 C37 35 40 40 39 46 C38 50 36 53 32 53 Z';
+const SKULL_SHAPE = 'M32 7 C18 7 10 17 10 29 C10 37 14 42 20 45 L20 55 L44 55 L44 45 C50 42 54 37 54 29 C54 17 46 7 32 7 Z';
+const WOLF_HEAD = 'M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z';
+const BAT_SHAPE = 'M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z';
+function skullAt(x, y, s, eye = ICON_OUTLINE) {
+    return `<g transform="translate(${x} ${y}) scale(${s}) translate(-32 -31)"><path d="${SKULL_SHAPE}" fill="#f1ead6" stroke-width="${(4 / s).toFixed(1)}"/>`
+        + `<ellipse cx="23" cy="30" rx="6" ry="7" fill="${eye}" stroke="none"/><ellipse cx="41" cy="30" rx="6" ry="7" fill="${eye}" stroke="none"/><path d="M32 37 L28.5 44 L35.5 44 Z" fill="${ICON_OUTLINE}" stroke="none"/></g>`;
+}
+function flameAt(x, y, s, fill, core) {
+    return `<g transform="translate(${x} ${y}) scale(${s}) translate(-32 -36)"><path d="${FLAME_PATH}" fill="${fill}" stroke-width="${(4 / s).toFixed(1)}"/><path d="${FLAME_CORE}" fill="${core}" stroke="none"/></g>`;
+}
+function wolfHeadAt(x, y, s, fill = '#90a4ae', eye = '#ffd54f') {
+    return `<g transform="translate(${x} ${y}) scale(${s})"><path d="${WOLF_HEAD}" fill="${fill}" stroke-width="${(2.6 / s * s).toFixed(1)}"/><path d="M-9 -9 L-8 -12 L-6 -7 Z M9 -9 L8 -12 L6 -7 Z" fill="#cfd8dc" stroke="none"/>`
+        + `<circle cx="-5" cy="0" r="2" fill="${eye}" stroke="none"/><circle cx="5" cy="0" r="2" fill="${eye}" stroke="none"/><path d="M-2 7 L0 9 L2 7" stroke-width="1.6"/></g>`;
+}
+function ghostAt(x, y, s, fill) {
+    return `<g transform="translate(${x} ${y}) scale(${s}) translate(-32 -30)"><path d="${GHOST_PATH}" fill="${fill}" stroke-width="${(4 / s).toFixed(1)}"/><circle cx="26" cy="27" r="3.5" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="38" cy="27" r="3.5" fill="${ICON_OUTLINE}" stroke="none"/></g>`;
+}
+Object.assign(ICON_BODIES, {
+    // 冥火骨兵（骷髏＋怨靈）：骷髏頭燒著怨靈青色的火
+    ghostfireBones: flameAt(32, 30, 1.05, '#4db6ac', '#e0f2f1') + skullAt(32, 42, 0.55, '#26a69a'),
+    // 靈視（眼魔＋法師）：眼魔的眼睛射出一發青色魂彈
+    soulGaze: `<path d="M3 40 C10 28 34 28 41 40 C34 52 10 52 3 40 Z" fill="#f1ead6"/><circle cx="22" cy="40" r="8" fill="#26a69a"/><circle cx="22" cy="40" r="3.2" fill="${ICON_OUTLINE}" stroke="none"/>`
+        + duoStroke('M34 32 L52 14', '#7ff0f0', 4) + `<path d="${starPath(54, 12, 9, 4, 8)}" fill="#7ff0f0" stroke-width="2.5"/><circle cx="54" cy="12" r="3.5" fill="#e8ffff" stroke-width="1.8"/>${shine(16, 36, 2.5, 1.6)}`,
+    // 哀魂新星（怨靈＋新星）：紫色新星的三個尖角各衝出一隻怨靈
+    wailingNova: `<path d="${starPath(32, 34, 24, 11, 10)}" fill="#c06bf5"/><circle cx="32" cy="34" r="8" fill="#f6dcff"/>` + ghostAt(12, 14, 0.42, '#80cbc4') + ghostAt(52, 14, 0.42, '#80cbc4') + ghostAt(32, 56, 0.42, '#80cbc4'),
+    // 盾怒（盾牆＋狂戰）：圓盾上冒出橘色怒火
+    shieldFury: flameAt(32, 22, 0.75, '#ff6d00', '#ffd54f') + `<circle cx="32" cy="42" r="19" fill="#607d8b"/><circle cx="32" cy="42" r="13" fill="#90a4ae" stroke-width="3"/><circle cx="32" cy="42" r="5" fill="#ffab40" stroke-width="2.5"/>${shine(24, 34, 4, 2.2)}`,
+    // 移動龜甲（盾牆＋軍團紀律）：三面盾舉過頭頂連成屋頂，底下一道往前的箭頭
+    marchingTestudo: `${[12, 32, 52].map(x => `<rect x="${x - 10}" y="12" width="20" height="16" rx="3" fill="#1e88e5"/><rect x="${x - 7}" y="15" width="14" height="10" rx="2" stroke="#ffd54f" stroke-width="1.8"/><circle cx="${x}" cy="20" r="2.2" fill="#ffd54f" stroke-width="1.5"/>`).join('')}
+        ${[14, 32, 50].map(x => `<path d="M${x} 30 L${x} 42" stroke-width="5"/><path d="M${x} 30 L${x} 42" stroke="${WOOD}" stroke-width="2.5"/>`).join('')}` + duoStroke('M6 52 L52 52', '#81c784', 3.5) + `<path d="M50 45 L60 52 L50 59 Z" fill="#81c784" stroke-width="2.5"/>`,
+    // 怒射（弩陣＋狂戰）：弩一次射出三支帶火的弩箭
+    furyVolley: crossbow(16, 50, -45, 0.8) + `${[[26, 30, 40, 8], [30, 34, 54, 16], [34, 40, 58, 34]].map(([a, b, c, d]) => arrow(a, b, c, d, '#ffcc80', '#ffab40', 0.8)).join('')}` + flameAt(56, 52, 0.28, '#ff6d00', '#ffd54f'),
+    // 如影隨形（外功＋輕功）：一顆拳頭往前衝，身後拖著兩道青色殘影
+    shadowFist: fistAt(18, 34, 0.5, 0.35) + fistAt(28, 32, 0.6, 0.6) + fistAt(42, 30, 0.75) + duoStroke('M2 20 L14 20 M4 44 L14 44', '#b2ebf2', 3),
+    // 丹田爆發（內功＋氣功）：盤坐的武僧雙掌推出一道很寬的金色氣功波
+    dantianBurst: `<circle cx="14" cy="42" r="10" fill="#ffd54f" opacity="0.5" stroke="none"/>` + monkAt(14, 40, 1)
+        + [[30, 10, 6], [42, 16, 5], [54, 22, 4]].map(([x, h, w]) => duoStroke(`M${x - 6} ${38 - h} Q${x + 4} 37 ${x - 6} ${36 + h}`, '#ffd54f', w)).join('')
+        + `<path d="M26 37 L58 37" stroke="#fff8e1" stroke-width="3" opacity="0.8"/>`,
+    // 鐵拳（硬功＋外功）：一顆灰鐵色的拳頭，指節發亮，外面一圈鐵環
+    ironFist: `<circle cx="32" cy="34" r="27" stroke-width="7"/><circle cx="32" cy="34" r="27" stroke="#b0bec5" stroke-width="3" stroke-dasharray="10 5"/>` + `<g transform="translate(32 34) scale(0.75) translate(-30 -33)">${FIST_BODY.replace('#ffcc80', '#90a4ae')}</g>` + shine(24, 26, 4, 2),
+    // 淬毒匕首（暗殺＋劇毒）：一把飛刀滴著綠毒，刀尖一顆金色伏擊星
+    poisonAmbush: placeAt(8, 56, -45, throwKnifeL(52)) + `<path d="M28 34 C26 40 30 42 30 44 C30 47 25 47 25 44 C25 42 28 40 28 34 Z M40 24 C38 30 42 32 42 34 C42 37 37 37 37 34 C37 32 40 30 40 24 Z" fill="#76ff03" stroke-width="1.8"/>`
+        + `<path d="${starPath(50, 12, 10, 4, 4)}" fill="#ffd740" stroke-width="2.2"/>`,
+    // 煙中影（影＋煙霧）：一團灰煙裡站起一個紫色的影子
+    smokeShades: `<g transform="translate(32 36) scale(0.85)" opacity="0.9"><circle cx="0" cy="-14" r="9" fill="#5e35b1"/><path d="M-12 22 L-12 0 C-12 -6 12 -6 12 0 L12 22 Z" fill="#5e35b1"/><path d="M-4 -15 L-1 -13 M4 -15 L1 -13" stroke="#ffd740" stroke-width="2"/></g>`
+        + `<path d="M4 54 C2 46 10 42 16 46 C16 38 26 36 30 42 C34 36 46 38 46 46 C52 42 62 46 60 54 Z" fill="#b0bec5"/><path d="M10 50 C14 48 18 49 20 51 M36 49 C40 47 44 48 46 50" stroke="#eceff1" stroke-width="2"/>`,
+    // 連環懸賞（情報＋暗殺）：兩個金色準星用鐵鍊串在一起
+    bountyChain: `${[[16, 20], [48, 44]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="12" stroke-width="7"/><circle cx="${x}" cy="${y}" r="12" stroke="#ffd740" stroke-width="3"/>${duoStroke(`M${x} ${y - 16} L${x} ${y - 8} M${x} ${y + 8} L${x} ${y + 16} M${x - 16} ${y} L${x - 8} ${y} M${x + 8} ${y} L${x + 16} ${y}`, '#ffd740', 2.5)}<circle cx="${x}" cy="${y}" r="3" fill="#ffd740" stroke-width="2"/>`).join('')}`
+        + `${[[26, 28], [32, 32], [38, 36]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="4.5" ry="2.8" transform="rotate(${35 + i * 10} ${x} ${y})" stroke-width="5"/><ellipse cx="${x}" cy="${y}" rx="4.5" ry="2.8" transform="rotate(${35 + i * 10} ${x} ${y})" stroke="#90a4ae" stroke-width="2.2"/>`).join('')}`,
+    // 熊之林（聖林＋巨熊）：熊頭蹲在一棵橡樹前，身邊兩片葉子
+    groveBears: `<path d="M28 44 L28 30 L36 30 L36 44 Z" fill="#6d4c41"/><circle cx="32" cy="18" r="15" fill="#558b2f"/><circle cx="18" cy="24" r="9" fill="#7cb342"/><circle cx="46" cy="24" r="9" fill="#7cb342"/>
+        <circle cx="20" cy="38" r="6" fill="#8d6e63"/><circle cx="44" cy="38" r="6" fill="#8d6e63"/><ellipse cx="32" cy="48" rx="16" ry="13" fill="#8d6e63"/><ellipse cx="32" cy="53" rx="7" ry="5" fill="#bcaaa4"/>
+        <circle cx="26" cy="45" r="2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="38" cy="45" r="2" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="32" cy="51" rx="2.6" ry="2" fill="${ICON_OUTLINE}" stroke="none"/>`,
+    // 荊棘狼（狼群＋荒野）：狼頭的嘴邊纏著一圈帶刺的藤
+    thornWolves: wolfHeadAt(32, 30, 1.7) + duoStroke('M6 50 C14 40 22 54 32 46 C42 38 48 54 58 44', '#7cb342', 3)
+        + `${[[12, 45], [26, 50], [40, 44], [54, 47]].map(([x, y]) => `<path d="M${x - 3} ${y} L${x} ${y - 6} L${x + 3} ${y} Z" fill="#c5e1a5" stroke-width="1.6"/>`).join('')}`,
+    // 狩獵之月（四大節＋狼群）：一輪滿月底下兩隻小狼探頭
+    huntMoon: `<circle cx="32" cy="22" r="18" fill="#fff3c4"/><circle cx="26" cy="18" r="3.5" fill="#ffe082" stroke="none"/><circle cx="38" cy="26" r="4.5" fill="#ffe082" stroke="none"/>${shine(24, 12, 4, 2)}`
+        + wolfHeadAt(20, 50, 0.95, '#eceff1', '#1b1424') + wolfHeadAt(44, 50, 0.95, '#cfd8dc', '#1b1424'),
+    // 血之紐帶（血魔法＋眷屬）：兩顆紫色的心用一條血線連著
+    bloodBond: `<g transform="translate(-6 8) scale(0.55)"><path d="${HEART_PATH}" fill="#7c4dff" stroke-width="7"/></g><g transform="translate(30 20) scale(0.55)"><path d="${HEART_PATH}" fill="#ce93d8" stroke-width="7"/></g>`
+        + duoStroke('M22 30 C30 22 34 46 44 34', '#b388ff', 3) + `<path d="M32 46 C32 50 35 52 35 55 C35 58 29 58 29 55 C29 52 32 50 32 46 Z" fill="#7c4dff" stroke-width="2"/>`,
+    // 蝠群護主（蝠群＋不死）：一隻蝙蝠張開翅膀擋在棺木前
+    batGuard: `<path d="M22 8 L42 8 L50 22 L44 60 L20 60 L14 22 Z" fill="#5d4037"/><path d="M32 18 L32 34 M26 24 L38 24" stroke="#d1c4e9" stroke-width="3"/>`
+        + `<g transform="translate(32 44) scale(1.2)"><path d="${BAT_SHAPE}" fill="#4527a0" stroke-width="3.2"/><circle cx="-3" cy="-2" r="1.8" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="1.8" fill="#ffd54f" stroke="none"/></g>`,
+    // 狼群初擁（狼化＋眷屬）：彎月下，被狼咬過的地方站起一個紫色眷屬
+    wolfEmbrace: `<path d="M56 4 C49 4 44 9 44 16 C44 23 49 28 56 28 C52 25 50 21 50 16 C50 11 52 7 56 4 Z" fill="#fff3c4" stroke-width="2.5"/>` + ghostAt(30, 32, 0.75, '#ce93d8')
+        + `<path d="M4 50 C14 44 22 46 26 52 M34 52 C40 46 50 44 60 50" stroke-width="4"/>${[[10, 50], [18, 48], [42, 48], [50, 48]].map(([x, y]) => `<path d="M${x - 3} ${y} L${x} ${y + 7} L${x + 3} ${y} Z" fill="#eceff1" stroke-width="1.6"/>`).join('')}`,
+    // 誘敵深入（回馬射＋陷阱）：一支回頭的箭落在一個小陷阱上
+    lureTrap: smallTrap(42, 46, 1) + duoStroke('M8 50 C4 30 20 14 40 16', '#80cbc4', 2.6) + arrow(42, 16, 44, 36, STEEL, '#80cbc4', 0.9),
+    // 元素陷阱（元素箭＋陷阱）：陷阱上方冒出火、冰、雷三個元素
+    elemTrap: smallTrap(32, 46, 1.05) + flameAt(12, 22, 0.32, '#ff7043', '#ffd54f')
+        + duoStroke('M32 6 L32 26 M23 11 L41 21 M23 21 L41 11', '#81d4fa', 2.6) + boltAt(52, 18),
+    // 鷹眼標記（長弓＋森林之友）：一根金色鷹羽插在準星上
+    hawkMark: `<circle cx="32" cy="36" r="20" stroke-width="7"/><circle cx="32" cy="36" r="20" stroke="#a5d6a7" stroke-width="3"/>` + duoStroke('M32 10 L32 20 M32 52 L32 62 M6 36 L16 36 M48 36 L58 36', '#a5d6a7', 2.6)
+        + placeAt(32, 36, -60, `<path d="M0 0 C6 -7 22 -7 30 0 C22 7 6 7 0 0 Z" fill="#ffd54f" stroke-width="2.4"/><path d="M-4 0 L28 0" stroke="#8d6e63" stroke-width="2"/><path d="M10 0 L14 -4 M18 0 L22 -4 M10 0 L14 4 M18 0 L22 4" stroke="#e0a82e" stroke-width="1.4"/>`),
+});
+
 const ICON_SVGS =Object.fromEntries(Object.entries(ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
 
 function iconHtml(name, cls = 'icon') {

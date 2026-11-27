@@ -654,6 +654,8 @@ const CLEAVE_RADIUS = 35;
 const WEAK_GAZE_TIME = 3;
 // 怨靈附身：附身幾秒、怨靈爆炸範圍的幾倍內找怪
 const POSSESS_TIME = 6, POSSESS_REACH = 1.2;
+// 雙流派「冥火骨兵」：冥火範圍、傷害是那一擊的幾成；「靈視」機率；「哀魂新星」傷害是新星的幾成
+const GHOSTFIRE_RADIUS = 30, GHOSTFIRE_SHARE = 0.5, SOUL_GAZE_CHANCE = 0.25, WAILING_NOVA_SHARE = 0.4;
 const pct = (v) => `${Math.round(v * 100)}%`;
 // 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
 // 堅甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
@@ -661,6 +663,9 @@ const pct = (v) => `${Math.round(v * 100)}%`;
 const ARMY_SCHOOL = 'army';
 // 契約不屬於任何流派：不算共鳴、卡片標「契約」
 const PACT_SCHOOL = 'pact';
+// 雙流派傳說：祝福寫 duo: [流派A, 流派B]，兩個流派都疊到第一段共鳴（RESONANCE_STEPS[0] 層）才會出現。
+// 不算進任何一個流派的層數；抽傳說時權重拉滿，湊到兩條路的人首領波幾乎一定看得到
+const DUO_SCHOOL = 'duo';
 // 整局的乘數（詛咒、契約、每日變異共用，見 runMods）：每個鍵的中文說法，以及「大於 1 是好事嗎」
 // 契約與每日變異的說明文字都從數字產生，數字改了說明跟著變
 const RUN_MOD_LABELS = {
@@ -730,6 +735,10 @@ const BLESSINGS = {
     eliteHunter: { school: 'nova', name: '精英獵手', legendary: true, max: 1, per: 1, desc: () => '擊殺精英怪時新星冷卻歸零' },
     // 怨靈附身：怨靈的死變成換來一個打手，怨靈流派從「爆一下」變成「搶一隻怪過來」
     possession: { school: 'wraith', name: '怨靈附身', legendary: true, max: 1, per: POSSESS_TIME, desc: b => `怨靈爆炸時附身身邊最強的一隻怪，牠替你打 ${b.per} 秒（首領不會）` },
+    // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
+    ghostfireBones: { school: DUO_SCHOOL, duo: ['skel', 'wraith'], name: '冥火骨兵', legendary: true, max: 1, per: GHOSTFIRE_SHARE, desc: () => '怨靈光環裡的骷髏每一擊都炸出一團冥火，燒到身邊的怪' },
+    soulGaze: { school: DUO_SCHOOL, duo: ['eye', 'mage'], name: '靈視', legendary: true, max: 1, per: SOUL_GAZE_CHANCE, desc: b => `眼魔每次射擊有 ${pct(b.per)} 機率多射出一發法師的魂彈` },
+    wailingNova: { school: DUO_SCHOOL, duo: ['wraith', 'nova'], name: '哀魂新星', legendary: true, max: 1, per: WAILING_NOVA_SHARE, desc: b => `放新星時，每隻怨靈也在原地炸開一圈（新星傷害的 ${pct(b.per)}）` },
     soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
@@ -770,7 +779,7 @@ const RES_ENDLESS_FRENZY_PER = 0.1, RES_ENDLESS_FRENZY_MAX = 6;
 const RES_MAGNET = 0.6;
 const RES_SOULS = 0.3;
 function schoolPoints(school) {
-    if (school === ARMY_SCHOOL || school === PACT_SCHOOL) return 0;
+    if (school === ARMY_SCHOOL || school === PACT_SCHOOL || school === DUO_SCHOOL) return 0;
     let n = 0;
     for (const id in BLESSINGS) if (BLESSINGS[id].school === school) n += bl(id);
     return n;
@@ -2715,11 +2724,13 @@ class SummonUnit extends GameObject {
         this.buffedMoveSpeedMultiplier = 1.0;
         this.buffedAttackSpeedMultiplier = 1.0;
         this.auraDamageMult = 1;
+        this.inWraithAura = false;
         const type = this.config.type;
         if (type === 'Wraith') return;
         const buffed = wraithGrid.forEachInRadius(this.pos, gameState.wraithBuffRadius, w =>
             w.isAlive && distanceSq(this.pos, w.pos) <= w.buffRadiusSq);
         if (!buffed) return;
+        this.inWraithAura = true;
         this.auraDamageMult = 1 + blessVal('auraMight');
         if (type === 'SkeletonWarrior') this.buffedMoveSpeedMultiplier = this.config.wraithBuffMoveSpeedMultiplier;
         else if (type === 'EyeMonster') this.buffedAttackSpeedMultiplier = this.config.wraithBuffAttackSpeedMultiplier;
@@ -2790,6 +2801,7 @@ class SummonUnit extends GameObject {
                 projectile.init(this.pos.x, this.pos.y, t, this.config, currentAttackDamage, this, bounces, blast);
                 gameState.projectiles.push(projectile);
             });
+            if (bl('soulGaze') && Math.random() < SOUL_GAZE_CHANCE) fireSoulBolt(this.pos, this.target);
         } else if (this.config.type === 'SkeletonWarrior') {
             const mainTarget = this.target;
             let dmg = currentAttackDamage;
@@ -2800,6 +2812,7 @@ class SummonUnit extends GameObject {
             }
             mainTarget.takeDamage(dmg);
             this.healFromDamage(dmg);
+            if (this.inWraithAura && bl('ghostfireBones')) ghostfireBurst(mainTarget.pos, dmg * GHOSTFIRE_SHARE);
             const splash = blessVal('cleave') + (this.tier >= 2 ? E.skelCleave : 0);
             if (splash > 0) {
                 const splashDmg = Math.round(dmg * splash);
@@ -3167,18 +3180,38 @@ function drawNecroWorld(ctx) {
 // ---------- 共鳴「魂彈分裂」：魂彈命中時分裂出小魂彈 ----------
 const soulSplitOwner = { healFromDamage() {}, onHit: (m) => soulSplit(m) };
 function soulSplit(m) {
-    const P = CONFIG.player, near = [], rSq = RES_SOUL_SPLIT_RANGE * RES_SOUL_SPLIT_RANGE;
+    const near = [], rSq = RES_SOUL_SPLIT_RANGE * RES_SOUL_SPLIT_RANGE;
     monsterGrid.forEachInRadius(m.pos, RES_SOUL_SPLIT_RANGE, o => { if (o !== m && o.isAlive && !o.stealthed && distanceSq(o.pos, m.pos) <= rSq) near.push(o); });
     if (!near.length) return;
     near.sort((a, b) => distanceSq(a.pos, m.pos) - distanceSq(b.pos, m.pos));
-    const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade')) * runMods().boltDmgMult * RES_SOUL_SPLIT_SHARE;
-    for (let i = 0; i < Math.min(RES_SOUL_SPLIT, near.length); i++) {
-        const pr = getProjectileFromPool();
-        pr.init(m.pos.x, m.pos.y, near[i], P.bolt, dmg, null, 0, false);
-        pr.homing = true;
-        gameState.projectiles.push(pr);
-    }
+    for (let i = 0; i < Math.min(RES_SOUL_SPLIT, near.length); i++) fireSoulBolt(m.pos, near[i], RES_SOUL_SPLIT_SHARE);
     spawnParticles(m.pos.x, m.pos.y, SOUL_BOLT_GLOW, 6, 80, 0.3, 2);
+}
+function mageBoltDamage() {
+    return CONFIG.player.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade')) * runMods().boltDmgMult;
+}
+// 一發追蹤的法師魂彈（分裂、靈視共用；不再分裂）
+function fireSoulBolt(from, target, share = 1) {
+    if (!target || !target.isAlive) return;
+    const pr = getProjectileFromPool();
+    pr.init(from.x, from.y, target, CONFIG.player.bolt, mageBoltDamage() * share, null, 0, false);
+    pr.homing = true;
+    gameState.projectiles.push(pr);
+}
+
+// ---------- 雙流派「冥火骨兵」：怨靈光環裡的骷髏每一擊炸出冥火 ----------
+function ghostfireBurst(pos, dmg) {
+    const rSq = GHOSTFIRE_RADIUS * GHOSTFIRE_RADIUS;
+    monsterGrid.forEachInRadius(pos, GHOSTFIRE_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, pos) <= rSq) m.takeDamage(dmg); });
+    if (inView(pos) && gameState.visualEffects.length < ambientEffectCap()) gameState.visualEffects.push(new GhostfireEffect(pos));
+}
+// ---------- 雙流派「哀魂新星」：放新星時每隻怨靈也炸開一圈 ----------
+function wailingNova(dmg) {
+    for (const w of gameState.summons) {
+        if (!w.isAlive || !(w instanceof Wraith)) continue;
+        monsterGrid.forEachInRadius(w.pos, w.slowRadius, m => { if (m.isAlive && distanceSq(m.pos, w.pos) <= w.slowRadiusSq) m.takeDamage(dmg); });
+        if (inView(w.pos)) gameState.visualEffects.push(new NovaEffect(w.pos, w.slowRadius, PULSE_EFFECT_COLORS));
+    }
 }
 
 // 飛彈飛這麼久還沒打中就消失（打空、目標先死了）。不能用「出了畫面多遠」判斷：最後幾隻怪落單時大軍會追到畫面外很遠
@@ -3230,6 +3263,7 @@ class Projectile {
                 else if (this.homing) soulBoltBurst(this.pos);
                 else spawnParticles(this.pos.x, this.pos.y, this.color, BOLT_HIT_SPARKS, 60, 0.25, 2);
                 const dealt = this.damage * (1 - block);
+                if (this.owner && this.owner.preHit) this.owner.preHit(hit);
                 hit.takeDamage(dealt);
                 if (this.owner) this.owner.healFromDamage(dealt);
                 if (this.owner && this.owner.onHit) this.owner.onHit(hit);
@@ -7769,6 +7803,27 @@ function closeLbCongrats() {
 
 const NOVA_EFFECT_COLORS = { fill: '156, 39, 176', stroke: '225, 190, 231' };
 const PULSE_EFFECT_COLORS = { fill: '77, 182, 172', stroke: '178, 223, 219' };
+// 雙流派「冥火骨兵」的冥火：三道怨靈青色的火舌從打中的地方竄起、往上飄散（我方特效不用紅）
+const GHOSTFIRE_COLOR = '#4DB6AC', GHOSTFIRE_CORE = '#E0F2F1';
+class GhostfireEffect extends TimedEffect {
+    constructor(pos) { super({ x: pos.x, y: pos.y }, 0.4); this.seed = Math.random() * 6; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos;
+        ctx.save();
+        ctx.globalAlpha = (1 - k) * 0.9;
+        ctx.drawImage(getGlowSprite(GHOSTFIRE_COLOR), x - 18, y - 22, 36, 36);
+        for (let i = 0; i < 3; i++) {
+            const ox = (i - 1) * 8 + Math.sin(this.seed + i) * 2, h = (10 + 6 * (i === 1)) * (0.6 + k), top = y - h - k * 10;
+            ctx.beginPath();
+            ctx.moveTo(x + ox - 4, y); ctx.quadraticCurveTo(x + ox - 5, y - h * 0.5, x + ox, top); ctx.quadraticCurveTo(x + ox + 5, y - h * 0.5, x + ox + 4, y); ctx.closePath();
+            ctx.fillStyle = GHOSTFIRE_COLOR; ctx.fill();
+            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.2; ctx.stroke();
+        }
+        ctx.fillStyle = GHOSTFIRE_CORE;
+        ctx.beginPath(); ctx.ellipse(x, y - 3, 4, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+}
 const REVIVE_EFFECT_COLORS = { fill: '255, 213, 79', stroke: '255, 236, 179' };
 // 脈衝這類「每隻都會一直放」的特效：場上特效太多時就不再加，避免大軍時畫面與效能被淹沒
 const MAX_AMBIENT_EFFECTS = 120;
@@ -7837,6 +7892,7 @@ function useNova() {
     for (let i = 0; i < live.length; i += step) if (live[i].isAlive) spawnParticles(live[i].pos.x, live[i].pos.y, FRENZY_SPARK_COLOR, 3, 60, 0.5, 3);
     gameState.visualEffects.push(new NovaEffect(p.pos, radius));
     detonateBonePiles(p.pos);
+    if (bl('wailingNova')) wailingNova(dmg * WAILING_NOVA_SHARE);
     spawnParticles(p.pos.x, p.pos.y, frost ? '#B3E5FC' : '#CE93D8', 36, 260, 0.5, 3);
     addShake(7);
     Sfx.play('nova');
@@ -7858,6 +7914,7 @@ function queueDraftIfDue() {
 const DRAFT_SCHOOL_WEIGHT = 0.4;
 const DRAFT_WEIGHT_MAX = 3;
 function draftWeight(id) {
+    if (BLESSINGS[id].school === DUO_SCHOOL) return DRAFT_WEIGHT_MAX;
     return Math.min(DRAFT_WEIGHT_MAX, 1 + DRAFT_SCHOOL_WEIGHT * schoolPoints(BLESSINGS[id].school));
 }
 function weightedPick(ids, n) {
@@ -7879,6 +7936,7 @@ function draftOptionCount() {
 function blessingInClass(id) {
     const s = BLESSINGS[id].school;
     if (BLESSINGS[id].needsSummon && !classCanSummon()) return false;
+    if (s === DUO_SCHOOL) return BLESSINGS[id].duo.every(d => classDef().schools.includes(d) && res(d) >= 1);
     return s === ARMY_SCHOOL || classDef().schools.includes(s);
 }
 // 這個職業有沒有「花錢召喚」的卡（全是修練卡的武僧沒有）
@@ -7933,6 +7991,7 @@ function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
     if (school === PACT_SCHOOL) return `<span class="school-chip pact-chip">${iconHtml('pact', 'icon school-img')}<span>契約</span></span>`;
+    if (school === DUO_SCHOOL) return `<span class="school-chip duo-chip">${BLESSINGS[id].duo.map(schoolBadgeHtml).join('')}<span>雙流派</span></span>`;
     const S = SCHOOLS[school];
     // 這張選下去剛好湊滿一段：整個標籤亮起來
     const willResonate = RESONANCE_STEPS.includes(schoolPoints(school) + 1);

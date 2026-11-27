@@ -150,6 +150,10 @@ Object.assign(BLESSINGS, {
     scorpio: { school: 'crossbow', name: '蠍弩', legendary: true, max: 1, per: 1, desc: b => `弩箭把怪釘在原地 ${b.per} 秒，被釘住的怪挨長槍傷害 ×${SCORPIO_SPEAR_MULT}` },
     // 刀槍不入：維京傳說裡狂戰士不怕刀劍。狂怒變成「衝進怪堆的時間」，砍得越多撐得越久
     unbreakable: { school: 'berserk', name: '刀槍不入', legendary: true, max: 1, per: 0.3, desc: b => `狂怒中血量不會掉到 1 以下；每砍死一隻，狂怒多 ${b.per} 秒` },
+    // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
+    shieldFury: { school: DUO_SCHOOL, duo: ['shieldwall', 'berserk'], name: '盾怒', legendary: true, max: 1, per: 4, desc: b => `盾兵每擋下一次攻擊，你的怒氣 +${b.per}` },
+    marchingTestudo: { school: DUO_SCHOOL, duo: ['shieldwall', 'legion'], name: '移動龜甲', legendary: true, max: 1, per: 1, desc: () => '龜甲陣在移動中也生效：盾兵把盾舉過頭頂，邊走邊減傷' },
+    furyVolley: { school: DUO_SCHOOL, duo: ['crossbow', 'berserk'], name: '怒射', legendary: true, max: 1, per: 2, desc: b => `你狂怒時，弩手每次多射 ${b.per} 支` },
 });
 // 戰士專屬成就的門檻
 const WAR_ACHV = { veterans: 10, noLossWave: 20, javelinKills: 50, noRecruitWave: 10 };
@@ -266,7 +270,7 @@ CLASSES.warrior = {
     preventDeath: () => unbreakableSave(),
     drawHero: (ctx, p) => drawWarriorHud(ctx, p),
     drawHeroUnder: (ctx, p) => drawUnbreakableRunes(ctx, p),
-    drawWorld: (ctx) => drawScorpioPins(ctx),
+    drawWorld: (ctx) => { drawScorpioPins(ctx); drawTestudoRoof(ctx); },
     // 軍團長跟著部下一起操練：每升級一次任何兵種，戰士最大血量長得跟「平均一個士兵」一樣快
     // （士兵每升一級 +upgradeBonus，分到三個兵種上）。怪的攻擊指數成長，戰士站在前線，長得比士兵慢的話後期兩三下就倒
     onUpgrade: () => {
@@ -285,6 +289,7 @@ CLASSES.warrior = {
         });
         if (!blocker) return false;
         blocker.takeDamage(blocker.maxHealth * WARRIOR.boltBlockCost);
+        shieldFury(blocker);
         return true;
     },
     // 老兵的擊殺數要跟著存檔：讀檔重建士兵時照兵種、依序把擊殺數還回去
@@ -328,7 +333,48 @@ function vetFromKills(kills) {
     return WARRIOR.vetKills.filter(n => kills >= n * k).length;
 }
 // 龜甲陣：戰士站著不動時全軍受傷打折
-function turtleTaken() { return res('shieldwall') >= 1 && warState().still ? RES_TURTLE_TAKEN : 1; }
+function turtleTaken() { return res('shieldwall') >= 1 && (warState().still || bl('marchingTestudo')) ? RES_TURTLE_TAKEN : 1; }
+// 雙流派「盾怒」：盾兵擋下一下，一顆橘色怒火從盾飛回戰士身上
+function shieldFury(s) {
+    if (!bl('shieldFury')) return;
+    addRage(BLESSINGS.shieldFury.per);
+    if (inView(s.pos) && gameState.visualEffects.length < ambientEffectCap()) gameState.visualEffects.push(new RageSparkEffect(s.pos));
+}
+// 雙流派「移動龜甲」：移動中每個站前排的盾兵頭頂舉著一面盾（看得出「邊走邊龜甲」）
+const TESTUDO_SHIELD = '#1E88E5', TESTUDO_RIM = '#FFD54F';
+function drawTestudoRoof(ctx) {
+    const w = warState();
+    if (!bl('marchingTestudo') || res('shieldwall') < 1 || w.still) return;
+    ctx.save();
+    ctx.lineWidth = 1.6; ctx.strokeStyle = SHAPE_OUTLINE;
+    for (const s of gameState.summons) {
+        if (!s.isAlive || !(s instanceof Shieldman) || s.resting || !inView(s.pos)) continue;
+        const x = s.pos.x, y = s.pos.y - s.imageHeight * 0.5 - 4;
+        ctx.fillStyle = TESTUDO_SHIELD;
+        ctx.beginPath(); ctx.roundRect(x - 9, y - 4, 18, 8, 2.5); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = TESTUDO_RIM; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(x - 7.5, y - 2.5, 15, 5, 1.5); ctx.stroke();
+        ctx.fillStyle = TESTUDO_RIM;
+        ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.6;
+    }
+    ctx.restore();
+}
+class RageSparkEffect extends TimedEffect {
+    constructor(from) { super({ x: from.x, y: from.y }, 0.3); this.from = { x: from.x, y: from.y }; }
+    draw(ctx) {
+        const p = gameState.player;
+        if (!p) return;
+        const k = 1 - this.life / this.duration, e = k * k;
+        const x = this.from.x + (p.pos.x - this.from.x) * e, y = this.from.y + (p.pos.y - this.from.y) * e - Math.sin(k * Math.PI) * 14;
+        ctx.save();
+        ctx.globalAlpha = 0.9;
+        ctx.drawImage(getGlowSprite(CHARGE_ORANGE), x - 12, y - 12, 24, 24);
+        ctx.fillStyle = '#FFE0B2';
+        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+}
 
 function addRage(amount) {
     const w = warState();
@@ -656,7 +702,7 @@ class Soldier extends SummonUnit {
         if (this.tier >= 3 && (t.isElite || t instanceof BossMonster)) dmg *= SOLDIER_TIER3_ELITE_MULT;
         if (c.type === 'Crossbowman') {
             const targets = [t];
-            const extra = (this.tier >= 2 ? 1 : 0) + bl('bowVolley');
+            const extra = (this.tier >= 2 ? 1 : 0) + bl('bowVolley') + (bl('furyVolley') && warState().berserkT > 0 ? BLESSINGS.furyVolley.per : 0);
             if (extra > 0) {
                 const others = [];
                 const rSq = this.attackRangeSq;
@@ -708,6 +754,7 @@ class Soldier extends SummonUnit {
         if (blockEvery && this.blockT <= 0) {
             this.blockT = blockEvery;
             spawnParticles(this.pos.x, this.pos.y, '#ECEFF1', 6, 60, 0.3, 2);
+            shieldFury(this);
             return;
         }
         let k = (shield && this.tier >= 1 ? SOLDIER_TIER1_TAKEN : 1) * turtleTaken();

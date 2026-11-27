@@ -94,6 +94,8 @@ const GREEN_MAN_SEEDS = 3, GREEN_MAN_SHARE = 0.6, GREEN_MAN_REACH = 110, GREEN_M
 const HENGE_MULT = 3, HENGE_RADIUS = 85, HENGE_STONES = 8, HENGE_RISE = 0.6;
 // 狼母生的小狼：體型比例、淡銀色的毛
 const PUP_SCALE = 0.7, PUP_TINT = '#ECEFF1', PUP_TINT_STRENGTH = 0.35;
+// 雙流派：熊之林（橡樹旁的熊受傷倍率、多近算旁邊）、荊棘狼（纏住幾秒）、狩獵之月（每次來幾隻小狼）
+const GROVE_BEAR_TAKEN = 0.5, GROVE_BEAR_RADIUS = 90, THORN_WOLF_ROOT = 0.6, HUNT_MOON_PUPS = 2;
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
@@ -133,6 +135,10 @@ Object.assign(BLESSINGS, {
     greenMan: { school: 'wild', name: '綠人', legendary: true, max: 1, per: GREEN_MAN_SEEDS, desc: b => `被纏住的怪死掉時迸出 ${b.per} 顆種子，把旁邊的怪也纏住` },
     // 巨石陣：四大節原本整片地圖都吃，這張把它綁在一個位置上，跟德魯伊「選地方打這一仗」同一個方向
     stonehenge: { school: 'seasons', name: '巨石陣', legendary: true, max: 1, per: HENGE_MULT, desc: b => `換節氣時在你腳下立起一圈巨石，站在圈裡節氣效果 ×${b.per}` },
+    // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
+    groveBears: { school: DUO_SCHOOL, duo: ['grove', 'bear'], name: '熊之林', legendary: true, max: 1, per: GROVE_BEAR_TAKEN, desc: b => `站在橡樹旁的熊受到的傷害 -${pct(1 - b.per)}` },
+    thornWolves: { school: DUO_SCHOOL, duo: ['pack', 'wild'], name: '荊棘狼', legendary: true, max: 1, per: THORN_WOLF_ROOT, desc: b => `狼咬到的怪被藤蔓纏住 ${b.per} 秒（首領、精英不會）` },
+    huntMoon: { school: DUO_SCHOOL, duo: ['seasons', 'pack'], name: '狩獵之月', legendary: true, max: 1, per: HUNT_MOON_PUPS, desc: b => `每換一次節氣，${b.per} 隻小狼加入狼群（不佔林地）` },
 });
 const RES_ROOTS_TAKEN = 0.6;
 const RES_HOWL_EVERY = 10, RES_HOWL_TIME = 4, RES_HOWL_RATE = 1.4;
@@ -333,6 +339,7 @@ function druidWaveStart() {
     d.fest = (gameState.currentWave - 1) % FESTIVALS.length;
     const F = FESTIVALS[d.fest];
     spawnFloatText(p.pos.x, p.pos.y - 46, `${F.name}：${F.desc}`, F.color, 14, 2.2, F.icon);
+    if (bl('huntMoon')) for (let i = 0; i < HUNT_MOON_PUPS; i++) spawnPup(p.pos, i === 0 ? '狩獵之月' : null);
     if (bl('stonehenge')) {
         d.henge = { x: p.pos.x, y: p.pos.y, t: 0 };
         spawnParticles(p.pos.x, p.pos.y, '#BCAAA4', 26, HENGE_RADIUS * 1.6, 0.7, 4);
@@ -572,6 +579,7 @@ function drawDruidHud(ctx, p) {
 }
 function drawDruidWorld(ctx) {
     const d = druidState();
+    drawGroveBears(ctx);
     if (d.patches.length) {
         ctx.save();
         ctx.strokeStyle = '#689F38'; ctx.lineWidth = 2; ctx.lineCap = 'round';
@@ -598,8 +606,12 @@ function drawDruidWorld(ctx) {
 // ---------- 傳說「狼母」：成狼生小狼 ----------
 function birthPup(w) {
     w.birthed = true;
+    spawnPup(w.pos, '狼母');
+}
+// 一隻不佔林地的小狼（狼母、狩獵之月）
+function spawnPup(at, label) {
     const p = gameState.player;
-    const pup = new Wolf(w.pos.x + randomInRange(-10, 10), w.pos.y + randomInRange(4, 12), gameState.units.Wolf.level, p);
+    const pup = new Wolf(at.x + randomInRange(-10, 10), at.y + randomInRange(4, 12), gameState.units.Wolf.level, p);
     pup.pup = true;
     pup.refreshStats();
     pup.currentHealth = pup.maxHealth;
@@ -607,7 +619,7 @@ function birthPup(w) {
     spawnParticles(pup.pos.x, pup.pos.y, PUP_TINT, 10, 50, 0.5, 3);
     spawnParticles(pup.pos.x, pup.pos.y, '#C5E1A5', 8, 40, 0.6, 2);
     addWorldFx({ kind: 'ring', x: pup.pos.x, y: pup.pos.y, r0: 6, r1: 34, life: 0.45, color: '#C5E1A5', width: 4 });
-    if (inView(pup.pos)) spawnFloatText(pup.pos.x, pup.pos.y - 22, '狼母', '#ECEFF1', 12, 1.0, 'wolfMother');
+    if (inView(pup.pos) && label) spawnFloatText(pup.pos.x, pup.pos.y - 22, label, '#ECEFF1', 12, 1.0, label === '狼母' ? 'wolfMother' : 'huntMoon');
 }
 
 // ---------- 傳說「綠人」：被纏住的怪倒下，種子往旁邊迸 ----------
@@ -725,6 +737,57 @@ function drawStonehenge(ctx) {
         ctx.stroke();
     }
     ctx.restore();
+}
+
+// ---------- 雙流派「熊之林」：站在橡樹旁的熊比較硬 ----------
+function bearInGrove(b) {
+    if (!bl('groveBears')) return false;
+    const rSq = GROVE_BEAR_RADIUS * GROVE_BEAR_RADIUS;
+    for (const s of gameState.summons) if (s.isAlive && s instanceof SacredOak && distanceSq(s.pos, b.pos) <= rSq) return true;
+    return false;
+}
+// 受到庇護的熊腳下一圈繞著轉的葉子
+function drawGroveBears(ctx) {
+    if (!bl('groveBears')) return;
+    for (const b of gameState.summons) {
+        if (!b.isAlive || !(b instanceof Bear) || !inView(b.pos) || !bearInGrove(b)) continue;
+        const y = b.pos.y + b.imageHeight * 0.3, r = b.radius * 1.6;
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = LEAF_GREEN; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(b.pos.x, y, r, r * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 1;
+        for (let i = 0; i < 4; i++) { const a = worldTime * 2 + i * Math.PI / 2; drawLeaf(ctx, b.pos.x + Math.cos(a) * r, y + Math.sin(a) * r * 0.4, a + Math.PI / 2, 0.9); }
+        ctx.restore();
+    }
+}
+// ---------- 雙流派「荊棘狼」：狼咬到的怪被藤蔓纏住 ----------
+function thornSnare(m) {
+    if (!m.isAlive) return;
+    const fresh = !(m.rootedUntil > worldTime);
+    m.applySlow(DRUID.seed.root, THORN_WOLF_ROOT);
+    m.rootedUntil = Math.max(m.rootedUntil || 0, worldTime + THORN_WOLF_ROOT);
+    if (fresh && inView(m.pos) && gameState.visualEffects.length < ambientEffectCap()) gameState.visualEffects.push(new VineSnareEffect(m));
+}
+// 幾條藤從怪腳下竄起、纏上牠的腳（跟著怪走），時間到縮回去
+class VineSnareEffect extends TimedEffect {
+    constructor(m) { super(m.pos, THORN_WOLF_ROOT); this.m = m; }
+    draw(ctx) {
+        const m = this.m, k = 1 - this.life / this.duration, grow = Math.min(1, k * 4), x = m.pos.x, y = m.pos.y + m.radius * 0.6;
+        ctx.save();
+        ctx.globalAlpha = k < 0.75 ? 1 : (1 - k) / 0.25;
+        ctx.lineCap = 'round';
+        for (const [col, lw] of [[SHAPE_OUTLINE, 4.5], ['#7CB342', 2.4]]) {
+            ctx.strokeStyle = col; ctx.lineWidth = lw;
+            for (let i = 0; i < 4; i++) {
+                const s = i < 2 ? -1 : 1, ox = s * (5 + (i % 2) * 6), h = (10 + (i % 2) * 6) * grow;
+                ctx.beginPath(); ctx.moveTo(x + ox * 1.4, y + 2); ctx.quadraticCurveTo(x + ox * 1.6, y - h * 0.5, x + ox * 0.3, y - h); ctx.stroke();
+            }
+        }
+        ctx.fillStyle = '#C5E1A5'; ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1;
+        for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(x + s * 9, y - 7 * grow); ctx.lineTo(x + s * 12, y - 10 * grow); ctx.lineTo(x + s * 8, y - 11 * grow); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+        ctx.restore();
+    }
 }
 
 // ---------- 橡樹 ----------
@@ -900,6 +963,7 @@ class Beast extends SummonUnit {
             dmg *= 1 + pack * blessVal('packHunt');
             if (this.tier >= 2 && t !== this.lastTarget) dmg *= WOLF_TIER2_POUNCE;
             if (Math.random() < blessVal('wolfCrit')) dmg *= 2;
+            if (bl('thornWolves') && !(t instanceof BossMonster) && !t.isElite) thornSnare(t);
         } else if (d.bearT > 0 && res('bear') >= 2) dmg *= RES_BEARSPIRIT_MULT;
         this.lastTarget = t;
         const bites = type === 'Wolf' && this.tier >= 3 ? 2 : 1;
@@ -938,7 +1002,7 @@ class Beast extends SummonUnit {
     }
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
-        super.takeDamage(amount * (this.config.type === 'Bear' && this.tier >= 1 ? BEAR_TIER1_TAKEN : 1));
+        super.takeDamage(amount * (this.config.type === 'Bear' && this.tier >= 1 ? BEAR_TIER1_TAKEN : 1) * (this.config.type === 'Bear' && bearInGrove(this) ? GROVE_BEAR_TAKEN : 1));
     }
     die() {
         if (!this.isAlive) return;

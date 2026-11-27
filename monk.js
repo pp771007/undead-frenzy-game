@@ -49,6 +49,8 @@ const STAFF_MONKS = 13, STAFF_MONK_TIME = 15;
 const VAJRA_MIN_COMBO = 20, VAJRA_RADIUS = 40, VAJRA_RADIUS_PER = 0.6, VAJRA_RADIUS_MAX = 150, VAJRA_SHARE = 1.5, VAJRA_KNOCK = 240;
 // 回龍勁：回程最多飛多遠（追著武僧跑，離太遠就散掉）、碰到武僧多近算收回
 const RETURN_QI_MAX = 1.6, RETURN_QI_CATCH = 18, RETURN_QI_TRAIL = 9;
+// 雙流派：如影隨形（路上的怪挨幾成的拳、離路線多近算穿過）、丹田爆發（氣功波寬幾倍）、鐵拳（每幾下連擊減多少傷、最多減多少）
+const SHADOW_FIST_SHARE = 0.5, SHADOW_FIST_WIDTH = 20, DANTIAN_WIDTH = 3, IRON_FIST_EVERY = 50, IRON_FIST_STEP = 0.05, IRON_FIST_MAX = 0.3;
 
 Object.assign(CONFIG.evolution.names, {
     Fist: ['羅漢拳', '伏虎拳', '如來神掌'],
@@ -100,6 +102,10 @@ Object.assign(BLESSINGS, {
     vajraWrath: { school: 'hardstyle', name: '金剛怒目', legendary: true, max: 1, per: VAJRA_MIN_COMBO, desc: b => `連擊 ${b.per} 以上被打斷時炸出震波，斷掉的連擊越多炸得越大` },
     // 回龍勁：同一排怪挨兩次，站位要讓怪排在你和波的路線上
     returningQi: { school: 'qigong', name: '回龍勁', legendary: true, max: 1, per: 1, desc: () => '氣功波飛到盡頭會折返，回程再打一次' },
+    // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
+    shadowFist: { school: DUO_SCHOOL, duo: ['external', 'lightfoot'], name: '如影隨形', legendary: true, max: 1, per: SHADOW_FIST_SHARE, desc: () => '瞬步穿過的路上，每隻怪都挨一拳' },
+    dantianBurst: { school: DUO_SCHOOL, duo: ['internal', 'qigong'], name: '丹田爆發', legendary: true, max: 1, per: DANTIAN_WIDTH, desc: b => `帶著蓄氣出的那一拳，同時打出一道 ${b.per} 倍寬的氣功波（吃蓄氣加成）` },
+    ironFist: { school: DUO_SCHOOL, duo: ['hardstyle', 'external'], name: '鐵拳', legendary: true, max: 1, per: IRON_FIST_STEP, desc: b => `連擊每 ${IRON_FIST_EVERY} 下，受到的傷害 -${pct(b.per)}（最多 -${pct(IRON_FIST_MAX)}）` },
 });
 const RES_CHAIN_RATE = 1.2;
 const RES_THOUSAND_COMBO = 100, RES_THOUSAND_HITS = 2;
@@ -172,7 +178,7 @@ CLASSES.monk = {
             spawnFloatText(p.pos.x, p.pos.y - 30, '閃', '#B2EBF2', 12, 0.5);
             return 0;
         }
-        return MONK.armorTaken * (1 - blessVal('ironBody'));
+        return MONK.armorTaken * (1 - blessVal('ironBody')) * (1 - ironFistCut());
     },
     // 被打中：連擊歸零（硬功可以撐住）、入定被打斷、借力打回去
     onHeroHurt: (lostFrac) => {
@@ -321,9 +327,13 @@ function monkPunch(p, dt) {
         if (stepTier >= 2) k.iframeT = STEP_TIER2_IFRAME;
         if (res('lightfoot') >= 2) k.ghosts.push({ x: from.x, y: from.y, life: 0.35, target: t });
         spawnParticles(from.x, from.y, '#B2EBF2', 5, 40, 0.3, 2);
+        if (bl('shadowFist')) shadowFistPath(from, p.pos, t);
     }
     let dmg = punchDamage() * comboMult();
-    if (k.charge > 0) { dmg *= 1 + k.charge; k.charge = 0; spawnParticles(t.pos.x, t.pos.y, '#FFE082', 12, 90, 0.4, 3); }
+    if (k.charge > 0) {
+        if (bl('dantianBurst')) fireQi(p, t, DANTIAN_WIDTH, 1 + k.charge);
+        dmg *= 1 + k.charge; k.charge = 0; spawnParticles(t.pos.x, t.pos.y, '#FFE082', 12, 90, 0.4, 3);
+    }
     if (k.swallow) { dmg *= RES_SWALLOW_MULT; k.swallow = false; }
     k.punches++;
     const fistTier = getTier(gameState.units.Fist.level);
@@ -381,16 +391,33 @@ class BellEffect extends TimedEffect {
 
 // ---------- 氣功波：一道直線，穿透 ----------
 const QI_SPEED = 420;
-function fireQi(p, t) {
+// width／power：雙流派「丹田爆發」那一道是加寬、吃蓄氣倍率的單一金色波
+function fireQi(p, t, width = 1, power = 1) {
     const k = monkState();
     const base = Math.atan2(t.pos.y - p.pos.y, t.pos.x - p.pos.x);
-    const n = 1 + bl('qiCount') + (getTier(gameState.units.Qi.level) >= 3 ? 1 : 0);
-    const dmg = MONK.qiDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Qi.level * CONFIG.qi.upgradeBonus) * (1 + blessVal('qiPower')) * comboMult();
+    const n = width > 1 ? 1 : 1 + bl('qiCount') + (getTier(gameState.units.Qi.level) >= 3 ? 1 : 0);
+    const dmg = MONK.qiDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Qi.level * CONFIG.qi.upgradeBonus) * (1 + blessVal('qiPower')) * comboMult() * power;
     for (let i = 0; i < n; i++) {
         const a = base + (i - (n - 1) / 2) * 0.35;
-        k.waves.push({ x: p.pos.x, y: p.pos.y, ux: Math.cos(a), uy: Math.sin(a), dist: 0, dmg, hit: new Set(), first: true, w: MONK.qiWidth * (1 + blessVal('qiWidth')) });
+        k.waves.push({ x: p.pos.x, y: p.pos.y, ux: Math.cos(a), uy: Math.sin(a), dist: 0, dmg, hit: new Set(), first: true, w: MONK.qiWidth * (1 + blessVal('qiWidth')) * width, golden: width > 1 });
     }
 }
+// ---------- 雙流派「如影隨形」：瞬步穿過的路上每隻怪都挨一拳 ----------
+function shadowFistPath(a, b, skip) {
+    const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
+    const dmg = punchDamage() * comboMult() * SHADOW_FIST_SHARE, mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    monsterGrid.forEachInRadius(mid, len / 2 + SHADOW_FIST_WIDTH, m => {
+        if (m === skip || !m.isAlive) return;
+        const along = (m.pos.x - a.x) * ux + (m.pos.y - a.y) * uy, side = Math.abs((m.pos.x - a.x) * -uy + (m.pos.y - a.y) * ux);
+        if (along < 0 || along > len || side > SHADOW_FIST_WIDTH + m.radius) return;
+        m.takeDamage(dmg);
+        monkState().combo++;
+        gameState.visualEffects.push(new PunchEffect(m.pos));
+    });
+    addWorldFx({ kind: 'beam', x: a.x, y: a.y, dx: ux, dy: uy, len, w: 9, life: 0.25, color: '#B2EBF2' });
+}
+// ---------- 雙流派「鐵拳」：連擊越高越硬 ----------
+function ironFistCut() { return bl('ironFist') ? Math.min(IRON_FIST_MAX, Math.floor(monkState().combo / IRON_FIST_EVERY) * IRON_FIST_STEP) : 0; }
 function updateQiWaves(dt) {
     const k = monkState();
     const p = gameState.player;
@@ -565,6 +592,21 @@ function drawMonkHud(ctx, p) {
         ctx.strokeStyle = '#FFD54F'; ctx.lineWidth = 3;
         ctx.beginPath(); ctx.arc(p.pos.x, p.pos.y + 4, 22, -Math.PI / 2, -Math.PI / 2 + full * Math.PI * 2); ctx.stroke();
     }
+    // 鐵拳：腳下一圈鐵環，減傷每多一段就多亮一節
+    const iron = Math.round(ironFistCut() / IRON_FIST_STEP);
+    if (iron > 0) {
+        const segs = IRON_FIST_MAX / IRON_FIST_STEP, gap = 0.12, span = Math.PI * 2 / segs;
+        ctx.save();
+        ctx.lineCap = 'round';
+        for (let i = 0; i < segs; i++) {
+            const a0 = -Math.PI / 2 + i * span + gap, a1 = a0 + span - gap * 2;
+            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 5;
+            ctx.beginPath(); ctx.ellipse(p.pos.x, p.pos.y + p.imageHeight * 0.4, 20, 8, 0, a0, a1); ctx.stroke();
+            ctx.strokeStyle = i < iron ? '#B0BEC5' : 'rgba(176, 190, 197, 0.25)'; ctx.lineWidth = 2.5;
+            ctx.beginPath(); ctx.ellipse(p.pos.x, p.pos.y + p.imageHeight * 0.4, 20, 8, 0, a0, a1); ctx.stroke();
+        }
+        ctx.restore();
+    }
     // 連擊數：10 以上才顯示，越高越大、越紅
     if (k.combo >= 10) {
         const c = Math.floor(k.combo), size = Math.min(22, 12 + c / 25);
@@ -577,9 +619,10 @@ function drawMonkWorld(ctx) {
         if (q.back) { drawReturningQi(ctx, q); continue; }
         ctx.save();
         ctx.globalAlpha = 0.8;
-        ctx.strokeStyle = '#80DEEA'; ctx.lineWidth = q.w * 0.5; ctx.lineCap = 'round';
+        // 丹田爆發的那一道是金色、加寬
+        ctx.strokeStyle = q.golden ? '#FFD54F' : '#80DEEA'; ctx.lineWidth = q.w * 0.5; ctx.lineCap = 'round';
         ctx.beginPath(); ctx.moveTo(q.x - q.ux * 18, q.y - q.uy * 18); ctx.lineTo(q.x, q.y); ctx.stroke();
-        ctx.strokeStyle = '#E0F7FA'; ctx.lineWidth = q.w * 0.2;
+        ctx.strokeStyle = q.golden ? '#FFF8E1' : '#E0F7FA'; ctx.lineWidth = q.w * 0.2;
         ctx.beginPath(); ctx.moveTo(q.x - q.ux * 12, q.y - q.uy * 12); ctx.lineTo(q.x, q.y); ctx.stroke();
         ctx.restore();
     }
