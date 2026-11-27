@@ -681,13 +681,13 @@ class BearSwipeEffect extends TimedEffect {
         for (let i = 0; i < 3; i++) {
             const t = Math.min(1, Math.max(0, (k - i * 0.12) / 0.45));
             if (t <= 0) continue;
-            const off = (i - 1) * 7, a0 = -0.9, a1 = a0 + 1.8 * t;
+            const off = (i - 1) * 10, a0 = -0.9, a1 = a0 + 1.8 * t;
             ctx.globalAlpha = Math.min(1, this.life / 0.12);
             ctx.beginPath();
-            ctx.ellipse(x - this.dir * 6, y + off, 20, 12, 0, this.dir > 0 ? a0 : Math.PI - a1, this.dir > 0 ? a1 : Math.PI - a0);
-            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 6; ctx.stroke();
-            ctx.strokeStyle = CLAW_MID; ctx.lineWidth = 3.5; ctx.stroke();
-            ctx.strokeStyle = CLAW_LIGHT; ctx.lineWidth = 1.5; ctx.stroke();
+            ctx.ellipse(x - this.dir * 8, y + off, 30, 18, 0, this.dir > 0 ? a0 : Math.PI - a1, this.dir > 0 ? a1 : Math.PI - a0);
+            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 8; ctx.stroke();
+            ctx.strokeStyle = CLAW_MID; ctx.lineWidth = 5; ctx.stroke();
+            ctx.strokeStyle = CLAW_LIGHT; ctx.lineWidth = 2; ctx.stroke();
         }
         ctx.restore();
     }
