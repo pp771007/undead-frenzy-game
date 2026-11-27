@@ -598,6 +598,18 @@ const ICON_BODIES = {
         <path d="M30 40 L30 26 C30 20 38 20 38 26 L38 40" fill="#ffa726"/><circle cx="34" cy="16" r="6" fill="#ffcc80"/>`,
     thirteenMonks: `${[[10, 40], [22, 34], [34, 40], [46, 34], [56, 40]].map(([x, y]) => `<circle cx="${x}" cy="${y - 10}" r="4.5" fill="#ffcc80" stroke-width="2"/><path d="M${x - 5} ${y + 10} L${x - 5} ${y} C${x - 5} ${y - 4} ${x + 5} ${y - 4} ${x + 5} ${y} L${x + 5} ${y + 10} Z" fill="#ffa726" stroke-width="2"/>`).join('')}
         <path d="M4 54 L60 46" stroke-width="4"/><path d="M4 54 L60 46" stroke="#8d6e63" stroke-width="2"/>`,
+    // 金剛怒目：一串佛珠在右邊斷開、珠子飛出去，中間炸開一團琥珀金的震波
+    vajraWrath: `<path d="${starPath(32, 37, 19, 10, 12)}" fill="#ffb300"/><circle cx="32" cy="37" r="8" fill="#fff8e1" stroke-width="2.5"/>
+        <path d="${Array.from({ length: 11 }, (_, i) => { const a = (160 + i * 21) * Math.PI / 180; return `${i ? 'L' : 'M'}${(32 + Math.cos(a) * 25).toFixed(1)} ${(37 + Math.sin(a) * 25).toFixed(1)}`; }).join(' ')}" stroke-width="2"/>
+        ${Array.from({ length: 11 }, (_, i) => { const a = (160 + i * 21) * Math.PI / 180, x = 32 + Math.cos(a) * 25, y = 37 + Math.sin(a) * 25; return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${i === 5 ? 5 : 3.8}" fill="${i === 5 ? '#ffd54f' : '#8d6e63'}" stroke-width="2"/>`; }).join('')}
+        ${[[59, 47, 3.6], [55, 57, 3.2], [47, 61, 2.8]].map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#8d6e63" stroke-width="2"/>`).join('')}
+        <path d="M51 41 L55 44 M48 50 L51 54 M41 55 L43 59" stroke="#ffe082" stroke-width="2"/>${shine(28, 33, 2.5, 1.6)}`,
+    // 回龍勁：氣功波從武僧手上打出去，在盡頭繞一個彎、龍頭朝回飛
+    returningQi: monkAt(11, 46, 0.95)
+        + duoStroke('M20 44 L42 44 C61 44 61 17 42 17 L27 17', '#26c6da', 6)
+        + `<path d="M24 44 L42 44 C57 44 57 17 42 17 L30 17" stroke="#e0f7fa" stroke-width="1.6"/>`
+        + `<path d="M15 17 L27 9 L25 17 L27 25 Z" fill="#26c6da" stroke-width="2.5"/><circle cx="21" cy="15.5" r="1.4" fill="${ICON_OUTLINE}" stroke="none"/>
+        <path d="M44 9 C47 6 51 6 53 9 M50 30 C53 28 56 29 57 32" stroke="#80deea" stroke-width="2.2"/>`,
     // 戰士的大招：兩支交叉擲出的標槍
     javelin: spear(6, 52, 54, 6, 18, 4) + spear(16, 62, 60, 28, 18, 4) + `<path d="M2 36 L12 36 M2 44 L9 44" stroke="#ffcc80" stroke-width="3"/>`,
     // 戰士的狂怒：怒吼的橘色獸頭盔

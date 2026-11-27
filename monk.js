@@ -45,6 +45,10 @@ CONFIG.staffMonk = {
     wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4, summonCost: 0, upgradeCostBase: 0, upgradeCostInc: 0,
 };
 const STAFF_MONKS = 13, STAFF_MONK_TIME = 15;
+// 金剛怒目：震波半徑 = 基礎 + 每下連擊多少（封頂），傷害 = 拳 × 斷掉當下的連擊加成 × share
+const VAJRA_MIN_COMBO = 20, VAJRA_RADIUS = 40, VAJRA_RADIUS_PER = 0.6, VAJRA_RADIUS_MAX = 150, VAJRA_SHARE = 1.5, VAJRA_KNOCK = 240;
+// 回龍勁：回程最多飛多遠（追著武僧跑，離太遠就散掉）、碰到武僧多近算收回
+const RETURN_QI_MAX = 1.6, RETURN_QI_CATCH = 18, RETURN_QI_TRAIL = 9;
 
 Object.assign(CONFIG.evolution.names, {
     Fist: ['羅漢拳', '伏虎拳', '如來神掌'],
@@ -92,6 +96,10 @@ Object.assign(BLESSINGS, {
     bodhidharma: { school: 'internal', name: '達摩面壁', legendary: true, max: 1, per: 9, desc: b => `入定滿 ${b.per} 秒頓悟：10 秒無敵、傷害 ×2` },
     reedCrossing: { school: 'lightfoot', name: '一葦渡江', legendary: true, max: 1, per: 3, desc: b => `瞬步走過的路長出蘆葦，${b.per} 秒內刺傷踩上去的怪` },
     thirteenMonks: { school: 'external', name: '十三棍僧', legendary: true, max: 1, per: STAFF_MONKS, desc: b => `每波開始時 ${b.per} 名棍僧助陣 ${STAFF_MONK_TIME} 秒` },
+    // 金剛怒目：被打斷是武僧最大的懲罰，硬功把它變成反擊——疊得越高，斷的那一下炸得越大
+    vajraWrath: { school: 'hardstyle', name: '金剛怒目', legendary: true, max: 1, per: VAJRA_MIN_COMBO, desc: b => `連擊 ${b.per} 以上被打斷時炸出震波，斷掉的連擊越多炸得越大` },
+    // 回龍勁：同一排怪挨兩次，站位要讓怪排在你和波的路線上
+    returningQi: { school: 'qigong', name: '回龍勁', legendary: true, max: 1, per: 1, desc: () => '氣功波飛到盡頭會折返，回程再打一次' },
 });
 const RES_CHAIN_RATE = 1.2;
 const RES_THOUSAND_COMBO = 100, RES_THOUSAND_HITS = 2;
@@ -172,7 +180,8 @@ CLASSES.monk = {
         k.waveHit = true;
         k.zenT = 0; k.stillT = 0;
         if (!(res('hardstyle') >= 1 && lostFrac < RES_IRONSHIRT_HIT) && Math.random() >= blessVal('steadfast')) {
-            if (k.combo >= 20) spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 40, '斷', '#90A4AE', 14, 0.7);
+            if (bl('vajraWrath') && k.combo >= VAJRA_MIN_COMBO) vajraBlast(k.combo);
+            else if (k.combo >= 20) spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 40, '斷', '#90A4AE', 14, 0.7);
             k.combo = 0;
         }
         if (bl('counter')) monsterGrid.forEachInRadius(gameState.player.pos, 30, m => { if (m.isAlive) m.takeDamage(punchDamage() * blessVal('counter')); });
@@ -384,9 +393,22 @@ function fireQi(p, t) {
 }
 function updateQiWaves(dt) {
     const k = monkState();
+    const p = gameState.player;
     for (let i = k.waves.length - 1; i >= 0; i--) {
         const q = k.waves[i];
         const step = QI_SPEED * dt;
+        // 回程：每格重新瞄準武僧現在的位置
+        if (q.back) {
+            const dx = p.pos.x - q.x, dy = p.pos.y - q.y, d = Math.hypot(dx, dy) || 1;
+            if (d <= RETURN_QI_CATCH || q.dist >= MONK.qiLength * RETURN_QI_MAX) {
+                spawnParticles(q.x, q.y, '#B2EBF2', 8, 60, 0.3, 2);
+                k.waves.splice(i, 1);
+                continue;
+            }
+            q.ux = dx / d; q.uy = dy / d;
+            q.trail.push({ x: q.x, y: q.y });
+            if (q.trail.length > RETURN_QI_TRAIL) q.trail.shift();
+        }
         q.x += q.ux * step; q.y += q.uy * step; q.dist += step;
         const half = q.w / 2;
         monsterGrid.forEachInRadius(q, half + 16, m => {
@@ -400,13 +422,116 @@ function updateQiWaves(dt) {
             if (m.isAlive) m.lastQiHit = false;
             if (res('qigong') >= 1 && m.isAlive && !(m instanceof BossMonster)) m.knockVel = { x: q.ux * RES_QI_KNOCK, y: q.uy * RES_QI_KNOCK };
         });
-        if (q.dist >= MONK.qiLength) {
+        if (!q.back && q.dist >= MONK.qiLength) {
             if (getTier(gameState.units.Qi.level) >= 2) {
                 monsterGrid.forEachInRadius(q, QI_TIER2_BLAST, m => { if (m.isAlive && distanceSq(m.pos, q) <= QI_TIER2_BLAST * QI_TIER2_BLAST) m.takeDamage(q.dmg * 0.5); });
                 spawnParticles(q.x, q.y, '#80DEEA', 14, 100, 0.4, 3);
             }
-            k.waves.splice(i, 1);
+            if (bl('returningQi')) {
+                q.back = true; q.dist = 0; q.hit = new Set(); q.first = true; q.trail = [];
+                gameState.visualEffects.push(new QiTurnEffect({ x: q.x, y: q.y }));
+            } else k.waves.splice(i, 1);
         }
+    }
+}
+
+// ---------- 傳說「回龍勁」：折返的氣功波 ----------
+// 回程的波拖著一條由粗到細的青色龍身（去程是直直的一段），龍頭帶一圈旋轉的氣
+const RETURN_QI_COLOR = '#26C6DA', RETURN_QI_CORE = '#E0F7FA';
+function drawReturningQi(ctx, q) {
+    const pts = [...q.trail, { x: q.x, y: q.y }];
+    ctx.save();
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (let i = 1; i < pts.length; i++) {
+        const k = i / (pts.length - 1);
+        ctx.globalAlpha = 0.35 + 0.55 * k;
+        ctx.strokeStyle = RETURN_QI_COLOR; ctx.lineWidth = q.w * 0.15 + q.w * 0.4 * k;
+        ctx.beginPath(); ctx.moveTo(pts[i - 1].x, pts[i - 1].y); ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
+    }
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = RETURN_QI_CORE; ctx.lineWidth = q.w * 0.12;
+    ctx.beginPath(); pts.forEach((pt, i) => i ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y)); ctx.stroke();
+    // 龍頭：三道繞著頭旋轉的氣
+    const spin = worldTime * 14, r = q.w * 0.45;
+    ctx.strokeStyle = RETURN_QI_COLOR; ctx.lineWidth = 2.5;
+    for (let j = 0; j < 3; j++) {
+        const a = spin + j * Math.PI * 2 / 3;
+        ctx.beginPath(); ctx.arc(q.x, q.y, r, a, a + 1.4); ctx.stroke();
+    }
+    ctx.fillStyle = RETURN_QI_CORE;
+    ctx.beginPath(); ctx.arc(q.x, q.y, q.w * 0.18, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+}
+// 折返那一下：原地捲起一圈漩渦
+class QiTurnEffect extends TimedEffect {
+    constructor(pos) { super(pos, 0.35); }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration;
+        ctx.save();
+        ctx.globalAlpha = 1 - k;
+        ctx.strokeStyle = RETURN_QI_COLOR; ctx.lineWidth = 3;
+        for (let j = 0; j < 4; j++) {
+            const a = k * 6 + j * Math.PI / 2, r = 8 + k * 22;
+            ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, a, a + 1.2); ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+
+// ---------- 傳說「金剛怒目」：連擊被打斷時炸開 ----------
+function vajraBlast(combo) {
+    const p = gameState.player;
+    const r = Math.min(VAJRA_RADIUS_MAX, VAJRA_RADIUS + combo * VAJRA_RADIUS_PER), rSq = r * r;
+    const dmg = punchDamage() * comboMult() * VAJRA_SHARE;
+    monsterGrid.forEachInRadius(p.pos, r, m => {
+        if (!m.isAlive || distanceSq(m.pos, p.pos) > rSq) return;
+        m.takeDamage(dmg);
+        if (m.isAlive && !(m instanceof BossMonster)) { const d = normalizeVector({ x: m.pos.x - p.pos.x, y: m.pos.y - p.pos.y }); m.knockVel = { x: d.x * VAJRA_KNOCK, y: d.y * VAJRA_KNOCK }; }
+    });
+    gameState.visualEffects.push(new VajraBlastEffect(p.pos, r));
+    spawnFloatText(p.pos.x, p.pos.y - 44, `金剛怒目 ${Math.floor(combo)}`, VAJRA_GOLD, 16, 1.0, 'vajraWrath');
+    spawnParticles(p.pos.x, p.pos.y, VAJRA_GOLD, 24, r * 2, 0.5, 3);
+    addShake(Math.min(10, 4 + combo / 30));
+    Sfx.play('nova');
+}
+// 震波：琥珀金的粗環往外推，環上一圈金剛杵的尖刺朝外，地上留下放射狀的裂痕
+const VAJRA_GOLD = '#FFB300', VAJRA_LIGHT = '#FFF8E1', VAJRA_PRONGS = 12, VAJRA_CRACK = 'rgba(30, 20, 10, 0.5)';
+class VajraBlastEffect extends TimedEffect {
+    constructor(pos, radius) {
+        super({ x: pos.x, y: pos.y }, 0.55);
+        this.radius = radius;
+        this.cracks = Array.from({ length: 9 }, () => ({ a: Math.random() * Math.PI * 2, len: radius * (0.5 + Math.random() * 0.4), bend: (Math.random() - 0.5) * 0.4 }));
+    }
+    draw(ctx) {
+        const t = 1 - this.life / this.duration, ease = 1 - (1 - t) * (1 - t);
+        const r = this.radius * ease, { x, y } = this.pos;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, this.life / 0.25);
+        ctx.strokeStyle = VAJRA_CRACK; ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (const c of this.cracks) {
+            const l = c.len * Math.min(1, t * 2.5), mx = x + Math.cos(c.a) * l * 0.5, my = y + Math.sin(c.a) * l * 0.5;
+            ctx.moveTo(x, y); ctx.lineTo(mx + Math.cos(c.a + c.bend) * 4, my + Math.sin(c.a + c.bend) * 4); ctx.lineTo(x + Math.cos(c.a + c.bend) * l, y + Math.sin(c.a + c.bend) * l);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = (1 - t) * 0.35;
+        ctx.fillStyle = VAJRA_LIGHT;
+        ctx.beginPath(); ctx.arc(x, y, r * 0.8, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1 - t;
+        for (const [col, lw] of [[SHAPE_OUTLINE, 11 * (1 - t) + 4], [VAJRA_GOLD, 8 * (1 - t) + 2]]) {
+            ctx.strokeStyle = col; ctx.lineWidth = lw;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.fillStyle = VAJRA_GOLD; ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.5;
+        for (let i = 0; i < VAJRA_PRONGS; i++) {
+            const a = i * Math.PI * 2 / VAJRA_PRONGS + t * 0.6, c = Math.cos(a), s = Math.sin(a), len = 12 * (1 - t) + 4;
+            ctx.beginPath();
+            ctx.moveTo(x + c * r - s * 4, y + s * r + c * 4);
+            ctx.lineTo(x + c * (r + len), y + s * (r + len));
+            ctx.lineTo(x + c * r + s * 4, y + s * r - c * 4);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        ctx.restore();
     }
 }
 
@@ -449,6 +574,7 @@ function drawMonkHud(ctx, p) {
 function drawMonkWorld(ctx) {
     const k = monkState();
     for (const q of k.waves) {
+        if (q.back) { drawReturningQi(ctx, q); continue; }
         ctx.save();
         ctx.globalAlpha = 0.8;
         ctx.strokeStyle = '#80DEEA'; ctx.lineWidth = q.w * 0.5; ctx.lineCap = 'round';
