@@ -65,7 +65,7 @@ const longest = (n) => page.evaluate(([cls, n]) => Object.keys(BLESSINGS).filter
     .sort((x, y) => BLESSINGS[y].desc(BLESSINGS[y]).length - BLESSINGS[x].desc(BLESSINGS[x]).length).slice(0, n), [CLASS, n]);
 const three = CLASS === 'necro' ? ['cleave', 'eagleEye', 'frenzyTime'] : await longest(3);
 const four = CLASS === 'necro' ? ['auraMight', 'giantBones', 'soulVolley', 'pact'] : await longest(4);
-await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; gameState.banishLeft = 1; openDraft(); }, three);
+await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; openDraft(); }, three);
 await shot('3-draft');
 await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; renderDraftCards(); }, four);
 await shot('4-draft-four');

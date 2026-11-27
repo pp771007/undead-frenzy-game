@@ -741,8 +741,9 @@ const META_UPGRADES = {
     startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
     revive: { icon: 'revive', name: '不死執念', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
     freeReroll: { icon: 'reroll', name: '先知之眼', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
-    // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑
-    banish: { icon: 'banish', name: '斷念', max: 3, per: 1, costBase: 60, desc: m => `每局可放逐 ${m.per} 張祝福（整局不再出現）`, total: (m, lv) => `${lv} 張` },
+    // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑。
+    // 放逐在局外選好（強化畫面的職業分頁），戰鬥中的三選一就不用再多一顆按鈕、多想一件事
+    banish: { icon: 'banish', name: '斷念', max: 3, per: 1, costBase: 60, desc: m => `多放逐 ${m.per} 張祝福，每局都不出現（到職業分頁選）`, total: (m, lv) => `${lv} 張` },
     extraChoice: { icon: 'extraChoice', name: '多一條路', max: 1, per: 1, costBase: 250, desc: () => '祝福多一張可選' },
     headStart: { icon: 'draft', name: '開局祝福', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
 };
@@ -800,7 +801,7 @@ const REVIVE_SHIELD_SECONDS = 2.5;
 const CRYSTALS_PER_WAVE = 4;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, classUpgrades: {}, metaTable: META_TABLE_VERSION, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false, reduceShake: false };
+    return { crystals: 0, upgrades: {}, classUpgrades: {}, metaTable: META_TABLE_VERSION, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false, reduceShake: false, banned: {} };
 }
 function loadMeta() {
     try {
@@ -1250,7 +1251,7 @@ let gameState = {
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
-    resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
+    resonance: {}, banished: [], rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
 };
@@ -7274,7 +7275,6 @@ function weightedPick(ids, n) {
 function draftOptionCount() {
     return CONFIG.draft.optionCount + metaVal('extraChoice');
 }
-// exclude：這次不能出的（放逐換卡時，畫面上已有的那幾張）
 // 這個職業抽得到的祝福：自己的流派，加上全軍通用的
 function blessingInClass(id) {
     const s = BLESSINGS[id].school;
@@ -7286,9 +7286,9 @@ function blessingInClass(id) {
 function classCanSummon() { return classDef().cards.some(t => !UNIT_TYPES[t].upgradeOnly); }
 // 三種稀有度：普通、稀有（藍）、傳說（金）
 function blessingTier(id) { const B = BLESSINGS[id]; return B.legendary ? 'legend' : B.rare ? 'rare' : 'common'; }
-function draftPool(tier, exclude = []) {
+function draftPool(tier) {
     return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && blessingTier(id) === tier
-        && blessingInClass(id) && !gameState.banished.includes(id) && !exclude.includes(id));
+        && blessingInClass(id) && !gameState.banished.includes(id));
 }
 function rollDraftOptions(boss) {
     const count = draftOptionCount();
@@ -7346,14 +7346,12 @@ function renderDraftCards() {
         const card = document.createElement('button');
         const tier = blessingTier(id);
         card.className = `draft-card panel${tier === 'common' ? '' : ` tier-${tier}`}`;
-        const banish = gameState.banishLeft > 0 ? `<button class="card-banish" data-banish="${id}">${iconHtml('banish', 'icon btn-icon')}放逐</button>` : '';
         const tierTag = tier === 'common' ? '' : `<span class="card-tier">${TIER_LABELS[tier]}</span>`;
-        card.innerHTML = `${tierTag}${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>${banish}`;
+        card.innerHTML = `${tierTag}${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>`;
         // 用 pointerup 不用 click：另一隻手指還按著搖桿時瀏覽器不會合成 click。
         // 不用 pointerdown，是因為祝福選了收不回來，按下去還能滑開反悔
         // 觸控的 pointerup 一定回到按下的那張卡（隱式捕捉），所以要自己看放開時手指還在不在卡上
         card.addEventListener('pointerup', (e) => {
-            if (e.target.closest('.card-banish')) { banishBlessing(id); return; }
             const r = card.getBoundingClientRect();
             if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) pickBlessing(id);
         });
@@ -7404,18 +7402,6 @@ function rerollDraft() {
 }
 
 // 放逐：這張整局不再出現，原位換一張同稀有度的新卡
-function banishBlessing(id) {
-    const d = gameState.pendingDraft;
-    if (!d || gameState.banishLeft <= 0 || !d.options.includes(id)) return;
-    gameState.banished.push(id);
-    gameState.banishLeft--;
-    const replacement = weightedPick(draftPool(blessingTier(id), d.options), 1)[0];
-    if (replacement) d.options[d.options.indexOf(id)] = replacement;
-    else d.options = d.options.filter(o => o !== id);
-    renderDraftCards();
-    Sfx.play('draft');
-}
-
 function pickBlessing(id) {
     if (!gameState.pendingDraft || !gameState.pendingDraft.options.includes(id)) return;
     gameState.blessings[id] = bl(id) + 1;
@@ -7727,10 +7713,43 @@ function renderMeta() {
             return `<button class="achv-tab achv-subtab${cls === metaClassTab ? ' on' : ''}" data-meta-cls="${cls}" ${ok ? '' : 'disabled'}><img src="${C.portrait}" alt="">${ok ? '' : iconHtml('lock', 'icon tab-lock')}<div>${C.name}</div></button>`;
         }).join('');
     uiElements.metaList.innerHTML = `<div class="meta-class-tabs">${tabs}</div>` +
-        Object.entries(upgradeDefs(metaClassTab)).map(([id, m]) => metaRowHtml(metaClassTab, id, m)).join('');
+        Object.entries(upgradeDefs(metaClassTab)).map(([id, m]) => metaRowHtml(metaClassTab, id, m)).join('') +
+        (metaClassTab === META_GLOBAL ? '' : metaBanHtml(metaClassTab));
     // 選中的分頁捲到看得見的地方（職業多，一排放不下）
     const bar = uiElements.metaList.querySelector('.meta-class-tabs'), on = bar.querySelector('.on');
     if (on) bar.scrollLeft = on.offsetLeft - bar.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2;
+}
+// ---------- 放逐：局外先選好，這個職業每局都不會抽到那幾張（張數 = 通用的「斷念」等級） ----------
+// 傳說不能放逐：每種一局只出一次、首領波固定一張，是要期待的東西，不是要排除的雜訊
+let metaBanOpen = false;
+function banSlots() { return metaVal('banish'); }
+function bannedBlessings(cls) { return ((meta.banned || {})[cls] || []).filter(id => BLESSINGS[id]).slice(0, banSlots()); }
+function banCandidates(cls) {
+    const C = CLASSES[cls], canSummon = C.cards.some(t => !UNIT_TYPES[t].upgradeOnly);
+    return Object.keys(BLESSINGS).filter(id => {
+        const B = BLESSINGS[id];
+        return !B.legendary && !(B.needsSummon && !canSummon) && (B.school === ARMY_SCHOOL || C.schools.includes(B.school));
+    });
+}
+function metaBanHtml(cls) {
+    const n = banSlots();
+    if (n <= 0) return '';
+    const list = bannedBlessings(cls), full = list.length >= n;
+    const head = `<div class="meta-row">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">點選的祝福每局都不會出現</div></div>` +
+        `<button class="btn btn-dark" data-ban-open>${metaBanOpen ? '收起' : '選擇'}<span class="price">${list.length}/${n}</span></button></div>`;
+    if (!metaBanOpen) return head;
+    const chips = banCandidates(cls).map(id => {
+        const on = list.includes(id);
+        return `<button class="bless-chip ban-chip${on ? ' banned' : ''}" data-ban="${id}" ${!on && full ? 'disabled' : ''}>${iconHtml(blessIcon(id))}<span>${BLESSINGS[id].name}</span></button>`;
+    }).join('');
+    return head + `<div class="ban-list">${chips}</div>`;
+}
+function toggleBan(cls, id) {
+    const list = bannedBlessings(cls);
+    const next = list.includes(id) ? list.filter(x => x !== id) : list.length < banSlots() ? [...list, id] : list;
+    meta.banned = { ...meta.banned, [cls]: next };
+    saveMeta();
+    renderMeta();
 }
 function buyMeta(key) {
     const [scope, id] = key.split(':');
@@ -8497,7 +8516,6 @@ function saveGameState() {
         pendingDraft: gameState.pendingDraft,
         extraDrafts: gameState.extraDrafts,
         banished: gameState.banished,
-        banishLeft: gameState.banishLeft,
         revivesLeft: gameState.revivesLeft,
         rerollsLeft: gameState.rerollsLeft,
         classExtra: classDef().saveExtra ? classDef().saveExtra() : null,
@@ -8562,7 +8580,6 @@ function loadGameState() {
         gameState.blessings = loadedState.blessings ?? {};
         refreshResonance();
         gameState.banished = loadedState.banished ?? [];
-        gameState.banishLeft = loadedState.banishLeft ?? 0;
         gameState.revivesLeft = loadedState.revivesLeft ?? metaVal('revive');
         gameState.rerollsLeft = loadedState.rerollsLeft ?? REROLLS_PER_RUN + metaVal('freeReroll');
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
@@ -8646,7 +8663,7 @@ function resetGameInternalState() {
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
-        resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
+        resonance: {}, banished: [], rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
     };
@@ -8665,7 +8682,7 @@ function setupNewRun() {
     gameState.player.maxHealth = Math.round(classDef().hero.baseHealth * (1 + metaVal('mageHp')) * runMods().mageHpMult);
     gameState.player.currentHealth = gameState.player.maxHealth;
     gameState.souls = CONFIG.player.initialSouls + metaVal('startSouls');
-    gameState.banishLeft = metaVal('banish');
+    gameState.banished = bannedBlessings(gameState.classId);
     gameState.rerollsLeft = REROLLS_PER_RUN + metaVal('freeReroll');
     gameState.revivesLeft = metaVal('revive');
     gameState.reviveShield = 0;
@@ -9847,6 +9864,9 @@ function init() {
     uiElements.metaList.addEventListener('click', (e) => {
         const tab = e.target.closest('[data-meta-cls]');
         if (tab && !tab.disabled) { metaClassTab = tab.dataset.metaCls; Sfx.play('click'); renderMeta(); return; }
+        if (e.target.closest('[data-ban-open]')) { metaBanOpen = !metaBanOpen; renderMeta(); return; }
+        const ban = e.target.closest('[data-ban]');
+        if (ban) { if (!ban.disabled) toggleBan(metaClassTab, ban.dataset.ban); return; }
         const b = e.target.closest('[data-meta]');
         if (b && !b.disabled) buyMeta(b.dataset.meta);
     });

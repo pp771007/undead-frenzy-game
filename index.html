@@ -1893,24 +1893,39 @@
             flex: none;
         }
 
-        .card-banish {
-            margin-top: 2px;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            padding: 3px 8px;
+        /* 局外放逐：可以點的祝福小卡，被放逐的變紅、名字劃掉；放滿時其他的變暗點不了 */
+        .ban-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 4px;
+            justify-content: center;
+            padding: 6px 0 12px;
+        }
+
+        .ban-chip {
+            padding: 4px 0;
+            border: 2px solid transparent;
             border-radius: 10px;
-            border: 2px solid var(--ink);
-            background: #3a3046;
-            color: var(--bone-dim);
+            background: none;
             font-family: var(--font-ui);
-            font-size: 11px;
             cursor: pointer;
         }
 
-        .card-banish .btn-icon {
-            width: 14px;
-            height: 14px;
+        .ban-chip.banned {
+            background: rgba(229, 57, 53, 0.25);
+            border-color: #e53935;
+            color: #ffcdd2;
+            text-decoration: line-through;
+        }
+
+        .ban-chip.banned .icon {
+            opacity: 0.5;
+            filter: grayscale(0.7);
+        }
+
+        .ban-chip:disabled {
+            opacity: 0.35;
+            cursor: default;
         }
 
         /* 重抽、跳過、補滿血：窄螢幕放不下三顆就換行 */
