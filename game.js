@@ -7978,13 +7978,18 @@ function schoolBadgeHtml(school) {
     const S = SCHOOLS[school];
     return S.img ? `<img class="school-img" src="${S.img}" alt="">` : iconHtml(S.icon, 'icon school-img');
 }
+// 每一段點的後面接一個共鳴圖示：讀起來是「集滿這幾個點換到這個」（只有點的話看不出是在集什麼）。
+// 達成的段圖示亮起來；這張選下去剛好湊滿的那段，圖示跟著閃
 function resonancePipsHtml(school, preview) {
     const pts = schoolPoints(school), max = RESONANCE_STEPS[RESONANCE_STEPS.length - 1];
     let html = '';
     for (let i = 0; i < max; i++) {
-        if (RESONANCE_STEPS.includes(i) && i > 0) html += '<span class="res-gap"></span>';
         const cls = i < pts ? 'pip on' : (preview && i === pts ? 'pip next' : 'pip');
         html += `<span class="${cls}"></span>`;
+        if (RESONANCE_STEPS.includes(i + 1)) {
+            const mark = pts >= i + 1 ? ' on' : (preview && pts + 1 === i + 1 ? ' next' : '');
+            html += `<span class="res-mark${mark}">${iconHtml('resonance')}</span>`;
+        }
     }
     return `<span class="pips res-pips">${html}</span>`;
 }
