@@ -96,7 +96,7 @@ Object.assign(BLESSINGS, {
     kinCap: { school: 'kin', name: '血之家族', max: 3, per: 6, desc: b => `眷屬上限 +${b.per}` },
     kinPower: { school: 'kin', name: '血統', max: 5, per: 0.3, desc: b => `眷屬血量與攻擊 +${pct(b.per)}` },
     kinLeech: { school: 'kin', name: '共飲', max: 3, per: 0.12, desc: b => `眷屬打出的傷害 ${pct(b.per)} 補回自己` },
-    batPair: { school: 'bats', name: '成雙', max: 2, per: 1, desc: b => `每次召喚多來 ${b.per} 隻蝙蝠` },
+    batPair: { school: 'bats', name: '成雙', max: 2, per: 1, desc: b => `每次補蝙蝠多來 ${b.per} 隻` },
     batFang: { school: 'bats', name: '尖牙', max: 5, per: 0.3, desc: b => `蝙蝠傷害 +${pct(b.per)}` },
     batDrain: { school: 'bats', name: '血線', max: 3, per: 0.15, desc: b => `蝙蝠吸到的血多 ${pct(b.per)} 回給你` },
     batSpeed: { school: 'bats', name: '夜風', max: 3, per: 0.2, desc: b => `蝙蝠移速與攻速 +${pct(b.per)}` },
@@ -788,7 +788,7 @@ class BloodBat extends SummonUnit {
         updateUI();
     }
 }
-// 成雙：每次召喚多來幾隻（多出來的不另外收錢）
+// 成雙：每次補蝙蝠多來幾隻（多出來的不另外等補兵間隔）
 UNIT_TYPES.BloodBat.summon = (level) => {
     const p = gameState.player;
     for (let i = 0; i < 1 + bl('batPair'); i++) {

@@ -661,7 +661,7 @@ const BLESSINGS = {
     soulGaze: { school: DUO_SCHOOL, duo: ['eye', 'mage'], name: '靈視', legendary: true, max: 1, per: SOUL_GAZE_CHANCE, desc: b => `眼魔每次射擊有 ${pct(b.per)} 機率多射出一發法師的魂彈` },
     wailingNova: { school: DUO_SCHOOL, duo: ['wraith', 'nova'], name: '哀魂新星', legendary: true, max: 1, per: WAILING_NOVA_SHARE, desc: b => `放新星時，每隻怨靈也炸一圈（${pct(b.per)} 傷害）` },
     soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
-    twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
+    twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `補兵時 ${pct(b.per)} 機率多補一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
     deathPact: { school: 'soul', name: '殘魂回收', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
 };
