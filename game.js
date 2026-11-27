@@ -146,7 +146,6 @@ const uiElements = {
     bestWaveText: $id('best-wave-text'),
     finalKills: $id('final-kills'),
     finalSummons: $id('final-summons'),
-    finalStreak: $id('final-streak'),
     finalReward: $id('final-reward'),
     finalRewardDetail: $id('final-reward-detail'),
     finalBlessings: $id('final-blessings'),
@@ -473,13 +472,6 @@ const CONFIG = {
             plague: { icon: 'plague', name: '腐屍狂潮', desc: '腐屍 ×3', bloaterMult: 3, color: '#AED581' },
             treasure: { icon: 'sack', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量靈魂', thieves: 3, color: '#FFE082' },
         },
-    },
-    streak: {
-        // 這麼多秒內沒有新的擊殺，連殺就歸零
-        window: 2.5,
-        bonusStep: 25, bonusPerStep: 0.05, bonusMax: 0.5,
-        showFrom: 10,
-        milestones: [50, 100, 250, 500, 1000, 2500, 5000],
     },
     elite: {
         startWave: 5, chanceBase: 0.03, chancePerWave: 0.004, chanceMax: 0.15,
@@ -849,7 +841,7 @@ function classMeta(id) {
 const ACHV_CATEGORIES = [
     { id: 'journey', name: '征途' }, { id: 'endless', name: '無盡' }, { id: 'curse', name: '詛咒' }, { id: 'boss', name: '首領' },
     { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '共鳴' }, { id: 'legend', name: '傳說' },
-    { id: 'streak', name: '連殺' }, { id: 'relic', name: '遺跡' },
+    { id: 'relic', name: '遺跡' },
     { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'class', name: '職業' }, { id: 'legacy', name: '傳承' },
 ];
 const ACHV_JOURNEY = [[5, 'wave5', '破曉', 10], [10, 'wave10', '初陣', 15], [15, 'wave15', '老兵', 20], [20, 'wave20', '百戰', 25], [25, 'wave25', '過半', 30],
@@ -873,7 +865,6 @@ const ACHV_BESTIARY = [
 // 召喚費用隨數量變貴（SUMMON_COST_STEP）之後，自動遊玩一局的大軍最多 150～480 隻
 const ACHV_ARMY = [[50, 'army50', '一支軍隊', 10], [150, 'army150', '浩浩蕩蕩', 30], [300, 'army300', '千軍萬馬', 50], [450, 'army450', '萬軍壓境', 80], [600, 'army600', '遮天蔽日', 150]];
 const ACHV_UNITS = ['SkeletonWarrior', 'EyeMonster', 'Wraith'];
-const ACHV_STREAK = [[100, 'streak100', '開葷', 10], [250, 'streak250', '殺紅了眼', 20], [500, 'streak1', '殺戮狂潮', 30], [1000, 'streak1000', '千人斬', 45], [2000, 'streak2', '屠戮之王', 60], [5000, 'streak5000', '死神親臨', 120]];
 const ACHV_CAREER = [
     ['kills10k', '萬骨枯', '累計打倒 1 萬隻怪', 20, s => s.totalKills >= 1e4],
     ['kills100k', '十萬亡魂', '累計打倒 10 萬隻怪', 60, s => s.totalKills >= 1e5],
@@ -956,7 +947,6 @@ function buildAchievements() {
     for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary && legendAchvIcon(b))) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
     add('legend', 'legends', '傳說加身', `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, 40, () => countTaken(b => b.legendary) >= ACHV_LEGENDS);
     add('legend', 'legendAll', '萬古傳說', '每一張傳說祝福都拿過', 120, () => Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary).every(b => S().legends[b]));
-    for (const [n, id, name, r] of ACHV_STREAK) add('streak', id, name, `連殺 ${n}`, r, () => gameState.bestStreak >= n);
     for (const [id, name, desc, r, t] of ACHV_RELICS) add('relic', id, name, desc, r, () => t(S()));
     add('relic', 'relicTrio', '朝聖者', '一局內三種遺跡都用過', 40, () => Object.keys(RELIC_TYPES).every(k => gameState.run.relics[k]));
     for (const [id, name, desc, r, t] of ACHV_CAREER) add('career', id, name, desc, r, () => t(S()));
@@ -1251,7 +1241,7 @@ let gameState = {
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
-    waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
+    waveEvent: null, lastEventWave: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
@@ -1825,7 +1815,6 @@ const SFX_DEFS = {
     // 鬼魂般的「咻」：一段往上滑的柔和音加一點氣音
     mageBolt: { gap: 0.1, fn: s => { s.tone(420, 0.16, { type: 'sine', vol: 0.05, slideTo: 900 }); s.noise(0.1, { vol: 0.03, filterFreq: 2200 }); } },
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
-    streak: { gap: 0.3, fn: s => { [659, 880, 1175].forEach((f, i) => s.tone(f, 0.12, { type: 'square', vol: 0.07, delay: i * 0.05 })); } },
     spawn: { gap: 0.3, fn: s => s.noise(0.3, { vol: 0.15, filterFreq: 500 }) },
     splat: { gap: 0.15, fn: s => { s.noise(0.2, { vol: 0.15, filterFreq: 700 }); s.tone(140, 0.18, { vol: 0.08, slideTo: 70 }); } },
     // 首領登場：低沉的兩聲鼓＋往下滑的長音；護甲碎裂：玻璃碎掉的亮聲＋往下掉的音
@@ -4040,7 +4029,6 @@ class Monster extends GameObject {
 
     die() {
         this.isAlive = false;
-        registerKill();
         const st = stats(), type = this.config.type;
         st.kills[type] = (st.kills[type] || 0) + 1;
         st.totalKills++;
@@ -4051,7 +4039,7 @@ class Monster extends GameObject {
         const ev = getWaveEvent();
         const cls = classDef();
         if (cls.onMonsterKill) cls.onMonsterKill(this);
-        const souls = this.soulValue() * (cls.soulMult ? cls.soulMult(this) : 1) * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + getStreakBonus()) * runMods().soulMult
+        const souls = this.soulValue() * (cls.soulMult ? cls.soulMult(this) : 1) * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + waveSoulBonus()) * runMods().soulMult
             + gameState.soulCarry;
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
@@ -6490,21 +6478,11 @@ function rollWaveEvent(wave) {
     return ids[Math.floor(Math.random() * ids.length)];
 }
 
-function getStreakBonus() {
-    const S = CONFIG.streak;
-    return Math.min(S.bonusMax, Math.floor(gameState.streak / S.bonusStep) * S.bonusPerStep);
-}
-
-function registerKill() {
-    gameState.streak++;
-    gameState.streakTimer = CONFIG.streak.window;
-    if (gameState.streak > gameState.bestStreak) gameState.bestStreak = gameState.streak;
-    if (CONFIG.streak.milestones.includes(gameState.streak)) {
-        const p = gameState.player;
-        if (p) spawnFloatText(p.pos.x, p.pos.y - 50, `${gameState.streak} 連殺！`, '#FFAB40', 22, 1.4, 'flame');
-        addShake(3);
-        Sfx.play('streak');
-    }
+// 怪越來越密，靈魂跟著多一點：每波 +WAVE_SOUL_STEP，封頂 WAVE_SOUL_MAX。
+// 幅度照「清怪越快拿越多」量出來的收入曲線抓：整局平均約 +20～28%，前幾波幾乎是 0、第 20 波起滿
+const WAVE_SOUL_STEP = 0.015, WAVE_SOUL_MAX = 0.3;
+function waveSoulBonus() {
+    return Math.min(WAVE_SOUL_MAX, gameState.currentWave * WAVE_SOUL_STEP);
 }
 
 function getEliteChance(wave) {
@@ -6871,7 +6849,7 @@ function lbSubmit(reason) {
         result: reason, killer: k ? `${k.isElite ? '精英' : ''}${k.config.name}` : '',
         kills: Object.values(gameState.totalKills).reduce((a, b) => a + b, 0),
         summons: Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0),
-        streak: gameState.bestStreak, bosses: gameState.totalKills.Boss || 0,
+        bosses: gameState.totalKills.Boss || 0,
         blessings: { ...gameState.blessings },
     };
     meta.leaderboard.push(e);
@@ -6950,7 +6928,7 @@ function openLbDetail(id) {
         `<div class="lb-ranks">${lbRanksHtml(e)}${e.curse > 0 ? `<span>${iconHtml('curse')}詛咒<b>${e.curse}</b></span>` : ''}</div>` +
         lbResultHtml(e) +
         (e.rival ? `<p class="lb-motto">「${e.motto}」</p><div class="lb-sub lb-beaten">${lbBeaten(e, lbOwnBest()) ? `${iconHtml('podium')}已經超越` : e.won ? `${formatClock(e.time)} 內通關就能超越` : `撐過第 ${e.wave + 1} 波就能超越`}</div>` : '') +
-        (e.kills == null ? '' : `<div class="result-stats">${stat(formatNumberK(e.kills), '擊殺')}${stat(formatNumberK(e.summons), '召喚')}${stat(formatNumberK(e.streak), '最高連殺')}${stat(e.bosses, '首領')}</div>`) +
+        (e.kills == null ? '' : `<div class="result-stats">${stat(formatNumberK(e.kills), '擊殺')}${stat(formatNumberK(e.summons), '召喚')}${stat(e.bosses, '首領')}</div>`) +
         (e.blessings ? `<div class="bless-list">${blessingChipsHtml(e.blessings)}</div>` : '');
     showScreen(uiElements.lbDetail, true);
 }
@@ -7558,7 +7536,7 @@ function refreshTitle() {
 }
 
 function showTitle() {
-    // 標題背景畫的是 gameState：不清掉的話上一局的怪、連殺數會留在背景，
+    // 標題背景畫的是 gameState：不清掉的話上一局的怪會留在背景，
     // 震動值也只在遊戲更新時才衰減，離開那一下在震的話背景會一直抖。
     // 開新局（resetGame）與繼續（loadGameState）都會重建狀態，存檔不受影響
     setupNewRun();
@@ -7930,10 +7908,6 @@ function updateTimers(deltaTime) {
     updateAltarSlow(deltaTime);
     achvCheckTimer -= deltaTime;
     if (achvCheckTimer <= 0) { achvCheckTimer = ACHV_CHECK_EVERY; checkAchievements(); }
-    if (gameState.streakTimer > 0) {
-        gameState.streakTimer -= deltaTime;
-        if (gameState.streakTimer <= 0) gameState.streak = 0;
-    }
     if (gameState.banner) {
         gameState.banner.life -= deltaTime;
         // 出場動畫照「出現了多久」算：橫幅長短不一，用 bannerDuration - life 推算的話長橫幅一開始會被放大好幾倍
@@ -8493,7 +8467,6 @@ function showGameOver(reason = 'died') {
     const summons = Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
     uiElements.finalKills.textContent = formatNumberK(kills);
     uiElements.finalSummons.textContent = formatNumberK(summons);
-    uiElements.finalStreak.textContent = formatNumberK(gameState.bestStreak);
     checkAchievements();
     releaseAchvToasts();
     const ranked = lbSubmit(reason);
@@ -8539,7 +8512,6 @@ function saveGameState() {
         totalKills: gameState.totalKills,
         blessings: gameState.blessings,
         pendingDraft: gameState.pendingDraft,
-        bestStreak: gameState.bestStreak,
         extraDrafts: gameState.extraDrafts,
         banished: gameState.banished,
         banishLeft: gameState.banishLeft,
@@ -8604,7 +8576,6 @@ function loadGameState() {
 
         gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
-        gameState.bestStreak = loadedState.bestStreak ?? 0;
         gameState.blessings = loadedState.blessings ?? {};
         refreshResonance();
         gameState.banished = loadedState.banished ?? [];
@@ -8690,7 +8661,7 @@ function resetGameInternalState() {
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
-        waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
+        waveEvent: null, lastEventWave: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
@@ -8990,20 +8961,6 @@ function drawFrenzyOverlay() {
     ctx.globalAlpha = a;
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
-    ctx.restore();
-}
-
-function drawStreak() {
-    if (gameState.streak < CONFIG.streak.showFrom) return;
-    const bonus = getStreakBonus();
-    const fade = Math.min(1, gameState.streakTimer / CONFIG.streak.window * 3);
-    ctx.save();
-    ctx.globalAlpha = 0.4 + 0.6 * fade;
-    drawIconLabel('flame', String(gameState.streak), view.cssW - 10, hudTop + 24, 20, '#FFAB40', 'right');
-    if (bonus > 0) {
-        ctx.textAlign = 'right';
-        drawOutlinedText(`靈魂 +${pct(bonus)}`, view.cssW - 10, hudTop + 42, 12, '#80DEEA');
-    }
     ctx.restore();
 }
 
@@ -9408,7 +9365,6 @@ function drawGame() {
     if (drawCls.drawScreen && gameState.player && appScreen !== 'title') drawCls.drawScreen(ctx);
     drawBossBar();
     drawBossIntro();
-    drawStreak();
     drawOffscreenPointers();
     drawBuffChips();
     drawCountdown();

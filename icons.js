@@ -146,8 +146,6 @@ const ICON_BODIES = {
         <path d="M18 25 C7 35 7 54 21 57 L41 57 C55 54 55 35 44 25 Z" fill="#c9a15c"/><path d="M19 25 L45 25" stroke-width="5"/>
         <path d="M24 38 C26 44 26 50 24 54" stroke="#a5814a" stroke-width="2.5"/>
         <circle cx="45" cy="48" r="10" fill="#ffd54f"/><circle cx="45" cy="48" r="5.5" stroke="#e0a82e" stroke-width="2.5"/>`,
-    flame: `<path d="M32 58 C17 58 11 46 15 35 C18 27 24 24 25 14 C34 20 37 26 37 32 C41 28 42 23 41 17 C51 26 54 38 50 47 C47 54 40 58 32 58 Z" fill="#ff8a3d"/>
-        <path d="M32 53 C25 53 22 47 25 41 C27 37 31 35 32 30 C37 35 40 40 39 46 C38 50 36 53 32 53 Z" fill="#ffd54f" stroke="none"/>`,
     // ---- 戰士的五個流派（warrior.js）----
     // 流派「軍團紀律」：藍底金邊的軍旗
     legion: `<path d="M16 6 L16 60" stroke-width="4"/><path d="M16 8 L52 8 L52 40 L16 40 Z" fill="#1565c0"/><path d="M16 40 L22 46 L28 40 L34 46 L40 40 L46 46 L52 40" stroke="#ffd54f" stroke-width="3"/>

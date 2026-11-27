@@ -1,5 +1,5 @@
 // 成就圖示：每個成就一張向量圖，風格跟 icons.js 一樣（深色粗描邊、平塗、一點亮部）。
-// 同一系列（波數、連殺、大軍、生涯）用同一個母題、越後面越隆重；不同系列各有自己的母題，一眼分得出是哪一類。
+// 同一系列（波數、大軍、生涯）用同一個母題、越後面越隆重；不同系列各有自己的母題，一眼分得出是哪一類。
 // 圖鑑那一類不在這裡：直接用那隻怪的立繪（見 game.js 的 achvIconHtml）。
 // 只在畫面上的 DOM 用，不進畫布的預載（不像 ICON_SVGS 那樣全部轉成 Image）。
 
@@ -200,15 +200,6 @@ Object.assign(ACHV_ICON_BODIES, {
         <rect x="21" y="10" width="22" height="36" rx="3" fill="${C.gold}"/>${at(32, 28, 0.42, P.star(C.white))}${sparks([[56, 54, 4]], '#fff3c4')}`,
     legendAll: `<path d="M10 12 C20 8 28 10 32 14 C36 10 44 8 54 12 L54 54 C44 50 36 52 32 56 C28 52 20 50 10 54 Z" fill="${C.goldDark}"/><path d="M32 14 L32 56" stroke-width="3"/>
         <path d="M14 18 C20 16 26 17 29 20 L29 50 C26 47 20 46 14 48 Z M50 18 C44 16 38 17 35 20 L35 50 C38 47 44 46 50 48 Z" fill="#fff8e1" stroke-width="2.5"/>${at(22, 33, 0.3, P.star())}${at(42, 33, 0.3, P.star())}`,
-
-    // ---- 連殺：越燒越旺的火 ----
-    streak100: `${at(32, 50, 0.7, P.bone(), 20)}${at(32, 50, 0.7, P.bone(), -20)}${at(32, 30, 0.75, P.flame())}`,
-    streak250: `${at(32, 32, 0.95, P.flame())}${at(44, 46, 0.55, P.sword(), 30)}`,
-    streak1: `${at(22, 36, 0.75, P.flame())}${at(42, 32, 0.95, P.flame(C.red, C.orange))}`,
-    streak1000: `${at(32, 30, 1.1, P.flame(C.red, C.orange))}${at(32, 40, 0.5, P.skull())}`,
-    streak2: `${at(32, 34, 1.15, P.flame('#d32f2f', C.orange))}${at(32, 18, 0.55, P.crown())}${at(32, 44, 0.42, P.skull())}`,
-    streak5000: `${at(32, 34, 1.2, P.flame('#7b1fa2', '#ea80fc'))}<path d="M14 58 L44 10" stroke-width="5"/><path d="M14 58 L44 10" stroke="${C.woodDark}" stroke-width="2.5"/>
-        <path d="M40 8 C52 2 62 12 60 24 C56 16 50 14 44 16 Z" fill="${C.steel}"/>`,
 
     // ---- 遺跡：三種遺跡本身 ----
     coffin1: `<path d="M22 6 L42 6 L50 20 L44 58 L20 58 L14 20 Z" fill="${C.woodDark}"/><path d="M26 6 L46 2 L56 16 L52 22 L42 6" fill="${C.wood}" stroke-width="3"/>

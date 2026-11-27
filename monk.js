@@ -131,7 +131,8 @@ CLASSES.monk = {
     // 武僧沒有大軍、主角站最前面挨打，普攻一下扣多少有上限（game.js 的 MELEE_HERO_HIT_RATIO）時，跟其他職業用同一套怪物加強；
     // 調低（0.7）的話機器人沒強化也幾乎都通關（見 game.js 的 monsterRamp）
     monsterPressure: 1.0,
-    unlock: 'streak1000',
+    // unlockOld：已經沒有的舊解鎖條件（連殺 1000），舊存檔靠它解鎖的照樣算數
+    unlock: 'wave40', unlockOld: 'streak1000',
     cards: ['Fist', 'Step', 'Qi'], schools: ['external', 'hardstyle', 'lightfoot', 'internal', 'qigong', 'soul'],
     metaUpgrades: {
         evade: { icon: 'evade', name: '金剛身法', max: 5, per: 0.02, costBase: 30, desc: m => `${pct(m.per)} 機率閃過攻擊`, total: (m, lv) => `${pct(m.per * lv)}` },
