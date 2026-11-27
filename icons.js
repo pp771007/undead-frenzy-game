@@ -218,6 +218,24 @@ const ICON_BODIES = {
     spartans: `<path d="M8 34 C8 14 56 14 56 34 L56 46 C50 50 46 56 44 60 L20 60 C18 56 14 50 8 46 Z" fill="#e0a82e"/>
         <path d="M24 34 L24 50 M40 34 L40 50" stroke-width="4"/><path d="M14 30 L50 30" stroke-width="4"/>
         <path d="M10 18 C14 4 50 4 54 18 C46 12 18 12 10 18 Z" fill="#1565c0"/>${shine(20, 26, 4, 2.5)}`,
+    // 蠍弩：一支粗弩箭斜斜穿過小怪、釘進裂開的地面
+    scorpio: `<ellipse cx="34" cy="54" rx="26" ry="7" fill="#6d4c41"/><ellipse cx="30" cy="52" rx="14" ry="3" fill="#8d6e63" stroke="none"/>`
+        + `<g transform="translate(7.3 9.6) scale(0.8)"><path d="${GHOST_PATH}" fill="#b39ddb" stroke-width="3"/>
+            <path d="M22 23 L29 30 M29 23 L22 30 M35 23 L42 30 M42 23 L35 30" stroke-width="3"/></g>`
+        + arrow(18, 0, 41, 54, STEEL, '#42a5f5', 1.45)
+        + `<ellipse cx="41" cy="54.5" rx="7" ry="3" fill="#2e1f17" stroke-width="2.2"/>
+        <path d="M33 56 L26 60 M49 55 L57 58 M46 52 L53 48 M36 52 L30 49" stroke-width="2.2"/>
+        <circle cx="51" cy="45" r="3" fill="#bcaaa4" stroke-width="2"/><circle cx="56" cy="50" r="2.2" fill="#bcaaa4" stroke-width="1.8"/><circle cx="28" cy="46" r="2.2" fill="#bcaaa4" stroke-width="1.8"/>`,
+    // 刀槍不入：金色護身符文（ᛉ）擋住砍來的劍和刺來的槍，兩把都斷成兩截
+    unbreakable: `<circle cx="32" cy="32" r="18" fill="#ffca28"/><circle cx="32" cy="32" r="12" fill="#fff3c4" stroke-width="2.5"/>
+        <path d="M32 23 L32 42 M32 31 L25 24 M32 31 L39 24" stroke-width="3.5"/><path d="M32 23 L32 42 M32 31 L25 24 M32 31 L39 24" stroke="#e65100" stroke-width="1.6"/>`
+        + placeAt(3, 59, -45, `<circle cx="-3" cy="0" r="3.4" fill="${BRASS}" stroke-width="2.2"/><rect x="-1" y="-2.6" width="11" height="5.2" rx="2" fill="${GRIP}" stroke-width="2.2"/>`
+            + `<rect x="9" y="-8" width="4.5" height="16" rx="2" fill="${BRASS}" stroke-width="2.2"/><path d="M13.5 -4.5 L24 -4.5 L26 -1 L23.5 0.5 L25 4.5 L13.5 4.5 Z" fill="${STEEL}" stroke-width="2.4"/>`
+            + `<path d="M15.5 -2.4 L22 -2.4" stroke="${EDGE_SHINE}" stroke-width="1.2"/>`)
+        + placeAt(13, 15, -135, `<path d="M0 -4.5 L9 -4.5 L16 0 L9 4.5 L0 4.5 L2 1.5 L-1 0 Z" fill="${STEEL}" stroke-width="2.3"/><path d="M2 -2.4 L9 -2.4" stroke="${EDGE_SHINE}" stroke-width="1.2"/>`)
+        + placeAt(63, 22, 156, rodL(13, 5, WOOD) + `<path d="M12 -2.5 L16 -3.5 L14 -0.5 L17 1 L13.5 2.5" fill="${WOOD}" stroke-width="2"/>`)
+        + placeAt(54, 6, -70, spearHeadL(13, 4.8))
+        + `${[[20, 22], [46, 21], [21, 44]].map(([x, y]) => `<path d="${starPath(x, y, 5, 1.8, 4)}" fill="#fff8e1" stroke-width="1.6"/>`).join('')}${shine(26, 25, 3, 2)}`,
     // ---- 德魯伊（druid.js）----
     // 大招「野性化身」：熊掌印
     bearform: `<ellipse cx="32" cy="42" rx="16" ry="14" fill="#8d6e63"/>${[[14, 24, -20], [24, 15, -8], [40, 15, 8], [50, 24, 20]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="8" transform="rotate(${r} ${x} ${y})" fill="#8d6e63"/><path d="M${x} ${y - 8} L${x + r / 6} ${y - 14}" stroke-width="3"/>`).join('')}

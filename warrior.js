@@ -146,6 +146,10 @@ Object.assign(BLESSINGS, {
     valhalla: { school: 'legion', name: '英靈殿', legendary: true, max: 1, per: 1, desc: () => '陣亡的老兵下一波免費歸隊，星星照舊' },
     aquila: { school: 'shieldwall', name: '鷹旗', legendary: true, max: 1, per: 0.3, desc: b => `戰士身邊的士兵受致命傷時，每波撐住一次（留 ${pct(b.per)} 血）` },
     spartans: { school: 'phalanx', name: '三百壯士', legendary: true, max: 1, per: 2.5, desc: b => `人數上限減半，每個士兵血量與攻擊 ×${b.per}` },
+    // 蠍弩：弩陣替槍陣定住靶子——弩手先釘、長槍再捅，兩個兵種要一起養
+    scorpio: { school: 'crossbow', name: '蠍弩', legendary: true, max: 1, per: 1, desc: b => `弩箭把怪釘在原地 ${b.per} 秒，被釘住的怪挨長槍傷害 ×${SCORPIO_SPEAR_MULT}` },
+    // 刀槍不入：維京傳說裡狂戰士不怕刀劍。狂怒變成「衝進怪堆的時間」，砍得越多撐得越久
+    unbreakable: { school: 'berserk', name: '刀槍不入', legendary: true, max: 1, per: 0.3, desc: b => `狂怒中血量不會掉到 1 以下；每砍死一隻，狂怒多 ${b.per} 秒` },
 });
 // 戰士專屬成就的門檻
 const WAR_ACHV = { veterans: 10, noLossWave: 20, javelinKills: 50, noRecruitWave: 10 };
@@ -159,6 +163,10 @@ const RES_ARROWRAIN_EVERY = 6, RES_ARROWRAIN_RADIUS = 70, RES_ARROWRAIN_RANGE = 
 const RES_IRONLAW_TURN = 2;
 const RES_LASTSTAND_SHARE = 1 / 3;
 const AQUILA_RADIUS = 140;
+const SCORPIO_SPEAR_MULT = 2;
+// 刀槍不入：每次狂怒最多延長到原本的兩倍，不然清雜兵時狂怒永遠不停、等於整局無敵
+const UNBREAKABLE_EXTEND_MAX = WARRIOR.berserkTime;
+const UNBREAKABLE_TEXT_EVERY = 0.6;
 
 Object.assign(UNIT_TYPES, {
     Shieldman: { cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
@@ -255,7 +263,10 @@ CLASSES.warrior = {
     heroSpeedMult: () => warState().berserkT > 0 ? WARRIOR.berserkSpeed : warState().exhaustT > 0 ? WARRIOR.exhaustSpeed : 1,
     heroDamageTakenMult: () => WARRIOR.armorTaken * (1 - classMeta('armor')) * (warState().berserkT > 0 ? WARRIOR.berserkTaken : 1) * turtleTaken(),
     onHeroHurt: (lostFrac) => addRage(lostFrac * 100 * WARRIOR.ragePerHp),
+    preventDeath: () => unbreakableSave(),
     drawHero: (ctx, p) => drawWarriorHud(ctx, p),
+    drawHeroUnder: (ctx, p) => drawUnbreakableRunes(ctx, p),
+    drawWorld: (ctx) => drawScorpioPins(ctx),
     // 軍團長跟著部下一起操練：每升級一次任何兵種，戰士最大血量長得跟「平均一個士兵」一樣快
     // （士兵每升一級 +upgradeBonus，分到三個兵種上）。怪的攻擊指數成長，戰士站在前線，長得比士兵慢的話後期兩三下就倒
     onUpgrade: () => {
@@ -326,6 +337,7 @@ function addRage(amount) {
     if (w.rage < WARRIOR.rageMax) return;
     w.rage = 0;
     w.berserkT = WARRIOR.berserkTime + blessVal('rageLength');
+    w.extended = 0;
     const p = gameState.player;
     spawnParticles(p.pos.x, p.pos.y, BERSERK_COLOR, 36, 200, 0.7, 3);
     spawnFloatText(p.pos.x, p.pos.y - 40, '狂怒！', '#FFAB40', 20, 1.2, 'rage');
@@ -430,6 +442,10 @@ function warriorSwing(p, dt) {
     const dmg = WARRIOR.swingDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * (1 + w.drills * WARRIOR.drillDamage);
     let kills = 0;
     for (const m of hits) { m.takeDamage(dmg); if (!m.isAlive) kills++; }
+    if (kills > 0 && w.berserkT > 0 && bl('unbreakable')) {
+        const add = Math.min(kills * BLESSINGS.unbreakable.per, UNBREAKABLE_EXTEND_MAX - w.extended);
+        w.berserkT += add; w.extended += add;
+    }
     // 大劍親手砍死的怪回血：站最前線又沒有波間回血，戰士要靠打下去撐住
     if (kills > 0 && p.currentHealth < p.maxHealth) {
         const per = WARRIOR.killHeal + blessVal('rageLeech');
@@ -540,7 +556,7 @@ function drawWarriorHud(ctx, p) {
         ctx.drawImage(getGlowSprite(BERSERK_COLOR), p.pos.x - 45, p.pos.y - 45, 90, 90);
         ctx.restore();
     }
-    const k = w.berserkT > 0 ? w.berserkT / WARRIOR.berserkTime : w.exhaustT > 0 ? 0 : w.rage / WARRIOR.rageMax;
+    const k = w.berserkT > 0 ? Math.min(1, w.berserkT / WARRIOR.berserkTime) : w.exhaustT > 0 ? 0 : w.rage / WARRIOR.rageMax;
     ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
     ctx.fillRect(x - 1.5, y - 1.5, RAGE_BAR_W + 3, RAGE_BAR_H + 3);
     ctx.fillStyle = w.berserkT > 0 ? BERSERK_COLOR : w.exhaustT > 0 ? '#607D8B' : '#FF9100';
@@ -655,6 +671,7 @@ class Soldier extends SummonUnit {
             }
         } else {
             if (c.bigMult && (t instanceof BossMonster || t.flying || t.radius >= c.bigRadius)) dmg *= c.bigMult + blessVal('spearBrace');
+            if (c.type === 'Spearman' && isPinned(t)) dmg *= SCORPIO_SPEAR_MULT;
             t.takeDamage(dmg);
             this.healFromDamage(dmg);
             this.onHit(t);
@@ -674,6 +691,7 @@ class Soldier extends SummonUnit {
     }
     // 打死了就記一筆（弩箭由 Projectile 命中時呼叫）：累積到門檻升老兵
     onHit(m) {
+        if (m.isAlive && this.config.type === 'Crossbowman' && bl('scorpio')) pinMonster(m);
         if (m.isAlive) return;
         this.kills++;
         const v = vetFromKills(this.kills);
@@ -791,6 +809,85 @@ class ArrowRainEffect extends TimedEffect {
         }
         ctx.restore();
     }
+}
+
+// ---------- 傳說「蠍弩」：弩箭把怪釘在地上 ----------
+// 首領吃 slowResist，只會被拖慢、不會完全定住；被釘住的標記照樣算（長槍照樣加倍）
+const PIN_DUST = '#A1887F', PIN_HOLE = 'rgba(20, 14, 10, 0.55)', PIN_BOLT_SCALE = 1.5, PIN_FADE = 0.25, PIN_TILT = 0.45;
+function isPinned(m) { return bl('scorpio') && m.pinUntil > worldTime; }
+function pinMonster(m) {
+    if (!(m.pinUntil > worldTime)) {
+        m.pinTilt = (Math.random() * 2 - 1) * PIN_TILT;
+        spawnParticles(m.pos.x, m.pos.y + m.radius * 0.6, PIN_DUST, 5, 55, 0.35, 3);
+    }
+    m.pinUntil = worldTime + BLESSINGS.scorpio.per;
+    m.applySlow(1, BLESSINGS.scorpio.per);
+}
+// 釘住的樣子：腳下一個打穿的坑和裂痕，一支弩箭斜插進坑裡（箭羽朝上、軍團藍）
+function drawScorpioPins(ctx) {
+    if (!bl('scorpio')) return;
+    const S = SHAPE_SPRITES.crossbowBolt;
+    for (const m of gameState.monsters) {
+        if (!m.isAlive || !(m.pinUntil > worldTime) || !inView(m.pos)) continue;
+        const left = m.pinUntil - worldTime;
+        const gx = m.pos.x + m.radius * 0.25, gy = m.pos.y + m.radius * 0.7;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, left / PIN_FADE);
+        ctx.fillStyle = PIN_HOLE;
+        ctx.beginPath(); ctx.ellipse(gx, gy, 6, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = PIN_HOLE; ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        for (const [ax, ay] of [[-1, 0.2], [1, -0.1], [0.4, 0.5], [-0.5, -0.45]]) { ctx.moveTo(gx + ax * 5, gy + ay * 2); ctx.lineTo(gx + ax * 10, gy + ay * 4); }
+        ctx.stroke();
+        ctx.translate(gx, gy);
+        ctx.rotate(Math.PI / 2 + (m.pinTilt || 0) - 0.35);
+        ctx.scale(PIN_BOLT_SCALE, PIN_BOLT_SCALE);
+        ctx.translate(-8, 0);
+        S.draw(ctx);
+        ctx.restore();
+    }
+}
+
+// ---------- 傳說「刀槍不入」：狂怒中倒不下 ----------
+function unbreakableSave() {
+    const w = warState(), p = gameState.player;
+    if (!bl('unbreakable') || w.berserkT <= 0) return false;
+    p.currentHealth = 1;
+    if (!(w.unbreakableTextAt > worldTime)) {
+        w.unbreakableTextAt = worldTime + UNBREAKABLE_TEXT_EVERY;
+        spawnFloatText(p.pos.x, p.pos.y - 40, '刀槍不入', BERSERK_COLOR, 15, 0.9, 'unbreakable');
+        spawnParticles(p.pos.x, p.pos.y, '#ECEFF1', 10, 110, 0.35, 2);
+    }
+    return true;
+}
+// 腳下一圈轉動的金色符文環（狂怒中、有這張傳說時）：一眼看得出「現在打不死」
+const RUNE_RING_R = 30, RUNE_RING_FLAT = 0.42, RUNE_SPIN = 1.6, RUNE_COUNT = 8;
+// 幾個盧恩字母的筆畫（單位座標，高 1）
+const RUNE_GLYPHS = [
+    [[0, -0.5, 0, 0.5], [0, -0.3, 0.3, -0.05], [0.3, -0.05, 0, 0.15]],
+    [[0, -0.5, 0, 0.5], [0, -0.1, -0.3, -0.45], [0, -0.1, 0.3, -0.45]],
+    [[0, -0.5, 0, 0.5], [0, -0.5, -0.3, -0.2], [0, -0.5, 0.3, -0.2]],
+    [[-0.2, -0.5, -0.2, 0.5], [0.2, -0.5, 0.2, 0.5], [-0.2, -0.2, 0.2, 0.2]],
+];
+function drawUnbreakableRunes(ctx, p) {
+    if (!bl('unbreakable') || warState().berserkT <= 0) return;
+    const cx = p.pos.x, cy = p.pos.y + p.imageHeight * 0.38, spin = worldTime * RUNE_SPIN;
+    ctx.save();
+    ctx.globalAlpha = 0.75 + 0.25 * Math.sin(worldTime * 8);
+    ctx.lineCap = 'round';
+    for (const [col, lw] of [[SHAPE_OUTLINE, 5], [BERSERK_COLOR, 2.2]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.ellipse(cx, cy, RUNE_RING_R, RUNE_RING_R * RUNE_RING_FLAT, 0, 0, Math.PI * 2); ctx.stroke();
+        for (let i = 0; i < RUNE_COUNT; i++) {
+            const a = spin + i * Math.PI * 2 / RUNE_COUNT;
+            const rx = cx + Math.cos(a) * RUNE_RING_R, ry = cy + Math.sin(a) * RUNE_RING_R * RUNE_RING_FLAT;
+            const sz = 9 * (0.75 + 0.25 * Math.sin(a));
+            ctx.beginPath();
+            for (const [x1, y1, x2, y2] of RUNE_GLYPHS[i % RUNE_GLYPHS.length]) { ctx.moveTo(rx + x1 * sz, ry - 6 + y1 * sz); ctx.lineTo(rx + x2 * sz, ry - 6 + y2 * sz); }
+            ctx.stroke();
+        }
+    }
+    ctx.restore();
 }
 
 class Shieldman extends Soldier { constructor(x, y, level, p) { super(x, y, CONFIG.shieldman, level, p); } }
