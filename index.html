@@ -2632,13 +2632,14 @@
         }
 
         .meta-name {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
             font-family: var(--font-display);
             font-weight: 900;
             font-size: 15px;
+        }
+
+        .meta-pips {
+            display: flex;
+            margin-top: 3px;
         }
 
         .meta-desc {
@@ -2696,12 +2697,10 @@
             position: relative;
         }
 
-        /* 通用＋各職業的分頁 */
-        /* 「通用」沒有頭像，撐到跟職業分頁一樣高 */
-        .meta-tab-all {
-            min-height: 40px;
-            padding: 3px 16px;
-            justify-content: center;
+        /* 通用＋各職業的分頁：「通用」用圖示代替頭像，大小跟職業頭像一樣 */
+        .meta-tab-all .tab-icon {
+            width: 30px;
+            height: 30px;
         }
 
         .meta-class-tabs {

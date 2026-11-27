@@ -7999,7 +7999,8 @@ function metaRowHtml(scope, id, m) {
         : lv === 0 ? `每級 ${m.total(m, 1)}`
             : maxed ? `<b>${m.total(m, lv)}</b>`
                 : `<b>${m.total(m, lv)}</b><span class="meta-next">→ ${m.total(m, lv + 1)}</span>`;
-    return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${amount}</div></div>${btn}</div>`;
+    // 等級格子固定在名字下面自己一行：跟名字擠同一行的話，名字長、格子多的那幾列會被擠到下一行，每列長得不一樣
+    return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}</div><div class="pips meta-pips">${pips}</div><div class="meta-desc">${amount}</div></div>${btn}</div>`;
 }
 // 這一組現在買得起幾個（分頁上的紅色數字：一眼看到哪裡有東西可買）
 function affordableCount(scope) {
@@ -8013,7 +8014,7 @@ function renderMeta() {
     uiElements.metaRefundBtn.disabled = metaRefundTotal() <= 0;
     // 一排分頁：通用＋每個職業（頭像＋名字，沒解鎖的上鎖、點不了），只列選中那一組
     const badge = scope => { const n = affordableCount(scope); return n ? `<b class="meta-tab-count">${n}</b>` : ''; };
-    const tabs = `<button class="achv-tab achv-subtab meta-tab-all${metaClassTab === META_GLOBAL ? ' on' : ''}" data-meta-cls="${META_GLOBAL}"><div>通用</div>${badge(META_GLOBAL)}</button>` +
+    const tabs = `<button class="achv-tab achv-subtab meta-tab-all${metaClassTab === META_GLOBAL ? ' on' : ''}" data-meta-cls="${META_GLOBAL}">${iconHtml('metaShared', 'icon tab-icon')}<div>通用</div>${badge(META_GLOBAL)}</button>` +
         Object.keys(CLASSES).map(cls => {
             const ok = classUnlocked(cls), C = CLASSES[cls];
             return `<button class="achv-tab achv-subtab${cls === metaClassTab ? ' on' : ''}" data-meta-cls="${cls}" ${ok ? '' : 'disabled'}><img src="${C.portrait}" alt="">${ok ? '' : iconHtml('lock', 'icon tab-lock')}<div>${C.name}</div>${ok ? badge(cls) : ''}</button>`;

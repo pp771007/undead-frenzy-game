@@ -766,6 +766,17 @@ const ICON_BODIES = {
     altarSlow: `<path d="M4 52 C4 44 12 42 20 42 L50 42 C56 42 60 46 60 52 Z" fill="#d7ccc8"/>
         <path d="M50 42 C50 36 52 30 54 26 M56 42 C57 36 60 32 62 30" stroke-width="3"/><circle cx="54" cy="25" r="3" fill="#d7ccc8" stroke-width="2.5"/><circle cx="61" cy="29" r="2.5" fill="#d7ccc8" stroke-width="2"/>
         <circle cx="30" cy="30" r="19" fill="#8bc34a"/><path d="M30 30 C30 26 36 26 36 31 C36 37 26 38 25 31 C24 23 36 20 41 27 C46 35 38 46 28 45" stroke="#33691e" stroke-width="3"/>${shine(20, 18, 4, 2.5)}`,
+    // 永久強化的「通用」分頁（七個職業都吃得到的強化）：三個不同顏色的兜帽身影並肩站，頭上一顆金星
+    metaShared: `<path d="${starPath(32, 11, 9, 4, 5)}" fill="#ffd54f" stroke-width="3"/><circle cx="14" cy="12" r="2" fill="#fff59d" stroke-width="1.5"/><circle cx="50" cy="12" r="2" fill="#fff59d" stroke-width="1.5"/>
+        ${[[17, 36, 0.78, '#9575cd'], [47, 36, 0.78, '#66bb6a'], [32, 43, 1, '#42a5f5']].map(([x, y, s, c]) => {
+            const p = (dx, dy) => `${(x + dx * s).toFixed(1)} ${(y + dy * s).toFixed(1)}`;
+            return `<path d="M${p(-13, 20)} C${p(-13, 0)} ${p(-9, -13)} ${p(0, -15)} C${p(9, -13)} ${p(13, 0)} ${p(13, 20)} Z" fill="${c}"/>
+                <path d="M${p(-13, 20)} L${p(-6, 6)} M${p(13, 20)} L${p(6, 6)}" stroke="rgba(27,20,36,0.35)" stroke-width="2"/>
+                <ellipse cx="${x}" cy="${(y - 2 * s).toFixed(1)}" rx="${(7.5 * s).toFixed(1)}" ry="${(8.5 * s).toFixed(1)}" fill="rgba(27,20,36,0.3)" stroke="none"/>
+                <ellipse cx="${x}" cy="${(y - 2 * s).toFixed(1)}" rx="${(6 * s).toFixed(1)}" ry="${(7 * s).toFixed(1)}" fill="#2a1f33" stroke-width="2"/>
+                <circle cx="${(x - 2.4 * s).toFixed(1)}" cy="${(y - 2 * s).toFixed(1)}" r="${(1.4 * s).toFixed(1)}" fill="#f1ead6" stroke="none"/><circle cx="${(x + 2.4 * s).toFixed(1)}" cy="${(y - 2 * s).toFixed(1)}" r="${(1.4 * s).toFixed(1)}" fill="#f1ead6" stroke="none"/>
+                ${shine(x - 6 * s, y - 9 * s, 2.5 * s, 1.5 * s)}`;
+        }).join('')}`,
     // 聚寶祭壇（地上的經驗全部飛過來）：中間一個琥珀色漩渦，三顆經驗光球拖著速度線繞進去
     altarMagnet: `<circle cx="32" cy="32" r="18" fill="#ffb74d"/>
         ${[0, 120, 240].map(r => `<path d="M32 32 C36 25 45 24 49 31" transform="rotate(${r} 32 32)" stroke="#b26a00" stroke-width="3"/>`).join('')}
