@@ -6300,13 +6300,17 @@ const RELIC_TYPES = {
     coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'coffinRelic', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, weight: 1 },
 };
 // 祭壇每座只有一種效果，冒出來時就決定：頭上的圖示就是那個效果、圈的顏色也跟著換，走過去之前就看得懂會拿到什麼。
-// 效果刻意少、各自一句話講得完（大軍變強／自己變硬／怪變慢），戰局中瞄一眼就認得
-// frenzy 是原本的戰鼓（各職業的 onRelic 換成自己的版本）；其他兩種所有職業都一樣
+// 效果刻意少、各自一句話講得完（大軍變強／自己變硬／怪變慢／撿經驗），戰局中瞄一眼就認得
+// frenzy 是原本的戰鼓（各職業的 onRelic 換成自己的版本）；其他幾種所有職業都一樣
 const ALTAR_EFFECTS = {
     frenzy: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'altar', color: '#E1BEE7', glow: '186, 104, 200' },
     ward: { name: '護佑祭壇', hint: '站上去，10 秒內受傷減半', icon: 'altarWard', color: '#80DEEA', glow: '0, 172, 193', time: 10, mult: 0.5 },
     slow: { name: '遲滯祭壇', hint: '站上去，全場怪物變慢', icon: 'altarSlow', color: '#C5E1A5', glow: '124, 179, 66', time: 7, amount: 0.5 },
+    // 經驗不會自動收回，邊跑邊打留在身後的經驗靠這座撿回來
+    magnet: { name: '聚寶祭壇', hint: '站上去，地上的經驗全部飛過來', icon: 'altarMagnet', color: '#FFCC80', glow: '255, 167, 38' },
 };
+// 地上的經驗球少於這麼多顆時不出聚寶祭壇：開局沒什麼好撿，站上去等於白走一趟
+const ALTAR_MAGNET_MIN_ORBS = 40;
 // 遲滯期間每隔這麼久把全場的怪（含新冒出來的）再緩一次
 const ALTAR_SLOW_REAPPLY = 0.5;
 // 寶棺開出什麼：開之前不知道（開箱的期待），開了用大字＋圖示講清楚
@@ -6353,7 +6357,7 @@ function placeRelic(kind, angle, pair) {
     const d = randomInRange(dMin, dMax);
     const r = { kind, x: p.pos.x + Math.cos(angle) * d, y: p.pos.y + Math.sin(angle) * d, progress: 0, pool: T.pool || 0, healFrac: 0, healShown: 0, healTextTimer: 0, done: false, fade: 1, life: RELIC_LIFE, pair };
     if (kind === 'altar') {
-        const effects = Object.keys(ALTAR_EFFECTS);
+        const effects = Object.keys(ALTAR_EFFECTS).filter(k => k !== 'magnet' || gameState.orbs.length >= ALTAR_MAGNET_MIN_ORBS);
         r.effect = effects[Math.floor(Math.random() * effects.length)];
     }
     gameState.relics.push(r);
@@ -6427,7 +6431,14 @@ function finishRelic(r) {
         Sfx.play('nova');
         return;
     }
-    // 職業的 onRelic 只換掉戰鼓（frenzy）和寶棺；護佑、遲滯所有職業都一樣
+    if (effect === 'magnet') {
+        for (const o of gameState.orbs) o.attracted = true;
+        spawnFloatText(p.pos.x, p.pos.y - 34, '經驗全部飛過來！', T.color, 18, 1.2, T.icon);
+        spawnParticles(p.pos.x, p.pos.y, T.color, 24, 140, 0.6, 3);
+        Sfx.play('nova');
+        return;
+    }
+    // 職業的 onRelic 只換掉戰鼓（frenzy）和寶棺；其他祭壇所有職業都一樣
     if (classDef().onRelic && classDef().onRelic(r)) return;
     if (r.kind === 'altar') {
         gameState.frenzyTimer = Math.max(gameState.frenzyTimer, T.frenzy);

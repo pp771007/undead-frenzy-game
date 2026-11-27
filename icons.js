@@ -766,6 +766,17 @@ const ICON_BODIES = {
     altarSlow: `<path d="M4 52 C4 44 12 42 20 42 L50 42 C56 42 60 46 60 52 Z" fill="#d7ccc8"/>
         <path d="M50 42 C50 36 52 30 54 26 M56 42 C57 36 60 32 62 30" stroke-width="3"/><circle cx="54" cy="25" r="3" fill="#d7ccc8" stroke-width="2.5"/><circle cx="61" cy="29" r="2.5" fill="#d7ccc8" stroke-width="2"/>
         <circle cx="30" cy="30" r="19" fill="#8bc34a"/><path d="M30 30 C30 26 36 26 36 31 C36 37 26 38 25 31 C24 23 36 20 41 27 C46 35 38 46 28 45" stroke="#33691e" stroke-width="3"/>${shine(20, 18, 4, 2.5)}`,
+    // 聚寶祭壇（地上的經驗全部飛過來）：中間一個琥珀色漩渦，三顆經驗光球拖著速度線繞進去
+    altarMagnet: `<circle cx="32" cy="32" r="18" fill="#ffb74d"/>
+        ${[0, 120, 240].map(r => `<path d="M32 32 C36 25 45 24 49 31" transform="rotate(${r} 32 32)" stroke="#b26a00" stroke-width="3"/>`).join('')}
+        <circle cx="32" cy="32" r="4" fill="#fff8e1" stroke-width="2"/>${shine(24, 22, 4, 2.5)}
+        ${[-70, 50, 170].map(deg => {
+            const a = deg * Math.PI / 180, R = 23, x = 32 + Math.cos(a) * R, y = 32 + Math.sin(a) * R;
+            const tx = Math.sin(a), ty = -Math.cos(a), ox = Math.cos(a), oy = Math.sin(a);
+            const streak = (off, l0, l1) => `M${(x + tx * l0 + ox * off).toFixed(1)} ${(y + ty * l0 + oy * off).toFixed(1)} L${(x + tx * l1 + ox * off).toFixed(1)} ${(y + ty * l1 + oy * off).toFixed(1)}`;
+            return `<path d="${streak(-3, 8, 15)} ${streak(3, 8, 12)}" stroke-width="5"/><path d="${streak(-3, 8, 15)} ${streak(3, 8, 12)}" stroke="#b2ebf2" stroke-width="2"/>
+                <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7" fill="#62dbe2"/>${shine(x - 2, y - 2, 2.2, 1.4)}`;
+        }).join('')}`,
     // 遺跡「靈泉」：石盆裡的綠水，上面一滴
     spring: `<path d="M8 36 L56 36 L50 56 L14 56 Z" fill="#90a4ae"/><ellipse cx="32" cy="36" rx="24" ry="7" fill="#66bb6a"/><path d="M18 47 L46 47" stroke="#607d8b" stroke-width="2.5"/>
         <path d="M32 4 C26 12 22 17 22 22 C22 28 27 31 32 31 C37 31 42 28 42 22 C42 17 38 12 32 4 Z" fill="#a5d6a7"/>${shine(28, 20, 2.5, 4, 20)}`,
