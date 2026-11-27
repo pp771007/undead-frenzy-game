@@ -345,18 +345,24 @@ const TESTUDO_SHIELD = '#1E88E5', TESTUDO_RIM = '#FFD54F';
 function drawTestudoRoof(ctx) {
     const w = warState();
     if (!bl('marchingTestudo') || res('shieldwall') < 1 || w.still) return;
+    // 羅馬長方盾（scutum）從斜上方看：上下兩邊往外彎、中間一道盾脊和一顆金盾心，舉在頭頂、往陣型面向傾一點
+    const tilt = Math.atan2(w.fy, w.fx) * 0.15;
     ctx.save();
-    ctx.lineWidth = 1.6; ctx.strokeStyle = SHAPE_OUTLINE;
     for (const s of gameState.summons) {
         if (!s.isAlive || !(s instanceof Shieldman) || s.resting || !inView(s.pos)) continue;
-        const x = s.pos.x, y = s.pos.y - s.imageHeight * 0.5 - 4;
-        ctx.fillStyle = TESTUDO_SHIELD;
-        ctx.beginPath(); ctx.roundRect(x - 9, y - 4, 18, 8, 2.5); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = TESTUDO_RIM; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.roundRect(x - 7.5, y - 2.5, 15, 5, 1.5); ctx.stroke();
-        ctx.fillStyle = TESTUDO_RIM;
-        ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.6;
+        const x = s.pos.x, y = s.pos.y - s.imageHeight * 0.5 - 8;
+        ctx.save();
+        ctx.translate(x, y); ctx.rotate(tilt);
+        ctx.beginPath();
+        ctx.moveTo(-12, -6); ctx.quadraticCurveTo(0, -10, 12, -6); ctx.lineTo(12, 6); ctx.quadraticCurveTo(0, 10, -12, 6); ctx.closePath();
+        ctx.fillStyle = TESTUDO_SHIELD; ctx.fill();
+        ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+        ctx.strokeStyle = TESTUDO_RIM; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(-9.5, -4.5); ctx.quadraticCurveTo(0, -7.5, 9.5, -4.5); ctx.lineTo(9.5, 4.5); ctx.quadraticCurveTo(0, 7.5, -9.5, 4.5); ctx.closePath(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, -7); ctx.lineTo(0, 7); ctx.stroke();
+        ctx.fillStyle = TESTUDO_RIM; ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.restore();
     }
     ctx.restore();
 }
