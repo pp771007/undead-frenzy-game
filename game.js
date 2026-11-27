@@ -7999,6 +7999,16 @@ function schoolChipHtml(id) {
     return `<span class="school-chip${willResonate ? ' resonates' : ''}" style="--school:${S.color}">${schoolBadgeHtml(school)}<span>${willResonate ? '共鳴' : S.name}</span></span>${resonancePipsHtml(school, true)}`;
 }
 
+// 雙流派傳說只在玩家第一次看到時說明「為什麼出現」；同一次抽卡重畫（重抽、放逐）時照樣顯示
+function duoIntroNow() {
+    const d = gameState.pendingDraft;
+    if (d.duoIntro) return true;
+    if (meta.duoSeen) return false;
+    meta.duoSeen = true;
+    saveMeta();
+    return (d.duoIntro = true);
+}
+
 function blessingPips(id, highlightNext) {
     const cur = bl(id), max = BLESSINGS[id].max;
     let html = '';
@@ -8018,7 +8028,9 @@ function renderDraftCards() {
         const card = document.createElement('button');
         card.className = `draft-card panel${b.legendary ? ' legendary' : ''}${b.pact ? ' pact' : ''}`;
         const banish = gameState.banishLeft > 0 ? `<button class="card-banish" data-banish="${id}">${iconHtml('banish', 'icon btn-icon')}放逐</button>` : '';
-        card.innerHTML = `${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>${banish}`;
+        const isNew = b.legendary && !stats().legends[id] ? '<span class="card-new">新</span>' : '';
+        const why = b.duo && duoIntroNow() ? `<span class="duo-why">${b.duo.map(s => SCHOOLS[s].name).join('、')}都到 ${RESONANCE_STEPS[0]} 層才出現</span>` : '';
+        card.innerHTML = `${isNew}${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${why}${b.desc(b)}</span>${banish}`;
         // 用 pointerup 不用 click：另一隻手指還按著搖桿時瀏覽器不會合成 click。
         // 不用 pointerdown，是因為祝福選了收不回來，按下去還能滑開反悔
         // 觸控的 pointerup 一定回到按下的那張卡（隱式捕捉），所以要自己看放開時手指還在不在卡上
@@ -8701,7 +8713,8 @@ function announceEvolution(type, tier) {
     const E = CONFIG.evolution;
     const name = E.names[type][tier - 1];
     gameState.banner = {
-        text: name,
+        // 寫出是哪一種兵進化：「伏虎拳」「芬里爾之子」這種名字單獨出現看不出是誰
+        text: `${UNIT_TYPES[type].name} → ${name}`,
         stars: tier,
         sub: E.perks[type][tier - 1],
         color: E.tints[tier - 1],
@@ -9073,7 +9086,9 @@ function updateUI() {
         const capped = summonBlocked(u.type);
         const capLabel = typeof U.capLabel === 'function' ? U.capLabel() : U.capLabel;
         setHtmlIfChanged(el.summon, capped ? `<span>${capLabel || '滿編'}</span>` : priceButtonHtml(U.summonLabel || '召喚', summonCost));
-        setHtmlIfChanged(el.upgrade, priceButtonHtml(U.upgradeLabel || '升級', upgradeCost));
+        // 下一次升級剛好進化：按鈕直接寫「進化」，按下去會發生什麼一看就知道
+        const evolvesNext = CONFIG.evolution.levels.includes(level + 1);
+        setHtmlIfChanged(el.upgrade, priceButtonHtml(evolvesNext ? '進化' : U.upgradeLabel || '升級', upgradeCost));
         const allowed = unitAllowed(u.type);
         if (el.summon.disabled !== !(canAct && allowed && !capped)) el.summon.disabled = !(canAct && allowed && !capped);
         if (el.upgrade.disabled !== !(canAct && allowed)) el.upgrade.disabled = !(canAct && allowed);

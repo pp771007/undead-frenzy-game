@@ -1727,6 +1727,30 @@
             cursor: pointer;
             font-family: var(--font-ui);
             animation: card-in 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+            position: relative;
+        }
+
+        /* 還沒拿過的傳說：圖示右上方一個「新」（放卡片角落會壓到較寬的流派標籤） */
+        .card-new {
+            position: absolute;
+            top: 46px;
+            right: 8px;
+            padding: 1px 7px;
+            border-radius: 9px;
+            border: 2px solid var(--ink);
+            background: var(--gold);
+            color: #3a2410;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        /* 雙流派傳說第一次出現：一行金字講它為什麼出現 */
+        .duo-why {
+            display: block;
+            margin-bottom: 3px;
+            color: var(--gold);
+            font-size: 12px;
+            font-weight: 700;
         }
 
         /* 傳說祝福：金框＋金光＋暖色底，一眼看出比較稀有 */
