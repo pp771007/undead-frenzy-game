@@ -40,7 +40,6 @@ const THRALL_HP_MULT = 2.5, THRALL_ATK_MULT = 2, THRALL_MIN_HP = 20, THRALL_MIN_
 const THRALL_RANGED_RANGE = 150;
 // 眷屬保留原本的能力：照怪的種類分幾種打法（沒列到的：射程夠遠就是遠程，其他近戰）
 const THRALL_ARCHE = { WitchDoctor: 'mender', GravePriest: 'mender', Bloater: 'bomber', CorpseWorm: 'burrower', BloodEye: 'ranged', Spitter: 'ranged' };
-const THRALL_ARCHE_LABEL = { melee: '近戰', ranged: '射血彈', mender: '幫你補血', bomber: '死了會爆', burrower: '範圍重擊' };
 const MENDER_HEAL = 0.08, MENDER_RADIUS = 130, MENDER_HERO_BELOW = 0.7;
 const BOMBER_RADIUS = 55, BOMBER_MULT = 3;
 const BURROWER_RADIUS = 40;

@@ -932,7 +932,6 @@ function saveMeta() {
 const meta = defaultMeta();
 function metaLv(id) { return meta.upgrades[id] || 0; }
 function metaVal(id) { return META_UPGRADES[id].per * metaLv(id); }
-function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
 
 // ---------- 職業專精：每個職業自己的永久強化，等級各職業分開記，結晶跟通用強化共用 ----------
 // 同類遊戲（靈石倖存者）也是「共用天賦＋每個角色一小塊專屬」：強化的是那個職業自己的特色，
@@ -8374,14 +8373,6 @@ function getPointerPosition(event) {
 }
 
 
-function denyFeedback(el) {
-    Sfx.unlock();
-    Sfx.play('deny');
-    el.classList.remove('deny-shake');
-    void el.offsetWidth;
-    el.classList.add('deny-shake');
-}
-
 let lastShownLevel = 0;
 function updateUI() {
     const p = gameState.player;
@@ -8415,11 +8406,6 @@ function updateUI() {
 
 // updateUI 每格都跑。寫進 DOM 就算內容一模一樣，瀏覽器也要重新排版、重畫那一塊 ——
 // 量過：每格無條件重寫介面，整個瀏覽器多吃約三成顆 CPU 核心，比畫整個戰場還多。所以一律變了才寫
-function setHtmlIfChanged(el, html) {
-    if (el.dataset.html === html) return;
-    el.innerHTML = html;
-    el.dataset.html = html;
-}
 function setTextIfChanged(el, text) {
     text = tidyNumbers(text);
     if (el.textContent !== text) el.textContent = text;
@@ -9822,11 +9808,10 @@ function init() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('popstate', handleBackButton);
 
-    // 按鍵音統一在這裡：任何按鈕一按下就響（按下不是放開，手感才即時；召喚、新星這些也有）。
-    // 按不了的鈕：停用的放「不行」；買不起的召喚鈕由 denyFeedback 放，這裡不再疊一聲
+    // 按鍵音統一在這裡：任何按鈕一按下就響（按下不是放開，手感才即時）；停用的鈕放「不行」
     document.addEventListener('pointerdown', (e) => {
         const btn = e.target.closest('button');
-        if (!btn || btn.classList.contains('cant-afford')) return;
+        if (!btn) return;
         Sfx.unlock();
         Sfx.play(btn.disabled ? 'deny' : 'click');
     }, true);

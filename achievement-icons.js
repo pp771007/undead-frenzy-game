@@ -53,7 +53,6 @@ const P = {
 };
 // 底盤：同一系列共用一種底盤形狀，顏色隨等級變
 function disc(fill, r = 28) { return `<circle cx="32" cy="32" r="${r}" fill="${fill}"/>`; }
-function plaque(fill) { return `<path d="M32 4 L58 16 L58 40 C58 50 46 58 32 61 C18 58 6 50 6 40 L6 16 Z" fill="${fill}"/>`; }
 function rays(cx, cy, r1, r2, n, color, w = 3) {
     let d = '';
     for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; d += `M${(cx + Math.cos(a) * r1).toFixed(1)} ${(cy + Math.sin(a) * r1).toFixed(1)} L${(cx + Math.cos(a) * r2).toFixed(1)} ${(cy + Math.sin(a) * r2).toFixed(1)} `; }
