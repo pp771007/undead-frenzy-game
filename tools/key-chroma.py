@@ -36,6 +36,9 @@ GLOW_BRIGHT = 150
 # 裁切時判定「有東西」的透明度門檻，以及四周留白
 TRIM_ALPHA = 24
 PAD = 4
+# 生圖模型在圖片最外圈會留幾個雜色像素（實測四個角各一兩點，扣完還有三成不透明），
+# 會把裁切框撐成整張圖：找裁切範圍時不看最外圈這幾像素
+EDGE_IGNORE = 2
 # 亮／暗通道的分界
 CHANNEL_SPLIT = 128
 # 只扣「跟背景連在一起」的地方：從圖的四邊往內漫延，顏色跟背景差在 BG_FLOOD_DIST 以內的才算背景，
@@ -135,16 +138,18 @@ def key(src, dst, flip=False):
             continue
         lo_v = max(px[c] for c in lo)
         lo_bg = max(bg[c] for c in lo)
-        # 要比背景本身的暗通道亮才算光：AI 生的綠背景常帶一點紅（實測 40,230,10），暗通道不是 0，
-        # 不加這條的話暗通道 30～40 的像素算出負的透明度
-        if lo_v >= GLOW_LOW and lo_v > lo_bg and min(px[c] for c in hi) >= GLOW_BRIGHT:
+        # 門檻量的是「比背景本身的暗通道亮多少」：AI 生的綠背景常帶一點紅（實測 43,229,0），暗通道不是 0，
+        # 拿絕對值比的話整片背景都被當成很淡的光（留一層透明度 1～3 的霧），比背景暗的還會算出負的透明度
+        if lo_v - lo_bg >= GLOW_LOW and min(px[c] for c in hi) >= GLOW_BRIGHT:
             a = min(1.0, (lo_v - lo_bg) / (255 - lo_bg))
             col = tuple((px[c] - (1 - a) * bg[c]) / a for c in range(3)) if a > 0 else (0, 0, 0)
         else:
             a, col = unmix(px, bg, hi, lo)
         out[j:j + 4] = bytes((*(int(min(255, max(0, v))) for v in col), int(a * 255)))
     img = Image.frombytes('RGBA', im.size, bytes(out))
-    bbox = img.getchannel('A').point(lambda v: 255 if v > TRIM_ALPHA else 0).getbbox()
+    inner = img.getchannel('A').crop((EDGE_IGNORE, EDGE_IGNORE, img.width - EDGE_IGNORE, img.height - EDGE_IGNORE))
+    bx = inner.point(lambda v: 255 if v > TRIM_ALPHA else 0).getbbox()
+    bbox = [v + EDGE_IGNORE for v in bx]
     img = img.crop((max(0, bbox[0] - PAD), max(0, bbox[1] - PAD), min(img.width, bbox[2] + PAD), min(img.height, bbox[3] + PAD)))
     if flip:
         img = img.transpose(Image.FLIP_LEFT_RIGHT)
