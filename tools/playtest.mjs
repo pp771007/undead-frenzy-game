@@ -191,7 +191,7 @@ for (;;) {
                     // 吸血鬼不去聖水（靈泉會燙）
                     const relic = Math.hypot(hx, hy) < 0.1 && gameState.relics.find(x => !x.done && noticed(x) && !(runClass() === 'vampire' && x.kind === 'spring'));
                     if (relic) { hx = relic.x - p.pos.x; hy = relic.y - p.pos.y; }
-                    else if (Math.hypot(hx, hy) < 0.1) { let best = null, bd = 1e9; for (const o of gameState.orbs) { const d = distanceSq(o.pos, p.pos); if (d < bd) { bd = d; best = o; } } if (best && bd < 250 * 250) { hx = (best.pos.x - p.pos.x) * 0.01; hy = (best.pos.y - p.pos.y) * 0.01; } }
+                    else if (Math.hypot(hx, hy) < 0.1) { let best = null, bd = 1e9; for (const o of gameState.orbs) { const d = distanceSq(o.pos, p.pos); if (d < bd) { bd = d; best = o; } } if (best && (bd < 250 * 250 || gameState.betweenWaves)) { hx = (best.pos.x - p.pos.x) * 0.01; hy = (best.pos.y - p.pos.y) * 0.01; } }
                     const mag = Math.hypot(hx, hy);
                     inputState.movementVector = mag > 0 ? { x: hx / mag * Math.min(1, mag), y: hy / mag * Math.min(1, mag) } : { x: 0, y: 0 };
                 }

@@ -3658,7 +3658,7 @@ class SoulOrb {
         const v = randomInRange(c.popSpeedMin, c.popSpeedMax);
         this.vel = { x: Math.cos(a) * v, y: Math.sin(a) * v };
         this.value = value;
-        this.size = ORB_SIZE_BASE + Math.min(ORB_SIZE_BONUS_MAX, value * ORB_SIZE_PER_VALUE);
+        this.size = orbSize(value);
         this.age = 0;
         this.attracted = false;
         this.pullTime = 0;
@@ -3667,7 +3667,6 @@ class SoulOrb {
         // 噴出來時往上彈一下再落地，看起來像「掉出來」
         this.z = 0;
         this.vz = randomInRange(c.popLiftMin, c.popLiftMax);
-        this.banked = false;
         this.isAlive = true;
     }
     update(deltaTime, player) {
@@ -3683,7 +3682,7 @@ class SoulOrb {
         const dist = Math.sqrt(dx * dx + dy * dy) || 1;
         this.dist = dist;
         const magnet = getMagnetRadius();
-        if (this.banked || dist < magnet) this.attracted = true;
+        if (dist < magnet) this.attracted = true;
         if (this.attracted && this.age > c.attractDelay) {
             // 一開始帶一點側向速度、越飛越直：繞一小段弧線被吸進去，而不是一條直線
             this.pullTime += deltaTime;
@@ -3703,13 +3702,11 @@ class SoulOrb {
         this.pos.y += this.vel.y * deltaTime;
         if (this.age > c.attractDelay && dist < player.radius + c.pickupPadding) {
             this.isAlive = false;
-            if (!this.banked) {
-                const cls = classDef();
-                if (cls.onOrbCollect) cls.onOrbCollect(this.value);
-                gainXp(this.value);
-                if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${formatNumberK(this.value)}`, '#80DEEA');
-                updateUI();
-            }
+            const cls = classDef();
+            if (cls.onOrbCollect) cls.onOrbCollect(this.value);
+            gainXp(this.value);
+            if (this.value >= c.floatTextMinValue) spawnFloatText(player.pos.x, player.pos.y - 20, `+${formatNumberK(this.value)}`, '#80DEEA');
+            updateUI();
             player.absorbGlow = Math.min(1.5, player.absorbGlow + ABSORB_GLOW_PER_ORB);
             if (bl('soulSiphon') && player.currentHealth < player.maxHealth) {
                 player.currentHealth = Math.min(player.maxHealth, player.currentHealth + BLESSINGS.soulSiphon.per);
@@ -3753,6 +3750,7 @@ class SoulOrb {
 const ORB_SIZE_BASE = 14;
 const ORB_SIZE_PER_VALUE = 1.6;
 const ORB_SIZE_BONUS_MAX = 8;
+function orbSize(value) { return ORB_SIZE_BASE + Math.min(ORB_SIZE_BONUS_MAX, value * ORB_SIZE_PER_VALUE); }
 const ORB_SPRITE_PX = 48;
 const ORB_TRAIL_GHOSTS = 3;
 const ORB_TRAIL_STEP = 0.014;
@@ -3779,6 +3777,22 @@ function buildOrbSprites() {
     gg.fillRect(0, 0, ORB_SPRITE_PX, ORB_SPRITE_PX);
 }
 
+// 地上的經驗球最多這麼多顆：波與波之間不會自動收回，邊跑邊打的職業（精靈）不回頭撿的話一局會堆到幾千顆、畫面越來越卡。
+// 滿了之後新掉的經驗併進離掉落點最近、還沒被吸的那顆（球跟著變大），經驗一點都不會少。
+// 併進最近的、不併進最舊的：最舊的多半在主角早就離開的地方，經驗會越堆越遠、撿不回來
+const ORB_FIELD_CAP = 300;
+function mergeIntoNearestOrb(x, y, value) {
+    let best = null, bestSq = Infinity;
+    for (const o of gameState.orbs) {
+        if (!o.isAlive || o.attracted) continue;
+        const d = distanceSq(o.pos, { x, y });
+        if (d < bestSq) { bestSq = d; best = o; }
+    }
+    if (!best) return false;
+    best.value += value;
+    best.size = orbSize(best.value);
+    return true;
+}
 function dropSouls(x, y, amount) {
     if (amount <= 0) return;
     gameState.waveSouls += amount;
@@ -3789,14 +3803,9 @@ function dropSouls(x, y, amount) {
     for (let i = 0; i < n; i++) {
         const v = base + (rest > 0 ? 1 : 0);
         if (rest > 0) rest--;
+        if (gameState.orbs.length >= ORB_FIELD_CAP && mergeIntoNearestOrb(x, y, v)) continue;
         gameState.orbs.push(new SoulOrb(x, y, v));
     }
-}
-
-function bankAllOrbs() {
-    gameState.orbs.forEach(o => {
-        if (!o.banked) { const cls = classDef(); if (cls.onOrbCollect) cls.onOrbCollect(o.value); gainXp(o.value); o.banked = true; }
-    });
 }
 
 function getWaveStatMultiplier(wave) {
@@ -6897,7 +6906,6 @@ function checkWaveEndCondition() {
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
         gameState.waveEvent = null;
-        bankAllOrbs();
         const p = gameState.player;
         // 波與波之間誰都不回血：法師被咬掉的一路帶到下一波（回血靠靈泉、選祝福時的「補滿血」、不死之軀、吸魂之軀），
         // 召喚物的殘血也帶著走（靠嗜魂、升級時多出來的血），打得越吃力的局越要拿資源去補
