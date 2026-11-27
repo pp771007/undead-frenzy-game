@@ -1334,7 +1334,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
     waveEvent: null, lastEventWave: 0,
-    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -5280,11 +5280,11 @@ const BOSS_ENTRANCE_DIST = 220;       // 落點離主角多遠
 const BOSS_LAND_RADIUS = 130;
 const BOSS_DROP_HEIGHT = 420;
 const BOSS_ENTRANCE_DARK = 0.85;      // 畫面四周最暗到多暗
-const BOSS_LAND_FLASH = 0.3;
+const BOSS_LAND_FADE = 0.8;           // 落地後暗角花多久退掉
 function bossDisplayName(Cls) { return BOSS_CONFIG_OF.get(Cls)().name; }
 function updateBossEntrance(deltaTime) {
     if (gameState.betweenWaves) return;
-    if (gameState.screenFlash > 0) gameState.screenFlash -= deltaTime;
+    if (gameState.bossLandFade > 0) gameState.bossLandFade -= deltaTime;
     const e = gameState.bossEntrance;
     if (!e) {
         const p = gameState.player;
@@ -5319,7 +5319,7 @@ function landBoss(e) {
     addWorldFx({ kind: 'ring', x: e.x, y: e.y, r0: 10, r1: BOSS_LAND_RADIUS, life: 0.5, color: '#FFFFFF', width: 6 });
     addWorldFx({ kind: 'spikes', x: e.x, y: e.y, r: BOSS_LAND_RADIUS * 0.7, life: 0.8, seed: Math.random() * 10 });
     spawnParticles(e.x, e.y, COLOSSUS_DUST, 40, 220, 0.8, 4);
-    gameState.screenFlash = BOSS_LAND_FLASH;
+    gameState.bossLandFade = BOSS_LAND_FADE;
     addShake(16);
     Sfx.play('slam');
 }
@@ -5349,30 +5349,31 @@ function drawBossEntrance() {
     const w = cfg.radius * look.scale, h = img.naturalWidth ? w * img.naturalHeight / img.naturalWidth : w;
     ctx.drawImage(img, e.x - w / 2, e.y - h / 2 - (1 - d) * (1 - d) * BOSS_DROP_HEIGHT, w, h);
 }
-// 螢幕座標：等首領的那幾秒畫面四周轉暗、紅光跟著倒數脈動；落地瞬間閃白
+// 螢幕座標：等首領的那幾秒畫面四周轉暗、紅光跟著倒數脈動；落地後暗角退掉
 function drawBossEntranceOverlay() {
     if (appScreen !== 'playing') return;
     const W = view.cssW, H = view.cssH;
     const e = gameState.bossEntrance;
     if (e) {
         const k = Math.min(1, e.t / (BOSS_ENTRANCE_TIME * 0.5));
-        const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.18, W / 2, H / 2, Math.max(W, H) * 0.6);
-        g.addColorStop(0, 'rgba(20, 0, 5, 0)');
-        g.addColorStop(0.5, 'rgba(30, 0, 8, 0.6)');
-        g.addColorStop(1, 'rgba(40, 0, 10, 1)');
-        ctx.save();
-        ctx.globalAlpha = BOSS_ENTRANCE_DARK * k * (0.8 + 0.2 * Math.sin(worldTime * 8));
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
+        drawEntranceVignette(W, H, BOSS_ENTRANCE_DARK * k * (0.8 + 0.2 * Math.sin(worldTime * 8)));
     }
-    if (gameState.screenFlash > 0) {
-        ctx.save();
-        ctx.globalAlpha = gameState.screenFlash / BOSS_LAND_FLASH * 0.6;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, W, H);
-        ctx.restore();
+    // 落地後暗角慢慢退掉。不閃白：畫面暗了好幾秒之後整片刷白，刺眼到看不清首領落在哪
+    if (gameState.bossLandFade > 0) {
+        const k = gameState.bossLandFade / BOSS_LAND_FADE;
+        drawEntranceVignette(W, H, BOSS_ENTRANCE_DARK * k * k);
     }
+}
+function drawEntranceVignette(W, H, alpha) {
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.18, W / 2, H / 2, Math.max(W, H) * 0.6);
+    g.addColorStop(0, 'rgba(20, 0, 5, 0)');
+    g.addColorStop(0.5, 'rgba(30, 0, 8, 0.6)');
+    g.addColorStop(1, 'rgba(40, 0, 10, 1)');
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
 }
 
 const BOSS_CONFIG_OF = new Map([[ColossusBoss, () => CONFIG.boss], [PlagueBoss, () => CONFIG.plagueBoss], [HunterBoss, () => CONFIG.hunterBoss], [DragonBoss, () => CONFIG.dragonBoss], [LichBoss, () => CONFIG.lichBoss]]);
@@ -8632,7 +8633,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
         waveEvent: null, lastEventWave: 0,
-        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
+        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
