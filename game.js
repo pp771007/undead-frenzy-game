@@ -30,7 +30,7 @@ function resizeCanvas() {
     Object.assign(view, { cssW, cssH, dpr, unitPx, zoom: unitPx * dpr, w: cssW / unitPx, h: cssH / unitPx });
     auraLayer = null;
     frozenFrameDrawn = false;
-    hudTop = uiElements.hudTop ? Math.round(uiElements.hudTop.getBoundingClientRect().bottom) - HUD_TOP_FADE_PX : hudTop;
+    measureHudTop();
     if (gameState && gameState.player) snapCamera();
 }
 function snapCamera() {
@@ -2864,10 +2864,14 @@ function overtimeBeat() {
     const bump = (c, w) => Math.max(0, 1 - Math.abs(ph - c) / w);
     return Math.max(bump(0.1, 0.1), bump(0.32, 0.1) * 0.6);
 }
+// 怨氣沸騰的倒數／倍率那一行現在有沒有畫出來（左上角的狀態圖示要排到它下面）
+function overtimeShowing() {
+    return appScreen === 'playing' && !gameState.betweenWaves && !!gameState.player && OVERTIME_START - (worldTime - gameState.overtimeFrom) <= OVERTIME_WARN;
+}
 function drawOvertimeOverlay() {
     if (appScreen !== 'playing' || gameState.betweenWaves || !gameState.player) return;
+    if (!overtimeShowing()) return;
     const left = OVERTIME_START - (worldTime - gameState.overtimeFrom);
-    if (!(left <= OVERTIME_WARN)) return;
     const W = view.cssW, y = hudTop + OVERTIME_HUD_Y;
     ctx.save();
     if (left > 0) {
@@ -6615,6 +6619,16 @@ const BUFF_CHIP_R = 15;
 const BUFF_CHIP_GAP = 8;
 const BUFF_CHIP_LEFT = 14;
 const BUFF_CHIP_TOP = 26;
+// 左上角由上往下排：波次事件的名字 → 狀態圖示。正中間那排（首領血條連護甲條與說明、怨氣沸騰倒數）有的時候，狀態圖示排到它們底下。
+// 數字是各自離狀態列底多遠（看 drawEventOverlay、drawBossBar、drawOvertimeOverlay 畫在哪）
+const EVENT_LABEL_Y = 20, EVENT_ROW_BOTTOM = 36, BOSS_BAR_BOTTOM = 84, OVERTIME_ROW_BOTTOM = 72;
+function buffChipsY() {
+    let top = hudTop + BUFF_CHIP_TOP - BUFF_CHIP_R;
+    if (getWaveEvent()) top = Math.max(top, hudTop + EVENT_ROW_BOTTOM);
+    if (getAliveBoss() && !gameState.bossIntro) top = Math.max(top, hudTop + BOSS_BAR_BOTTOM);
+    if (overtimeShowing()) top = Math.max(top, hudTop + OVERTIME_ROW_BOTTOM);
+    return top + BUFF_CHIP_R;
+}
 const FRENZY_CHIP_COLOR = '#E1BEE7';
 // 每種效果的起始長度：計時器往上跳（又拿到一次）時重記，倒數圈才畫得出「剩幾成」
 const buffPeak = {};
@@ -6632,7 +6646,7 @@ function drawBuffChips() {
     const list = activeBuffs();
     for (const k in buffPeak) if (!list.some(b => b.icon === k)) delete buffPeak[k];
     let x = BUFF_CHIP_LEFT + BUFF_CHIP_R;
-    const y = hudTop + BUFF_CHIP_TOP;
+    const y = buffChipsY();
     for (const b of list) {
         const peak = buffPeak[b.icon];
         if (!peak || b.t > peak.last + 0.01) buffPeak[b.icon] = { max: b.t, last: b.t };
@@ -9010,6 +9024,10 @@ function drawGround() {
 
 // 畫在畫面上（不跟著鏡頭）的資訊，用 CSS px 座標；HUD_TOP 以下才畫，避開上方的狀態列
 let hudTop = 56;
+// 上方狀態列會變高（拿到大招卡多出冷卻圈），畫布上排在它底下的東西要跟著往下，不只視窗大小變的時候才量
+function measureHudTop() {
+    if (uiElements.hudTop) hudTop = Math.round(uiElements.hudTop.getBoundingClientRect().bottom) - HUD_TOP_FADE_PX;
+}
 // 上方狀態列底部有一段漸層淡出，畫面上的資訊從漸層開始處就可以畫
 const HUD_TOP_FADE_PX = 0;
 function setScreenTransform() {
@@ -9024,7 +9042,7 @@ function drawEventOverlay() {
         ctx.fillRect(0, 0, view.cssW, view.cssH);
     }
     ctx.save();
-    drawIconLabel(ev.icon, ev.name, 10, hudTop + 20, 15, ev.color, 'left');
+    drawIconLabel(ev.icon, ev.name, 10, hudTop + EVENT_LABEL_Y, 15, ev.color, 'left');
     ctx.restore();
 }
 
@@ -9873,6 +9891,7 @@ function init() {
     buildRareBlessings();
     buildSummonBlessings();
     buildUltBlessings();
+    new ResizeObserver(measureHudTop).observe(uiElements.hudTop);
     cancelTextZoom();
     hydrateIcons();
     resizeCanvas();
