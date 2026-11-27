@@ -73,7 +73,7 @@ const SWAP_EVERY = 6, SWAP_GAIN = 40;
 // 有這張傳說時，影子在這個距離內看到目標就撲過去（要小於召喚物丟掉目標的距離，不然撲一下就放掉）
 const SWAP_HUNT = 230;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     assassination: { name: '暗殺', icon: 'assassination', color: '#FFE57F', res: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
     venomschool: { name: '劇毒', icon: 'venomschool', color: '#AED581', res: [{ name: '腐蝕', desc: '中毒的怪受到的傷害 +20%' }, { name: '瘟疫之刃', desc: '毒傷也會爆擊' }] },
@@ -160,7 +160,7 @@ CLASSES.rogue = {
         if (Math.random() < blessVal('dodge')) { const p = gameState.player; spawnFloatText(p.pos.x, p.pos.y - 30, '閃', '#B0BEC5', 12, 0.5); return 0; }
         return 1;
     },
-    // 被打不會打斷隱身（隱身是殺出來的獎勵，時間到才現身）。血掉到三成半以下自動遁形；煙霧共鳴「迷蹤」被打中有機會隱身
+    // 被打不會打斷隱身（隱身是殺出來的獎勵，時間到才現身）。血掉到三成半以下自動遁形；稀有祝福「迷蹤」被打中有機會隱身
     onHeroHurt: (lostFrac) => {
         const r = rogueState(), p = gameState.player;
         if (p.isAlive && p.currentHealth < p.maxHealth * ROGUE.panicHp && r.panicT <= 0) {
@@ -206,7 +206,7 @@ CLASSES.rogue = {
 };
 const RELIC_STEALTH_CHANNEL = 3;
 
-// targets：目前標記的目標（共鳴「死亡宣告」時兩個）；markT：下一次標記還要等幾秒；trashValue：上一個目標之後雜兵原本該給的靈魂
+// targets：目前標記的目標（稀有祝福「死亡宣告」時兩個）；markT：下一次標記還要等幾秒；trashValue：上一個目標之後雜兵原本該給的靈魂
 function newRogueState() {
     return { targets: [], markT: 0, trashValue: 0, knifeT: 0, hideT: 0, hideMax: 1, panicT: 0, vanishT: 0, ambush: false, smokes: [], poisoned: [], poisonT: 0,
         daggerT: 0, waveTargets: 0, firstTargetThisWave: true, intelBonus: false, swapT: SWAP_EVERY };

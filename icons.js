@@ -782,10 +782,6 @@ const ICON_BODIES = {
     draft: `<path d="M6 22 C16 18 26 20 32 26 C38 20 48 18 58 22 L58 54 C48 50 38 52 32 58 C26 52 16 50 6 54 Z" fill="#f1ead6"/><path d="M32 26 L32 58" stroke-width="3"/>
         <path d="M12 30 C18 28 22 29 26 31 M12 38 C18 36 22 37 26 39 M38 31 C42 29 46 28 52 30 M38 39 C42 37 46 36 52 38" stroke="#a1887f" stroke-width="2.5"/>
         <path d="${starPath(32, 11, 9, 4, 5)}" fill="#ffd54f" stroke-width="2.5"/>`,
-    // 流派共鳴：兩個扣在一起的環
-    resonance: `<circle cx="24" cy="32" r="15" stroke-width="9"/><circle cx="40" cy="32" r="15" stroke-width="9"/>
-        <circle cx="24" cy="32" r="15" stroke="#80deea" stroke-width="4"/><circle cx="40" cy="32" r="15" stroke="#ce93d8" stroke-width="4"/>
-        <path d="${starPath(32, 32, 9, 3.5, 4)}" fill="#fff59d" stroke-width="2"/>`,
     // 靈魂流派：環裡的靈魂（靈魂本身＝錢包是 soul）
     soulSchool: `<circle cx="32" cy="32" r="26" stroke-width="9"/><circle cx="32" cy="32" r="26" stroke="#80deea" stroke-width="4"/>
         <path d="M32 52 C23 52 19 44 23 37 C26 32 27 26 25 18 C32 22 35 28 35 33 C37 30 38 27 38 22 C45 29 46 38 43 44 C41 49 37 52 32 52 Z" fill="#62dbe2"/>`,

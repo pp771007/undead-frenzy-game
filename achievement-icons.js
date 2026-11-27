@@ -174,21 +174,18 @@ const ACHV_ICON_BODIES = {
     evo_Wraith_2: `<circle cx="32" cy="32" r="28" stroke="#4db6ac" stroke-width="3"/><circle cx="32" cy="32" r="21" stroke="#80cbc4" stroke-width="3"/>${at(32, 34, 0.75, P.ghost('#b2dfdb'))}`,
     evo_Wraith_3: `<path d="${starPath(32, 34, 30, 14, 9)}" fill="${C.red}"/>${at(32, 32, 0.8, P.ghost('#ffcdd2'))}<ellipse cx="28" cy="29" rx="2.5" ry="3.2" fill="${C.red}" stroke="none"/><ellipse cx="36" cy="29" rx="2.5" ry="3.2" fill="${C.red}" stroke="none"/>`,
 
-    // ---- 共鳴：每段共鳴一張，畫的就是它的效果 ----
-    res1_skel: `<path d="M2 50 C12 30 24 20 40 22 C34 28 34 34 40 38 C30 38 20 44 14 58 Z" fill="${C.boneDark}"/>${at(22, 40, 0.5, P.bone(), -30)}${at(36, 28, 0.45, P.bone(), -10)}${at(48, 44, 0.5, P.bone(), 20)}`,
+    // ---- 稀有祝福：每個流派一張，畫的就是它的效果（祝福卡片上也用這張，見 game.js 的 buildRareBlessings）----
     res_skel: `${at(32, 32, 0.8, P.skull())}<path d="M8 32 A24 24 0 0 1 48 12" stroke="${C.gold}" stroke-width="4"/><path d="M48 12 L40 10 L46 18 Z" fill="${C.gold}" stroke-width="2.5"/>
         <path d="M56 32 A24 24 0 0 1 16 52" stroke="${C.gold}" stroke-width="4"/><path d="M16 52 L24 54 L18 46 Z" fill="${C.gold}" stroke-width="2.5"/>`,
-    res1_eye: `${at(32, 26, 0.8, P.eye())}${at(32, 52, 0.7, P.chain())}`,
     res_eye: `${at(32, 18, 0.42, P.eye())}${at(14, 32, 0.38, P.eye())}${at(50, 32, 0.38, P.eye())}${at(22, 48, 0.38, P.eye())}${at(42, 48, 0.38, P.eye())}${at(32, 34, 0.32, P.eye())}`,
-    res1_wraith: `${disc('#004d40')}<circle cx="32" cy="32" r="22" stroke="#4db6ac" stroke-width="2.5" stroke-dasharray="6 5"/>${at(32, 33, 0.65, P.ghost('#b2dfdb'))}`,
     res_wraith: `${at(24, 34, 0.9, P.ghost('#b2dfdb'))}<ellipse cx="24" cy="38" rx="4" ry="5" fill="${C.ink}" stroke="none"/>
         <path d="M42 24 C48 28 48 38 42 42 M48 18 C58 26 58 40 48 48 M54 12 C66 24 66 42 54 54" stroke="#80cbc4" stroke-width="3"/>`,
-    res1_mage: `${duoStroke('M4 60 L20 46', '#7ff0f0', 4)}${duoStroke('M18 48 L34 34', '#7ff0f0', 4)}${duoStroke('M32 34 L46 22', '#7ff0f0', 4)}
-        ${at(20, 46, 0.4, P.skull('#e0f7fa', C.soul))}${at(34, 33, 0.44, P.skull('#e0f7fa', C.soul))}${at(48, 18, 0.5, P.skull('#e0f7fa', C.soul))}`,
     res_mage: `<path d="${starPath(32, 32, 28, 12, 12)}" fill="${C.violet}"/><circle cx="32" cy="32" r="9" fill="#f6dcff"/>
         <path d="M32 4 L32 -2 M8 12 L4 8 M56 12 L60 8" stroke="${C.violet}" stroke-width="3"/>${duoStroke('M50 58 L50 44 M44 50 L50 44 L56 50', '#81c784', 3)}`,
-    res1_soul: `<path d="M8 12 L8 34 C8 48 20 56 32 56 C44 56 56 48 56 34 L56 12 L44 12 L44 34 C44 40 38 44 32 44 C26 44 20 40 20 34 L20 12 Z" fill="${C.red}"/>
-        <rect x="8" y="8" width="12" height="8" fill="${C.steel}" stroke-width="3"/><rect x="44" y="8" width="12" height="8" fill="${C.steel}" stroke-width="3"/>${at(32, 22, 0.42, P.soul())}`,
+    // 狂潮不息（新星）：新星炸開的紫色星芒，外面一圈首尾相接的金色箭頭 —— 狂暴一直續下去
+    res_nova: `${disc('#311b92')}<path d="${starPath(32, 32, 19, 8, 10)}" fill="#ce93d8"/><circle cx="32" cy="32" r="6.5" fill="#f6dcff" stroke-width="2.5"/>
+        <path d="M32 5 A27 27 0 1 1 7 22" stroke="${C.ink}" stroke-width="8"/><path d="M32 5 A27 27 0 1 1 7 22" stroke="${C.gold}" stroke-width="4"/>
+        <path d="M1 14 L7 26 L16 18 Z" fill="${C.gold}" stroke-width="2.5"/>${sparks([[54, 10, 4], [10, 54, 3]], '#fff3c4')}`,
     res_soul: `<path d="M12 58 L40 18" stroke-width="5"/><path d="M12 58 L40 18" stroke="${C.wood}" stroke-width="2.5"/><path d="M36 14 C46 6 60 12 60 26 C54 18 46 18 40 22 Z" fill="${C.steel}"/>
         ${at(20, 26, 0.32, P.soul())}${at(48, 44, 0.32, P.soul())}${at(30, 48, 0.26, P.soul())}`,
 };
@@ -292,7 +289,7 @@ Object.assign(ACHV_ICON_BODIES, {
         ${at(50, 20, 0.62, P.bolt())}<path d="M2 26 L10 26 M2 36 L10 36" stroke="${C.sky}" stroke-width="3.5"/>`,
     warrior_speed20: `<path d="M12 30 C2 22 4 10 12 6 C12 14 16 20 22 22 Z M52 30 C62 22 60 10 52 6 C52 14 48 20 42 22 Z" fill="${C.white}"/>
         ${at(32, 36, 0.8, HELM())}${at(54, 50, 0.4, P.bolt())}${sparks([[8, 50, 4], [32, 4, 3]], C.white)}`,
-    // 五個流派疊滿：各畫那段共鳴的景象
+    // 五個流派的稀有祝福：各畫那張祝福的景象（祝福卡片上也用這張）
     warrior_res_shieldwall: `${at(14, 34, 0.62, SCUTUM())}${at(50, 34, 0.62, SCUTUM())}${at(32, 32, 0.72, SCUTUM(WAR_RED_DARK))}<path d="M2 58 L62 58" stroke-width="4"/>`,
     warrior_res_phalanx: `${[10, 20, 30, 40, 50].map((x, i) => `<g transform="translate(${x + 6} ${26 - i % 2 * 4}) rotate(35)">${JAVELIN(48)}</g>`).join('')}
         <path d="M4 46 L60 46 L60 58 L4 58 Z" fill="${C.steelDark}"/>${[12, 26, 40, 54].map(x => `<circle cx="${x}" cy="52" r="3" fill="${C.gold}" stroke-width="2"/>`).join('')}`,

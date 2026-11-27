@@ -66,7 +66,7 @@ const FIST_TIER2_KNOCK = 140, FIST_TIER3_EVERY = 10, FIST_TIER3_MULT = 5;
 const STEP_TIER1_DODGE = 0.1, STEP_TIER2_IFRAME = 0.15, STEP_TIER3_RANGE = 2;
 const QI_TIER1_EVERY = 6, QI_TIER2_BLAST = 50;
 
-// ---------- 五個流派（七十二藝五類）：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// ---------- 五個流派（七十二藝五類）：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     external: { name: '外功', icon: 'external', color: '#FFAB91', res: [{ name: '連環', desc: '出拳快 20%' }, { name: '千手', desc: '連擊 100 以上，每一拳都多打兩下' }] },
     hardstyle: { name: '硬功', icon: 'hardstyle', color: '#BCAAA4', res: [{ name: '鐵布衫', desc: '一下不到 5% 血的攻擊不會打斷連擊' }, { name: '金鐘罩', desc: '每 8 秒擋下一次傷害，擋下時震退周圍' }] },

@@ -69,7 +69,14 @@ await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; game
 await shot('3-draft');
 await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; renderDraftCards(); }, four);
 await shot('4-draft-four');
-// 傳說與共鳴都要看得到：塞滿這個職業每個流派到 6 層
+// 稀有祝福：兩段效果寫在同一張，說明最長，最容易撐破框
+await page.evaluate((cls) => {
+    const rares = Object.keys(BLESSINGS).filter(id => BLESSINGS[id].rare && CLASSES[cls].schools.includes(BLESSINGS[id].school))
+        .sort((x, y) => BLESSINGS[y].desc(BLESSINGS[y]).length - BLESSINGS[x].desc(BLESSINGS[x]).length);
+    gameState.pendingDraft = { options: rares.slice(0, 3) }; renderDraftCards();
+}, CLASS);
+await shot('4a-draft-rare');
+// 傳說與暫停選單的祝福列表都要看得到：每個流派塞滿幾張
 await page.evaluate((cls) => {
     for (const s of CLASSES[cls].schools) {
         const ids = Object.keys(BLESSINGS).filter(id => BLESSINGS[id].school === s && !BLESSINGS[id].legendary);

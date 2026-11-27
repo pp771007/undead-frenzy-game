@@ -60,7 +60,7 @@ const NET_TIME = 2, NET_SCALE = 1.2, NET_BOSS_SLOW = 0.5;
 const LURE_TRAP_EVERY = 0.8, LURE_TRAP_SCALE = 0.7, ELEM_TRAP_FIRE = 0.6, ELEM_TRAP_FREEZE = 1.5, ELEM_TRAP_CHAINS = 3, HAWK_MARK_MULT = 2, HAWK_MARK_TIME = 4;
 const FOXFIRE_SHARE = 0.6, FOXFIRE_SPEED = 230, FOXFIRE_SEEK = 170, FOXFIRE_RADIUS = 32, FOXFIRE_LIFE = 1.4, FOXFIRE_MAX = 30;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     parthian: { name: '回馬射', icon: 'parthian', color: '#80CBC4', res: [{ name: '騎射', desc: '停下來 2 秒內還保有移動中的射速' }, { name: '帕提亞之箭', desc: '回頭射的箭穿透所有怪' }] },
     longbow: { name: '長弓', icon: 'longbow', color: '#A5D6A7', res: [{ name: '強弓', desc: '每支箭多穿透一隻' }, { name: '鷹眼', desc: '射得越遠傷害越高（最多 ×3）' }] },
@@ -267,7 +267,7 @@ function elfShoot(p, dt) {
     }
     Sfx.play('mageBolt');
 }
-// 元素箭輪流：有哪幾種就輪哪幾種；共鳴「三相」一支全帶
+// 元素箭輪流：有哪幾種就輪哪幾種；稀有祝福「三相」一支全帶
 function nextElement() {
     const owned = ['fire', 'ice', 'thunder'].filter(k => bl(k + 'Arrow'));
     if (!owned.length) return null;

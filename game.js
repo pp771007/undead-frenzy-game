@@ -135,7 +135,6 @@ const uiElements = {
     draftCards: $id('draft-cards'),
     rerollBtn: $id('reroll-btn'), healBtn: $id('heal-btn'),
     pauseMenu: $id('pause-menu'),
-    pauseResonance: $id('pause-resonance'),
     pauseBlessings: $id('pause-blessings'),
     resumeGameBtn: $id('resume-game-btn'),
     pauseTitleBtn: $id('pause-title-btn'),
@@ -595,16 +594,16 @@ const POSSESS_TIME = 6, POSSESS_REACH = 1.2;
 // 雙流派「冥火骨兵」：冥火範圍、傷害是那一擊的幾成；「靈視」機率；「哀魂新星」傷害是新星的幾成
 const GHOSTFIRE_RADIUS = 30, GHOSTFIRE_SHARE = 0.5, SOUL_GAZE_CHANCE = 0.25, WAILING_NOVA_SHARE = 0.4;
 const pct = (v) => `${Math.round(v * 100)}%`;
-// 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
-// 堅甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
+// 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派、抽卡不加權。
+// 堅甲、嗜魂不歸骷髏流派：說明寫的是「召喚物」，掛骷髏頭像會讓人以為只對骷髏有效
 // 七個職業都抽得到的東西（全軍、靈魂流派、永久強化、成就）名字不要用亡靈法師的用語（骨、亡者、新星…）
 const ARMY_SCHOOL = 'army';
-// 雙流派傳說：祝福寫 duo: [流派A, 流派B]，兩個流派都疊到第一段共鳴（RESONANCE_STEPS[0] 層）才會出現。
+// 雙流派傳說：祝福寫 duo: [流派A, 流派B]，兩個流派的稀有祝福都拿到了才會出現。
 // 不算進任何一個流派的層數；抽傳說時權重拉滿，湊到兩條路的人首領波幾乎一定看得到
 const DUO_SCHOOL = 'duo';
 // 詛咒疊出來的整局乘數（見 runMods）
 const RUN_MOD_KEYS = ['soulMult', 'mageHpMult', 'hpMult', 'atkMult', 'speedMult', 'eliteMult', 'bossHpMult'];
-// school：所屬流派（見 SCHOOLS），同流派累積層數觸發共鳴；全軍都吃的寫 ARMY_SCHOOL，不算進任何流派
+// school：所屬流派（見 SCHOOLS），同流派疊越多、抽卡越偏向它；全軍都吃的寫 ARMY_SCHOOL，不算進任何流派
 const BLESSINGS = {
     boneBlade: { school: 'skel', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
     cleave: { school: 'skel', name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
@@ -657,8 +656,9 @@ const BLESSINGS = {
 // 卡片、暫停選單、飄字的圖示：有寫 icon 的用它，其他就是祝福自己的 id
 function blessIcon(id) { return BLESSINGS[id].icon || id; }
 
-// ---------- 流派共鳴：同一流派的祝福累積到 RESONANCE_STEPS 的層數，各觸發一次共鳴 ----------
-// 同 Hades 的雙神祝福、吸血鬼倖存者的武器進化：專精一條路要有爆發點，不然 27 張各加一點數字，選哪張都差不多
+// ---------- 流派與稀有祝福：每個流派一張稀有祝福（res 兩段效果合在一張），三選一時偶爾出現 ----------
+// 專精一條路要有爆發點，不然 27 張各加一點數字，選哪張都差不多。爆發點做成「低機率出現的稀有卡」而不是「疊到幾層自動觸發」：
+// 不用另外學一套計數規則，而且稀有卡常常不是自己在走的流派 —— 拿了就想把靈魂多花在那個兵種上，跟配兵直接連在一起
 const SCHOOLS = {
     skel: { name: '骷髏', img: 'skeleton_warrior.png', color: '#ECEFF1', res: [{ name: '骨潮', desc: '骷髏攻速 +25%' }, { name: '不滅骨軍', desc: '骷髏陣亡時 35% 當場重組' }] },
     eye: { name: '眼魔', img: 'eye_monster.png', color: '#FFD54F', res: [{ name: '連環凝視', desc: '眼魔的彈多彈射 1 次' }, { name: '千眼', desc: '眼魔每次多射 1 發' }] },
@@ -667,8 +667,7 @@ const SCHOOLS = {
     nova: { name: '新星', icon: 'burst', color: '#CE93D8', res: [{ name: '新星湧動', desc: '新星冷卻 -25%' }, { name: '狂潮不息', desc: '大軍狂暴時每打倒一隻怪，狂暴多 0.1 秒' }] },
     soul: { name: '靈魂', icon: 'soulSchool', color: '#B2EBF2', res: [{ name: '引魂', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '靈魂掉落 +30%' }] },
 };
-const RESONANCE_STEPS = [3, 6];
-// 共鳴的實際數值（SCHOOLS 的說明文字跟著這裡寫）
+// 稀有祝福的實際數值（SCHOOLS 的說明文字跟著這裡寫）
 const RES_SKEL_ATK_SPEED = 0.25;
 const RES_SKEL_REVIVE = 0.35;
 const RES_WRAITH_RADIUS = 1.3;
@@ -686,17 +685,25 @@ function schoolPoints(school) {
     for (const id in BLESSINGS) if (BLESSINGS[id].school === school) n += bl(id);
     return n;
 }
-function resonanceTier(points) {
-    let t = 0;
-    while (t < RESONANCE_STEPS.length && points >= RESONANCE_STEPS[t]) t++;
-    return t;
-}
+// res(流派)：那個流派的稀有祝福效果開到第幾段。拿到稀有卡就兩段全開（效果程式裡寫的是 res(s) >= 1、>= 2）。
 // 熱路徑（每隻召喚物算數值、每發飛彈）直接查快取，祝福變動時才重算
+const RARE_TIERS = 2;
+function rareId(school) { return `rare_${school}`; }
 function res(school) { return gameState.resonance[school] || 0; }
 function refreshResonance() {
     const r = {};
-    for (const s in SCHOOLS) r[s] = resonanceTier(schoolPoints(s));
+    for (const s in SCHOOLS) r[s] = bl(rareId(s)) > 0 ? RARE_TIERS : 0;
     gameState.resonance = r;
+}
+// 各職業的流派都登記完才建得出來（init 一開始呼叫）。圖示借那個流派在成就裡的圖：畫的就是這個效果
+function buildRareBlessings() {
+    for (const [cid, c] of Object.entries(CLASSES)) for (const s of c.schools) {
+        const id = rareId(s);
+        if (BLESSINGS[id]) continue;
+        const S = SCHOOLS[s];
+        ICON_SVGS[id] = ACHV_ICON_SVGS[`${cid}_res_${s}`] || ACHV_ICON_SVGS[`res_${s}`];
+        BLESSINGS[id] = { school: s, rare: true, name: S.res[RARE_TIERS - 1].name, max: 1, desc: () => S.res.map(r => r.desc).join('<br>') };
+    }
 }
 // 傳說的細部數值（說明文字只講會影響選擇的那一個數）
 const GIANT_STAT_MULT = 3;
@@ -840,7 +847,7 @@ function classMeta(id) {
 // 清單裡會用到稍後才宣告的 CURSES，所以第一次用到時才建（achievements()）
 const ACHV_CATEGORIES = [
     { id: 'journey', name: '征途' }, { id: 'endless', name: '無盡' }, { id: 'curse', name: '詛咒' }, { id: 'boss', name: '首領' },
-    { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '共鳴' }, { id: 'legend', name: '傳說' },
+    { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '稀有' }, { id: 'legend', name: '傳說' },
     { id: 'relic', name: '遺跡' },
     { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'class', name: '職業' }, { id: 'legacy', name: '傳承' },
 ];
@@ -943,7 +950,7 @@ function buildAchievements() {
         const name = CONFIG.evolution.names[type][t];
         add('army', `evo_${type}_${t + 1}`, name, `升到 Lv${lv}，進化成${name}`, 15 + t * 20, () => gameState.units[type].level >= lv);
     });
-    for (const s of CLASSES.necro.schools) SCHOOLS[s].res.forEach((r, t) => add('resonance', t === 1 ? `res_${s}` : `res1_${s}`, r.name, `${SCHOOLS[s].name}流派疊到 ${RESONANCE_STEPS[t]} 層`, t === 1 ? 40 : 15, () => res(s) >= t + 1));
+    for (const s of CLASSES.necro.schools) add('resonance', `res_${s}`, BLESSINGS[rareId(s)].name, `拿到稀有祝福「${BLESSINGS[rareId(s)].name}」`, 40, () => bl(rareId(s)) > 0);
     for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary && legendAchvIcon(b))) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
     add('legend', 'legends', '傳說加身', `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, 40, () => countTaken(b => b.legendary) >= ACHV_LEGENDS);
     add('legend', 'legendAll', '萬古傳說', '每一張傳說祝福都拿過', 120, () => Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary).every(b => S().legends[b]));
@@ -971,7 +978,7 @@ function buildAchievements() {
         add('class', `${cid}_win`, A.win, `以${c.name}通關`, ACHV_CLASS_WIN, () => mine() && gameState.endless, null, cid);
         ACHV_SPEED.forEach(([min, , , r], i) => add('class', `${cid}_speed${min}`, A.speed[i], `以${c.name}在 ${min} 分鐘內通關`, r,
             () => mine() && gameState.endless && gameState.run.clearTime > 0 && gameState.run.clearTime <= min * 60, null, cid));
-        for (const s of c.schools) if (s !== 'soul') add('class', `${cid}_res_${s}`, SCHOOLS[s].res[1].name, `${c.name}的「${SCHOOLS[s].name}」疊到 ${RESONANCE_STEPS[1]} 層`, ACHV_CLASS_RES, () => mine() && res(s) >= 2, null, cid);
+        for (const s of c.schools) if (s !== 'soul') add('class', `${cid}_res_${s}`, BLESSINGS[rareId(s)].name, `以${c.name}拿到稀有祝福「${BLESSINGS[rareId(s)].name}」`, ACHV_CLASS_RES, () => mine() && bl(rareId(s)) > 0, null, cid);
         for (const [id, name, desc, r, test] of A.feats) add('class', `${cid}_${id}`, name, desc, r, () => mine() && test(), null, cid);
     }
     add('legacy', 'metaFirst', '傳承之始', '買下第一個永久強化', 10, () => Object.values(meta.upgrades).some(v => v > 0));
@@ -2304,7 +2311,7 @@ class SummonUnit extends GameObject {
         this.attackRangeSq = this.attackRange * this.attackRange;
 
         if (this.config.type === 'Wraith') {
-            // 共鳴「冥域」乘在封頂之後：要靠專精怨靈流派才突破單隻光環的上限
+            // 怨靈稀有祝福的光環範圍乘在封頂之後：拿到它才突破單隻光環的上限
             this.slowRadius = Math.min(this.config.slowRadiusMax, this.config.slowRadiusBase + (this.level * this.config.slowRadiusUpgrade)) * (res('wraith') >= 1 ? RES_WRAITH_RADIUS : 1);
             this.slowAmount = this.config.slowAmountBase + (this.level * this.config.slowAmountUpgrade);
             this.slowAmount = Math.min(this.slowAmount, this.config.slowAmountMax);
@@ -2909,7 +2916,7 @@ class Wraith extends SummonUnit {
 
     update(deltaTime, monsters, otherSummons, player) {
         super.update(deltaTime, monsters, otherSummons, player);
-        // 共鳴「哀嚎」：不用等進化就脈衝，而且傷害加倍
+        // 稀有祝福「哀嚎」：不用等進化就脈衝，而且傷害加倍
         const wail = res('wraith') >= 2;
         if (!this.isAlive || (this.tier < 2 && !wail)) return;
         const E = CONFIG.evolution;
@@ -3063,7 +3070,7 @@ function drawNecroWorld(ctx) {
     for (const m of gameState.turned) if (m.isAlive && m.turnKind === 'possess' && inView(m.pos)) drawPossessed(ctx, m);
 }
 
-// ---------- 共鳴「魂彈分裂」：魂彈命中時分裂出小魂彈 ----------
+// ---------- 稀有祝福「魂彈分裂」：魂彈命中時分裂出小魂彈 ----------
 const soulSplitOwner = { healFromDamage() {}, onHit: (m) => soulSplit(m) };
 function soulSplit(m) {
     const near = [], rSq = RES_SOUL_SPLIT_RANGE * RES_SOUL_SPLIT_RANGE;
@@ -4049,7 +4056,7 @@ class Monster extends GameObject {
             dropSouls(this.pos.x, this.pos.y, Math.max(1, whole) * (MIDAS_MULT - 1));
             spawnParticles(this.pos.x, this.pos.y, '#FFD54F', 14, 110, 0.6, 3);
         }
-        // 共鳴「狂潮不息」：大軍狂暴時每打倒一隻，狂暴延長一點
+        // 稀有祝福「狂潮不息」：大軍狂暴時每打倒一隻，狂暴延長一點
         if (res('nova') >= 2 && gameState.frenzyTimer > 0 && (gameState.frenzyExtended || 0) < RES_ENDLESS_FRENZY_MAX) {
             const add = Math.min(RES_ENDLESS_FRENZY_PER, RES_ENDLESS_FRENZY_MAX - (gameState.frenzyExtended || 0));
             gameState.frenzyTimer += add;
@@ -7242,9 +7249,11 @@ function queueDraftIfDue() {
     queueDraft(w % CONFIG.wave.bossEvery === 0);
 }
 
-// 首領波：三張裡固定一張傳說（還有沒拿過的才給），放在隨機位置；其他波有 LEGEND_CHANCE_NORMAL 機率也出一張
-// 偏向已經在走的流派：該流派每有 1 層，抽中的權重 +DRAFT_SCHOOL_WEIGHT（封頂 DRAFT_WEIGHT_MAX 倍）。
-// 完全隨機的話 27 張平均攤開，一局很難湊到共鳴、組不出一套打法
+// 首領波：三張裡固定一張傳說（還有沒拿過的才給），放在隨機位置；其他波有 LEGEND_CHANCE_NORMAL 機率也出一張。
+// 每次再有 RARE_CHANCE 機率把一張換成稀有祝福（一局約 17 次三選一，平均看到四張稀有卡）。
+// 偏向已經在走的流派：該流派每有 1 層，抽中的權重 +DRAFT_SCHOOL_WEIGHT（封頂 DRAFT_WEIGHT_MAX 倍），稀有卡也一樣。
+// 完全隨機的話 27 張平均攤開，一局組不出一套打法
+const RARE_CHANCE = 0.25;
 const DRAFT_SCHOOL_WEIGHT = 0.4;
 const DRAFT_WEIGHT_MAX = 3;
 function draftWeight(id) {
@@ -7275,16 +7284,20 @@ function blessingInClass(id) {
 }
 // 這個職業有沒有「花錢召喚」的卡（全是修練卡的武僧沒有）
 function classCanSummon() { return classDef().cards.some(t => !UNIT_TYPES[t].upgradeOnly); }
-function draftPool(legendary, exclude = []) {
-    return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && !BLESSINGS[id].legendary === !legendary
+// 三種稀有度：普通、稀有（藍）、傳說（金）
+function blessingTier(id) { const B = BLESSINGS[id]; return B.legendary ? 'legend' : B.rare ? 'rare' : 'common'; }
+function draftPool(tier, exclude = []) {
+    return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && blessingTier(id) === tier
         && blessingInClass(id) && !gameState.banished.includes(id) && !exclude.includes(id));
 }
 function rollDraftOptions(boss) {
     const count = draftOptionCount();
     const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
-    const legend = legendRoll ? weightedPick(draftPool(true), 1)[0] : null;
-    const options = weightedPick(draftPool(false), count - (legend ? 1 : 0));
-    if (legend) options.splice(Math.floor(Math.random() * (options.length + 1)), 0, legend);
+    const legend = legendRoll ? weightedPick(draftPool('legend'), 1)[0] : null;
+    const rare = Math.random() < RARE_CHANCE ? weightedPick(draftPool('rare'), 1)[0] : null;
+    const special = [legend, rare].filter(Boolean);
+    const options = weightedPick(draftPool('common'), count - special.length);
+    for (const id of special) options.splice(Math.floor(Math.random() * (options.length + 1)), 0, id);
     return options;
 }
 
@@ -7299,30 +7312,19 @@ const REROLLS_PER_RUN = 2;
 const REROLLS_PER_BOSS = 1;
 
 // 卡片上的流派標籤：頭像＋名字。不放流派進度點：跟名字下面「這張卡的等級」的點長得一樣、玩家看不懂；
-// 選卡時要知道的只有「這張會不會觸發共鳴」，標籤剛好湊滿時整個變金色寫「共鳴」
+// 卡片上的流派標籤：看一眼就知道這張跟自己在疊的流派合不合
 function schoolBadgeHtml(school) {
     const S = SCHOOLS[school];
     return S.img ? `<img class="school-img" src="${S.img}" alt="">` : iconHtml(S.icon, 'icon school-img');
 }
-// 暫停選單用：這個流派疊了幾層（每一段 RESONANCE_STEPS 一組點）
-function resonancePipsHtml(school) {
-    const pts = schoolPoints(school), max = RESONANCE_STEPS[RESONANCE_STEPS.length - 1];
-    let html = '';
-    for (let i = 0; i < max; i++) {
-        if (RESONANCE_STEPS.includes(i) && i > 0) html += '<span class="res-gap"></span>';
-        html += `<span class="${i < pts ? 'pip on' : 'pip'}"></span>`;
-    }
-    return `<span class="pips res-pips">${html}</span>`;
-}
+const TIER_LABELS = { rare: '稀有', legend: '傳說' };
 function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
     // 兩個流派的頭像並排就講完了，不另外取名字：玩家只要看到「這張跟我在疊的兩條路有關」
     if (school === DUO_SCHOOL) return `<span class="school-chip duo-chip">${BLESSINGS[id].duo.map(schoolBadgeHtml).join('')}</span>`;
     const S = SCHOOLS[school];
-    // 這張選下去剛好湊滿一段：整個標籤亮起來
-    const willResonate = RESONANCE_STEPS.includes(schoolPoints(school) + 1);
-    return `<span class="school-chip${willResonate ? ' resonates' : ''}" style="--school:${S.color}">${schoolBadgeHtml(school)}<span>${willResonate ? '共鳴' : S.name}</span></span>`;
+    return `<span class="school-chip" style="--school:${S.color}">${schoolBadgeHtml(school)}<span>${S.name}</span></span>`;
 }
 
 function blessingPips(id, highlightNext) {
@@ -7342,10 +7344,11 @@ function renderDraftCards() {
     gameState.pendingDraft.options.forEach(id => {
         const b = BLESSINGS[id];
         const card = document.createElement('button');
-        card.className = `draft-card panel${b.legendary ? ' legendary' : ''}`;
+        const tier = blessingTier(id);
+        card.className = `draft-card panel${tier === 'common' ? '' : ` tier-${tier}`}`;
         const banish = gameState.banishLeft > 0 ? `<button class="card-banish" data-banish="${id}">${iconHtml('banish', 'icon btn-icon')}放逐</button>` : '';
-        const isNew = b.legendary && !stats().legends[id] ? '<span class="card-new">新</span>' : '';
-        card.innerHTML = `${isNew}${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>${banish}`;
+        const tierTag = tier === 'common' ? '' : `<span class="card-tier">${TIER_LABELS[tier]}</span>`;
+        card.innerHTML = `${tierTag}${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>${banish}`;
         // 用 pointerup 不用 click：另一隻手指還按著搖桿時瀏覽器不會合成 click。
         // 不用 pointerdown，是因為祝福選了收不回來，按下去還能滑開反悔
         // 觸控的 pointerup 一定回到按下的那張卡（隱式捕捉），所以要自己看放開時手指還在不在卡上
@@ -7406,28 +7409,19 @@ function banishBlessing(id) {
     if (!d || gameState.banishLeft <= 0 || !d.options.includes(id)) return;
     gameState.banished.push(id);
     gameState.banishLeft--;
-    const replacement = weightedPick(draftPool(BLESSINGS[id].legendary, d.options), 1)[0];
+    const replacement = weightedPick(draftPool(blessingTier(id), d.options), 1)[0];
     if (replacement) d.options[d.options.indexOf(id)] = replacement;
     else d.options = d.options.filter(o => o !== id);
     renderDraftCards();
     Sfx.play('draft');
 }
 
-function announceResonance(school, tier) {
-    const S = SCHOOLS[school], R = S.res[tier - 1];
-    gameState.banner = { text: `${S.name}共鳴 · ${R.name}`, sub: R.desc, color: S.color, life: CONFIG.wave.bannerDuration * 1.4, icon: 'resonance' };
-    addShake(4);
-    Sfx.play('evolve');
-}
-
 function pickBlessing(id) {
     if (!gameState.pendingDraft || !gameState.pendingDraft.options.includes(id)) return;
-    const school = BLESSINGS[id].school, tierBefore = res(school);
     gameState.blessings[id] = bl(id) + 1;
     gameState.run.picks++;
     if (BLESSINGS[id].legendary) stats().legends[id] = true;
     refreshResonance();
-    if (res(school) > tierBefore) announceResonance(school, res(school));
     if (id === 'vitality' && gameState.player) {
         gameState.player.maxHealth += BLESSINGS.vitality.per;
         gameState.player.currentHealth = gameState.player.maxHealth;
@@ -7459,17 +7453,6 @@ function blessTotalDesc(id) {
     const B = BLESSINGS[id], lv = bl(id);
     return (B.totalDesc || B.desc)({ ...B, per: B.per * lv, cdPer: (B.cdPer || 0) * lv });
 }
-// 暫停選單：有層數的流派各一列，進度點＋已經觸發的共鳴
-function renderResonance(container) {
-    const rows = Object.keys(SCHOOLS).filter(s => schoolPoints(s) > 0).map(s => {
-        const S = SCHOOLS[s], t = res(s);
-        const active = S.res.slice(0, t).map(r => `<div class="bless-effect"><b>${r.name}</b> ${r.desc}</div>`).join('');
-        return `<div class="bless-row res-row" style="--school:${S.color}">${schoolBadgeHtml(s)}<div class="bless-text"><div class="bless-name"><span class="nm">${S.name}</span>${resonancePipsHtml(s)}</div>${active}</div></div>`;
-    });
-    container.classList.toggle('hidden', rows.length === 0);
-    container.innerHTML = rows.join('');
-}
-
 function renderBlessingDetail(container) {
     const ids = Object.keys(BLESSINGS).filter(id => bl(id) > 0);
     container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id => {
@@ -8703,7 +8686,6 @@ function resetGame() {
 function updatePauseMenuStats() {
     uiElements.pauseSummonStats.innerHTML = classDef().cards.map(type =>
         `<div class="stat-cell"><img src="${UNIT_TYPES[type].img}" alt=""><b>${formatNumberK(gameState.totalSummons[type])}</b></div>`).join('');
-    renderResonance(uiElements.pauseResonance);
     renderBlessingDetail(uiElements.pauseBlessings);
     uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('crystal')}+${getRunReward()}`;
 }
@@ -9795,6 +9777,7 @@ function cancelTextZoom() {
 }
 
 function init() {
+    buildRareBlessings();
     cancelTextZoom();
     hydrateIcons();
     resizeCanvas();

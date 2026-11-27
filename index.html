@@ -1725,22 +1725,39 @@
             position: relative;
         }
 
-        /* 還沒拿過的傳說：圖示右上方一個「新」（放卡片角落會壓到較寬的流派標籤） */
-        .card-new {
+        /* 稀有度標籤（稀有／傳說）：圖示右上方一個小牌子（放卡片角落會壓到較寬的流派標籤），顏色跟卡框同一色 */
+        .card-tier {
             position: absolute;
             top: 46px;
             right: 6px;
             padding: 1px 7px;
             border-radius: 9px;
             border: 2px solid var(--ink);
-            background: var(--gold);
-            color: #3a2410;
+            background: var(--tier);
+            color: #1b1424;
             font-size: 12px;
             font-weight: 800;
         }
 
-        /* 傳說祝福：金框＋金光＋暖色底，一眼看出比較稀有 */
-        .draft-card.legendary {
+        /* 稀有祝福：藍框＋藍光＋冷色底，比普通的亮、比金色的傳說低一階 */
+        .draft-card.tier-rare {
+            --tier: #64b5f6;
+            background: linear-gradient(#18304a, #0e1a28);
+            box-shadow:
+                inset 0 0 0 2px var(--tier),
+                inset 0 0 0 4px var(--ink),
+                inset 0 0 24px rgba(100, 181, 246, 0.25),
+                0 0 20px rgba(100, 181, 246, 0.5),
+                0 12px 32px rgba(0, 0, 0, 0.6);
+        }
+
+        .draft-card.tier-rare .draft-name {
+            color: #bbdefb;
+        }
+
+        /* 傳說祝福：金框＋金光＋暖色底，一眼看出最稀有 */
+        .draft-card.tier-legend {
+            --tier: #ffd54f;
             background: linear-gradient(#4a3418, #241a0e);
             box-shadow:
                 inset 0 0 0 2px #ffd54f,
@@ -1750,7 +1767,7 @@
                 0 12px 32px rgba(0, 0, 0, 0.6);
         }
 
-        .draft-card.legendary .draft-name {
+        .draft-card.tier-legend .draft-name {
             color: #ffe082;
         }
 
@@ -1854,7 +1871,7 @@
             margin-bottom: auto;
         }
 
-        /* 流派標籤：頭像＋名字＋共鳴進度；選下去剛好湊滿一段時整個亮起來 */
+        /* 流派標籤：頭像＋名字 */
         .school-chip {
             display: inline-flex;
             align-items: center;
@@ -1869,29 +1886,11 @@
             white-space: nowrap;
         }
 
-        .school-chip.resonates {
-            background: var(--gold);
-            border-color: var(--gold);
-            color: #3a2410;
-            box-shadow: 0 0 12px rgba(233, 196, 106, 0.8);
-            animation: blink 0.8s infinite alternate;
-        }
-
         .school-img {
             width: 18px;
             height: 18px;
             object-fit: contain;
             flex: none;
-        }
-
-        .res-pips .pip {
-            width: 6px;
-            height: 6px;
-            border-width: 1.5px;
-        }
-
-        .res-gap {
-            width: 3px;
         }
 
         .card-banish {
@@ -1912,23 +1911,6 @@
         .card-banish .btn-icon {
             width: 14px;
             height: 14px;
-        }
-
-        #pause-resonance {
-            margin-bottom: 6px;
-        }
-
-        .bless-row.res-row {
-            border-color: var(--school);
-        }
-
-        .bless-row.res-row .school-img {
-            width: 32px;
-            height: 32px;
-        }
-
-        .bless-row.res-row .bless-effect b {
-            color: var(--school);
         }
 
         /* 重抽、跳過、補滿血：窄螢幕放不下三顆就換行 */
@@ -2729,7 +2711,6 @@
             <h2 class="title-text">暫停</h2>
             <div class="reward-line" id="pause-reward"></div>
             <div class="section-title">本局祝福</div>
-            <div id="pause-resonance" class="bless-detail"></div>
             <div id="pause-blessings" class="bless-detail"></div>
             <div class="section-title">召喚</div>
             <div class="stat-grid cols-3" id="pause-summon-stats"></div>

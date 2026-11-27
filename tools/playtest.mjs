@@ -96,7 +96,7 @@ for (;;) {
             if (gameState.draftOpen && gameState.pendingDraft) {
                 const BOT_HEAL_BELOW = 0.5;
                 if (gameState.player.currentHealth < gameState.player.maxHealth * BOT_HEAL_BELOW) { healDraft(); continue; }
-                // 像真人一樣挑：傳說先拿；否則挑自己已經在疊的流派（衝共鳴），全軍通用的算中等，契約最後才拿。
+                // 像真人一樣挑：傳說先拿；稀有卡多加分（自己在疊的流派加更多）；否則挑自己已經在疊的流派，全軍通用的算中等。
                 // 完全亂挑的話同一個設定兩局可以差三十波（有一局剛好疊成、有一局全是雜牌），拿來比較職業強弱全是雜訊
                 // PICK=random：完全亂挑（像不懂搭配的新手）；PICK=first：永遠拿第一張。拿來量「選擇有沒有意義」
                 const opts = gameState.pendingDraft.options;
@@ -104,8 +104,8 @@ for (;;) {
                 const leg = opts.find(id => BLESSINGS[id].legendary);
                 if (B.pick === 'random') { pickBlessing(opts[Math.floor(Math.random() * opts.length)]); continue; }
                 if (B.pick === 'first') { pickBlessing(opts[0]); continue; }
-                const BOT_ARMY_SCORE = 1.5, BOT_JITTER = 0.5;
-                const score = (id) => { const B = BLESSINGS[id]; return (B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + Math.random() * BOT_JITTER; };
+                const BOT_ARMY_SCORE = 1.5, BOT_RARE_SCORE = 3, BOT_JITTER = 0.5;
+                const score = (id) => { const B = BLESSINGS[id]; return (B.school === ARMY_SCHOOL ? BOT_ARMY_SCORE : schoolPoints(B.school)) + (B.rare ? BOT_RARE_SCORE : 0) + Math.random() * BOT_JITTER; };
                 pickBlessing(leg || opts.reduce((a, b) => score(b) > score(a) ? b : a)); continue;
             }
             const p = gameState.player;

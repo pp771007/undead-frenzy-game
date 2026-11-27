@@ -42,7 +42,7 @@ const BEAST_COMMON = {
 };
 CONFIG.sacredOak = {
     ...BEAST_COMMON, type: 'SacredOak', imageName: 'sacred_oak', color: '#558B2F', radius: 15, imgScaleMultiplier: 4.2,
-    // 樹人（共鳴「森林覺醒」）才會打：treantAttack 是那時的攻擊力
+    // 樹人（稀有祝福「森林覺醒」）才會打：treantAttack 是那時的攻擊力
     baseHealth: 140, baseAttack: 0, treantAttack: 14, attackRange: 34, attackSpeed: 0.7, moveSpeed: 55, upgradeBonus: 0.3,
     summonCost: 28, upgradeCostBase: 30, upgradeCostInc: 12,
 };
@@ -75,7 +75,7 @@ const BEAR_TIER1_TAKEN = 0.75, BEAR_CLEAVE_RADIUS = 30, BEAR_CLEAVE_SHARE = 0.5;
 const BEAR_SLAM_EVERY = 5, BEAR_SLAM_RADIUS = 55, BEAR_SLAM_MULT = 1.5, BEAR_SLAM_SLOW = 0.7, BEAR_SLAM_SLOW_TIME = 1.2;
 
 // ---------- 四大節：每一波輪一個 ----------
-// mult 是「效果強度」：四大節流派的祝福、共鳴會放大它
+// mult 是「效果強度」：四大節流派的祝福、稀有祝福會放大它
 const FESTIVALS = [
     { id: 'samhain', name: '亡者之夜', icon: 'fest_samhain', color: '#B388FF', desc: '野獸倒下時化成狼魂再戰一次' },
     { id: 'imbolc', name: '初春', icon: 'fest_imbolc', color: '#B2FF59', desc: '全體持續回血' },
@@ -97,7 +97,7 @@ const PUP_SCALE = 0.7, PUP_TINT = '#ECEFF1', PUP_TINT_STRENGTH = 0.35;
 // 雙流派：熊之林（橡樹旁的熊受傷倍率、多近算旁邊）、荊棘狼（纏住幾秒）、狩獵之月（每次來幾隻小狼）
 const GROVE_BEAR_TAKEN = 0.5, GROVE_BEAR_RADIUS = 90, THORN_WOLF_ROOT = 0.6, HUNT_MOON_PUPS = 2;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     grove: { name: '聖林', img: 'sacred_oak.png', color: '#AED581', res: [{ name: '根深', desc: '橡樹受到的傷害 -40%' }, { name: '森林覺醒', desc: '第 3 階的橡樹拔根成為樹人，會走過去打' }] },
     pack: { name: '狼群', img: 'druid_wolf.png', color: '#B0BEC5', res: [{ name: '狼嚎', desc: '每 10 秒全體狼攻速 +40%，持續 4 秒' }, { name: '狼王', desc: '每 6 隻狼出一隻狼王，身邊的狼攻速 +25%' }] },
@@ -263,7 +263,7 @@ CLASSES.druid = {
     },
 };
 
-// fest：這一波的節氣（FESTIVALS 的索引），prevFest：上一波的（共鳴、餘韻用）；planted：玩家自己種了幾棵（不含開局那棵）
+// fest：這一波的節氣（FESTIVALS 的索引），prevFest：上一波的（稀有祝福、餘韻用）；planted：玩家自己種了幾棵（不含開局那棵）
 function newDruidState() {
     return { home: { pos: { x: 0, y: 0 } }, targetable: [], seedT: 0, bearT: 0, swipeT: 0, fest: -1, prevFest: -1, howlT: 0, howlCd: RES_HOWL_EVERY, tauntT: 0, crownT: 0, kingT: 0,
         patches: [], sickles: [], boostWave: -1, evergreen: 0, oakLostThisWave: false, planted: 0, oakSeq: 0, henge: null, greenLive: 0 };

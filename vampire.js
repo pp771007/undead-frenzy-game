@@ -82,7 +82,7 @@ const STORM_TIME = 5, STORM_RADIUS = 52, STORM_SPREAD = 22, STORM_SPIN = 3.2, ST
 const BLOOD_BOND_HEAL = 0.2, BAT_GUARD_CUT = 0.25, BAT_GUARD_RADIUS = 80, BAT_GUARD_COST = 0.15;
 const MOONWOLF_RANGE = 62, MOONWOLF_ARC = Math.PI * 0.75, MOONWOLF_EVERY = 0.55, MOONWOLF_MULT = 2.4, MOONWOLF_LEECH = 2, MOONWOLF_SPEED = 1.4;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     bloodmagic: { name: '血魔法', icon: 'bloodmagic', color: '#B388FF', res: [{ name: '血箭', desc: '血之飛刃每次多射一把' }, { name: '血祭', desc: '血量低於一半時，你的傷害加倍' }] },
     kin: { name: '眷屬', icon: 'kin', color: '#CE93D8', res: [{ name: '饗宴', desc: '眷屬每打倒一隻怪，你回 1% 血' }, { name: '血親', desc: '精英怪也能轉化，而且保留精英的強度' }] },

@@ -112,7 +112,7 @@ const SOLDIER_TIER1_REACH = 1.25;
 const SPEAR_PIERCE_RADIUS = 28;
 const SOLDIER_TIER3_ELITE_MULT = 2;
 
-// ---------- 五個流派（規劃見 docs/characters.md）：各 4 張祝福、3 層與 6 層各一段共鳴；每個流派一張傳說 ----------
+// ---------- 五個流派（規劃見 docs/characters.md）：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說 ----------
 // 圖示名稱 = 祝福 id（icons.js）
 Object.assign(SCHOOLS, {
     shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', res: [{ name: '龜甲陣', desc: '站著不動時，盾兵圍成一圈，全軍受傷 -30%、你每秒回 2% 血' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },
@@ -158,7 +158,7 @@ Object.assign(BLESSINGS, {
 });
 // 戰士專屬成就的門檻
 const WAR_ACHV = { veterans: 10, noLossWave: 20, javelinKills: 50, noRecruitWave: 10 };
-// 共鳴與傳說的細部數值（說明文字只講會影響選擇的那個數）
+// 稀有祝福與傳說的細部數值（說明文字只講會影響選擇的那個數）
 const RES_TURTLE_TAKEN = 0.7;
 // 龜甲陣收攏：盾兵圍成一圈的半徑（人多就撐大一點）；三段射護衛：離戰士這麼近的怪弩手先射。
 // 戰士多半是被繞過陣型的蝙蝠、從地底鑽出的屍蟲貼身磨死，只顧前方的流派保不住他。
@@ -255,7 +255,7 @@ CLASSES.warrior = {
         }
         return false;
     },
-    // 成就（通關、速通、流派共鳴由 game.js 照職業產生；這裡只列戰士自己做得到的事）
+    // 成就（通關、速通、稀有祝福由 game.js 照職業產生；這裡只列戰士自己做得到的事）
     achv: {
         win: '軍團凱旋', speed: ['強行軍', '閃電突擊', '神兵天降'],
         feats: [
@@ -775,7 +775,7 @@ class Soldier extends SummonUnit {
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
         const shield = this.config.type === 'Shieldman';
-        // 格擋：三階盾兵每 4 秒一次；共鳴「鐵壁」讓所有盾兵每 2 秒一次
+        // 格擋：三階盾兵每 4 秒一次；稀有祝福「鐵壁」讓所有盾兵每 2 秒一次
         const blockEvery = shield && res('shieldwall') >= 2 ? RES_IRONWALL_BLOCK : shield && this.tier >= 3 ? WARRIOR.blockEvery : 0;
         if (blockEvery && this.blockT <= 0) {
             this.blockT = blockEvery;
@@ -822,7 +822,7 @@ class Soldier extends SummonUnit {
         for (let i = 0; i < this.vet; i++) ctx.drawImage(star, this.pos.x - this.vet * 4 + i * 8, y, 8, 8);
     }
 }
-// 共鳴「槍林」：陣型前方一整排被長槍刺一輪（傷害＝場上長槍兵平均攻擊力）
+// 稀有祝福「槍林」：陣型前方一整排被長槍刺一輪（傷害＝場上長槍兵平均攻擊力）
 function spearWall(p, w) {
     const spears = gameState.summons.filter(s => s.isAlive && s instanceof Spearman && !s.resting);
     if (!spears.length) return;
@@ -841,7 +841,7 @@ function spearWall(p, w) {
     const fx = new JavelinEffect(spears.map(s => ({ x: s.pos.x, y: s.pos.y })), w.fx, w.fy, RES_SPEARWALL_LENGTH, 0.15);
     gameState.visualEffects.push(fx);
 }
-// 共鳴「箭雨」：射程內最密的一群怪被所有弩手齊射一輪
+// 稀有祝福「箭雨」：射程內最密的一群怪被所有弩手齊射一輪
 function arrowRain(p) {
     const bows = gameState.summons.filter(s => s.isAlive && s instanceof Crossbowman);
     if (!bows.length) return;
