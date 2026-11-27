@@ -16,6 +16,8 @@ const CLASS = process.argv[5] || 'necro';
 // 環境變數 PICK=smart|random|first：祝福怎麼挑（見迴圈裡的說明）；META=zero|half|max：開局的局外強化（half = 數值類各買一半、一次買斷的不買）
 const PICK = process.env.PICK || 'smart';
 const META = process.env.META || 'zero';
+// FOCUS=流派 id：只走這個流派（量「每個流派單獨走能不能過」）。這個流派的卡（含傳說）先拿，沒有才照 smart 挑
+const FOCUS = process.env.FOCUS || '';
 if (!URL) { console.error('usage: node tools/playtest.mjs <url> [human|still] [tag]'); process.exit(1); }
 
 const browser = await chromium.launch({ headless: true });
@@ -24,7 +26,7 @@ page.on('pageerror', e => console.log('PAGEERROR', e.message));
 await page.goto(URL);
 await page.waitForFunction(() => typeof appScreen !== 'undefined' && appScreen === 'title', null, { timeout: 30000 });
 
-await page.evaluate(([policy, cls, pick, metaLvl]) => {
+await page.evaluate(([policy, cls, pick, metaLvl, focus]) => {
     cancelAnimationFrame(animationFrameId); animationFrameId = -1;
     meta.tutorialDone = true; Sfx.play = () => {};
     // 直接把那個職業的解鎖條件打開
@@ -36,7 +38,7 @@ await page.evaluate(([policy, cls, pick, metaLvl]) => {
     meta.classUpgrades[cls] = {};
     for (const id in classDefs) meta.classUpgrades[cls][id] = metaLvOf(classDefs[id]);
     resetGame(); enterPlaying(); tutorial = null;
-    window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, pick, seen: new WeakMap(), decide: 0, src: {} };
+    window.__bot = { t: 0, waves: [], cur: null, spendTimer: 0, policy, pick, focus, seen: new WeakMap(), decide: 0, src: {} };
     // 記每種怪一共掉了多少靈魂：經濟有沒有被哪隻怪放大（吞魂者第一版就是這樣抓到的）
     const B = window.__bot;
     B.relics = {};
@@ -62,7 +64,7 @@ await page.evaluate(([policy, cls, pick, metaLvl]) => {
         if (lost > 0) B.hits.push([B.t, type === 'Boss' ? `Boss:${source.lastMove || 'melee'}` : type, lost]);
         return ret;
     };
-}, [POLICY, CLASS, PICK, META]);
+}, [POLICY, CLASS, PICK, META, FOCUS]);
 
 const SIM_SECONDS_PER_CALL = 30;
 let r;
@@ -97,7 +99,9 @@ for (;;) {
                 // 像真人一樣挑：傳說先拿；否則挑自己已經在疊的流派（衝共鳴），全軍通用的算中等，契約最後才拿。
                 // 完全亂挑的話同一個設定兩局可以差三十波（有一局剛好疊成、有一局全是雜牌），拿來比較職業強弱全是雜訊
                 // PICK=random：完全亂挑（像不懂搭配的新手）；PICK=first：永遠拿第一張。拿來量「選擇有沒有意義」
-                const opts = gameState.pendingDraft.options; const leg = opts.find(id => BLESSINGS[id].legendary);
+                const opts = gameState.pendingDraft.options;
+                if (B.focus) { const f = opts.find(id => BLESSINGS[id].school === B.focus && BLESSINGS[id].legendary) || opts.find(id => BLESSINGS[id].school === B.focus); if (f) { pickBlessing(f); continue; } }
+                const leg = opts.find(id => BLESSINGS[id].legendary);
                 if (B.pick === 'random') { pickBlessing(opts[Math.floor(Math.random() * opts.length)]); continue; }
                 if (B.pick === 'first') { pickBlessing(opts[0]); continue; }
                 const BOT_ARMY_SCORE = 1.5, BOT_PACT_SCORE = -1, BOT_JITTER = 0.5;
@@ -279,7 +283,7 @@ const out = await page.evaluate(() => ({
 }));
 if (out.stuck) console.log('STUCK', JSON.stringify(out.stuck));
 if (out.decimals.length) console.log('DECIMAL', JSON.stringify(out.decimals));
-console.log(`RESULT ${TAG} policy=${POLICY} pick=${PICK} meta=${META} class=${CLASS} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
+console.log(`RESULT ${TAG} policy=${POLICY} pick=${PICK} meta=${META} class=${CLASS} focus=${FOCUS || '-'} wave=${out.wave} t=${(out.t / 60).toFixed(1)}min won=${!!r.won} killedBy=${out.killedBy}`);
 console.log('BUILD', out.build);
 if (!r.won) console.log('BURST', out.burst, JSON.stringify(out.lastHits));
 console.log('HURT', JSON.stringify(out.hurt));
