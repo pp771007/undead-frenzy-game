@@ -29,6 +29,95 @@ function cornerSun() { return `<circle cx="53" cy="13" r="7" fill="#ffca28" stro
 function boltAt(x, y) { return `<path d="M${x + 2} ${y - 14} L${x - 7} ${y + 2} L${x} ${y + 2} L${x - 3} ${y + 14} L${x + 8} ${y - 4} L${x + 1} ${y - 4} L${x + 5} ${y - 14} Z" fill="#fff176" stroke-width="2.5"/>`; }
 const HEART_PATH ='M32 54 C12 41 5 28 12 17 C18 9 28 10 32 18 C36 10 46 9 52 17 C59 28 52 41 32 54 Z';
 
+// ---- 零件：弓、箭、槍、弩、劍、飛刀、陷阱、橡實、小怪 ----
+// 武器零件畫在自己的座標裡（朝 +x、從 0 開始），用 placeAt 擺到圖上：
+// 同一種武器不管朝哪邊、出現在哪張圖示，長相都一樣精緻（木紋亮線、銅箍、刃脊、握把纏布）
+const WOOD = '#8d6e63', WOOD_DARK = '#5d4037', STEEL = '#cfd8dc', STEEL_DARK = '#90a4ae', GRIP = '#4e342e', BRASS = '#ffca28';
+const EDGE_SHINE = 'rgba(255,255,255,0.5)';
+function placeAt(x, y, deg, body) { return `<g transform="translate(${x} ${y}) rotate(${deg.toFixed(1)})">${body}</g>`; }
+function degOf(x1, y1, x2, y2) { return Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI; }
+function lenOf(x1, y1, x2, y2) { return Math.hypot(x2 - x1, y2 - y1); }
+// 桿子：圓頭長條，上緣一道亮線
+function rodL(len, w, color) {
+    return `<rect x="0" y="${-w / 2}" width="${len.toFixed(1)}" height="${w}" rx="${w / 2}" fill="${color}" stroke-width="2.5"/>`
+        + `<path d="M${w / 2} ${(-w / 2 + 1.3).toFixed(1)} L${(len - w / 2).toFixed(1)} ${(-w / 2 + 1.3).toFixed(1)}" stroke="${EDGE_SHINE}" stroke-width="1.2"/>`;
+}
+// 葉形槍頭：中間一道脊、一道反光；collar = 底部的銅箍（削尖的木樁不要）
+function spearHeadL(len, w, fill = STEEL, collar = true) {
+    return `<path d="M0 0 C${len * 0.3} ${-w} ${len * 0.62} ${-w * 0.85} ${len} 0 C${len * 0.62} ${w * 0.85} ${len * 0.3} ${w} 0 0 Z" fill="${fill}" stroke-width="2.5"/>`
+        + `<path d="M${len * 0.12} 0 L${len * 0.8} 0" stroke="${STEEL_DARK}" stroke-width="1.4"/><path d="M${len * 0.22} ${-w * 0.4} Q${len * 0.45} ${-w * 0.62} ${len * 0.68} ${-w * 0.3}" stroke="${EDGE_SHINE}" stroke-width="1.4"/>`
+        + (collar ? `<rect x="-3.5" y="-3.4" width="5" height="6.8" rx="1.2" fill="${BRASS}" stroke-width="2"/>` : '');
+}
+function spear(x1, y1, x2, y2, head = 16, w = 4.5, headFill = STEEL, collar = true) {
+    const L = lenOf(x1, y1, x2, y2);
+    return placeAt(x1, y1, degOf(x1, y1, x2, y2), rodL(L - head + 2, w, WOOD) + `<g transform="translate(${(L - head).toFixed(1)} 0)">${spearHeadL(head, head * 0.36, headFill, collar)}</g>`);
+}
+// 箭：寬刃箭頭（兩邊倒鉤）＋兩片箭羽；尾巴在 (x1,y1)
+function arrow(x1, y1, x2, y2, head = STEEL, feather = '#a5d6a7', size = 1) {
+    const L = lenOf(x1, y1, x2, y2) / size, hl = 10;
+    return placeAt(x1, y1, degOf(x1, y1, x2, y2), `<g transform="scale(${size})">${rodL(L - hl + 1, 3.2, WOOD)}`
+        + `<path d="M${L} 0 L${L - hl} -5.5 L${L - hl * 0.75} 0 L${L - hl} 5.5 Z" fill="${head}" stroke-width="2.2"/>`
+        + `<path d="M11 0 L8 -6 L0 -6 L2 0 Z M11 0 L8 6 L0 6 L2 0 Z" fill="${feather}" stroke-width="2"/></g>`);
+}
+// 反曲弓：握把在原點、弓背朝 +x、兩端往前翹，弦在 -x 那側；r = 半長
+function bowL(r, wood = WOOD, string = true) {
+    const tx = -r * 0.5;
+    return (string ? `<path d="M${tx} ${-r} L${tx} ${r}" stroke-width="3"/><path d="M${tx} ${-r} L${tx} ${r}" stroke="#eceff1" stroke-width="1.3"/>` : '')
+        + `<path d="M${tx} ${-r} C${r * 0.35} ${-r * 0.62} ${r * 0.35} ${r * 0.62} ${tx} ${r} C${-r * 0.06} ${r * 0.55} ${-r * 0.06} ${-r * 0.55} ${tx} ${-r} Z" fill="${wood}" stroke-width="2.5"/>`
+        + `<path d="M${tx} ${-r} l${r * 0.14} ${-r * 0.07} M${tx} ${r} l${r * 0.14} ${r * 0.07}" stroke-width="4.5"/><path d="M${tx} ${-r} l${r * 0.14} ${-r * 0.07} M${tx} ${r} l${r * 0.14} ${r * 0.07}" stroke="${wood}" stroke-width="2"/>`
+        + `<rect x="${-r * 0.16}" y="${-r * 0.13}" width="${r * 0.3}" height="${r * 0.26}" rx="1.5" fill="${GRIP}" stroke-width="2"/>`
+        + `<path d="M${r * 0.02} ${-r * 0.6} Q${r * 0.13} ${-r * 0.36} ${r * 0.14} ${-r * 0.2}" stroke="${EDGE_SHINE}" stroke-width="1.5"/>`;
+}
+function bow(cx, cy, r, deg, wood = WOOD) { return placeAt(cx, cy, deg, bowL(r, wood)); }
+// 弩：弩身＋橫的弩臂＋扳機＋一支短矢，朝 +x，全長約 48
+function crossbow(cx, cy, deg, s = 1, feather = '#90caf9') {
+    return placeAt(cx, cy, deg, `<g transform="scale(${s})">`
+        + `<path d="M-7 3 C-7 10 -2 11 -1 8" stroke-width="3.5"/>`
+        + `<path d="M5 -15 L-4 0 L5 15" stroke-width="3"/><path d="M5 -15 L-4 0 L5 15" stroke="#eceff1" stroke-width="1.3"/>`
+        + `<g transform="translate(-20 0)">${rodL(34, 7, WOOD)}</g><path d="M-23 -5 L-13 -3.5 L-13 3.5 L-23 6 Z" fill="${WOOD_DARK}" stroke-width="2.5"/>`
+        + `<g transform="translate(12 0)">${bowL(15, '#78909c', false)}</g><rect x="9" y="-4.5" width="6" height="9" rx="1.5" fill="${BRASS}" stroke-width="2"/>`
+        + `<g transform="translate(-4 0)">${rodL(22, 2.6, '#a1887f')}</g><path d="M26 0 L18 -4.5 L20 0 L18 4.5 Z" fill="${STEEL}" stroke-width="2"/><path d="M4 0 L1 -4 L-5 -4 L-3 0 Z M4 0 L1 4 L-5 4 L-3 0 Z" fill="${feather}" stroke-width="1.8"/>`
+        + `</g>`);
+}
+// 雙手大劍：配重球、纏布握把、銅護手、有血槽的劍身；朝 +x
+function greatswordL(len) {
+    return `<circle cx="-3" cy="0" r="3.4" fill="${BRASS}" stroke-width="2.2"/><rect x="-1" y="-2.6" width="12" height="5.2" rx="2" fill="${GRIP}" stroke-width="2.2"/>`
+        + `<rect x="10" y="-9" width="4.5" height="18" rx="2" fill="${BRASS}" stroke-width="2.2"/>`
+        + `<path d="M14.5 -4.5 L${len - 7} -4.5 L${len} 0 L${len - 7} 4.5 L14.5 4.5 Z" fill="${STEEL}" stroke-width="2.5"/>`
+        + `<path d="M17 0 L${len - 9} 0" stroke="${STEEL_DARK}" stroke-width="1.6"/><path d="M17 -2.6 L${len - 10} -2.6" stroke="${EDGE_SHINE}" stroke-width="1.2"/>`;
+}
+// 飛刀（刺客）：環形柄頭、纏布握把、小護手、單刃；朝 +x
+function throwKnifeL(len) {
+    return `<circle cx="-2" cy="0" r="3.2" stroke-width="4.5"/><circle cx="-2" cy="0" r="3.2" stroke="${BRASS}" stroke-width="2"/>`
+        + `<rect x="1" y="-2.4" width="9" height="4.8" rx="1.5" fill="${GRIP}" stroke-width="2"/><rect x="10" y="-5" width="3" height="10" rx="1" fill="${BRASS}" stroke-width="2"/>`
+        + `<path d="M13 -3.6 L${len - 6} -3.2 L${len} 0.6 L${len - 5} 3.8 L13 3.8 Z" fill="${STEEL}" stroke-width="2.3"/><path d="M15 -1.6 L${len - 8} -1.4" stroke="${EDGE_SHINE}" stroke-width="1.3"/>`;
+}
+// 縮小的捕獸夾（跟流派圖示 trapper 同一個長相）
+function smallTrap(x, y, s) {
+    return `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="8" rx="15" ry="5" fill="#5d4037" stroke-width="3"/>`
+        + `<path d="M-13 7 C-13 -8 13 -8 13 7" stroke-width="7"/><path d="M-13 7 C-13 -8 13 -8 13 7" stroke="#90a4ae" stroke-width="3.5"/>`
+        + `${[-7, 0, 7].map(t => `<path d="M${t - 3} ${t === 0 ? -3 : -1} L${t} ${t === 0 ? 4 : 5} L${t + 3} ${t === 0 ? -3 : -1}" fill="#eceff1" stroke-width="1.8"/>`).join('')}`
+        + `<circle cx="0" cy="8" r="3.5" fill="#ffcc80" stroke-width="2"/></g>`;
+}
+// 橡實（德魯伊的種子，跟彈幕 SHAPE_SPRITES.acorn 同色）
+function acorn(x, y, s, rot = 0) {
+    return `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><ellipse cx="0" cy="3" rx="6" ry="7.5" fill="#a1887f" stroke-width="2.2"/>`
+        + `<path d="M-3 4 Q-3 8 0 9" stroke="#d7ccc8" stroke-width="1.4"/>`
+        + `<path d="M-7.5 -0.5 C-7.5 -7.5 7.5 -7.5 7.5 -0.5 Z" fill="#5d4037" stroke-width="2.2"/><path d="M-4.5 -3 L4.5 -3" stroke="#8d6e63" stroke-width="1.2"/>`
+        + `<path d="M0 -6 C0 -9 2 -11 4 -11" stroke-width="2.4"/><path d="M2 -9 Q8 -13 10 -7 Q6 -6 2 -9 Z" fill="#7cb342" stroke-width="1.8"/></g>`;
+}
+// 被打的小怪：小幽靈剪影（GHOST_PATH 的中心約在 32,30）
+function foe(x, y, s, fill = '#b39ddb') {
+    return `<g transform="translate(${(x - 32 * s).toFixed(1)} ${(y - 30 * s).toFixed(1)}) scale(${s})"><path d="${GHOST_PATH}" fill="${fill}" stroke-width="${(2.5 / s).toFixed(1)}"/>`
+        + `<circle cx="26" cy="26" r="3.5" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="38" cy="26" r="3.5" fill="${ICON_OUTLINE}" stroke="none"/></g>`;
+}
+// 武僧的拳頭（外功 punchPower 那顆），以拳心 (x,y) 為中心
+const FIST_BODY = `<path d="M12 24 C12 16 18 12 24 12 L40 12 C46 12 50 16 50 22 L50 38 C50 48 42 54 32 54 L22 54 C14 54 10 48 10 40 Z" fill="#ffcc80"/><path d="M20 12 L20 28 M30 12 L30 28 M40 12 L40 28" stroke-width="3"/>
+        <path d="M14 38 C20 40 34 40 40 36" stroke="#8d6e63" stroke-width="3"/>`;
+function fistAt(x, y, s, opacity = 1) { return `<g transform="translate(${x} ${y}) scale(${s}) translate(-30 -33)" opacity="${opacity}">${FIST_BODY}</g>`; }
+// 武僧小人（輕功、內功那幾張的同一個人）
+function monkAt(x, y, s, opacity = 1) { return `<g transform="translate(${x} ${y}) scale(${s})" opacity="${opacity}"><path d="M-9 14 L-9 1 C-9 -6 9 -6 9 1 L9 14 Z" fill="#ffa726"/><circle cx="0" cy="-11" r="6.5" fill="#ffcc80"/></g>`; }
+
 const ICON_BODIES = {
     heart: `<path d="${HEART_PATH}" fill="#e5484d"/>${shine(21, 22, 5, 3.5)}`,
     soul: `<path d="M32 58 C18 58 12 46 18 36 C22 29 23 21 20 10 C30 16 35 23 35 30 C38 26 40 21 40 15 C50 25 53 38 48 47 C45 54 39 58 32 58 Z" fill="#62dbe2"/>
@@ -46,8 +135,13 @@ const ICON_BODIES = {
     crown: `<path d="M9 46 L13 17 L24 30 L32 11 L40 30 L51 17 L55 46 Z" fill="#ffd54f"/><rect x="9" y="45" width="46" height="9" rx="2" fill="#e0a82e"/>
         <circle cx="32" cy="49.5" r="3" fill="#e5484d" stroke-width="2.5"/><circle cx="20" cy="49.5" r="2.5" fill="#62dbe2" stroke-width="2.5"/><circle cx="44" cy="49.5" r="2.5" fill="#62dbe2" stroke-width="2.5"/>`,
     bloodMoon: `<circle cx="32" cy="32" r="23" fill="#d84a4a"/><circle cx="24" cy="26" r="5" fill="#a83333" stroke-width="2.5"/><circle cx="38" cy="40" r="7" fill="#a83333" stroke-width="2.5"/><circle cx="41" cy="22" r="3" fill="#a83333" stroke-width="2.5"/>${shine(20, 18, 5, 2.5)}`,
-    claws: duoStroke('M14 10 C22 24 22 40 12 54', '#ff8a50') + duoStroke('M30 8 C38 24 38 42 28 56', '#ff8a50') + duoStroke('M46 10 C54 24 54 40 44 54', '#ff8a50'),
-    plague: `<circle cx="24" cy="38" r="15" fill="#8bc34a"/><circle cx="43" cy="26" r="11" fill="#9ccc65"/><circle cx="44" cy="48" r="7" fill="#7cb342"/>${shine(19, 32, 4, 2.5)}${shine(40, 21, 3, 2)}`,
+    // 狂暴：三道撕開的爪痕（兩頭尖、中間粗），帶速度線
+    claws: `${[8, 25, 42].map(x => `<path d="M${x} 6 C${x + 13} 18 ${x + 13} 38 ${x - 1} 58 C${x + 5} 38 ${x + 5} 18 ${x} 6 Z" fill="#ff8a50" stroke-width="2.5"/><path d="M${x + 3} 16 C${x + 8} 26 ${x + 8} 36 ${x + 4} 46" stroke="#ffe0b2" stroke-width="1.6"/>`).join('')}
+        <path d="M56 12 L62 8 M58 22 L63 20" stroke="#ffccbc" stroke-width="2.5"/>`,
+    // 腐屍狂潮：三顆縫過線的殭屍頭
+    plague: `${[[18, 42, 1, '#7cb342'], [46, 42, 1, '#7cb342'], [32, 26, 1.15, '#9ccc65']].map(([x, y, s, c]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-12 4 C-12 -10 -6 -15 0 -15 C6 -15 12 -10 12 4 C12 11 6 14 0 14 C-6 14 -12 11 -12 4 Z" fill="${c}" stroke-width="2.6"/>
+        <circle cx="-4.5" cy="0" r="3" fill="#fff59d" stroke-width="1.6"/><circle cx="5" cy="-1" r="2" fill="#fff59d" stroke-width="1.6"/><path d="M-6 8 L-3 6 L0 8 L3 6 L6 8" stroke-width="1.8"/>
+        <path d="M-7 -8 L0 -12 M-5 -12 L-3.5 -7.5 M-1.5 -13.5 L-1 -9" stroke-width="1.5"/></g>`).join('')}`,
     sack: `<path d="M24 25 C20 19 22 12 27 9 L37 9 C42 12 44 19 40 25 Z" fill="#b08646"/>
         <path d="M18 25 C7 35 7 54 21 57 L41 57 C55 54 55 35 44 25 Z" fill="#c9a15c"/><path d="M19 25 L45 25" stroke-width="5"/>
         <path d="M24 38 C26 44 26 50 24 54" stroke="#a5814a" stroke-width="2.5"/>
@@ -69,42 +163,43 @@ const ICON_BODIES = {
         <path d="M30 6 C44 4 52 10 54 16" stroke="#81c784" stroke-width="3.5"/><path d="M54 16 L48 14 L54 9 Z" fill="#81c784" stroke-width="2"/>
         <path d="M34 58 C20 60 12 54 10 48" stroke="#81c784" stroke-width="3.5"/><path d="M10 48 L16 50 L10 55 Z" fill="#81c784" stroke-width="2"/>`,
     // 長槍方陣
-    spearLength: `<path d="M4 60 L56 8" stroke-width="5"/><path d="M4 60 L56 8" stroke="#8d6e63" stroke-width="2.5"/><path d="M56 8 L62 2 L60 14 L50 14 Z" fill="#cfd8dc"/>
-        <path d="M14 40 L20 46 M24 30 L30 36 M34 20 L40 26" stroke="#ffd54f" stroke-width="3"/>`,
-    spearPower: `<path d="M10 14 L38 10 L44 46 C34 54 20 54 12 46 Z" fill="#90a4ae"/><path d="M26 18 L30 30 L22 36 L30 48" stroke-width="3"/>
-        <path d="M60 4 L34 30" stroke-width="5"/><path d="M60 4 L34 30" stroke="#8d6e63" stroke-width="2.5"/><path d="M34 30 L26 34 L30 26 Z" fill="#eceff1" stroke-width="2.5"/>${'<circle cx="24" cy="34" r="2.5" fill="#ffd54f" stroke="none"/>'}`,
-    spearBrace: `<path d="M8 54 L56 54" stroke-width="5"/><path d="M8 54 L56 54" stroke="#6d4c41" stroke-width="2.5"/>
-        <path d="M12 56 L30 14 M26 56 L44 14 M40 56 L58 14 M52 56 L34 14 M38 56 L20 14 M24 56 L6 14" stroke-width="4"/>
-        <path d="M12 56 L30 14 M26 56 L44 14 M40 56 L58 14 M52 56 L34 14 M38 56 L20 14 M24 56 L6 14" stroke="#a1887f" stroke-width="2"/>`,
-    spearSweep: `<circle cx="22" cy="38" r="10" fill="#ef9a9a"/><circle cx="40" cy="26" r="10" fill="#ef9a9a"/><circle cx="19" cy="36" r="1.8" fill="#1b1424" stroke="none"/><circle cx="37" cy="24" r="1.8" fill="#1b1424" stroke="none"/>
-        <path d="M4 52 L58 10" stroke-width="5"/><path d="M4 52 L58 10" stroke="#8d6e63" stroke-width="2.5"/><path d="M58 10 L62 4 L62 14 L54 14 Z" fill="#cfd8dc" stroke-width="2.5"/>`,
+    // 長槍：一支長槍＋旁邊一把兩頭的量尺
+    spearLength: spear(6, 50, 52, 4, 18) + duoStroke('M22 60 L60 22 M22 60 L22 51 M22 60 L31 60 M60 22 L51 22 M60 22 L60 31', '#ffd54f', 3),
+    // 破甲：槍尖捅穿裂開的盾，碎片飛出
+    spearPower: `<path d="M6 24 L30 16 L38 40 C33 54 20 58 10 50 Z" fill="#90a4ae"/><path d="M11 28 L28 22 L33 40 C30 49 21 52 14 47 Z" fill="#b0bec5" stroke="none"/><path d="M21 21 L25 31 L18 37 L23 47" stroke-width="2.5"/>
+        <path d="M42 50 L49 48 L46 55 Z M46 38 L52 40 L47 44 Z" fill="#b0bec5" stroke-width="2"/>` + spear(62, 2, 25, 37, 17) + `<path d="${starPath(24, 38, 8, 3, 4)}" fill="#ffd54f" stroke-width="2"/>`,
+    // 拒馬：一根橫木上架兩組交叉、削尖的木樁
+    spearBrace: [20, 44].map(cx => spear(cx + 12, 60, cx - 9, 14, 10, 4.5, '#ffe0b2', false) + spear(cx - 12, 60, cx + 9, 14, 10, 4.5, '#ffe0b2', false)).join('')
+        + placeAt(4, 46, 0, rodL(56, 9, WOOD_DARK)) + `<ellipse cx="9" cy="46" rx="2.5" ry="4.5" fill="#a1887f" stroke-width="2"/><ellipse cx="55" cy="46" rx="2.5" ry="4.5" fill="#a1887f" stroke-width="2"/>`,
+    // 掃槍：一槍串起兩隻怪
+    spearSweep: foe(19, 40, 0.5) + foe(40, 28, 0.5) + spear(2, 52, 62, 12, 16) + `<path d="${starPath(20, 40, 5, 2, 4)}" fill="#ffd54f" stroke-width="1.6"/><path d="${starPath(40, 28, 5, 2, 4)}" fill="#ffd54f" stroke-width="1.6"/>`,
     // 弩陣
-    bowReload: `<path d="M10 30 C16 16 40 16 46 30" stroke-width="5"/><path d="M10 30 C16 16 40 16 46 30" stroke="#8d6e63" stroke-width="2.5"/><path d="M28 18 L28 52" stroke-width="5"/><path d="M28 18 L28 52" stroke="#a1887f" stroke-width="2.5"/>
-        <path d="M10 30 L28 36 L46 30" stroke="#eceff1" stroke-width="1.8"/>
-        <path d="M50 40 C60 40 62 52 54 58 C48 62 40 58 40 52" stroke="#81c784" stroke-width="3.5"/><path d="M40 52 L36 46 L44 46 Z" fill="#81c784" stroke-width="2"/>`,
-    bowPower: `<path d="M6 34 C12 14 52 14 58 34" stroke-width="7"/><path d="M6 34 C12 14 52 14 58 34" stroke="#5d4037" stroke-width="4"/><path d="M32 18 L32 58" stroke-width="7"/><path d="M32 18 L32 58" stroke="#8d6e63" stroke-width="4"/>
-        <path d="M6 34 L32 40 L58 34" stroke="#eceff1" stroke-width="2"/><path d="M32 4 L38 14 L26 14 Z" fill="#b0bec5"/><rect x="24" y="44" width="16" height="10" rx="2" fill="#78909c"/>`,
-    bowRange: `<path d="M4 44 C8 32 24 32 28 44" stroke-width="4"/><path d="M4 44 C8 32 24 32 28 44" stroke="#8d6e63" stroke-width="2"/><path d="M16 36 L16 60" stroke-width="4"/>
-        <path d="M20 30 L30 22 M36 18 L44 12" stroke="#ffd54f" stroke-width="3" stroke-dasharray="3 4"/><circle cx="54" cy="10" r="7" fill="#42a5f5"/><circle cx="54" cy="10" r="3" fill="#fff8e1" stroke-width="2"/>`,
-    bowVolley: `<path d="M6 46 C10 34 26 34 30 46" stroke-width="4"/><path d="M6 46 C10 34 26 34 30 46" stroke="#8d6e63" stroke-width="2"/><path d="M18 38 L18 62" stroke-width="4"/>
-        ${[[50, 8], [58, 26], [44, 22]].map(([x, y]) => `<path d="M20 34 L${x} ${y}" stroke="#cfd8dc" stroke-width="2.5"/><path d="M${x} ${y} L${x - 7} ${y - 1} L${x - 3} ${y + 5} Z" fill="#eceff1" stroke-width="2"/>`).join('')}`,
+    bowReload: crossbow(26, 32, -45, 1.05) + duoStroke('M46 40 C58 38 62 52 54 58 C48 62 40 60 38 54', '#81c784', 3) + `<path d="M38 54 L33 46 L43 47 Z" fill="#81c784" stroke-width="2"/>`,
+    bowPower: `<path d="${starPath(50, 14, 13, 5, 8)}" fill="#ffd54f" stroke-width="2.2"/>` + crossbow(28, 38, -50, 1.15),
+    bowRange: crossbow(18, 46, -45, 0.85) + `<path d="M34 30 L46 18" stroke-width="5" stroke-dasharray="4 4"/><path d="M34 30 L46 18" stroke="#ffd54f" stroke-width="2.5" stroke-dasharray="4 4"/>`
+        + `<circle cx="54" cy="10" r="8" fill="#42a5f5"/><circle cx="54" cy="10" r="4.5" fill="#fff8e1" stroke-width="2"/><circle cx="54" cy="10" r="1.6" fill="#42a5f5" stroke="none"/>`,
+    bowVolley: crossbow(18, 48, -45, 0.85) + arrow(28, 28, 42, 6, STEEL, '#90caf9', 0.8) + arrow(32, 32, 56, 14, STEEL, '#90caf9', 0.8) + arrow(36, 38, 60, 32, STEEL, '#90caf9', 0.8),
     // 狂戰
     rageGain: `<path d="M32 60 C16 60 8 48 14 34 C18 26 18 18 14 6 C24 12 30 20 30 28 C34 22 36 16 36 8 C48 18 54 32 48 46 C44 54 40 60 32 60 Z" fill="#ff6d00"/>
         <path d="M32 54 C24 54 20 46 24 38 C26 34 28 32 28 26 C34 30 38 36 38 42 C38 48 36 54 32 54 Z" fill="#ffd54f" stroke="none"/>${duoStroke('M48 26 L58 16 M58 16 L50 16 M58 16 L58 24', '#ffd54f', 3)}`,
     rageLength: `<path d="M16 6 L48 6 M16 58 L48 58" stroke-width="5"/><path d="M19 8 C19 22 30 26 30 32 C30 38 19 42 19 56 L45 56 C45 42 34 38 34 32 C34 26 45 22 45 8 Z" fill="#ffe0b2"/>
         <path d="M23 18 L41 18 C40 25 34 28 32 31 C30 28 24 25 23 18 Z" fill="#ef6c00" stroke="none"/><path d="M22 54 C24 44 40 44 42 54 Z" fill="#ef6c00" stroke="none"/><path d="M32 33 L32 46" stroke="#ef6c00" stroke-width="2"/>`,
-    rageCleave: `<circle cx="32" cy="32" r="24" stroke="#ffcc80" stroke-width="3" stroke-dasharray="8 6"/>
-        <path d="M14 50 L44 20" stroke-width="7"/><path d="M14 50 L44 20" stroke="#cfd8dc" stroke-width="4"/><path d="M44 20 L54 10 L52 22 Z" fill="#eceff1" stroke-width="2.5"/>
-        <path d="M10 46 L18 54" stroke-width="5"/><path d="M10 46 L18 54" stroke="#ffd54f" stroke-width="2.5"/><path d="M6 58 L12 52" stroke-width="5"/><path d="M6 58 L12 52" stroke="#6d4c41" stroke-width="2.5"/>`,
-    rageLeech: `<path d="M8 8 L36 36" stroke-width="7"/><path d="M8 8 L36 36" stroke="#cfd8dc" stroke-width="4"/><path d="M34 30 L42 38 M38 34 L32 40" stroke-width="5"/>
-        <path d="M40 40 C40 44 42 46 42 48 C42 50 40 52 40 52 C40 52 38 50 38 48 C38 46 40 44 40 40 Z" fill="#c62828" stroke-width="2"/>
-        <path d="M46 62 C34 54 30 46 35 40 C39 35 44 37 46 41 C48 37 53 35 57 40 C62 46 58 54 46 62 Z" fill="#e53935"/>`,
+    // 旋風斬：大劍外面一圈旋轉的刀風
+    rageCleave: duoStroke('M8 34 A24 24 0 0 1 50 16', '#ffab40', 3.5) + `<path d="M55 21 L45 16 L54 10 Z" fill="#ffab40" stroke-width="2"/>`
+        + duoStroke('M56 30 A24 24 0 0 1 14 48', '#ffab40', 3.5) + `<path d="M9 43 L19 48 L10 54 Z" fill="#ffab40" stroke-width="2"/>` + placeAt(16, 50, -45, greatswordL(46)),
+    // 嗜血：大劍砍下去，血回到自己的心
+    rageLeech: placeAt(9, 9, 45, greatswordL(38))
+        + `<path d="M40 34 C43 38 45 40 45 43 C45 46 43 48 40 48 C37 48 35 46 35 43 C35 40 37 38 40 34 Z" fill="#e5484d" stroke-width="2"/>`
+        + `<g transform="translate(26 28) scale(0.58)"><path d="${HEART_PATH}" fill="#e5484d" stroke-width="5"/>${shine(21, 22, 5, 3.5)}</g>`,
     // 軍團紀律
     legionCap: `${[[16, 36], [32, 30], [48, 36]].map(([x, y]) => `<path d="M${x - 10} ${y + 6} C${x - 10} ${y - 8} ${x + 10} ${y - 8} ${x + 10} ${y + 6} Z" fill="#90a4ae"/><path d="M${x} ${y - 6} L${x} ${y - 12}" stroke="#1565c0" stroke-width="4"/>`).join('')}
         <path d="M4 50 L60 50" stroke-width="4"/>${duoStroke('M50 8 L50 22 M43 15 L57 15', '#81c784', 3.5)}`,
-    legionDrill: `<path d="M32 22 L32 60" stroke-width="5"/><path d="M32 22 L32 60" stroke="#8d6e63" stroke-width="2.5"/><path d="M14 30 L50 30" stroke-width="5"/><path d="M14 30 L50 30" stroke="#8d6e63" stroke-width="2.5"/>
-        <ellipse cx="32" cy="38" rx="10" ry="14" fill="#ffe082"/><circle cx="32" cy="14" r="9" fill="#ffe082"/><path d="M26 34 L38 42 M38 34 L26 42" stroke="#a1887f" stroke-width="2"/>
-        <path d="M48 46 L58 56 M52 44 L60 52" stroke="#cfd8dc" stroke-width="3"/>`,
+    // 操練：稻草人靶，胸口畫著靶心，旁邊一道劍痕
+    legionDrill: placeAt(30, 62, -90, rodL(44, 5, WOOD)) + placeAt(8, 30, 0, rodL(44, 4.5, WOOD))
+        + `<ellipse cx="30" cy="39" rx="11" ry="14" fill="#d7b98a"/><path d="M20 33 L40 33 M19 45 L41 45" stroke="#a1887f" stroke-width="2.2"/>
+        <circle cx="30" cy="39" r="6" fill="#1e88e5" stroke-width="2"/><circle cx="30" cy="39" r="2.4" fill="#ffd54f" stroke="none"/>
+        <circle cx="30" cy="16" r="8" fill="#d7b98a"/><path d="M25 14 L28 17 M28 14 L25 17 M32 14 L35 17 M35 14 L32 17" stroke-width="1.8"/>${shine(26, 34, 2.5, 4, 20)}`
+        + duoStroke('M44 54 L60 38', '#eceff1', 2.5) + duoStroke('M48 58 L62 44', '#eceff1', 2),
     legionPay: `<ellipse cx="32" cy="50" rx="18" ry="6" fill="#e0a82e"/><ellipse cx="32" cy="42" rx="18" ry="6" fill="#ffd54f"/><ellipse cx="32" cy="34" rx="18" ry="6" fill="#e0a82e"/><ellipse cx="32" cy="26" rx="18" ry="6" fill="#ffd54f"/>
         <path d="M6 8 L22 22 M58 8 L42 22" stroke-width="5"/><path d="M6 8 L22 22 M58 8 L42 22" stroke="#cfd8dc" stroke-width="2.5"/>${shine(26, 24, 4, 2)}`,
     legionVet: `<path d="M20 4 L32 18 L44 4 L44 14 L32 28 L20 14 Z" fill="#1565c0"/><circle cx="32" cy="42" r="16" fill="#ffd54f"/>
@@ -113,9 +208,13 @@ const ICON_BODIES = {
     valhalla: `<path d="M8 36 C2 24 6 12 14 10 C12 20 16 28 22 30 Z M56 36 C62 24 58 12 50 10 C52 20 48 28 42 30 Z" fill="#fff8e1"/>
         <path d="M32 12 C18 12 14 24 14 36 L50 36 C50 24 46 12 32 12 Z" fill="#ffd54f"/><rect x="12" y="34" width="40" height="8" rx="2" fill="#e0a82e"/>
         <path d="M18 42 L18 52 C24 58 40 58 46 52 L46 42" fill="#b0bec5"/>${[[32, 4, 4], [6, 52, 3], [58, 50, 3]].map(([x, y, r]) => `<path d="${starPath(x, y, r, r * 0.35, 4)}" fill="#fff8e1" stroke-width="1.5"/>`).join('')}`,
-    aquila: `<path d="M32 26 L32 62" stroke-width="5"/><path d="M32 26 L32 62" stroke="#8d6e63" stroke-width="2.5"/><rect x="22" y="38" width="20" height="14" rx="2" fill="#1565c0"/>
-        <path d="M32 24 C24 12 10 10 4 14 C10 16 14 20 16 24 C22 22 28 24 32 28 C36 24 42 22 48 24 C50 20 54 16 60 14 C54 10 40 12 32 24 Z" fill="#ffd54f"/>
-        <circle cx="32" cy="14" r="5" fill="#ffd54f"/><path d="M36 14 L40 16 L36 17 Z" fill="#e0a82e" stroke-width="2"/>`,
+    // 鷹旗：羅馬軍團的金鷹旗 —— 展翅金鷹、月桂環、藍色銘牌
+    aquila: placeAt(32, 63, -90, rodL(34, 5, WOOD))
+        + `<circle cx="32" cy="44" r="8" stroke-width="5.5"/><circle cx="32" cy="44" r="8" stroke="#7cb342" stroke-width="2.6"/>
+        <rect x="21" y="52" width="22" height="9" rx="1.5" fill="#1e88e5"/><path d="M25 56.5 L39 56.5" stroke="#ffd54f" stroke-width="1.8"/>
+        ${[1, -1].map(s => `<g transform="translate(32 0) scale(${s} 1)"><path d="M-2 26 C-10 24 -20 18 -26 4 C-21 7 -19 6 -17 8 C-17 4 -15 2 -13 1 C-12 6 -9 11 -3 17 Z" fill="#ffd54f"/><path d="M-6 20 C-12 16 -16 12 -19 7 M-5 15 C-9 11 -11 8 -13 4" stroke="#e0a82e" stroke-width="1.6"/></g>`).join('')}
+        <path d="M27 20 C27 13 37 13 37 20 L36 31 L32 35 L28 31 Z" fill="#ffd54f"/><circle cx="34" cy="12" r="5" fill="#ffd54f"/><path d="M38 10 L43 12.5 L38 15 Z" fill="#ff8f00" stroke-width="2"/>
+        <circle cx="35" cy="11" r="1.2" fill="${ICON_OUTLINE}" stroke="none"/><rect x="22" y="33" width="20" height="4.5" rx="1.5" fill="#e0a82e"/>${shine(30, 20, 2, 3.5, 20)}`,
     spartans: `<path d="M8 34 C8 14 56 14 56 34 L56 46 C50 50 46 56 44 60 L20 60 C18 56 14 50 8 46 Z" fill="#e0a82e"/>
         <path d="M24 34 L24 50 M40 34 L40 50" stroke-width="4"/><path d="M14 30 L50 30" stroke-width="4"/>
         <path d="M10 18 C14 4 50 4 54 18 C46 12 18 12 10 18 Z" fill="#1565c0"/>${shine(20, 26, 4, 2.5)}`,
@@ -124,9 +223,11 @@ const ICON_BODIES = {
     bearform: `<ellipse cx="32" cy="42" rx="16" ry="14" fill="#8d6e63"/>${[[14, 24, -20], [24, 15, -8], [40, 15, 8], [50, 24, 20]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="6" ry="8" transform="rotate(${r} ${x} ${y})" fill="#8d6e63"/><path d="M${x} ${y - 8} L${x + r / 6} ${y - 14}" stroke-width="3"/>`).join('')}
         <ellipse cx="32" cy="44" rx="9" ry="7" fill="#a1887f" stroke="none"/>${shine(26, 38, 4, 2.5)}`,
     // 流派「荒野」：一叢帶刺的藤
-    thorns: `<path d="M10 58 C14 40 26 34 30 18 M30 18 C34 32 46 36 50 56 M30 30 C22 30 16 24 14 16 M38 38 C46 36 52 30 54 22" stroke-width="7"/>
-        <path d="M10 58 C14 40 26 34 30 18 M30 18 C34 32 46 36 50 56 M30 30 C22 30 16 24 14 16 M38 38 C46 36 52 30 54 22" stroke="#7cb342" stroke-width="3.5"/>
-        ${[[19, 42, -60], [27, 28, -40], [37, 30, 40], [45, 46, 60], [18, 22, -80], [48, 28, 70]].map(([x, y, r]) => `<path d="M${x} ${y} l${(Math.cos(r * Math.PI / 180) * 7).toFixed(1)} ${(Math.sin(r * Math.PI / 180) * 7).toFixed(1)}" stroke="#c5e1a5" stroke-width="2.5"/>`).join('')}`,
+    // 荊棘之冠：一圈編起來的帶刺藤冠
+    thorns: `${Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6 + 0.2, c = Math.cos(a), s = Math.sin(a); const bx = 32 + c * 23, by = 34 + s * 13; return `<path d="M${(bx - s * 3).toFixed(1)} ${(by + c * 2).toFixed(1)} L${(32 + c * 31).toFixed(1)} ${(34 + s * 20).toFixed(1)} L${(bx + s * 3).toFixed(1)} ${(by - c * 2).toFixed(1)} Z" fill="#f1ead6" stroke-width="2"/>`; }).join('')}
+        <ellipse cx="32" cy="34" rx="23" ry="13" stroke-width="10"/><ellipse cx="32" cy="34" rx="23" ry="13" stroke="#6d4c41" stroke-width="6"/>
+        <path d="M9 34 C14 26 20 30 26 22 C32 28 38 20 44 23 C48 27 52 26 55 34 M11 40 C18 47 24 41 30 47 C36 42 42 48 48 44 C52 42 54 40 55 36" stroke="#7cb342" stroke-width="2.5"/>
+        ${[[14, 28], [40, 21], [22, 46], [50, 43]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="4" ry="2.4" transform="rotate(-25 ${x} ${y})" fill="#9ccc65" stroke-width="1.8"/>`).join('')}`,
     // 流派「四大節」：四色輪
     wheel: `<circle cx="32" cy="32" r="26" fill="#3e2723"/>${['#b388ff', '#b2ff59', '#ff7043', '#ffd54f'].map((c, i) => { const a0 = i * Math.PI / 2 - Math.PI / 2, a1 = a0 + Math.PI / 2; return `<path d="M32 32 L${(32 + Math.cos(a0) * 22).toFixed(1)} ${(32 + Math.sin(a0) * 22).toFixed(1)} A22 22 0 0 1 ${(32 + Math.cos(a1) * 22).toFixed(1)} ${(32 + Math.sin(a1) * 22).toFixed(1)} Z" fill="${c}" stroke-width="2.5"/>`; }).join('')}
         <circle cx="32" cy="32" r="6" fill="#ffecb3" stroke-width="3"/>`,
@@ -159,8 +260,11 @@ const ICON_BODIES = {
     // 一串越跳越遠的狼爪印
     wolfSpeed: `${[[16, 50, 0.7], [32, 36, 0.85], [50, 20, 1]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="4" rx="7" ry="6" fill="#b0bec5"/>${[[-7, -4], [-2.5, -8], [2.5, -8], [7, -4]].map(([a, b]) => `<ellipse cx="${a}" cy="${b}" rx="2.6" ry="3.4" fill="#b0bec5" stroke-width="2.5"/>`).join('')}</g>`).join('')}
         <path d="M4 40 L12 32 M8 56 L18 46 M22 26 L30 18" stroke="#8fd3ff" stroke-width="3"/>`,
-    wolfCrit: `<path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke-width="7"/><path d="M10 52 L44 18 M20 56 L52 24 M30 58 L58 32" stroke="#ff9100" stroke-width="3.5"/>
-        <path d="${starPath(16, 16, 10, 4, 4)}" fill="#ffd54f" stroke-width="2.5"/>`,
+    // 咬喉：張嘴露牙的狼頭，旁邊一顆會心一擊的星
+    wolfCrit: `<path d="${starPath(50, 14, 12, 4.5, 4)}" fill="#ffd54f" stroke-width="2.5"/>
+        <g transform="translate(28 36) scale(1.7)"><path d="M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z" fill="#90a4ae" stroke-width="2.4"/>
+        <path d="M-9 -9 L-8 -12 L-6 -7 Z M9 -9 L8 -12 L6 -7 Z" fill="#cfd8dc" stroke="none"/><path d="M-7 -1 L-3 0 M7 -1 L3 0" stroke-width="1.6"/><circle cx="-5" cy="1" r="1.5" fill="#ffd54f" stroke="none"/><circle cx="5" cy="1" r="1.5" fill="#ffd54f" stroke="none"/>
+        <path d="M-6 6 C-3 12 3 12 6 6 Z" fill="#4e342e" stroke-width="1.6"/><path d="M-5 6 L-4 9 L-3 6 M3 6 L4 9 L5 6" fill="#ffffff" stroke-width="1"/></g>`,
     // 巨熊
     bearHide: `<path d="M8 22 C8 10 20 6 32 6 C44 6 56 10 56 22 L56 44 C56 54 46 60 32 60 C18 60 8 54 8 44 Z" fill="#795548"/><circle cx="14" cy="10" r="6" fill="#795548"/><circle cx="50" cy="10" r="6" fill="#795548"/>
         <path d="M18 26 L46 26 M16 36 L48 36 M18 46 L46 46" stroke="#5d4037" stroke-width="3"/><path d="M26 20 L26 50 M38 20 L38 50" stroke="#a1887f" stroke-width="2"/>${shine(18, 18, 4, 2.5)}`,
@@ -175,18 +279,24 @@ const ICON_BODIES = {
     seedPower: `${[[20, 24, -140], [44, 24, -40], [18, 44, 160], [46, 44, 20], [32, 16, -90], [32, 56, 90]].map(([x, y, r]) => { const c = Math.cos(r * Math.PI / 180), s = Math.sin(r * Math.PI / 180); return `<path d="M${(x - s * 4).toFixed(1)} ${(y + c * 4).toFixed(1)} L${(x + c * 10).toFixed(1)} ${(y + s * 10).toFixed(1)} L${(x + s * 4).toFixed(1)} ${(y - c * 4).toFixed(1)} Z" fill="#c5e1a5" stroke-width="2.5"/>`; }).join('')}
         <ellipse cx="32" cy="36" rx="14" ry="18" fill="#7cb342"/><path d="M32 20 L32 52" stroke="#33691e" stroke-width="2.5"/>
         <circle cx="44" cy="52" r="6" fill="#ab47bc" stroke-width="2.5"/>${shine(26, 28, 3, 5, 20)}`,
-    seedRoot: `<ellipse cx="32" cy="22" rx="12" ry="14" fill="#ef9a9a"/><circle cx="27" cy="20" r="2" fill="#1b1424" stroke="none"/><circle cx="37" cy="20" r="2" fill="#1b1424" stroke="none"/>
-        <path d="M8 58 C12 44 20 40 22 30 C28 34 36 34 42 30 C44 40 52 44 56 58" stroke-width="7"/><path d="M8 58 C12 44 20 40 22 30 C28 34 36 34 42 30 C44 40 52 44 56 58" stroke="#7cb342" stroke-width="3.5"/>
-        <path d="M18 34 C26 40 38 40 46 34" stroke="#7cb342" stroke-width="3"/>`,
-    seedCount: `${[[16, 40], [32, 30], [48, 40], [24, 54], [42, 54]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="5" ry="6.5" fill="#7cb342" stroke-width="2.5"/>`).join('')}
-        <path d="M10 18 C20 8 44 8 54 18" stroke="#c5e1a5" stroke-width="3" stroke-dasharray="4 4"/>`,
-    seedRadius: `<circle cx="32" cy="34" r="24" stroke="#9ccc65" stroke-width="3" stroke-dasharray="6 5"/>${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<path d="M32 34 Q${(32 + Math.cos(a + 0.5) * 12).toFixed(1)} ${(34 + Math.sin(a + 0.5) * 12).toFixed(1)} ${(32 + Math.cos(a) * 20).toFixed(1)} ${(34 + Math.sin(a) * 20).toFixed(1)}" stroke="#7cb342" stroke-width="3"/>`; }).join('')}
-        <circle cx="32" cy="34" r="5" fill="#558b2f" stroke-width="2.5"/>`,
+    // 纏根：從地裡竄出的根把一隻怪的下半身綁住
+    seedRoot: `<ellipse cx="32" cy="58" rx="26" ry="4.5" fill="#5d4037" stroke-width="2.5"/>` + foe(32, 28, 0.85)
+        + duoStroke('M10 58 C12 48 22 50 26 42 C30 36 40 40 44 34 C46 30 50 30 52 32', '#8d6e63', 3.5) + duoStroke('M54 58 C52 48 42 50 38 44 C34 38 24 42 18 36 C16 34 13 34 12 36', '#7cb342', 3.5)
+        + `${[[52, 32], [12, 36], [30, 39]].map(([x, y]) => `<ellipse cx="${x}" cy="${y - 4}" rx="2.4" ry="4" transform="rotate(30 ${x} ${y - 4})" fill="#9ccc65" stroke-width="1.6"/>`).join('')}`,
+    // 撒種：三顆橡實一起拋出去
+    seedCount: `<path d="M8 58 C10 46 14 40 18 36 M30 60 C30 48 32 36 32 26 M54 58 C52 46 50 40 46 36" stroke="#c5e1a5" stroke-width="2.5" stroke-dasharray="3 4"/>`
+        + acorn(16, 32, 1.1, -25) + acorn(32, 20, 1.2, 0) + acorn(48, 32, 1.1, 25) + duoStroke('M54 4 L54 16 M48 10 L60 10', '#81c784', 3),
+    // 蔓生：橡實外面長出一圈帶葉的藤，四個方向往外推
+    seedRadius: `<circle cx="32" cy="34" r="20" stroke-width="6.5"/><circle cx="32" cy="34" r="20" stroke="#7cb342" stroke-width="3"/>
+        ${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3 + 0.5, x = 32 + Math.cos(a) * 20, y = 34 + Math.sin(a) * 20; return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="5" ry="2.8" transform="rotate(${(a * 180 / Math.PI + 60).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#9ccc65" stroke-width="1.8"/>`; }).join('')}
+        ${[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sy]) => duoStroke(`M${32 + sx * 18} ${34 + sy * 18} l${sx * 8} ${sy * 8} m${-sx * 6} 0 l${sx * 6} 0 l0 ${-sy * 6}`, '#ffd54f', 2.2)).join('')}` + acorn(32, 35, 1.25),
     // 四大節
     festPower: `<path d="M20 60 L24 26 L40 26 L44 60 Z" fill="#eceff1"/><path d="M24 26 C24 16 40 16 40 26" fill="#eceff1"/><circle cx="32" cy="14" r="8" fill="#ffe0b2"/>
         <path d="M12 8 L20 20 M52 8 L44 20" stroke="#ffd54f" stroke-width="3"/><path d="M16 40 L8 30" stroke-width="4"/><path d="M8 30 C4 24 10 20 12 24" fill="#9ccc65" stroke-width="2.5"/>
         <path d="M44 38 L56 34" stroke-width="4"/><path d="M56 30 C60 30 60 38 56 38" stroke="#ffd54f" stroke-width="3"/>`,
-    festLinger: `<circle cx="24" cy="32" r="16" fill="#ff7043" opacity="0.55"/><circle cx="40" cy="32" r="16" fill="#ffd54f"/><path d="M24 16 C14 16 8 24 8 32 C8 40 14 48 24 48" stroke-width="3" stroke-dasharray="3 3"/>`,
+    // 餘韻：四節之輪上，這一節跟上一節同時亮著（其餘兩節暗），一道箭頭從上一節繞過來
+    festLinger: `<circle cx="32" cy="34" r="24" fill="#3e2723"/>${['#b388ff', '#b2ff59', '#ff7043', '#ffd54f'].map((c, i) => { const a0 = i * Math.PI / 2 - Math.PI / 2, a1 = a0 + Math.PI / 2; return `<path d="M32 34 L${(32 + Math.cos(a0) * 20).toFixed(1)} ${(34 + Math.sin(a0) * 20).toFixed(1)} A20 20 0 0 1 ${(32 + Math.cos(a1) * 20).toFixed(1)} ${(34 + Math.sin(a1) * 20).toFixed(1)} Z" fill="${c}" stroke-width="2.5" opacity="${i < 2 ? 1 : 0.3}"/>`; }).join('')}
+        <circle cx="32" cy="34" r="5" fill="#ffecb3" stroke-width="2.5"/>` + duoStroke('M8 22 A27 27 0 0 1 40 6', '#fff3c4', 2.5) + `<path d="M44 7 L37 1 L36 11 Z" fill="#fff3c4" stroke-width="2"/>`,
     festRenew: `<path d="M32 58 C22 52 12 42 12 30 C12 20 20 14 26 14 C30 14 32 18 32 18 C32 18 34 14 38 14 C44 14 52 20 52 30 C52 42 42 52 32 58 Z" fill="#9ccc65"/>
         <path d="M32 50 L32 26 M24 34 L32 26 L40 34" stroke="#fff" stroke-width="3.5"/>`,
     festOffering: `<path d="M8 50 L56 50 L50 60 L14 60 Z" fill="#bcaaa4"/><path d="M14 50 L14 44 L50 44 L50 50" fill="#d7ccc8"/>
@@ -220,7 +330,8 @@ const ICON_BODIES = {
     // 血魔法
     bmPower: `<path d="M32 6 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#7e57c2"/>${boltAt(32, 40)}`,
     bmRadius: `${[24, 16, 8].map((r, i) => `<circle cx="32" cy="32" r="${r + 4}" stroke="${['#d1c4e9', '#b39ddb', '#5e35b1'][i]}" stroke-width="3" ${i === 0 ? 'stroke-dasharray="5 4"' : ''}/>`).join('')}<circle cx="32" cy="32" r="6" fill="#4527a0"/>`,
-    bmRate: `<path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke-width="7"/><path d="M4 34 L16 34 L22 18 L30 50 L38 14 L44 34 L60 34" stroke="#9575cd" stroke-width="3.5"/>`,
+    // 脈動：一滴血，前面跳著一道心跳線
+    bmRate: `<path d="M32 4 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#7e57c2"/>${shine(23, 30, 3, 5, 20)}` + duoStroke('M2 42 L16 42 L22 28 L30 54 L37 22 L43 42 L62 42', '#ede7f6', 3),
     bmLeech: `<path d="M32 10 C38 20 44 26 44 34 C44 42 38 46 32 46 C26 46 20 42 20 34 C20 26 26 20 32 10 Z" fill="#7e57c2"/>
         <path d="M10 40 C8 54 20 60 32 58 M54 40 C56 54 44 60 32 58" stroke-width="5"/><path d="M10 40 C8 54 20 60 32 58 M54 40 C56 54 44 60 32 58" stroke="#81c784" stroke-width="2.5"/><path d="M6 44 L10 38 L14 44" stroke="#81c784" stroke-width="2.5"/>`,
     // 眷屬
@@ -236,8 +347,10 @@ const ICON_BODIES = {
     batPair: `${[[20, 26, 0.9], [44, 40, 0.9]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="#4527a0"/><circle cx="-3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/></g>`).join('')}`,
     batFang: `<path d="M32 18 C18 4 4 10 2 24 C10 20 16 24 18 30 C24 24 28 28 32 36 C36 28 40 24 46 30 C48 24 54 20 62 24 C60 10 46 4 32 18 Z" fill="#4527a0"/>
         <path d="M26 36 L28 46 L30 36 M34 36 L36 46 L38 36" fill="#ffffff" stroke-width="2"/><circle cx="27" cy="26" r="2.2" fill="#ffd54f" stroke="none"/><circle cx="37" cy="26" r="2.2" fill="#ffd54f" stroke="none"/>`,
-    batDrain: `<path d="M20 22 C12 14 4 16 2 24 C8 22 10 24 12 28 C16 24 18 26 20 30 C22 26 24 24 28 28 C30 24 34 22 38 24 C36 16 28 14 20 22 Z" fill="#4527a0"/>
-        <path d="M24 32 C30 44 40 50 52 50" stroke="#9575cd" stroke-width="3" stroke-dasharray="4 3"/><path d="M52 40 C58 48 58 56 52 60 C46 56 46 48 52 40 Z" fill="#7e57c2" stroke-width="2.5"/>`,
+    // 血線：蝙蝠吸到的血沿著一條血流送回一滴血＋回血的加號
+    batDrain: `<g transform="translate(20 18) scale(1.05)"><path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="#4527a0" stroke-width="2.6"/><circle cx="-3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="1.6" fill="#ffd54f" stroke="none"/><path d="M-2 4 L-1.2 7 L-0.4 4 M0.4 4 L1.2 7 L2 4" fill="#fff" stroke-width="1"/></g>`
+        + duoStroke('M20 26 C22 40 30 48 42 48', '#9575cd', 3.5) + `<path d="M50 34 C55 42 58 46 58 51 C58 56 54 59 50 59 C46 59 42 56 42 51 C42 46 45 42 50 34 Z" fill="#7e57c2"/>${shine(47, 47, 1.8, 3, 20)}`
+        + duoStroke('M56 18 L56 30 M50 24 L62 24', '#81c784', 3),
     batSpeed: `<path d="M38 26 C30 16 18 18 16 28 C22 26 26 28 28 32 C32 28 34 30 38 36 C42 30 44 28 48 32 C50 28 54 26 60 28 C58 18 46 16 38 26 Z" fill="#4527a0"/>
         <path d="M4 26 L14 26 M2 36 L14 36 M6 46 L18 46" stroke="#8fd3ff" stroke-width="3.5"/>`,
     // 狼化
@@ -268,47 +381,55 @@ const ICON_BODIES = {
     arrowrain: `<path d="M10 20 C2 20 2 8 12 8 C14 0 30 0 32 6 C38 0 52 2 52 10 C62 10 62 20 54 20 Z" fill="#90a4ae"/>
         ${[[14, 26], [28, 32], [42, 26], [21, 44], [36, 46], [50, 40]].map(([x, y]) => `<path d="M${x} ${y - 10} L${x} ${y + 6}" stroke-width="5"/><path d="M${x} ${y - 10} L${x} ${y + 6}" stroke="#a1887f" stroke-width="2.5"/><path d="M${x} ${y + 12} L${x - 4} ${y + 4} L${x + 4} ${y + 4} Z" fill="#eceff1" stroke-width="2"/>`).join('')}`,
     // 流派
-    parthian: `<path d="M44 14 C56 26 56 42 44 54" stroke-width="6"/><path d="M44 14 C56 26 56 42 44 54" stroke="#8d6e63" stroke-width="3"/><path d="M44 14 L44 54" stroke="#eceff1" stroke-width="1.8"/>
-        <path d="M44 34 L8 34" stroke-width="4.5"/><path d="M44 34 L8 34" stroke="#a1887f" stroke-width="2"/><path d="M4 34 L12 29 L12 39 Z" fill="#eceff1" stroke-width="2"/>
-        ${duoStroke('M30 50 L54 50 M48 45 L54 50 L48 55', '#80cbc4', 2.5)}`,
-    longbow: `<path d="M20 4 C44 16 44 48 20 60" stroke-width="6"/><path d="M20 4 C44 16 44 48 20 60" stroke="#6d4c41" stroke-width="3"/><path d="M20 4 L20 60" stroke="#eceff1" stroke-width="1.8"/>
-        <path d="M20 32 L58 32" stroke-width="4.5"/><path d="M20 32 L58 32" stroke="#a1887f" stroke-width="2"/><path d="M62 32 L54 27 L54 37 Z" fill="#eceff1" stroke-width="2"/>`,
-    elemental: `${[['#ff7043', 14, 52], ['#4fc3f7', 32, 52], ['#fff176', 50, 52]].map(([c, x, y]) => `<path d="M${x} ${y} L${x} ${y - 34}" stroke-width="4.5"/><path d="M${x} ${y} L${x} ${y - 34}" stroke="${c}" stroke-width="2.2"/><path d="M${x} ${y - 40} L${x - 5} ${y - 30} L${x + 5} ${y - 30} Z" fill="${c}" stroke-width="2"/>`).join('')}`,
+    // 流派「帕提亞」：往左回身射，人往右跑
+    parthian: bow(44, 30, 22, 180) + arrow(50, 30, 6, 30) + duoStroke('M28 54 L54 54 M48 49 L54 54 L48 59', '#80cbc4', 2.5),
+    // 流派「長弓」：一把高過人的長弓搭著箭
+    longbow: bow(20, 32, 28, 0, '#6d4c41') + arrow(10, 32, 60, 32),
+    // 流派「元素」：火、冰、雷三支箭
+    elemental: arrow(20, 60, 10, 8, '#ff7043', '#ffccbc') + arrow(32, 62, 32, 4, '#81d4fa', '#e1f5fe') + arrow(44, 60, 54, 8, '#fff176', '#fff9c4'),
     // 張開的捕獸夾
     trapper: `<ellipse cx="32" cy="50" rx="26" ry="8" fill="#5d4037"/><path d="M8 48 C8 24 24 14 32 14 C40 14 56 24 56 48" fill="none" stroke-width="8"/><path d="M8 48 C8 24 24 14 32 14 C40 14 56 24 56 48" fill="none" stroke="#90a4ae" stroke-width="4"/>
         ${[16, 24, 32, 40, 48].map(x => `<path d="M${x - 4} ${x === 32 ? 18 : x === 24 || x === 40 ? 21 : 28} L${x} ${x === 32 ? 28 : x === 24 || x === 40 ? 31 : 38} L${x + 4} ${x === 32 ? 18 : x === 24 || x === 40 ? 21 : 28}" fill="#eceff1" stroke-width="2"/>`).join('')}
         <circle cx="32" cy="50" r="6" fill="#ffcc80" stroke-width="2.5"/>`,
     // 回馬射
-    backPower: `<path d="M50 12 C60 24 60 40 50 52" stroke-width="5"/><path d="M50 12 C60 24 60 40 50 52" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 32 L10 32" stroke-width="4.5"/><path d="M50 32 L10 32" stroke="#80cbc4" stroke-width="2"/>
-        <path d="M4 32 L13 26 L13 38 Z" fill="#eceff1" stroke-width="2"/>${boltAt(26, 50)}`,
-    moveRate: `${[18, 30, 42].map(y => `<path d="M48 ${y} L14 ${y}" stroke-width="4"/><path d="M48 ${y} L14 ${y}" stroke="#a1887f" stroke-width="1.8"/><path d="M8 ${y} L16 ${y - 4} L16 ${y + 4} Z" fill="#eceff1" stroke-width="1.8"/>`).join('')}
-        <path d="M54 14 L60 14 M52 30 L60 30 M54 46 L60 46" stroke="#8fd3ff" stroke-width="3"/><path d="M14 56 L50 56" stroke="#80cbc4" stroke-width="3" stroke-dasharray="4 4"/>`,
-    stride: `<path d="M18 12 L30 12 L30 38 L46 44 C52 46 52 54 46 54 L18 54 Z" fill="#a5d6a7"/><path d="M18 44 L50 44" stroke-width="3"/>
-        <path d="M30 12 C40 4 52 6 58 14 C50 12 42 14 36 20" fill="#c5e1a5"/><path d="M4 30 L12 30 M2 40 L12 40" stroke="#8fd3ff" stroke-width="3"/>`,
-    backSlow: `<path d="M8 50 C20 42 44 42 56 50" stroke="#4fc3f7" stroke-width="4" stroke-dasharray="5 4"/><ellipse cx="38" cy="30" rx="12" ry="14" fill="#ef9a9a"/><path d="M34 28 L36 30 M42 28 L40 30" stroke-width="2"/>
-        <path d="M6 22 L26 30" stroke-width="4"/><path d="M6 22 L26 30" stroke="#80cbc4" stroke-width="2"/>${[[24, 56], [40, 58]].map(([x, y]) => `<path d="M${x} ${y} l-4 -6 M${x} ${y} l4 -6" stroke="#b3e5fc" stroke-width="2.5"/>`).join('')}`,
+    // 回身一箭：往左射出的箭在箭尖爆出一團金光
+    backPower: `<path d="${starPath(11, 32, 11, 4.5, 8)}" fill="#ffd54f" stroke-width="2"/>` + bow(48, 32, 22, 180) + arrow(52, 32, 10, 32, '#eceff1', '#a5d6a7', 1.1),
+    // 馬上連珠：三支箭一支接一支往前飛，尾巴拖著速度線
+    moveRate: arrow(4, 16, 40, 16) + arrow(14, 32, 50, 32) + arrow(24, 48, 60, 48) + `<path d="M2 26 L10 26 M10 42 L18 42 M4 58 L14 58" stroke="#80cbc4" stroke-width="2.5"/>`,
+    // 輕盈：精靈的綠靴子長出一片葉子翅膀
+    stride: `<path d="M18 10 L32 10 L32 36 C40 38 48 40 52 44 C56 48 54 54 48 54 L18 54 C16 54 15 52 15 50 Z" fill="#81c784"/><path d="M16 18 L33 18" stroke-width="5"/><path d="M16 18 L33 18" stroke="#c5e1a5" stroke-width="2.4"/>
+        <path d="M15 48 L54 48" stroke-width="3"/><path d="M33 13 C40 2 54 2 60 10 C52 10 47 14 43 20 C47 18 53 18 57 22 C49 25 41 25 34 22 Z" fill="#c5e1a5"/><path d="M35 18 C43 12 50 9 57 10" stroke="#7cb342" stroke-width="1.6"/>
+        ${shine(22, 28, 2.5, 6, 0)}<path d="M2 30 L11 30 M4 40 L12 40" stroke="#8fd3ff" stroke-width="3"/>`,
+    // 絆腳箭：往回射的箭纏著一條帶兩顆鉛墜的繩，打中就絆住
+    // 絆腳箭：往回射的箭插在怪身上，箭尾的繩子把牠的腳綁住
+    backSlow: foe(22, 30, 0.85) + duoStroke('M8 50 C14 54 30 54 36 50 M10 44 C16 48 28 48 34 44', '#4fc3f7', 2.4)
+        + arrow(62, 20, 24, 30) + duoStroke('M40 26 C44 34 40 42 34 46', '#4fc3f7', 2),
     // 長弓
-    bowRangeUp: `<path d="M10 54 C14 40 26 40 30 54" stroke-width="4"/><path d="M10 54 C14 40 26 40 30 54" stroke="#6d4c41" stroke-width="2"/>
-        <path d="M22 44 L52 14" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 4"/><circle cx="54" cy="12" r="7" fill="#e5484d"/><circle cx="54" cy="12" r="3" fill="#fff8e1" stroke-width="2"/>`,
-    bowPowerUp: `<path d="M14 4 C40 18 40 46 14 60" stroke-width="8"/><path d="M14 4 C40 18 40 46 14 60" stroke="#4e342e" stroke-width="4.5"/><path d="M14 4 L14 60" stroke="#eceff1" stroke-width="2"/>
-        <path d="M36 10 C40 14 44 14 48 10 M42 10 L42 24" stroke="#7cb342" stroke-width="3"/>${duoStroke('M52 40 L52 28 M47 33 L52 28 L57 33', '#ffd54f', 2.5)}`,
-    farShot: `<path d="M6 32 L40 32" stroke-width="4"/><path d="M6 32 L40 32" stroke="#a1887f" stroke-width="2"/><path d="M44 32 L36 27 L36 37 Z" fill="#eceff1" stroke-width="2"/>
-        ${[48, 54, 60].map((x, i) => `<path d="M${x} ${24 - i * 4} L${x} ${40 + i * 4}" stroke="#ffd54f" stroke-width="${2 + i}"/>`).join('')}`,
-    volley: `${[-14, 0, 14].map(o => `<path d="M10 ${32 + o * 0.4} L50 ${32 + o}" stroke-width="4"/><path d="M10 ${32 + o * 0.4} L50 ${32 + o}" stroke="#a1887f" stroke-width="2"/><path d="M56 ${32 + o * 1.1} L48 ${27 + o} L48 ${37 + o} Z" fill="#eceff1" stroke-width="2"/>`).join('')}`,
+    bowRangeUp: bow(20, 44, 16, -45, '#8d6e63') + `<path d="M28 36 Q36 16 48 14" stroke-width="5" stroke-dasharray="4 4"/><path d="M26 38 Q36 16 48 14" stroke="#ffd54f" stroke-width="2.5" stroke-dasharray="4 4"/>`
+        + `<circle cx="54" cy="12" r="8" fill="#42a5f5"/><circle cx="54" cy="12" r="4.5" fill="#fff8e1" stroke-width="2"/><circle cx="54" cy="12" r="1.6" fill="#42a5f5" stroke="none"/>`,
+    // 紫杉弓：深色紫杉木的弓，掛著一枝紫杉葉
+    // 紫杉弓：深色紫杉木的弓，握把上綁著一枝紫杉葉
+    bowPowerUp: bow(22, 32, 28, 0, '#6d4c41') + placeAt(26, 30, -35, rodL(20, 3, '#33691e'))
+        + `${[[32, 24, 30], [36, 22, -60], [38, 18, 30], [42, 17, -60], [43, 13, 30]].map(([x, y, r]) => `<ellipse cx="${x}" cy="${y}" rx="4.2" ry="1.9" transform="rotate(${r} ${x} ${y})" fill="#7cb342" stroke-width="1.6"/>`).join('')}`
+        + duoStroke('M52 58 L52 40 M46 46 L52 40 L58 46', '#ffd54f', 3),
+    // 遠距：箭往前飛，後面三道越來越粗的力道
+    farShot: arrow(4, 32, 42, 32, '#eceff1') + `${[48, 54, 60].map((x, i) => duoStroke(`M${x} ${24 - i * 4} L${x} ${40 + i * 4}`, '#ffd54f', 1.6 + i)).join('')}`,
+    // 齊射：三支箭並排射出
+    volley: arrow(6, 34, 52, 12, STEEL, '#a5d6a7', 0.95) + arrow(6, 38, 58, 34, STEEL, '#a5d6a7', 0.95) + arrow(6, 42, 52, 56, STEEL, '#a5d6a7', 0.95),
     // 元素箭
-    fireArrow: `<path d="M6 54 L42 18" stroke-width="5"/><path d="M6 54 L42 18" stroke="#a1887f" stroke-width="2.5"/><path d="M48 12 L36 18 L42 24 Z" fill="#eceff1" stroke-width="2"/>
-        <path d="M46 34 C38 34 36 26 40 20 C42 16 42 12 40 6 C48 10 52 16 52 22 C56 26 54 34 46 34 Z" fill="#ff7043" stroke-width="2.5"/>`,
-    iceArrow: `<path d="M6 54 L42 18" stroke-width="5"/><path d="M6 54 L42 18" stroke="#a1887f" stroke-width="2.5"/><path d="M48 12 L36 18 L42 24 Z" fill="#b3e5fc" stroke-width="2"/>
-        ${duoStroke('M48 28 L48 52 M38 34 L58 46 M38 46 L58 34', '#81d4fa', 2.5)}`,
-    thunderArrow: `<path d="M6 54 L42 18" stroke-width="5"/><path d="M6 54 L42 18" stroke="#a1887f" stroke-width="2.5"/><path d="M48 12 L36 18 L42 24 Z" fill="#fff59d" stroke-width="2"/>${boltAt(48, 42)}`,
+    fireArrow: `<path d="M48 36 C38 36 35 27 39 20 C41 16 41 12 39 5 C48 9 53 16 53 22 C57 26 56 36 48 36 Z" fill="#ff7043" stroke-width="2.5"/><path d="M47 31 C42 31 41 26 43 22 C45 25 47 22 47 18 C51 21 52 27 47 31 Z" fill="#ffd54f" stroke="none"/>`
+        + arrow(6, 58, 52, 12, '#ffab91', '#ffccbc'),
+    iceArrow: arrow(6, 58, 48, 16, '#b3e5fc', '#e1f5fe') + `<path d="M58 6 L50 9 L44 18 L54 12 Z" fill="#e1f5fe" stroke-width="2"/>` + duoStroke('M46 30 L46 54 M36 36 L56 48 M36 48 L56 36', '#81d4fa', 2.5),
+    thunderArrow: arrow(6, 58, 50, 14, '#fff59d', '#fff9c4') + boltAt(46, 42) + duoStroke('M56 22 L62 18 M50 6 L52 1', '#fff176', 2),
     elemSurge: `${[['#ff7043', 0], ['#4fc3f7', 120], ['#fff176', 240]].map(([c, a]) => { const r = a * Math.PI / 180; return `<circle cx="${(32 + Math.cos(r) * 14).toFixed(1)}" cy="${(34 + Math.sin(r) * 14).toFixed(1)}" r="11" fill="${c}" stroke-width="2.5"/>`; }).join('')}
         <circle cx="32" cy="34" r="6" fill="#ffffff" stroke-width="2.5"/>${duoStroke('M32 4 L32 14 M27 9 L32 4 L37 9', '#ffd54f', 2.5)}`,
     // 陷阱
-    trapCount: `${[[18, 22], [44, 22], [18, 46], [44, 46]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8" fill="#78909c"/><circle cx="${x}" cy="${y}" r="3" fill="${['#ff7043', '#4fc3f7', '#9ccc65', '#ff7043'][(x + y) % 4]}" stroke="none"/>`).join('')}`,
+    // 多備幾個：一疊捕獸夾＋加號
+    trapCount: smallTrap(18, 44, 0.85) + smallTrap(42, 48, 0.85) + smallTrap(28, 26, 0.85) + duoStroke('M54 6 L54 18 M48 12 L60 12', '#81c784', 3),
     trapPower: `<path d="M18 22 L46 22 L52 54 L12 54 Z" fill="#5d4037"/><path d="M14 30 L50 30" stroke="#ffd54f" stroke-width="3"/><path d="M32 22 C32 14 38 10 44 8" stroke-width="3"/>
         <path d="${starPath(46, 8, 7, 3, 6)}" fill="#ff7043" stroke-width="2"/>`,
     // 一路腳印，每隔幾步一個陷阱
-    trapRate: `${[[10, 54], [20, 44], [30, 36], [40, 26], [50, 18]].map(([x, y], i) => `<ellipse cx="${x}" cy="${y}" rx="3.5" ry="5" transform="rotate(40 ${x} ${y})" fill="#a5d6a7" stroke-width="2"/>${i % 2 ? `<circle cx="${x + 9}" cy="${y + 8}" r="6" fill="#78909c" stroke-width="2.5"/><circle cx="${x + 9}" cy="${y + 8}" r="2.5" fill="#ff7043" stroke="none"/>` : ''}`).join('')}`,
+    trapRate: `${[[8, 54], [18, 44], [28, 36], [38, 26], [48, 18], [56, 8]].map(([x, y]) => `<ellipse cx="${x}" cy="${y}" rx="3.5" ry="5" transform="rotate(40 ${x} ${y})" fill="#a5d6a7" stroke-width="2"/>`).join('')}` + smallTrap(34, 50, 0.6) + smallTrap(54, 34, 0.6),
     // 夾子上放一塊肉，兩邊的怪被吸過來
     trapLure: `<ellipse cx="32" cy="50" rx="18" ry="6" fill="#78909c"/><path d="M22 44 C22 32 42 32 42 44" fill="#e57373"/><path d="M26 40 L38 40" stroke="#ffcdd2" stroke-width="2.5"/>
         <path d="M34 34 C36 28 40 26 44 28" stroke="#eceff1" stroke-width="3"/>${[[6, 24], [58, 24]].map(([x, y]) => duoStroke(`M${x} ${y} L${x < 32 ? x + 12 : x - 12} ${y + 10} M${x < 32 ? x + 12 : x - 12} ${y + 10} l${x < 32 ? -7 : 7} 0 M${x < 32 ? x + 12 : x - 12} ${y + 10} l0 -7`, '#ffd54f', 2.5)).join('')}`,
@@ -324,12 +445,16 @@ const ICON_BODIES = {
     compHeal: `<ellipse cx="28" cy="40" rx="18" ry="12" fill="#ffcc80"/><path d="M14 34 L12 20 L22 30 M40 32 L42 18 L34 28" fill="#ffcc80"/>
         <path d="M44 44 C48 48 52 46 52 42" stroke="#f48fb1" stroke-width="4"/>${duoStroke('M52 12 L52 26 M45 19 L59 19', '#81c784', 3)}`,
     // 傳說
-    windBow: `<path d="M18 4 C42 16 42 48 18 60" stroke-width="7"/><path d="M18 4 C42 16 42 48 18 60" stroke="#b2ebf2" stroke-width="3.5"/><path d="M18 4 L18 60" stroke="#ffffff" stroke-width="1.8"/>
-        <path d="M36 22 C48 16 58 22 54 30 C50 36 42 30 46 26 M36 42 C50 38 60 46 54 52" stroke="#b2ebf2" stroke-width="3"/>`,
-    moonArrow: `<path d="M38 4 C24 6 14 16 14 28 C14 40 24 48 36 48 C28 44 22 36 22 28 C22 18 30 10 38 4 Z" fill="#fff3c4"/>
-        <path d="M4 60 L60 8" stroke="#e3f2fd" stroke-width="5"/><path d="M4 60 L60 8" stroke="#ffffff" stroke-width="2"/>`,
-    noReturn: `<path d="M6 50 L22 34" stroke-width="4"/><path d="M6 50 L22 34" stroke="#a1887f" stroke-width="2"/><circle cx="26" cy="30" r="6" fill="#ef9a9a"/>
-        <path d="M30 26 C38 18 46 22 44 30 C42 38 50 40 56 32" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/><circle cx="56" cy="32" r="5" fill="#ef9a9a"/><circle cx="44" cy="52" r="5" fill="#ef9a9a"/><path d="M56 36 C56 44 52 50 46 52" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/>`,
+    // 風神之弓：淡青色的弓，射出的箭沿著一道彎的風追過去
+    windBow: bow(16, 32, 26, 0, '#80deea') + `<path d="M24 32 C40 32 44 12 58 14" stroke="#b2ebf2" stroke-width="3" stroke-dasharray="4 4"/>`
+        + duoStroke('M34 46 C44 40 54 44 52 52 C50 58 42 54 46 50', '#b2ebf2', 2.5) + arrow(46, 20, 60, 12, '#e0f7fa', '#b2ebf2', 0.7),
+    // 月光箭：新月射出一支發光的箭，貫穿整個畫面
+    moonArrow: `<path d="M38 4 C24 6 14 16 14 28 C14 40 24 48 36 48 C28 44 22 36 22 28 C22 18 30 10 38 4 Z" fill="#fff3c4"/>${shine(20, 22, 2, 5, 15)}
+        <path d="M4 60 L60 8" stroke="#e3f2fd" stroke-width="9" opacity="0.45"/>` + arrow(4, 60, 60, 8, '#fff8e1', '#e3f2fd'),
+    // 不歸之箭：箭打倒第一隻，順著虛線彈到下一隻、再下一隻
+    noReturn: foe(26, 30, 0.42, '#78909c') + foe(52, 26, 0.38) + foe(44, 52, 0.38)
+        + `<path d="M30 26 C38 16 46 18 48 22 M54 32 C56 40 52 46 48 48" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/>` + arrow(2, 52, 24, 32, STEEL, '#a5d6a7', 0.85)
+        + `<path d="${starPath(26, 30, 6, 2.2, 4)}" fill="#ffd54f" stroke-width="1.6"/>`,
     // ---- 刺客（rogue.js）----
     // 大招「斬首」：兩把交叉的彎刀
     behead: `${[[-1, '#cfd8dc'], [1, '#eceff1']].map(([s, c]) => `<g transform="translate(32 32) scale(${s} 1)"><path d="M-22 22 C-10 4 4 -10 22 -22 C10 -2 -2 10 -16 26 Z" fill="${c}"/><path d="M-16 26 L-24 18" stroke-width="5"/><path d="M-16 26 L-24 18" stroke="#5d4037" stroke-width="2.5"/></g>`).join('')}
@@ -349,10 +474,11 @@ const ICON_BODIES = {
     intel: `<path d="M12 8 L44 8 L52 16 L52 58 L12 58 Z" fill="#fff3e0"/><path d="M44 8 L44 16 L52 16" fill="#ffe0b2"/><path d="M18 22 L44 22 M18 30 L44 30 M18 38 L34 38" stroke="#8d6e63" stroke-width="2.5"/>
         <circle cx="40" cy="46" r="8" fill="none" stroke="#ffc400" stroke-width="3"/><path d="M46 52 L54 60" stroke="#ffc400" stroke-width="4"/>`,
     // 暗殺
-    critChance: `<path d="M14 54 L44 24" stroke-width="5"/><path d="M14 54 L44 24" stroke="#8d6e63" stroke-width="2.5"/><path d="M44 24 L56 8 L52 28 Z" fill="#eceff1" stroke-width="2.5"/>
-        <path d="${starPath(20, 20, 10, 4, 4)}" fill="#ffd740" stroke-width="2.5"/>`,
-    critDamage: `<path d="M8 56 L36 28" stroke-width="5"/><path d="M8 56 L36 28" stroke="#8d6e63" stroke-width="2.5"/><path d="M36 28 L52 8 L46 32 Z" fill="#eceff1" stroke-width="2.5"/>
-        <path d="M44 40 C44 46 48 50 48 54 C48 58 44 60 44 60 C44 60 40 58 40 54 C40 50 44 46 44 40 Z" fill="#ff8f00" stroke-width="2"/><path d="M54 36 C54 40 57 43 57 46 C57 49 54 50 54 50 C54 50 51 49 51 46 C51 43 54 40 54 36 Z" fill="#ff8f00" stroke-width="2"/>`,
+    // 要害：飛刀的刀尖閃出會心一擊的星
+    critChance: `<path d="${starPath(46, 18, 14, 5, 4)}" fill="#ffd740" stroke-width="2.5"/>${shine(42, 14, 2, 1.5)}` + placeAt(10, 56, -48, throwKnifeL(40)),
+    // 致命：飛刀插進一大團爆開的金光，旁邊往上的箭頭
+    critDamage: `<path d="${starPath(40, 24, 20, 9, 10)}" fill="#ffab00" stroke-width="2.5"/><path d="${starPath(40, 24, 10, 5, 10)}" fill="#fff8e1" stroke="none"/>` + placeAt(6, 58, -45, throwKnifeL(40))
+        + duoStroke('M54 60 L54 46 M48 52 L54 46 L60 52', '#ffd740', 3),
     executeUp: `<path d="M20 8 L20 60" stroke-width="5"/><path d="M20 8 L20 60" stroke="#6d4c41" stroke-width="2.5"/><path d="M20 10 C36 6 52 12 54 26 C44 22 32 24 20 30 Z" fill="#b0bec5"/>
         <rect x="34" y="44" width="22" height="8" rx="2" fill="#ffca28"/><rect x="34" y="44" width="6" height="8" rx="2" fill="#8d5a00" stroke="none"/>`,
     ambushPower: `<path d="M8 48 C16 30 48 30 56 48 Z" fill="#311b92"/><path d="M20 42 L26 38 M44 42 L38 38" stroke="#ffd740" stroke-width="3.5"/>
@@ -410,8 +536,8 @@ const ICON_BODIES = {
     // 外功
     punchPower: `<path d="M12 24 C12 16 18 12 24 12 L40 12 C46 12 50 16 50 22 L50 38 C50 48 42 54 32 54 L22 54 C14 54 10 48 10 40 Z" fill="#ffcc80"/><path d="M20 12 L20 28 M30 12 L30 28 M40 12 L40 28" stroke-width="3"/>
         <path d="M14 38 C20 40 34 40 40 36" stroke="#8d6e63" stroke-width="3"/>${duoStroke('M56 40 L56 26 M51 31 L56 26 L61 31', '#ffd54f', 2.5)}`,
-    comboCap: `<path d="M8 44 L20 32 L32 40 L44 22 L56 30" stroke-width="7"/><path d="M8 44 L20 32 L32 40 L44 22 L56 30" stroke="#ffab91" stroke-width="3.5"/><path d="M46 10 L58 10 L58 22" stroke="#ffd54f" stroke-width="4"/>
-        <path d="M6 54 L58 54" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 4"/>`,
+    // 無盡連打：拳頭打出一串越來越大的打擊星，最上面那顆還在往上長
+    comboCap: fistAt(22, 42, 0.72) + `${[[42, 46, 5], [48, 32, 6.5], [54, 16, 8]].map(([x, y, r]) => `<path d="${starPath(x, y, r, r * 0.42, 6)}" fill="#ffb74d" stroke-width="2"/>`).join('')}` + duoStroke('M44 10 L44 2 M40 6 L44 2 L48 6', '#ffd54f', 2.2),
     comboGain: `${[12, 26, 40].map((x, i) => `<rect x="${x}" y="${44 - i * 12}" width="10" height="${12 + i * 12}" rx="2" fill="${['#ffcc80', '#ffab91', '#ff7043'][i]}"/>`).join('')}${duoStroke('M54 50 L54 16 M48 22 L54 16 L60 22', '#ffd54f', 3)}`,
     flurry: `${[[16, 20], [30, 32], [44, 44]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="10" fill="#ffcc80"/><path d="M${x - 4} ${y - 6} L${x - 4} ${y + 2} M${x + 2} ${y - 6} L${x + 2} ${y + 2}" stroke-width="2"/>`).join('')}
         <path d="M50 8 L58 4 M54 14 L62 12" stroke="#ffab91" stroke-width="3"/>`,
@@ -424,12 +550,14 @@ const ICON_BODIES = {
     steadfast: `<path d="M8 58 L56 58 L44 24 L32 8 L20 24 Z" fill="#8d6e63"/><path d="M20 24 L32 32 L44 24" stroke="#6d4c41" stroke-width="3"/><path d="M32 8 L32 32" stroke="#a1887f" stroke-width="2"/>${shine(26, 20, 3, 2)}`,
     stoneSkin: `<path d="M32 58 C14 46 6 34 12 22 C18 10 28 12 32 20 C36 12 46 10 52 22 C58 34 50 46 32 58 Z" fill="#9e9e9e"/><path d="M20 28 L28 34 L24 42 M40 26 L36 36 L44 40" stroke="#616161" stroke-width="2.5"/>`,
     // 輕功
-    blinkRange: `<circle cx="14" cy="40" r="7" fill="#b2ebf2" opacity="0.6"/><path d="M22 40 L44 40" stroke="#b2ebf2" stroke-width="3" stroke-dasharray="4 4"/><circle cx="50" cy="40" r="8" fill="#ffcc80"/>
-        ${duoStroke('M22 22 L54 22 M48 16 L54 22 L48 28', '#ffd54f', 3)}`,
+    // 縱躍：武僧沿著一道長弧跳出去，身後留著殘影
+    blinkRange: `<path d="M10 56 Q30 0 52 50" stroke="#b2ebf2" stroke-width="3" stroke-dasharray="4 4"/>` + monkAt(12, 46, 0.7, 0.3) + monkAt(28, 26, 0.8, 0.55) + monkAt(50, 42, 1)
+        + `<ellipse cx="50" cy="58" rx="9" ry="2.5" fill="#b2ebf2" stroke="none" opacity="0.6"/>`,
     evade: `<path d="M24 58 L24 34 C24 26 30 22 36 22 C42 22 46 26 46 34 L46 58" fill="#ffcc80"/><circle cx="36" cy="14" r="7" fill="#ffcc80"/><path d="M4 30 L22 36" stroke="#e53935" stroke-width="3"/><path d="M22 36 L14 30 M22 36 L14 40" stroke="#e53935" stroke-width="3"/>
         <path d="M50 30 C56 34 56 42 50 46" stroke="#b2ebf2" stroke-width="3"/>`,
     swift: `<path d="M24 14 L36 14 L36 38 L50 44 C56 46 56 54 50 54 L24 54 Z" fill="#8d6e63"/><path d="M24 44 L52 44" stroke-width="3"/><path d="M4 26 L16 26 M2 36 L14 36 M6 46 L18 46" stroke="#b2ebf2" stroke-width="3.5"/>`,
-    quickStep: `${[0.3, 0.55, 1].map((o, i) => `<g opacity="${o}"><circle cx="${14 + i * 18}" cy="22" r="6" fill="#ffcc80"/><path d="M${8 + i * 18} 52 L${8 + i * 18} 34 C${8 + i * 18} 30 ${20 + i * 18} 30 ${20 + i * 18} 34 L${20 + i * 18} 52 Z" fill="#ffa726"/></g>`).join('')}`,
+    // 踏影：一拳接一拳，前面兩拳還留著殘影
+    quickStep: fistAt(16, 34, 0.55, 0.3) + fistAt(27, 34, 0.6, 0.55) + fistAt(42, 34, 0.7) + `<path d="M2 22 L10 22 M2 34 L8 34 M2 46 L10 46" stroke="#b2ebf2" stroke-width="2.5"/>`,
     // 內功
     zenHeal: `<path d="M12 50 C12 40 22 36 32 36 C42 36 52 40 52 50 Z" fill="#ffa726"/><circle cx="32" cy="24" r="10" fill="#ffcc80"/><path d="M28 24 L30 24 M34 24 L36 24" stroke-width="2"/>${duoStroke('M52 8 L52 22 M45 15 L59 15', '#81c784', 3)}`,
     zenCharge: `<circle cx="32" cy="32" r="22" stroke="#ffd54f" stroke-width="5" stroke-dasharray="100 40"/><path d="M12 48 C12 40 20 36 32 36 C44 36 52 40 52 48 Z" fill="#ffa726"/><circle cx="32" cy="24" r="8" fill="#ffcc80"/>`,
@@ -437,9 +565,14 @@ const ICON_BODIES = {
     zenPulse: `${[24, 16].map(r => `<circle cx="32" cy="38" r="${r}" stroke="#ffd54f" stroke-width="3" opacity="${r === 24 ? 0.5 : 0.9}"/>`).join('')}<path d="M22 50 C22 42 26 38 32 38 C38 38 42 42 42 50 Z" fill="#ffa726"/><circle cx="32" cy="30" r="6" fill="#ffcc80"/>`,
     // 氣功
     qiPower: `<circle cx="32" cy="32" r="16" fill="#80deea"/><circle cx="32" cy="32" r="8" fill="#e0f7fa"/>${[0, 1, 2, 3, 4, 5].map(i => { const a = i * Math.PI / 3; return `<path d="M${(32 + Math.cos(a) * 20).toFixed(1)} ${(32 + Math.sin(a) * 20).toFixed(1)} L${(32 + Math.cos(a) * 28).toFixed(1)} ${(32 + Math.sin(a) * 28).toFixed(1)}" stroke="#80deea" stroke-width="3"/>`; }).join('')}`,
-    qiCount: `${[20, 44].map(y => `<path d="M6 ${y} L44 ${y}" stroke="#80deea" stroke-width="8"/><path d="M6 ${y} L44 ${y}" stroke="#e0f7fa" stroke-width="3"/><circle cx="50" cy="${y}" r="7" fill="#80deea" stroke-width="2.5"/>`).join('')}`,
-    qiWidth: `<path d="M6 32 L46 32" stroke="#80deea" stroke-width="22"/><path d="M6 32 L46 32" stroke="#e0f7fa" stroke-width="8"/><path d="M52 18 L60 32 L52 46" stroke-width="4"/><path d="M52 18 L60 32 L52 46" stroke="#ffd54f" stroke-width="2"/>`,
-    qiFreq: `<circle cx="22" cy="32" r="14" fill="#ffcc80"/><path d="M38 32 L56 32" stroke="#80deea" stroke-width="7"/><circle cx="58" cy="32" r="4" fill="#e0f7fa" stroke-width="2"/>${boltAt(22, 32)}`,
+    // 雙掌：兩隻張開的手掌往前推，各推出一道氣功波
+    qiCount: `${[[16, 44], [42, 50]].map(([x, y]) => `<circle cx="${x + 1}" cy="${y - 27}" r="8.5" fill="#80deea"/><circle cx="${x + 1}" cy="${y - 27}" r="4" fill="#e0f7fa" stroke="none"/><path d="M${x - 9} ${y - 36} C${x - 4} ${y - 42} ${x + 6} ${y - 42} ${x + 11} ${y - 36}" stroke="#80deea" stroke-width="2.2"/><g transform="translate(${x} ${y})"><path d="M-8 10 L-8 -10 C-8 -12.5 -4.5 -12.5 -4.5 -10 L-4.5 -3 L-3.5 -13 C-3.5 -15.5 0 -15.5 0 -13 L0 -3 L1 -12 C1 -14.5 4.5 -14.5 4.5 -12 L4.5 -2 L5.5 -8 C5.5 -10.5 9 -10.5 9 -8 L9 4 C9 10 5 14 0 14 C-5 14 -8 12 -8 10 Z" fill="#ffcc80" stroke-width="2.4"/><path d="M-8 3 L-13 -2 C-14.5 -4 -12 -6 -10.5 -4.5 L-8 -2" fill="#ffcc80" stroke-width="2.2"/></g>`).join('')}`,
+    // 排山：又寬又厚的一道氣功波，旁邊標著寬度
+    qiWidth: `<path d="M20 6 C38 14 38 50 20 58 C46 58 60 46 62 32 C60 18 46 6 20 6 Z" fill="#80deea"/><path d="M28 14 C40 22 40 42 28 50 C44 48 52 40 54 32 C52 24 44 16 28 14 Z" fill="#e0f7fa" stroke="none"/>`
+        + duoStroke('M8 6 L8 58 M3 12 L8 6 L13 12 M3 52 L8 58 L13 52', '#ffd54f', 2.5),
+    // 運氣：握緊的拳頭聚起一團旋轉的氣
+    qiFreq: fistAt(22, 42, 0.72) + `<circle cx="46" cy="18" r="12" fill="#80deea"/><circle cx="46" cy="18" r="5.5" fill="#e0f7fa" stroke="none"/>`
+        + `<path d="M34 12 C36 2 54 2 58 12 M58 24 C56 34 38 34 34 24" stroke="#e0f7fa" stroke-width="2.4"/>`,
     // 傳說
     bodhidharma: `<rect x="6" y="6" width="52" height="52" rx="4" fill="#8d6e63"/><path d="M6 20 L58 20 M6 34 L58 34 M6 48 L58 48 M22 6 L22 20 M42 20 L42 34 M22 34 L22 48 M42 48 L42 58" stroke="#6d4c41" stroke-width="2.5"/>
         <path d="M18 54 C18 44 24 40 32 40 C40 40 46 44 46 54 Z" fill="#ffa726"/><circle cx="32" cy="32" r="8" fill="#ffcc80"/><path d="${starPath(32, 14, 6, 2.2, 4)}" fill="#ffe082" stroke-width="2"/>`,
@@ -448,9 +581,7 @@ const ICON_BODIES = {
     thirteenMonks: `${[[10, 40], [22, 34], [34, 40], [46, 34], [56, 40]].map(([x, y]) => `<circle cx="${x}" cy="${y - 10}" r="4.5" fill="#ffcc80" stroke-width="2"/><path d="M${x - 5} ${y + 10} L${x - 5} ${y} C${x - 5} ${y - 4} ${x + 5} ${y - 4} ${x + 5} ${y} L${x + 5} ${y + 10} Z" fill="#ffa726" stroke-width="2"/>`).join('')}
         <path d="M4 54 L60 46" stroke-width="4"/><path d="M4 54 L60 46" stroke="#8d6e63" stroke-width="2"/>`,
     // 戰士的大招：兩支交叉擲出的標槍
-    javelin: `<path d="M8 56 L50 14" stroke-width="5"/><path d="M8 56 L50 14" stroke="#8d6e63" stroke-width="2.5"/><path d="M50 14 L58 6 L56 18 L46 18 Z" fill="#cfd8dc"/>
-        <path d="M18 60 L56 30" stroke-width="5"/><path d="M18 60 L56 30" stroke="#a1887f" stroke-width="2.5"/><path d="M56 30 L62 24 L60 34 L52 34 Z" fill="#eceff1"/>
-        <path d="M4 40 L14 40 M2 48 L10 48" stroke="#ffcc80" stroke-width="3"/>`,
+    javelin: spear(6, 52, 54, 6, 18, 4) + spear(16, 62, 60, 28, 18, 4) + `<path d="M2 36 L12 36 M2 44 L9 44" stroke="#ffcc80" stroke-width="3"/>`,
     // 戰士的狂怒：怒吼的橘色獸頭盔
     rage: `<path d="M12 22 C6 12 8 4 14 2 C14 10 18 16 22 20 Z M52 22 C58 12 56 4 50 2 C50 10 46 16 42 20 Z" fill="#f1ead6"/>
         <path d="M32 12 C18 12 12 22 12 34 C12 46 20 56 32 58 C44 56 52 46 52 34 C52 22 46 12 32 12 Z" fill="#ff6d00"/>
@@ -710,9 +841,9 @@ const ICON_BODIES = {
         <path d="M21 52 L21 46 M26 52 L26 46 M31 52 L31 46" stroke-width="3"/>
         <path d="M50 34 C44 34 41 38 41 43 C41 46 43 48 45 49 L45 54 L55 54 L55 49 C57 48 59 46 59 43 C59 38 56 34 50 34 Z" fill="#d7ccc8"/>
         <circle cx="47" cy="43" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="53" cy="43" r="2.2" fill="${ICON_OUTLINE}" stroke="none"/>${shine(18, 15, 4, 2.5)}`,
-    ricochet: duoStroke('M6 50 L24 22 L40 44 L58 14', '#ffe082', 4) + `<path d="M58 14 L49 15 L56 23 Z" fill="#ffe082"/>
-        <circle cx="24" cy="22" r="6" fill="#ffc400"/><circle cx="40" cy="44" r="6" fill="#ffc400"/>
-        <circle cx="24" cy="22" r="2.4" fill="#fce4ec" stroke="none"/><circle cx="40" cy="44" r="2.4" fill="#fce4ec" stroke="none"/>`,
+    // 跳彈魔眼：眼魔的金色眼彈在牆上彈了兩次，每次彈開都迸出火花
+    ricochet: duoStroke('M4 54 L22 20 L38 46 L48 26', '#ffe082', 3) + `${[[22, 20], [38, 46]].map(([x, y]) => `<path d="${starPath(x, y, 7, 2.6, 6)}" fill="#fff8e1" stroke-width="1.8"/>`).join('')}`
+        + `<circle cx="52" cy="18" r="10" fill="#ffc400"/><ellipse cx="52" cy="18" rx="4.5" ry="6.5" fill="#fff8e1" stroke-width="1.8"/><ellipse cx="52" cy="18" rx="1.6" ry="4.6" fill="${ICON_OUTLINE}" stroke="none"/>${shine(48, 13, 2.5, 1.5)}`,
     frostNova: `<path d="${starPath(32, 32, 28, 16, 12)}" fill="#81d4fa"/>` + duoStroke('M32 14 L32 50 M16 23 L48 41 M16 41 L48 23', '#e1f5fe', 3.5) +
         `<circle cx="32" cy="32" r="6" fill="#e1f5fe"/>`,
     eliteHunter: `<path d="M12 40 L15 18 L24 28 L32 13 L40 28 L49 18 L52 40 Z" fill="#ffd54f"/><rect x="12" y="39" width="40" height="8" rx="2" fill="#e0a82e"/>` +
