@@ -5,7 +5,7 @@ const ctx = canvas.getContext('2d');
 // 不管手機直拿還是電腦橫放，畫面裡看得到的世界面積都差不多是 VIEW_AREA（世界單位²），
 // 單位大小不會因為螢幕形狀忽大忽小
 const VIEW_AREA = 600 * 400 * 1.5;
-// 解析度上限：同類網頁遊戲都沒開到 2 倍（PokéSurvivor、RO 倖存者 1.5 倍，PokeBonk 手機 1.25 倍）。
+// 解析度上限 1.5 倍，不開到 2 倍。
 // 手機顯示晶片卡在要填的像素數，1.5 倍只要填 2 倍時的 56%，肉眼幾乎看不出差別
 const MAX_DPR = 1.5;
 // 省電模式：解析度 1 倍＋每秒 30 格（見 SLOW_FRAME_MS）
@@ -720,7 +720,7 @@ const BLESSINGS = {
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
     deathPact: { school: 'soul', name: '殘魂回收', legendary: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
-    // ---- 契約（同 PokeBonk 生存模式的 pact）：好處很大、壞處跟著整局。一般波次偶爾出一張（PACT_CHANCE），每種一局只能立一次。
+    // ---- 契約：好處很大、壞處跟著整局。一般波次偶爾出一張（PACT_CHANCE），每種一局只能立一次。
     // 效果寫在 mods，跟詛咒共用 runMods() 的乘數；圖示是 icons.js 的 pact_*
     bloodPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_blood', name: '血祭契約', max: 1, mods: { summonDmgMult: 1.5, mageHpMult: 0.7 }, desc: b => runModsHtml(b.mods) },
     greedPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_greed', name: '貪婪契約', max: 1, mods: { soulMult: 1.5, hpMult: 1.25 }, desc: b => runModsHtml(b.mods) },
@@ -794,7 +794,7 @@ function blessVal(id) { return BLESSINGS[id].per * bl(id); }
 
 // ---------- 永久強化（跨局保留）：每局結束依撐過的波數與擊敗的首領拿靈魂結晶 ----------
 const META_KEY = 'undeadFrenzy_meta';
-// 局外成長的目標（同 PokéSurvivor、吸血鬼倖存者、Halls of Torment）：沒買任何強化打不過亡靈王，
+// 局外成長的目標：沒買任何強化打不過亡靈王，
 // 一局一局買上去會明顯變強，大約買到一半以上才通關。怪物的基本強度（MONSTER_BASE_*）跟這張表是一起調的：
 // 沒強化時被怪物壓過，戰鬥類全滿時比怪物強。數值類每一項全滿約 +30%～+80%，七個職業都吃得到；
 // 再穿插幾個一次買斷、改變玩法的（復活、多一張祝福、開局祝福），體感變強主要靠這幾個。
@@ -909,7 +909,7 @@ function classMeta(id) {
 }
 
 // ---------- 成就：第一次達成就給結晶（跨局保留） ----------
-// 同類遊戲的成就都是上百個（PokéSurvivor 149 個）：每一類都有「近的」與「遠的」目標，每一局都至少有幾個摸得到。
+// 每一類成就都有「近的」與「遠的」目標，每一局都至少有幾個摸得到。
 // 條件都看目前狀態或跨局統計（meta.stats），不需要每格算；圖示見 achievement-icons.js（圖鑑那一類直接用那隻怪的立繪）。
 // 清單裡會用到稍後才宣告的 CURSES、DAILY_MUTATIONS，所以第一次用到時才建（achievements()）
 const ACHV_CATEGORIES = [
@@ -6418,7 +6418,7 @@ function drawLobs() {
 
 // ---------- 詛咒：通關後解鎖的自選難度，每一級多一條規則、結晶倍率跟著提高（同 Hades 熱度 / Slay the Spire 進階） ----------
 // ---------- 戰場遺跡：開戰後在畫面外冒出一座祭壇／靈泉／寶棺，法師帶著大軍走過去站上去才生效 ----------
-// 同類遊戲（PokéSurvivor 的力量祭壇、泉水、上鎖寶箱；PokeBonk 的神殿與寶球）都靠地圖物件讓走位有目的：
+// 靠地圖物件讓走位有目的：
 // 空地圖上移動只為了閃招和吸靈魂。大軍跟著法師走，「要把整支軍隊拉去哪裡打」本身就是一個決定
 const RELIC_START_WAVE = 2;
 // 遺跡不跟著波次走：在場上待 RELIC_LIFE 秒「戰鬥時間」（波與波之間不算），跨波也還在。
@@ -6834,7 +6834,7 @@ const CURSES = [
 const CURSE_CRYSTAL_STEP = 0.3;
 const ASSASSIN_EARLY_WAVE = 6;
 const VICTORY_CRYSTALS = 100;
-// ---------- 每日變異（同 PokeBonk 的 Daily Mutation）：每天一條特殊規則，當天第一場結算的結晶 ×DAILY_CRYSTAL_MULT ----------
+// ---------- 每日變異：每天一條特殊規則，當天第一場結算的結晶 ×DAILY_CRYSTAL_MULT ----------
 // 照本地日期輪流，連續兩天不會重複；只有規則沒有排行榜，所以照樣吃永久強化，但不疊詛咒
 const DAILY_MS = 86400000;
 const DAILY_CRYSTAL_MULT = 2;
@@ -7176,7 +7176,7 @@ function checkWaveEndCondition() {
 }
 
 // ---------- 通關 ----------
-// ---------- 通關時間：每個職業各自的最快紀錄（同 PokeBonk 的計時獎牌）：有紀錄可破，打贏的局才有再打一次的理由 ----------
+// ---------- 通關時間：每個職業各自的最快紀錄：有紀錄可破，打贏的局才有再打一次的理由 ----------
 // 計的是遊戲裡實際經過的時間（暫停、選祝福時不算），開戰前的倒數也算：提早開戰就是在搶時間
 function formatClock(sec) {
     const s = Math.floor(sec);
@@ -7840,7 +7840,7 @@ function healDraft() {
     closeDraft();
 }
 
-// 跳過（同 PokeBonk 的 Skip）：三張都不合這一局的路線時，不拿祝福、換一筆靈魂（剛打完那一波掉落的 DRAFT_SKIP_SHARE 倍）
+// 跳過：三張都不合這一局的路線時，不拿祝福、換一筆靈魂（剛打完那一波掉落的 DRAFT_SKIP_SHARE 倍）
 const DRAFT_SKIP_SHARE = 0.5;
 const DRAFT_SKIP_MIN = 20;
 function draftSkipSouls() {
@@ -9974,7 +9974,7 @@ function gameLoop(currentTime) {
     else sampleDynRes(elapsed, performance.now() - workStart, currentTime);
 }
 
-// ---------- 自動降解析度（做法參考 PokeBonk） ----------
+// ---------- 自動降解析度 ----------
 // 每 DYN_RES_WINDOW_S 秒看一次實際格數：太卡就把解析度降一階，順了再慢慢升回來。
 // 只在遊戲程式本身沒吃滿時間時才降 —— 卡在遊戲邏輯的話，少畫幾個像素也不會變順
 const DYN_RES_WINDOW_S = 2;
