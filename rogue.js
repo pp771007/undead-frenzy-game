@@ -108,7 +108,7 @@ Object.assign(BLESSINGS, {
     // 迷魂毒：疊層要時間，所以要挑一隻大的一直射；換來的是牠在怪堆裡替你打
     madVenom: { school: 'venomschool', name: '迷魂毒', legendary: true, max: 1, per: MAD_TIME, desc: b => `毒疊到 ${MAD_STACKS} 層的怪發瘋 ${b.per} 秒，改打身邊的怪（首領不會）` },
     // 移形換影：影子變成刺客的傳送點，影子養在目標附近就能一直貼身伏擊
-    shadowSwap: { school: 'shadowschool', name: '移形換影', legendary: true, max: 1, per: SWAP_EVERY, desc: b => `影子會撲向目標；每 ${b.per} 秒和最靠近目標的影子互換位置，換完拿到一次伏擊` },
+    shadowSwap: { school: 'shadowschool', name: '移形換影', legendary: true, max: 1, per: SWAP_EVERY, desc: b => `影子撲向目標；每 ${b.per} 秒你和最近目標的影子換位，拿到伏擊` },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
     poisonAmbush: { school: DUO_SCHOOL, duo: ['assassination', 'venomschool'], name: '淬毒匕首', legendary: true, max: 1, per: 1, desc: () => '伏擊的那一刀把毒直接疊滿' },
     smokeShades: { school: DUO_SCHOOL, duo: ['shadowschool', 'smoke'], name: '煙中影', legendary: true, max: 1, per: 1, desc: () => '每放出一團煙，煙裡就站起一個影子' },

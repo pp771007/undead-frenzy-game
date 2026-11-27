@@ -104,7 +104,7 @@ Object.assign(BLESSINGS, {
     returningQi: { school: 'qigong', name: '回龍勁', legendary: true, max: 1, per: 1, desc: () => '氣功波飛到盡頭會折返，回程再打一次' },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
     shadowFist: { school: DUO_SCHOOL, duo: ['external', 'lightfoot'], name: '如影隨形', legendary: true, max: 1, per: SHADOW_FIST_SHARE, desc: () => '瞬步穿過的路上，每隻怪都挨一拳' },
-    dantianBurst: { school: DUO_SCHOOL, duo: ['internal', 'qigong'], name: '丹田爆發', legendary: true, max: 1, per: DANTIAN_WIDTH, desc: b => `帶著蓄氣出的那一拳，同時打出一道 ${b.per} 倍寬的氣功波（吃蓄氣加成）` },
+    dantianBurst: { school: DUO_SCHOOL, duo: ['internal', 'qigong'], name: '丹田爆發', legendary: true, max: 1, per: DANTIAN_WIDTH, desc: b => `蓄氣的那一拳，同時打出 ${b.per} 倍寬的氣功波` },
     ironFist: { school: DUO_SCHOOL, duo: ['hardstyle', 'external'], name: '鐵拳', legendary: true, max: 1, per: IRON_FIST_STEP, desc: b => `連擊每 ${IRON_FIST_EVERY} 下，受到的傷害 -${pct(b.per)}（最多 -${pct(IRON_FIST_MAX)}）` },
 });
 const RES_CHAIN_RATE = 1.2;

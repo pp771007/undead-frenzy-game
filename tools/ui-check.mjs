@@ -80,6 +80,12 @@ await page.evaluate((cls) => {
     gameState.pendingDraft = { options: leg.slice(-3), boss: true }; renderDraftCards(); showScreen(uiElements.draftScreen, true); gameState.draftOpen = true;
 }, CLASS);
 await shot('4b-draft-legend');
+// 雙流派傳說：標籤並排兩個流派頭像，最容易撐破卡片
+await page.evaluate((cls) => {
+    const duo = Object.keys(BLESSINGS).filter(id => BLESSINGS[id].duo && BLESSINGS[id].duo.every(s => CLASSES[cls].schools.includes(s)));
+    gameState.pendingDraft = { options: duo.slice(0, 3), boss: true }; renderDraftCards();
+}, CLASS);
+await shot('4c-draft-duo');
 await page.evaluate(() => { gameState.draftOpen = false; showScreen(uiElements.draftScreen, false); togglePause(); });
 await shot('5-pause');
 // 第 21 波陣亡會上榜：先跳恭喜，關掉後是排行榜，再點開自己那一筆

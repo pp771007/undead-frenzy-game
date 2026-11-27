@@ -124,7 +124,7 @@ Object.assign(BLESSINGS, {
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
     bloodBond: { school: DUO_SCHOOL, duo: ['bloodmagic', 'kin'], name: '血之紐帶', legendary: true, max: 1, per: BLOOD_BOND_HEAL, desc: b => `血爆時，範圍裡的眷屬回 ${pct(b.per)} 血` },
     batGuard: { school: DUO_SCHOOL, duo: ['bats', 'undying'], name: '蝠群護主', legendary: true, max: 1, per: BAT_GUARD_CUT, desc: b => `身邊有蝙蝠時，牠替你擋下 ${pct(b.per)} 的傷害` },
-    wolfEmbrace: { school: DUO_SCHOOL, duo: ['werewolf', 'kin'], name: '狼群初擁', legendary: true, max: 1, per: 1, desc: () => '入夜時你親手打倒的怪一定站起來成為眷屬（眷屬有空位時）' },
+    wolfEmbrace: { school: DUO_SCHOOL, duo: ['werewolf', 'kin'], name: '狼群初擁', legendary: true, max: 1, per: 1, desc: () => '入夜時，你親手打倒的怪一定轉化成眷屬' },
 });
 const RES_FEAST_HEAL = 0.01;
 const RES_NIGHTWING_RATE = 1.4;
