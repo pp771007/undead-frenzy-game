@@ -976,9 +976,6 @@ const ICON_BODIES = {
         <path d="${starPath(52, 50, 8, 3, 4)}" fill="#fff8e1" stroke-width="2.5"/>`,
     soulSiphon: `<path d="${HEART_PATH}" fill="#e5484d"/>
         <path d="M32 44 C25 44 22 38 25 33 C27 30 28 27 27 22 C32 25 35 29 35 32 C37 30 38 28 38 25 C42 29 43 35 41 39 C39 42 36 44 32 44 Z" fill="#7ff0f0" stroke-width="3"/>${shine(18, 20, 4.5, 3)}`,
-    deathPact: `<path d="M26 8 C14 8 8 17 8 27 C8 33 11 37 16 39 L16 48 L36 48 L36 39 C41 37 44 33 44 27 C44 17 38 8 26 8 Z" fill="#b0bec5"/>
-        <ellipse cx="19" cy="27" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/><ellipse cx="33" cy="27" rx="5" ry="6" fill="${ICON_OUTLINE}" stroke="none"/>
-        <path d="M50 60 C43 60 40 54 43 49 C45 46 46 43 45 37 C51 41 54 45 54 49 C56 47 57 45 57 42 C61 46 62 52 59 56 C57 59 54 60 50 60 Z" fill="#7ff0f0" stroke-width="3"/>`,
     soulVolley: duoStroke('M8 22 L26 22', '#7ff0f0', 4) + duoStroke('M8 34 L32 34', '#7ff0f0', 4) + duoStroke('M8 46 L26 46', '#7ff0f0', 4) +
         `<circle cx="32" cy="22" r="7" fill="#7ff0f0"/><circle cx="40" cy="34" r="8" fill="#7ff0f0"/><circle cx="32" cy="46" r="7" fill="#7ff0f0"/>
         <circle cx="40" cy="34" r="3.5" fill="#e8ffff" stroke="none"/>${shine(30, 20, 2, 1.5)}${shine(38, 31, 2.5, 1.5)}${shine(30, 44, 2, 1.5)}`,

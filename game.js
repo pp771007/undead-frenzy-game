@@ -672,7 +672,6 @@ const BLESSINGS = {
     soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每撿一顆經驗，法師回 ${b.per} 血` },
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `補兵時 ${pct(b.per)} 機率多補一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍經驗` },
-    deathPact: { school: 'soul', name: '殘魂回收', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回經驗` },
 };
 // 卡片、暫停選單、飄字的圖示：有寫 icon 的用它，其他就是祝福自己的 id
 function blessIcon(id) { return BLESSINGS[id].icon || id; }
@@ -2863,7 +2862,6 @@ class SummonUnit extends GameObject {
         onSummonDeath(this);
         spawnParticles(this.pos.x, this.pos.y, '#B0BEC5', 10, 70, 0.45);
         if (this.config.type === 'SkeletonWarrior' && bl('boneBurst')) boneBurst(this);
-        if (bl('deathPact') && Math.random() < BLESSINGS.deathPact.per) dropSouls(this.pos.x, this.pos.y, 1);
         switch (this.config.type) {
             case 'SkeletonWarrior': gameState.units.SkeletonWarrior.count--; break;
             case 'EyeMonster': gameState.units.EyeMonster.count--; break;
