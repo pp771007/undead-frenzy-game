@@ -981,6 +981,7 @@
 
         /* 從結算 / 標題開出來的視窗要蓋在它們上面 */
         #meta-screen,
+        #ban-screen,
         #settings-screen,
         #curse-screen {
             z-index: 15;
@@ -1893,12 +1894,196 @@
             flex: none;
         }
 
-        /* 局外放逐：照流派分組、每張寫出效果的一列列祝福；點一下放逐（變紅、名字劃掉、右邊一個放逐圖示），放滿時其他的變暗點不了 */
-        .ban-list {
+        /* ---- 放逐畫面：上面一排格子（放逐了哪幾張）、流派分頁、一列列寫出效果的祝福 ---- */
+        /* 強化畫面裡的入口：說明那一行換成已經放逐的卡的小圖 */
+        .ban-entry.locked {
+            opacity: 0.6;
+        }
+
+        .ban-preview {
+            display: flex;
+            gap: 4px;
+        }
+
+        .ban-preview .icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .ban-class {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 14px;
+            color: var(--bone-dim);
+        }
+
+        .ban-class img {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+        }
+
+        .ban-hint {
+            margin: 0 0 8px;
+            font-size: 12px;
+            color: var(--bone-dim);
+        }
+
+        .ban-slot-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .ban-slot {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            width: 76px;
+            height: 76px;
+            border-radius: 12px;
+            border: 2px dashed rgba(255, 255, 255, 0.25);
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--bone-dim);
+            font-family: var(--font-ui);
+        }
+
+        .ban-slot .icon {
+            width: 36px;
+            height: 36px;
+        }
+
+        .ban-slot-name {
+            max-width: 70px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            font-size: 11px;
+        }
+
+        .ban-slot.filled {
+            border: 2px solid #e53935;
+            background: rgba(229, 57, 53, 0.22);
+            color: #ffcdd2;
+            cursor: pointer;
+        }
+
+        .ban-slot .ban-x {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid var(--ink);
+            background: #e53935;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 900;
+            line-height: 18px;
+        }
+
+        .ban-slot.locked {
+            border-style: solid;
+            border-color: var(--ink);
+            opacity: 0.45;
+        }
+
+        .ban-slot.locked .icon {
+            width: 22px;
+            height: 22px;
+        }
+
+        .ban-slot-note {
+            margin: 6px 0 8px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--bone-dim);
+        }
+
+        .ban-slot-note.full {
+            color: #ffcdd2;
+        }
+
+        /* 流派分頁固定四欄、剛好兩列（全部＋五個流派＋靈魂＋全軍），不橫向捲：橫捲的話後面幾個流派看不到，也不知道還有 */
+        #ban-tabs {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px 5px;
+            padding: 4px 0 8px;
+        }
+
+        /* 頭像在上、名字在下：一格放得下四個字的流派名（長槍方陣、軍團紀律） */
+        .ban-tab {
+            position: relative;
+            justify-content: center;
+            gap: 1px;
+            min-width: 0;
+            min-height: 46px;
+            padding: 3px 1px;
+        }
+
+        .ban-tab span {
+            white-space: nowrap;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 11px;
+        }
+
+        .ban-tab .school-img {
+            flex: none;
+            width: 18px;
+            height: 18px;
+        }
+
+        .ban-tab-count {
+            position: absolute;
+            top: -6px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            border: 2px solid var(--ink);
+            background: #e53935;
+            color: #fff;
+            font-family: var(--font-ui);
+            font-size: 11px;
+            line-height: 14px;
+        }
+
+        #ban-list {
             display: flex;
             flex-direction: column;
             gap: 6px;
-            padding: 4px 0 12px;
+            max-height: 34vh;
+            overflow-y: auto;
+            text-align: left;
+            padding-bottom: 4px;
+        }
+
+        .ban-picks {
+            flex: none;
+            text-align: center;
+            font-size: 11px;
+            color: var(--bone-dim);
+            line-height: 1.2;
+        }
+
+        .ban-picks b {
+            display: block;
+            font-family: var(--font-display);
+            font-size: 16px;
+            color: var(--bone);
+        }
+
+        .ban-picks.never {
+            color: #ffcc80;
         }
 
         .ban-group-title {
@@ -2671,6 +2856,22 @@
     </div>
 
     <!-- 成就 -->
+    <div id="ban-screen" class="overlay-screen">
+        <div class="overlay-content panel screen-in">
+            <div class="meta-head">
+                <h2 class="title-text">放逐</h2>
+                <span class="ban-class" id="ban-class"></span>
+            </div>
+            <p class="ban-hint">放逐的祝福，這個職業每局都不會出現</p>
+            <div id="ban-slots"></div>
+            <div id="ban-tabs"></div>
+            <div id="ban-list"></div>
+            <div class="stack">
+                <button id="ban-close-btn" class="btn btn-dark">完成</button>
+            </div>
+        </div>
+    </div>
+
     <div id="achv-screen" class="overlay-screen">
         <div class="overlay-content panel screen-in">
             <div class="meta-head">

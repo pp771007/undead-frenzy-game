@@ -79,6 +79,7 @@ const uiElements = {
     titleCurseBtn: $id('title-curse-btn'), curseScreen: $id('curse-screen'), curseList: $id('curse-list'),
     curseLevel: $id('curse-level'), curseMult: $id('curse-mult'), curseMinus: $id('curse-minus'), cursePlus: $id('curse-plus'),
     curseCloseBtn: $id('curse-close-btn'),
+    banScreen: $id('ban-screen'), banClass: $id('ban-class'), banSlots: $id('ban-slots'), banTabs: $id('ban-tabs'), banList: $id('ban-list'), banCloseBtn: $id('ban-close-btn'),
     titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'), achvTabs: $id('achv-tabs'), achvSubtabs: $id('achv-subtabs'),
     achvCloseBtn: $id('achv-close-btn'), achvToast: $id('achv-toast'),
     titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'), finalTarget: $id('final-target'),
@@ -916,7 +917,8 @@ const ACHV_BOSS_TOTAL = 25;
 const ACHV_ELITES = [[500, 'elite500', '精英剋星', 30], [5000, 'elite5000', '王者殺手', 90]];
 
 function defaultStats() {
-    return { kills: {}, totalKills: 0, elites: 0, summons: 0, souls: 0, runs: 0, novas: 0, bosses: 0, relics: {}, legends: {} };
+    // picks：各職業每張祝福拿過幾次（放逐畫面用來找出自己從來不拿的卡）
+    return { kills: {}, totalKills: 0, elites: 0, summons: 0, souls: 0, runs: 0, novas: 0, bosses: 0, relics: {}, legends: {}, picks: {} };
 }
 function stats() { return meta.stats; }
 // 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
@@ -7406,6 +7408,8 @@ function pickBlessing(id) {
     if (!gameState.pendingDraft || !gameState.pendingDraft.options.includes(id)) return;
     gameState.blessings[id] = bl(id) + 1;
     gameState.run.picks++;
+    const picks = stats().picks[runClass()] || (stats().picks[runClass()] = {});
+    picks[id] = (picks[id] || 0) + 1;
     if (BLESSINGS[id].legendary) stats().legends[id] = true;
     refreshResonance();
     if (id === 'vitality' && gameState.player) {
@@ -7721,7 +7725,10 @@ function renderMeta() {
 }
 // ---------- 放逐：局外先選好，這個職業每局都不會抽到那幾張（張數 = 通用的「斷念」等級） ----------
 // 傳說不能放逐：每種一局只出一次、首領波固定一張，是要期待的東西，不是要排除的雜訊
-let metaBanOpen = false;
+// 畫面：上面一排放逐格（已經放逐的卡，點一下取消；還沒買的格子上鎖）→ 流派分頁 → 一列列祝福（圖示、名字、效果、這個職業拿過幾次）。
+// 只有圖示和名字的話根本不知道該放逐哪張；「拿過幾次」讓人一眼找到自己從來不拿的那幾張
+const BAN_ALL = 'all';
+let banCls = null, banTab = BAN_ALL;
 function banSlots() { return metaVal('banish'); }
 function bannedBlessings(cls) { return ((meta.banned || {})[cls] || []).filter(id => BLESSINGS[id]).slice(0, banSlots()); }
 function banCandidates(cls) {
@@ -7731,34 +7738,73 @@ function banCandidates(cls) {
         return !B.legendary && !(B.needsSummon && !canSummon) && (B.school === ARMY_SCHOOL || C.schools.includes(B.school));
     });
 }
-function metaBanHtml(cls) {
-    const n = banSlots();
-    if (n <= 0) return '';
-    const list = bannedBlessings(cls), full = list.length >= n;
-    const head = `<div class="meta-row">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">點選的祝福每局都不會出現</div></div>` +
-        `<button class="btn btn-dark" data-ban-open>${metaBanOpen ? '收起' : '選擇'}<span class="price">${list.length}/${n}</span></button></div>`;
-    if (!metaBanOpen) return head;
-    // 只有圖示和名字的話根本不知道該放逐哪張：每張都寫出效果，照流派分組（看得出每條路有哪些卡）
-    const ids = banCandidates(cls);
-    const groups = [...CLASSES[cls].schools, ARMY_SCHOOL].map(s => {
-        const rows = ids.filter(id => BLESSINGS[id].school === s).map(id => {
-            const B = BLESSINGS[id], on = list.includes(id), tier = blessingTier(id);
-            const tag = tier === 'common' ? '' : `<span class="ban-tier">${TIER_LABELS[tier]}</span>`;
-            return `<button class="meta-row ban-row${on ? ' banned' : ''}${tier === 'rare' ? ' rare' : ''}" data-ban="${id}" ${!on && full ? 'disabled' : ''}>${iconHtml(blessIcon(id))}` +
-                `<div class="meta-info"><div class="meta-name"><span class="nm">${B.name}</span>${tag}</div><div class="meta-desc">${B.desc(B)}</div></div>${on ? iconHtml('banish', 'icon ban-mark') : ''}</button>`;
-        }).join('');
-        if (!rows) return '';
-        const title = s === ARMY_SCHOOL ? `${iconHtml('summon', 'icon school-img')}全軍` : `${schoolBadgeHtml(s)}${SCHOOLS[s].name}`;
-        return `<div class="ban-group-title">${title}</div>${rows}`;
-    }).join('');
-    return head + `<div class="ban-list">${groups}</div>`;
+function banSchoolsOf(cls) { return [...CLASSES[cls].schools, ARMY_SCHOOL]; }
+function banSchoolLabel(s) {
+    return s === ARMY_SCHOOL ? `${iconHtml('summon', 'icon school-img')}<span>全軍</span>` : `${schoolBadgeHtml(s)}<span>${SCHOOLS[s].name}</span>`;
 }
-function toggleBan(cls, id) {
-    const list = bannedBlessings(cls);
-    const next = list.includes(id) ? list.filter(x => x !== id) : list.length < banSlots() ? [...list, id] : list;
-    meta.banned = { ...meta.banned, [cls]: next };
-    saveMeta();
+function blessPickCount(cls, id) { return ((stats().picks || {})[cls] || {})[id] || 0; }
+// 強化畫面職業分頁裡的入口：已經放逐的卡縮成小圖排在說明裡，沒買「斷念」時講怎麼拿到
+function metaBanHtml(cls) {
+    const n = banSlots(), list = bannedBlessings(cls);
+    if (n <= 0) return `<div class="meta-row ban-entry locked">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">在「通用」買「斷念」，就能讓不想要的祝福不再出現</div></div></div>`;
+    const preview = list.length ? `<span class="ban-preview">${list.map(id => iconHtml(blessIcon(id))).join('')}</span>` : '還沒放逐任何祝福';
+    return `<div class="meta-row ban-entry">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">${preview}</div></div>` +
+        `<button class="btn btn-gold" data-ban-open>選擇<span class="price">${list.length}/${n}</span></button></div>`;
+}
+function openBan(cls) {
+    banCls = cls;
+    banTab = BAN_ALL;
+    renderBan();
+    // 換頁不疊頁：強化畫面先收起來，按完成再回去
+    showScreen(uiElements.metaScreen, false);
+    showScreen(uiElements.banScreen, true);
+}
+function closeBan() {
+    showScreen(uiElements.banScreen, false);
     renderMeta();
+    showScreen(uiElements.metaScreen, true);
+}
+function banRowHtml(id, list, full) {
+    const B = BLESSINGS[id], on = list.includes(id), tier = blessingTier(id), picks = blessPickCount(banCls, id);
+    const tag = tier === 'common' ? '' : `<span class="ban-tier">${TIER_LABELS[tier]}</span>`;
+    return `<button class="meta-row ban-row${on ? ' banned' : ''}${tier === 'rare' ? ' rare' : ''}" data-ban="${id}" ${!on && full ? 'disabled' : ''}>${iconHtml(blessIcon(id))}` +
+        `<div class="meta-info"><div class="meta-name"><span class="nm">${B.name}</span>${tag}</div><div class="meta-desc">${B.desc(B)}</div></div>` +
+        `<span class="ban-picks${picks ? '' : ' never'}">${picks ? `拿過<b>${picks}</b>次` : '沒拿過'}</span>${on ? iconHtml('banish', 'icon ban-mark') : ''}</button>`;
+}
+function renderBan() {
+    const cls = banCls, n = banSlots(), max = META_UPGRADES.banish.max, list = bannedBlessings(cls), full = list.length >= n;
+    uiElements.banClass.innerHTML = `<img src="${CLASSES[cls].portrait}" alt="">${CLASSES[cls].name}`;
+    let slots = '';
+    for (let i = 0; i < max; i++) {
+        if (i < list.length) slots += `<button class="ban-slot filled" data-unban="${list[i]}">${iconHtml(blessIcon(list[i]))}<span class="ban-slot-name">${BLESSINGS[list[i]].name}</span><span class="ban-x">✕</span></button>`;
+        else if (i < n) slots += '<div class="ban-slot empty"><span class="ban-slot-name">空格</span></div>';
+        else slots += `<div class="ban-slot locked">${iconHtml('lock')}<span class="ban-slot-name">斷念 ${i + 1}</span></div>`;
+    }
+    uiElements.banSlots.innerHTML = `<div class="ban-slot-row">${slots}</div>` +
+        `<div class="ban-slot-note${full ? ' full' : ''}">${full ? '放滿了：點上面的格子可以取消' : '點下面的祝福放進格子'}</div>`;
+    const ids = banCandidates(cls);
+    const tabs = [BAN_ALL, ...banSchoolsOf(cls)].map(s => {
+        const count = s === BAN_ALL ? 0 : list.filter(id => BLESSINGS[id].school === s).length;
+        const label = s === BAN_ALL ? '<span>全部</span>' : banSchoolLabel(s);
+        return `<button class="achv-tab ban-tab${s === banTab ? ' on' : ''}" data-ban-tab="${s}">${label}${count ? `<b class="ban-tab-count">${count}</b>` : ''}</button>`;
+    }).join('');
+    uiElements.banTabs.innerHTML = tabs;
+    // 同一個流派裡普通的在前、稀有的在後；「全部」分頁每個流派一個小標題
+    const order = id => blessingTier(id) === 'rare' ? 1 : 0;
+    const shown = banTab === BAN_ALL ? banSchoolsOf(cls) : [banTab];
+    uiElements.banList.innerHTML = shown.map(s => {
+        const rows = ids.filter(id => BLESSINGS[id].school === s).sort((a, b) => order(a) - order(b)).map(id => banRowHtml(id, list, full)).join('');
+        if (!rows) return '';
+        return (banTab === BAN_ALL ? `<div class="ban-group-title">${banSchoolLabel(s)}</div>` : '') + rows;
+    }).join('');
+}
+function toggleBan(id) {
+    const list = bannedBlessings(banCls);
+    const next = list.includes(id) ? list.filter(x => x !== id) : list.length < banSlots() ? [...list, id] : list;
+    meta.banned = { ...meta.banned, [banCls]: next };
+    saveMeta();
+    Sfx.play('click');
+    renderBan();
 }
 function buyMeta(key) {
     const [scope, id] = key.split(':');
@@ -9854,6 +9900,13 @@ function init() {
     onTap(uiElements.curseCloseBtn, () => { showScreen(uiElements.curseScreen, false); refreshTitle(); });
     onTap(uiElements.titleAchvBtn, () => { renderAchievements(); showScreen(uiElements.achvScreen, true); });
     onTap(uiElements.achvCloseBtn, () => showScreen(uiElements.achvScreen, false));
+    onTap(uiElements.banCloseBtn, closeBan);
+    uiElements.banScreen.addEventListener('click', (e) => {
+        const tab = e.target.closest('[data-ban-tab]');
+        if (tab) { banTab = tab.dataset.banTab; Sfx.play('click'); renderBan(); return; }
+        const b = e.target.closest('[data-ban], [data-unban]');
+        if (b && !b.disabled) toggleBan(b.dataset.ban || b.dataset.unban);
+    });
     uiElements.achvTabs.addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { achvTab = b.dataset.tab; renderAchievements(); } });
     uiElements.achvSubtabs.addEventListener('click', (e) => { const b = e.target.closest('[data-cls]'); if (b) { achvClassTab = b.dataset.cls; renderAchievements(); } });
     onTap(uiElements.titleLbBtn, () => openLeaderboard());
@@ -9873,9 +9926,7 @@ function init() {
     uiElements.metaList.addEventListener('click', (e) => {
         const tab = e.target.closest('[data-meta-cls]');
         if (tab && !tab.disabled) { metaClassTab = tab.dataset.metaCls; Sfx.play('click'); renderMeta(); return; }
-        if (e.target.closest('[data-ban-open]')) { metaBanOpen = !metaBanOpen; renderMeta(); return; }
-        const ban = e.target.closest('[data-ban]');
-        if (ban) { if (!ban.disabled) toggleBan(metaClassTab, ban.dataset.ban); return; }
+        if (e.target.closest('[data-ban-open]')) { openBan(metaClassTab); return; }
         const b = e.target.closest('[data-meta]');
         if (b && !b.disabled) buyMeta(b.dataset.meta);
     });

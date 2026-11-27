@@ -106,4 +106,12 @@ await page.evaluate(() => { showScreen(uiElements.lbDetail, false); closeLeaderb
 await shot('6-gameover');
 await page.evaluate(() => openMeta('gameover'));
 await shot('7-meta');
+// 放逐畫面：買滿斷念、放逐兩張，看格子、兩列流派分頁、說明最長的那幾列
+await page.evaluate((cls) => {
+    meta.upgrades.banish = META_UPGRADES.banish.max;
+    const ids = banCandidates(cls);
+    meta.banned = { [cls]: [ids[0], ids.find(id => BLESSINGS[id].rare)] };
+    openBan(cls);
+}, CLASS);
+await shot('8-ban');
 await browser.close();
