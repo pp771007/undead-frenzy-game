@@ -298,7 +298,7 @@ function monkUpdate(dt) {
     for (let i = k.reeds.length - 1; i >= 0; i--) {
         const r = k.reeds[i];
         r.life -= dt; r.tick -= dt;
-        if (r.tick <= 0) { r.tick = REED_TICK; groundMonsterGrid.forEachInRadius(r, REED_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, r) <= REED_RADIUS * REED_RADIUS) m.takeDamage(punchDamage() * REED_SHARE); }); }
+        if (r.tick <= 0) { r.tick = REED_TICK; monsterGrid.forEachInRadius(r, REED_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, r) <= REED_RADIUS * REED_RADIUS) m.takeDamage(punchDamage() * REED_SHARE); }); }
         if (r.life <= 0) k.reeds.splice(i, 1);
     }
 }

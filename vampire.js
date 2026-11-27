@@ -709,7 +709,7 @@ class Thrall extends SummonUnit {
             hitT.lastHitByThrall = true;
             if (a === 'burrower') {
                 const rSq = BURROWER_RADIUS * BURROWER_RADIUS;
-                groundMonsterGrid.forEachInRadius(hitT.pos, BURROWER_RADIUS, m => { if (m !== hitT && m.isAlive && distanceSq(m.pos, hitT.pos) <= rSq) m.takeDamage(dmg * 0.6); });
+                monsterGrid.forEachInRadius(hitT.pos, BURROWER_RADIUS, m => { if (m !== hitT && m.isAlive && distanceSq(m.pos, hitT.pos) <= rSq) m.takeDamage(dmg * 0.6); });
             }
             this.healFromDamage(dmg);
             const fx = getVisualEffectFromPool(SlashEffect);

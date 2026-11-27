@@ -292,7 +292,6 @@ function fireArrow(x, y, target, dmg, elem) {
 
 // 箭：直線飛、碰到怪就打（可以穿透）；不用 Projectile 是因為要穿透、要記「是不是回頭射」
 const ARROW_HIT_R = 12, ARROW_LIFE = 0.9, ARROW_TURN = 7;
-const ELF_SHIELD_BLOCK = 0.5;
 class Arrow extends TimedEffect {
     constructor(x, y, dir, target, dmg, pierce, back, elem, homing, chains) {
         super({ x, y }, ARROW_LIFE);
@@ -332,10 +331,6 @@ class Arrow extends TimedEffect {
         const surge = (1 + blessVal('elemSurge')) * (res('elemental') >= 1 ? RES_RESONANCE_MULT : 1);
         const el = this.elem;
         if (el === 'fire' || el === 'all') dmg *= 1 + (FIRE_BASE + blessVal('fireArrow')) * surge;
-        // 骨盾衛兵：箭也算飛彈，但精靈的箭只被擋一半（其他飛彈全擋）。精靈的火力幾乎全在箭上，全擋的話碰到盾陣只剩陷阱和夥伴；
-        // 原本箭完全不吃盾牌，跟「盾牌擋飛彈」矛盾，盾衛對精靈也等於不存在
-        const block = projectileBlockAt(m) * ELF_SHIELD_BLOCK;
-        if (block > 0) { dmg *= 1 - block; spawnParticles(m.pos.x, m.pos.y, '#CFD8DC', 3, 50, 0.2, 2); }
         m.takeDamage(dmg);
         m.lastArrowHit = true;
         if (this.back) {
@@ -427,13 +422,13 @@ function updateTraps(dt) {
         // 誘餌：剛放下時把身邊的怪引過來
         if (bl('trapLure') && t.lureT <= 0) {
             t.lureT = 99;
-            groundMonsterGrid.forEachInRadius(t, LURE_RADIUS, m => { if (m.isAlive && !(m instanceof BossMonster)) { m.tauntBy = { isAlive: true, pos: { x: t.x, y: t.y }, takeDamage() {} }; m.tauntT = LURE_TIME; } });
+            monsterGrid.forEachInRadius(t, LURE_RADIUS, m => { if (m.isAlive && !(m instanceof BossMonster)) { m.tauntBy = { isAlive: true, pos: { x: t.x, y: t.y }, takeDamage() {} }; m.tauntT = LURE_TIME; } });
         }
-        if (!groundMonsterGrid.anyWithin(t, T.trigger * t.scale)) continue;
+        if (!monsterGrid.anyWithin(t, T.trigger * t.scale)) continue;
         e.traps.splice(i, 1);
         const r = T.radius * t.scale * (tier >= 1 ? TRAPS_TIER1_RADIUS : 1), rSq = r * r;
         const dmg = T.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Traps.level * CONFIG.traps.upgradeBonus) * (1 + blessVal('trapPower')) * t.scale;
-        groundMonsterGrid.forEachInRadius(t, r, m => {
+        monsterGrid.forEachInRadius(t, r, m => {
             if (!m.isAlive || distanceSq(m.pos, t) > rSq) return;
             m.takeDamage(t.kind === 'blast' ? dmg * 1.6 : dmg * 0.6);
             if (!m.isAlive || m instanceof BossMonster) return;
@@ -552,7 +547,7 @@ const ELEM_TRAP_ORDER = ['fire', 'ice', 'thunder'], ELEM_TRAP_CHAIN_RANGE = 120;
 function elementalTrap(c, r, dmg) {
     const e = elfState(), el = ELEM_TRAP_ORDER[(e.elemTrapIdx = ((e.elemTrapIdx || 0) + 1) % ELEM_TRAP_ORDER.length)];
     const rSq = r * r, inside = [];
-    groundMonsterGrid.forEachInRadius(c, r, m => { if (m.isAlive && distanceSq(m.pos, c) <= rSq) inside.push(m); });
+    monsterGrid.forEachInRadius(c, r, m => { if (m.isAlive && distanceSq(m.pos, c) <= rSq) inside.push(m); });
     if (el === 'fire') for (const m of inside) m.takeDamage(dmg * ELEM_TRAP_FIRE);
     if (el === 'ice') for (const m of inside) if (!(m instanceof BossMonster)) m.applySlow(0.95, ELEM_TRAP_FREEZE);
     if (el === 'thunder') {
@@ -584,7 +579,7 @@ function drawHawkMarks(ctx) {
 // ---------- 傳說「獵人之網」：陷阱炸開時撒出一張網 ----------
 function castNet(c, r) {
     const rSq = r * r;
-    groundMonsterGrid.forEachInRadius(c, r, m => {
+    monsterGrid.forEachInRadius(c, r, m => {
         if (!m.isAlive || distanceSq(m.pos, c) > rSq) return;
         m.applySlow(m instanceof BossMonster ? NET_BOSS_SLOW : 1, NET_TIME);
     });

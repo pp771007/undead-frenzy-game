@@ -676,13 +676,12 @@ class Soldier extends SummonUnit {
         if (this.target && (!this.target.isAlive || this.target.stealthed)) this.target = null;
         if (!this.resting && (!this.target || (frameNo + this.uid) % TARGET_SEARCH_FRAMES === 0)) {
             const ranged = this.config.type === 'Crossbowman';
-            const grid = this.config.type === 'Shieldman' ? groundMonsterGrid : monsterGrid;
             const from = ranged ? this.pos : this.slot;
             const r = ranged ? this.attackRange : WARRIOR.engageRadius + this.attackRange;
             // 三段射：弩手先射貼近戰士的怪（射程內才算）
             const guard = ranged && res('crossbow') >= 1 ? monsterGrid.nearestShared(p.pos, GUARD_SHOT_RADIUS) : null;
             const m = guard && guard.isAlive && !guard.stealthed && distanceSq(this.pos, guard.pos) <= this.attackRangeSq ? guard
-                : grid.nearestShared(from, gameState.straggling ? STRAGGLER_SEARCH_RADIUS : r);
+                : monsterGrid.nearestShared(from, gameState.straggling ? STRAGGLER_SEARCH_RADIUS : r);
             this.target = m && m.isAlive && !m.stealthed ? m : null;
         }
         // 移動：近戰走到目標身邊，其他時候回自己的位置；離位置太遠加速歸隊，遠到出了畫面直接傳送

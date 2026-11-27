@@ -385,8 +385,8 @@ const CONFIG = {
         attackRange: 18, attackSpeed: 1.1, moveSpeed: 100, color: '#78909C',
         soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
         minWave: 12, waveInterval: 4,
-        // 會飛：骷髏（近戰）打不到、橫掃也掃不到（見 groundMonsterGrid），只有眼魔、法師的靈魂彈、怨靈與新星傷得到。
-        // 專撲眼魔：只出骷髏會被牠剋，跟「盾衛剋只出眼魔」互補，兵種搭配才有取捨
+        // 浮在半空（地上留影子），專撲後排：先找附近的遠程兵（射程 ≥ GARGOYLE_PREY_MIN_RANGE），沒有才照一般規則找目標。
+        // 不要做成「近戰打不到」這種兵種克制：召喚卡靠抽，還沒抽到遠程兵的人碰到牠只能等死
         flying: true, preySearchRadius: 320, hoverHeight: 16, hoverBob: 3, hoverBobSpeed: 5,
     },
     slime: {
@@ -421,11 +421,9 @@ const CONFIG = {
         imageName: 'armored_melee', art: 'shield_guard', imgScaleMultiplier: 6, artScale: 3.4, tint: '#607D8B', tintStrength: 0.5,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 34, color: '#607D8B',
         soulDrop: 4, waveSpeedIncreaseFactor: 0.006,
-        // 眼魔的飛彈（含爆炸波及）打在牠和牠盾陣裡的怪身上只剩 (1 - projectileBlock)：
-        // 只出眼魔清不掉這一群，要派骷髏衝進去先把盾衛打掉（見 projectileBlockAt）。
-        // 擋全部：用百分比的話，眼魔等級一高還是秒穿（實測擋 97% 時 Lv30 眼魔仍比骷髏快，時間卡在飛行與找目標、不在傷害）。
-        // 法師的靈魂彈穿盾，所以只出眼魔也不會卡死波次：法師慢慢磨得死，或派骷髏衝進去
-        minWave: 15, waveInterval: 5, projectileBlock: 1,
+        // 盾陣：身邊的其他怪受到的傷害少 wallDamageCut，盾衛自己不受保護 → 跟巫醫一樣是「先殺牠」的目標（見 shieldWallCut）。
+        // 不分招式與兵種：只擋飛彈或只擋近戰的話，就變成兵種克制，還沒抽到另一種兵的人打不動
+        minWave: 15, waveInterval: 5, wallDamageCut: 0.5,
     },
     corpseWorm: {
         type: 'CorpseWorm', name: '屍蟲', baseHealth: 70, baseAttack: 10, radius: 16,
@@ -1755,8 +1753,6 @@ const summonGrid = new SpatialGrid(GRID_CELL);
 const SUMMON_COARSE_CELL = 160;
 const summonCoarseGrid = new SpatialGrid(SUMMON_COARSE_CELL);
 const monsterGrid = new SpatialGrid(GRID_CELL);
-// 只放地面上的怪：骷髏找目標、橫掃用這個，飛行怪（石像鬼）近戰打不到
-const groundMonsterGrid = new SpatialGrid(GRID_CELL);
 const wraithGrid = new SpatialGrid(WRAITH_GRID_CELL);
 
 // 上千隻召喚物擠在法師身邊時，就算只查附近格子，每隻附近還是有上百隻；
@@ -2671,8 +2667,7 @@ class SummonUnit extends GameObject {
 
 
     findNearestMonster() {
-        const grid = this.config.type === 'SkeletonWarrior' ? groundMonsterGrid : monsterGrid;
-        return grid.nearestShared(this.pos, summonSearchRadius(this.config));
+        return monsterGrid.nearestShared(this.pos, summonSearchRadius(this.config));
     }
 
     // 怨靈附近的骷髏移速加倍、眼魔攻速加倍
@@ -2773,7 +2768,7 @@ class SummonUnit extends GameObject {
             if (splash > 0) {
                 const splashDmg = Math.round(dmg * splash);
                 const rSq = CLEAVE_RADIUS * CLEAVE_RADIUS;
-                groundMonsterGrid.forEachInRadius(mainTarget.pos, CLEAVE_RADIUS, m => {
+                monsterGrid.forEachInRadius(mainTarget.pos, CLEAVE_RADIUS, m => {
                     if (m !== mainTarget && m.isAlive && distanceSq(mainTarget.pos, m.pos) <= rSq) m.takeDamage(splashDmg);
                 });
             }
@@ -3212,16 +3207,11 @@ class Projectile {
 
             if (distToTargetSq <= hitRadiusSq) {
                 const hit = this.target;
-                const pierce = this.style === 'soul' || !!(this.owner && this.owner.pierceShield && this.owner.pierceShield(hit));
-                const block = pierce ? 0 : projectileBlockAt(hit);
-                if (block) spawnParticles(this.pos.x, this.pos.y, '#CFD8DC', 3, 50, 0.2, 2);
-                else if (pierce && projectileBlockAt(hit) > 0) spawnParticles(this.pos.x, this.pos.y, '#FFD740', 5, 70, 0.25, 2);
-                else if (this.homing) soulBoltBurst(this.pos);
+                if (this.homing) soulBoltBurst(this.pos);
                 else spawnParticles(this.pos.x, this.pos.y, this.color, BOLT_HIT_SPARKS, 60, 0.25, 2);
-                const dealt = this.damage * (1 - block);
                 if (this.owner && this.owner.preHit) this.owner.preHit(hit);
-                hit.takeDamage(dealt);
-                if (this.owner) this.owner.healFromDamage(dealt);
+                hit.takeDamage(this.damage);
+                if (this.owner) this.owner.healFromDamage(this.damage);
                 if (this.owner && this.owner.onHit) this.owner.onHit(hit);
                 if (this.blast) this.explodeAt(hit);
                 if (this.bounces > 0 && this.bounceFrom(hit)) return;
@@ -3265,7 +3255,7 @@ class Projectile {
         // 法師的「魂火」與眼魔的爆裂魔眼共用同一套爆炸，只是倍率不同
         const dmg = Math.round(this.damage * (this.style === 'soul' ? BLESSINGS.soulfire.per : E.eyeBlastMult));
         monsterGrid.forEachInRadius(hit.pos, E.eyeBlastRadius, m => {
-            if (m !== hit && m.isAlive && distanceSq(hit.pos, m.pos) <= rSq) m.takeDamage(this.style === 'soul' ? dmg : dmg * (1 - projectileBlockAt(m)));
+            if (m !== hit && m.isAlive && distanceSq(hit.pos, m.pos) <= rSq) m.takeDamage(dmg);
         });
         spawnParticles(hit.pos.x, hit.pos.y, this.color, 4, 70, 0.3, 2);
     }
@@ -4081,8 +4071,10 @@ class Monster extends GameObject {
 
     takeDamage(amount) {
         if (!this.isAlive) return;
-        // 打在怪身上的傷害都是我方造成的：局外的「全軍傷害」在這裡統一加成，主角、召喚物、大招、反傷都算
-        this.currentHealth -= amount * (1 + metaVal('might'));
+        // 打在怪身上的傷害都是我方造成的：局外的「全軍傷害」與骨盾衛兵的盾陣都在這裡統一算，主角、召喚物、大招、反傷都算
+        const cut = shieldWallCut(this);
+        if (cut > 0 && gameState.particles.length < particleCap()) spawnParticles(this.pos.x, this.pos.y, SHIELD_WALL_SPARK, 2, 50, 0.2, 2);
+        this.currentHealth -= amount * (1 + metaVal('might')) * (1 - cut);
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
         this.hitFlash = CONFIG.visuals.hitFlashDuration;
         Sfx.play('hit');
@@ -5640,18 +5632,20 @@ function drawEnemyBolts() {
 }
 
 const GARGOYLE_SHADOW = 'rgba(0, 0, 0, 0.28)';
+// 射程到這麼遠就算後排的遠程兵（近戰兵最長的是長槍兵 46）
+const GARGOYLE_PREY_MIN_RANGE = 60;
 class GargoyleMonster extends Monster {
     constructor(x, y, waveNumber, isElite) {
         super(x, y, CONFIG.gargoyle, waveNumber, isElite);
         this.flying = true;
         this.phase = Math.random() * Math.PI * 2;
     }
-    // 先找附近的眼魔，沒有才照一般規則（法師或最近的召喚物）
+    // 先找附近的遠程兵（各職業都算：眼魔、弩手、精靈夥伴、射血彈的眷屬），沒有才照一般規則（主角或最近的召喚物）
     findTarget(player, summons) {
         const R = this.config.preySearchRadius;
         let best = null, bestSq = R * R;
         summonCoarseGrid.forEachInRadius(this.pos, R, s => {
-            if (!s.isAlive || s.config.type !== 'EyeMonster') return;
+            if (!s.isAlive || !(s.attackRange >= GARGOYLE_PREY_MIN_RANGE)) return;
             const d = distanceSq(this.pos, s.pos);
             if (d < bestSq) { bestSq = d; best = s; }
         });
@@ -5787,7 +5781,7 @@ const HEAL_PULSE_TIME = 0.5;
 
 class ShieldGuardMonster extends Monster {
     constructor(x, y, waveNumber, isElite) { super(x, y, CONFIG.shieldGuard, waveNumber, isElite); }
-    // 腳下畫出盾陣範圍：圈裡的怪也擋飛彈
+    // 腳下畫出盾陣範圍：圈裡的其他怪少吃傷害
     draw(ctx) {
         if (this.isAlive) {
             ctx.fillStyle = SHIELD_WALL_FILL;
@@ -5800,25 +5794,30 @@ class ShieldGuardMonster extends Monster {
         super.draw(ctx);
     }
 }
-// 骨盾衛兵的盾陣：身邊這麼大一圈的怪，飛彈類傷害一樣被擋（只擋自己的話，眼魔把旁邊清光就好，等於沒有天敵）
+// 骨盾衛兵的盾陣：身邊這麼大一圈的其他怪受到的傷害打折
 const SHIELD_WALL_RADIUS = 55;
 const SHIELD_WALL_FILL = 'rgba(144, 164, 174, 0.12)';
 const SHIELD_WALL_STROKE = 'rgba(176, 190, 197, 0.55)';
+// 打在盾陣裡的怪身上冒的灰色火花：看得出「這下被擋掉一半」
+const SHIELD_WALL_SPARK = '#CFD8DC';
 let shieldCheckFrame = -1, anyShieldGuard = false;
-function projectileBlockAt(m) {
-    if (m.config.projectileBlock) return m.config.projectileBlock;
-    // 場上沒有盾衛時（大部分時間）直接略過，不用每一發都查格子
+// m 這一格少吃多少傷害（0 = 不在任何盾陣裡）。大軍一格打上千下，同一隻怪同一格只查一次
+function shieldWallCut(m) {
+    // 場上沒有盾衛時（大部分時間）直接略過，不用每一下都查格子
     if (shieldCheckFrame !== frameNo) {
         shieldCheckFrame = frameNo;
-        anyShieldGuard = gameState.monsters.some(g => g.isAlive && g.config.projectileBlock);
+        anyShieldGuard = gameState.monsters.some(g => g.isAlive && g.config.wallDamageCut);
     }
     if (!anyShieldGuard) return 0;
-    let block = 0;
+    if (m.wallFrame === frameNo) return m.wallCut;
+    let cut = 0;
     const rSq = SHIELD_WALL_RADIUS * SHIELD_WALL_RADIUS;
     monsterGrid.forEachInRadius(m.pos, SHIELD_WALL_RADIUS, g => {
-        if (g.isAlive && g.config.projectileBlock && distanceSq(g.pos, m.pos) <= rSq) block = g.config.projectileBlock;
+        if (g !== m && g.isAlive && g.config.wallDamageCut && distanceSq(g.pos, m.pos) <= rSq) cut = g.config.wallDamageCut;
     });
-    return block;
+    m.wallFrame = frameNo;
+    m.wallCut = cut;
+    return cut;
 }
 
 class CorpseWormMonster extends Monster {
@@ -6766,11 +6765,11 @@ function getNewcomer(wave) {
     const list = [
         { wave: CONFIG.assassin.minWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', color: '#EF9A9A' },
         { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝你射血彈，走動就躲得掉', color: '#FF8A80' },
-        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，近戰打不到，要靠遠程', color: '#B0BEC5' },
+        { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '專撲後排的遠程兵', color: '#B0BEC5' },
         { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', color: '#E6EE9C' },
         { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', color: '#AED581' },
-        { wave: batWave, cfg: CONFIG.bat, hint: '繞過大軍直撲你，靠遠程打下來', color: '#BCAAA4' },
-        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，要靠近戰打破', color: '#B0BEC5' },
+        { wave: batWave, cfg: CONFIG.bat, hint: '繞過大軍直撲你，邊走邊打', color: '#BCAAA4' },
+        { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '保護身邊的怪，先殺牠', color: '#B0BEC5' },
         { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', color: POISON_LIGHT },
         { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'eliteAffix', color: '#FFD54F' },
         { wave: CONFIG.corpseWorm.minWave, cfg: CONFIG.corpseWorm, hint: '會從地底鑽出，紅圈出現就走開', color: '#BCAAA4' },
@@ -8755,7 +8754,6 @@ function updateGame(deltaTime) {
     const targetable = classDef().targetableSummons;
     summonCoarseGrid.rebuild(targetable ? targetable() : gameState.summons);
     monsterGrid.rebuild(gameState.monsters);
-    groundMonsterGrid.rebuild(gameState.monsters.filter(m => !m.flying));
     rebuildEyeTargetCounts(gameState.summons);
     gameState.priests = gameState.monsters.filter(m => m.isAlive && m instanceof GravePriestMonster);
     gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;

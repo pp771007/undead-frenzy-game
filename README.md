@@ -76,10 +76,10 @@
   <tr>
     <td align="center"><img src="slime.png" width="72" alt="" /><br/><b>瘟膿史萊姆</b><br/><sub>打死會分裂</sub></td>
     <td align="center"><img src="witch_doctor.png" width="72" alt="" /><br/><b>腐骨巫醫</b><br/><sub>會幫怪物補血，先殺牠</sub></td>
-    <td align="center"><img src="gargoyle.png" width="72" alt="" /><br/><b>腐翼石像鬼</b><br/><sub>會飛，近戰打不到，專撲遠程</sub></td>
+    <td align="center"><img src="gargoyle.png" width="72" alt="" /><br/><b>腐翼石像鬼</b><br/><sub>飛過來專撲後排的遠程兵</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="shield_guard.png" width="72" alt="" /><br/><b>骨盾衛兵</b><br/><sub>盾牌擋飛彈，要靠近戰打破</sub></td>
+    <td align="center"><img src="shield_guard.png" width="72" alt="" /><br/><b>骨盾衛兵</b><br/><sub>身邊的怪只吃一半傷害，先殺牠</sub></td>
     <td align="center"><img src="corpse_worm.png" width="72" alt="" /><br/><b>屍蟲</b><br/><sub>從地底鑽出，紅圈出現就走開</sub></td>
   </tr>
   <tr>
@@ -148,8 +148,7 @@
 
 - **召喚卡先湊一種主力**：同一種兵學越多張，隻數上限越高、補得越快；兵陣亡會自己補，不用回頭救
 - **大招留給最需要的時候**：混戰正熱時放能一口氣扭轉戰局，被包圍時也是救命招，別全拿去進攻。冷卻好時按鈕會發光
-- **近戰擋前面、遠程打後面**：骨盾衛兵和牠腳下那圈裡的怪，飛彈打不動，要派近戰衝進去
-- **巫醫和祭司優先處理**，放著不管怪物會越打越多
+- **盾衛、巫醫和祭司優先處理**：盾衛圈裡的怪只吃一半傷害、巫醫會補血、祭司會把陣亡的兵變成敵人，放著不管越打越久
 - **遺跡先看頭上的圖示再決定要不要去**：需要保命就去護佑、被追著打就去遲滯；整支隊伍一起過去，主角自己跑過去很容易被包圍
 - 主角大多很脆，**邊走邊打**比站著不動安全
 

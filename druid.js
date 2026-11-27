@@ -419,7 +419,7 @@ function druidUpdate(dt) {
         if (t.tick <= 0) {
             t.tick = RES_THORNPATCH_TICK;
             const rSq = t.r * t.r;
-            groundMonsterGrid.forEachInRadius(t, t.r, m => { if (m.isAlive && distanceSq(m.pos, t) <= rSq) m.takeDamage(t.dmg); });
+            monsterGrid.forEachInRadius(t, t.r, m => { if (m.isAlive && distanceSq(m.pos, t) <= rSq) m.takeDamage(t.dmg); });
         }
         if (t.life <= 0) d.patches.splice(i, 1);
     }
@@ -846,7 +846,7 @@ class SacredOak extends SummonUnit {
         if (this.attackCooldown > 0) this.attackCooldown -= dt * (gameState.frenzyTimer > 0 ? CONFIG.nova.frenzyAttackRate : 1);
         if (this.target && (!this.target.isAlive || distanceSq(this.target.pos, this.anchor) > RES_TREANT_LEASH * RES_TREANT_LEASH)) this.target = null;
         if (!this.target && (frameNo + this.seq) % TARGET_SEARCH_FRAMES === 0) {
-            const m = groundMonsterGrid.nearestShared(this.anchor, RES_TREANT_LEASH);
+            const m = monsterGrid.nearestShared(this.anchor, RES_TREANT_LEASH);
             this.target = m && m.isAlive ? m : null;
         }
         const goal = this.target ? this.target.pos : this.anchor;
@@ -975,7 +975,7 @@ class Beast extends SummonUnit {
             if (bl('bearStun') && t.isAlive) t.applySlow(blessVal('bearStun'), 0.8);
             if (this.tier >= 2) {
                 const rSq = BEAR_CLEAVE_RADIUS * BEAR_CLEAVE_RADIUS;
-                groundMonsterGrid.forEachInRadius(t.pos, BEAR_CLEAVE_RADIUS, m => { if (m !== t && m.isAlive && distanceSq(m.pos, t.pos) <= rSq) m.takeDamage(dmg * BEAR_CLEAVE_SHARE); });
+                monsterGrid.forEachInRadius(t.pos, BEAR_CLEAVE_RADIUS, m => { if (m !== t && m.isAlive && distanceSq(m.pos, t.pos) <= rSq) m.takeDamage(dmg * BEAR_CLEAVE_SHARE); });
             }
         }
         if (festivalStrength('beltane') > 0 && Math.random() < 0.3) spawnParticles(t.pos.x, t.pos.y, '#FF7043', 3, 40, 0.35, 2);
@@ -993,7 +993,7 @@ class Beast extends SummonUnit {
             if (this.slamT <= 0) {
                 this.slamT = BEAR_SLAM_EVERY;
                 const rSq = BEAR_SLAM_RADIUS * BEAR_SLAM_RADIUS;
-                groundMonsterGrid.forEachInRadius(this.pos, BEAR_SLAM_RADIUS, m => {
+                monsterGrid.forEachInRadius(this.pos, BEAR_SLAM_RADIUS, m => {
                     if (!m.isAlive || distanceSq(m.pos, this.pos) > rSq) return;
                     m.takeDamage(dmg * BEAR_SLAM_MULT);
                     if (m.isAlive) m.applySlow(BEAR_SLAM_SLOW, BEAR_SLAM_SLOW_TIME);

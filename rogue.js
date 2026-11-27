@@ -368,9 +368,7 @@ SHAPE_SPRITES.knife = {
     },
 };
 // 飛刀命中：處決、上毒、記爆擊。Projectile 打中時呼叫 owner.healFromDamage／onHit
-// pierceShield：飛刀打自己的「目標」時無視骨盾衛兵的盾（刺客專挑盔甲的縫）。目標挑的是場上最有威脅、血最多的怪，盾衛常被選中，
-// 全擋的話主要收入的目標用主要武器打不動；其他怪照樣被擋，盾陣對刺客還是麻煩
-const rogueKnifeOwner = { healFromDamage() {}, onHit: (m) => knifeHit(m), pierceShield: (m) => rogueState().targets.includes(m) };
+const rogueKnifeOwner = { healFromDamage() {}, onHit: (m) => knifeHit(m) };
 const rogueTargets = [];
 function rogueKnives(p, dt) {
     const r = rogueState(), K = ROGUE.knife;
