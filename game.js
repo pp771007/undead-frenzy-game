@@ -136,6 +136,8 @@ const uiElements = {
     pauseTitleBtn: $id('pause-title-btn'),
     restartGameBtn: $id('restart-game-btn'),
     pauseSummonStats: $id('pause-summon-stats'),
+    pauseSummonWrap: $id('pause-summon-wrap'),
+    pauseTabs: $id('pause-tabs'),
     gameOverScreen: $id('game-over-screen'),
     finalWaveText: $id('final-wave-text'),
     bestWaveText: $id('best-wave-text'),
@@ -6820,7 +6822,7 @@ function updateSpawner(deltaTime) {
     }
 }
 
-// 新威脅第一次出現的那一波，橫幅改成介紹它：一句「看到什麼就做什麼」
+// 新威脅第一次出現的那一波，開戰前的倒數改成介紹它：一句「看到什麼就做什麼」
 function getNewcomer(wave) {
     const batWave = runMods().batsEarly ? BATS_EARLY_WAVE : CONFIG.bat.minWave;
     // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
@@ -6930,12 +6932,9 @@ function prepareNextWave() {
     scheduleRelic(waveNum);
     const isBossWave = waveNum % CONFIG.wave.bossEvery === 0;
     const ev = getWaveEvent();
-    // 首領波：先講「清光小怪首領才會出來」（名字等首領落地的登場演出再報）
+    // 首領波：先講「清光小怪首領才會出來」（名字等首領落地的登場演出再報）。新威脅在開戰前的倒數就介紹過了（見 checkWaveEndCondition）
     if (gameState.pendingBoss) {
         gameState.banner = { text: '首領波', sub: `清光小怪，${bossDisplayName(gameState.pendingBoss)}就會登場`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
-    } else if (getNewcomer(waveNum)) {
-        const n = getNewcomer(waveNum);
-        gameState.banner = { text: n.name, sub: `新威脅 · ${n.hint}`, color: n.color, life: CONFIG.wave.bannerDuration * 1.8, icon: n.icon, look: n.look };
     } else if (ev) {
         gameState.banner = { text: ev.name, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3, icon: ev.icon };
     } else {
@@ -6959,7 +6958,10 @@ function checkWaveEndCondition() {
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
         gameState.waveEvent = null;
-        // 經驗不會自動收回：第一次打完一波、地上還留著經驗時講一次
+        // 下一波有新威脅：在開戰前這段倒數介紹，開戰時橫幅剛好收掉。等開戰才講的話，怪已經衝過來了橫幅還擋在畫面中間
+        const next = getNewcomer(gameState.currentWave + 1);
+        if (next) gameState.banner = { text: next.name, sub: `新威脅 · ${next.hint}`, color: next.color, life: CONFIG.wave.betweenTime, icon: next.icon, look: next.look };
+        // 經驗不會自動收回：第一次打完一波、地上還留著經驗時講一次（新威脅的橫幅在的話，等之後的波再講）
         if (gameState.orbs.length >= ORB_HINT_MIN) introduceOnce('orbPickup', '撿經驗', '經驗留在地上，走過去才撿得到', '#80DEEA', currencyIcon());
         const p = gameState.player;
         // 波與波之間誰都不回血：法師被咬掉的一路帶到下一波（回血靠靈泉、選祝福時的「補滿血」、不死之軀、吸魂之軀），
@@ -7748,7 +7750,8 @@ function renderBlessingDetail(container) {
     container.innerHTML = ids.length === 0 ? '<span class="empty-note">還沒有祝福</span>' : ids.map(id => {
         const B = BLESSINGS[id], lv = bl(id);
         const pips = Array.from({ length: B.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
-        return `<div class="bless-row">${iconHtml(blessIcon(id))}<div class="bless-text"><div class="bless-name"><span class="nm">${B.name}</span><span class="pips">${pips}</span></div><div class="bless-effect">${blessTotalDesc(id)}</div></div></div>`;
+        // 層數格子固定在名字下面一行（同永久強化）：跟名字擠一行的話，名字長、格子多的會被擠下去，每列長得不一樣
+        return `<div class="bless-row">${iconHtml(blessIcon(id))}<div class="bless-text"><div class="bless-name">${B.name}</div><div class="pips">${pips}</div><div class="bless-effect">${blessTotalDesc(id)}</div></div></div>`;
     }).join('');
 }
 
@@ -8706,7 +8709,10 @@ function resetGame() {
 }
 
 function updatePauseMenuStats() {
-    uiElements.pauseSummonStats.innerHTML = classDef().cards.map(type =>
+    // 修練類（武僧的拳、精靈的箭術…）沒有召喚數，不列；一種召喚兵都沒有的職業整區不顯示
+    const summonTypes = classDef().cards.filter(t => !UNIT_TYPES[t].upgradeOnly);
+    uiElements.pauseSummonWrap.classList.toggle('hidden', summonTypes.length === 0);
+    uiElements.pauseSummonStats.innerHTML = summonTypes.map(type =>
         `<div class="stat-cell"><img src="${UNIT_TYPES[type].img}" alt=""><b>${formatNumberK(gameState.totalSummons[type])}</b></div>`).join('');
     renderBlessingDetail(uiElements.pauseBlessings);
     uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('gold')}+${getRunReward()}`;
@@ -8718,6 +8724,7 @@ function togglePause() {
     if (gameState.isPaused) {
         syncSettingControls();
         updatePauseMenuStats();
+        showPauseTab('run');
         showScreen(uiElements.pauseMenu, true);
         pauseMusic();
     } else {
@@ -8726,6 +8733,11 @@ function togglePause() {
         ensureMusicPlaying();
     }
     updateUI();
+}
+
+function showPauseTab(tab) {
+    for (const b of uiElements.pauseTabs.querySelectorAll('[data-pause-tab]')) b.classList.toggle('on', b.dataset.pauseTab === tab);
+    for (const pg of uiElements.pauseMenu.querySelectorAll('[data-pause-page]')) pg.classList.toggle('hidden', pg.dataset.pausePage !== tab);
 }
 
 function leaveToTitleFromPause() {
@@ -9880,6 +9892,10 @@ function init() {
         togglePause();
     });
     onTap(uiElements.resumeGameBtn, togglePause);
+    uiElements.pauseTabs.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-pause-tab]');
+        if (b) showPauseTab(b.dataset.pauseTab);
+    });
     onTap(uiElements.pauseTitleBtn, leaveToTitleFromPause);
     onTap(uiElements.restartGameBtn, endRunFromPause);
     onTap(uiElements.restartButton, () => { resetGame(); enterPlaying(); });

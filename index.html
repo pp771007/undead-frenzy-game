@@ -1923,7 +1923,44 @@
             line-height: 14px;
         }
 
-        /* 暫停選單的祝福：每一行是圖示、名稱＋層數、累積效果 */
+        /* 暫停選單：分「本局」「設定」兩頁，只有頁面內容會捲，繼續／標題／結束這局固定在最下面一按就到 */
+        #pause-menu .overlay-content {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #pause-tabs {
+            display: flex;
+            gap: 6px;
+            margin: 10px 0 8px;
+        }
+
+        #pause-tabs .achv-tab {
+            flex: 1;
+            padding: 8px 10px;
+            font-size: 16px;
+        }
+
+        .pause-page {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .pause-page>.section-title {
+            margin-top: 6px;
+        }
+
+        .pause-actions {
+            flex: none;
+            margin-top: 12px;
+        }
+
+        /* 暫停選單的祝福：每一行是圖示、名稱、層數（固定在名字下面一行）、累積效果 */
         .bless-detail {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -1953,18 +1990,15 @@
         }
 
         .bless-row .bless-name {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 2px 5px;
             font-family: var(--font-display);
             font-weight: 900;
             font-size: 13px;
             color: var(--bone);
         }
 
-        .bless-row .nm {
-            white-space: nowrap;
+        .bless-row .pips {
+            display: flex;
+            margin: 2px 0 1px;
         }
 
         .bless-row .pip {
@@ -2705,19 +2739,28 @@
         <div class="overlay-content panel screen-in">
             <h2 class="title-text">暫停</h2>
             <div class="reward-line" id="pause-reward"></div>
-            <div class="section-title">本局祝福</div>
-            <div id="pause-blessings" class="bless-detail"></div>
-            <div class="section-title">召喚</div>
-            <div class="stat-grid cols-3" id="pause-summon-stats"></div>
-            <div class="section-title">音量</div>
-            <div class="setting-row"><span data-icon="music"></span><input type="range" id="pause-volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
-            <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="pause-sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
-            <div class="section-title">畫面</div>
-            <label class="setting-row setting-toggle"><span data-icon="battery"></span><span class="setting-label">省電模式</span><input type="checkbox" id="pause-saver-toggle" class="switch"></label>
-            <label class="setting-row setting-toggle"><span data-icon="reduceShake"></span><span class="setting-label">減少晃動</span><input type="checkbox" id="pause-shake-toggle" class="switch"></label>
-            <label class="setting-row setting-toggle"><span data-icon="fullscreen"></span><span class="setting-label">全螢幕</span><input type="checkbox" id="pause-fullscreen-toggle" class="switch"></label>
-            <div class="stack">
+            <div id="pause-tabs">
+                <button class="achv-tab on" data-pause-tab="run">本局</button>
+                <button class="achv-tab" data-pause-tab="settings">設定</button>
+            </div>
+            <div class="pause-page" data-pause-page="run">
+                <div id="pause-blessings" class="bless-detail"></div>
+                <div id="pause-summon-wrap">
+                    <div class="section-title">召喚過</div>
+                    <div class="stat-grid cols-3" id="pause-summon-stats"></div>
+                </div>
                 <button id="pause-guide-btn" class="btn btn-dark"><span class="btn-icon" data-icon="classGuide"></span>職業玩法</button>
+            </div>
+            <div class="pause-page hidden" data-pause-page="settings">
+                <div class="section-title">音量</div>
+                <div class="setting-row"><span data-icon="music"></span><input type="range" id="pause-volume-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音樂音量"></div>
+                <div class="setting-row"><span data-icon="speaker"></span><input type="range" id="pause-sfx-slider" min="0" max="1" step="0.01" value="0.5" aria-label="音效音量"></div>
+                <div class="section-title">畫面</div>
+                <label class="setting-row setting-toggle"><span data-icon="battery"></span><span class="setting-label">省電模式</span><input type="checkbox" id="pause-saver-toggle" class="switch"></label>
+                <label class="setting-row setting-toggle"><span data-icon="reduceShake"></span><span class="setting-label">減少晃動</span><input type="checkbox" id="pause-shake-toggle" class="switch"></label>
+                <label class="setting-row setting-toggle"><span data-icon="fullscreen"></span><span class="setting-label">全螢幕</span><input type="checkbox" id="pause-fullscreen-toggle" class="switch"></label>
+            </div>
+            <div class="stack pause-actions">
                 <button id="resume-game-btn" class="btn btn-green btn-big"><span class="btn-icon" data-icon="play"></span>繼續</button>
                 <div class="btn-row" style="margin-top:0">
                     <button id="pause-title-btn" class="btn btn-dark"><span class="btn-icon" data-icon="home"></span>標題</button>
