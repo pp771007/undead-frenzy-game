@@ -1367,16 +1367,36 @@ function trackLoad(promise) {
     loadProgress.total++;
     return promise.finally(() => { loadProgress.done++; });
 }
+// 手機網路斷一下就會有幾張圖沒抓到，不重抓的話整場都是破圖；
+// 重抓時網址加上 ?retry=N，避開瀏覽器或 Service Worker 手上可能壞掉的那份
+const IMG_RETRIES = 3;
+const IMG_RETRY_DELAY_MS = 600;
+function retryImageUrl(src, attempt) {
+    return src + (src.includes('?') ? '&' : '?') + 'retry=' + attempt;
+}
 function loadImage(src) {
     return new Promise((resolve, reject) => {
         const img = new Image();
+        let attempt = 0;
         img.onload = () => resolve(img);
         img.onerror = (err) => {
-            reject(err);
+            if (attempt >= IMG_RETRIES) { reject(err); return; }
+            attempt++;
+            setTimeout(() => { img.src = retryImageUrl(src, attempt); }, IMG_RETRY_DELAY_MS * attempt);
         };
         img.src = src;
     });
 }
+// 畫面上的 <img>（卡片頭像、圖鑑、成就）也一樣重抓；error 不會冒泡，要在捕獲階段接
+document.addEventListener('error', e => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || img.src.startsWith('data:')) return;
+    const attempt = Number(img.dataset.retry || 0);
+    if (attempt >= IMG_RETRIES) return;
+    img.dataset.retry = attempt + 1;
+    const src = img.getAttribute('src').replace(/[?&]retry=\d+$/, '');
+    setTimeout(() => { img.src = retryImageUrl(src, attempt + 1); }, IMG_RETRY_DELAY_MS * (attempt + 1));
+}, true);
 
 const OPTIONAL_ART = {
     ground: 'ground_tile.jpg',
