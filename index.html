@@ -1812,14 +1812,22 @@
         #draft-cards.four .draft-card {
             width: 100%;
             gap: 5px;
-            padding: 10px 8px;
+            padding: 8px 8px;
         }
 
-        /* 兩排卡片加上三顆按鈕，矮螢幕（約 670px 高）要剛好放得下 */
+        /* 兩排卡片加上三顆按鈕，基準機（360×620、字放大 1.8 倍）要放得下，最下面的「補滿血」不能要捲才看得到 */
         #draft-cards.four .card-icon {
-            width: 46px;
-            height: 46px;
-            padding: 4px;
+            width: 38px;
+            height: 38px;
+            padding: 3px;
+        }
+
+        #draft-screen:has(#draft-cards.four) .title-text {
+            margin-bottom: 8px;
+        }
+
+        #draft-screen:has(#draft-cards.four) .draft-actions {
+            margin-top: 10px;
         }
 
         /* 真的放不下時可以捲動，而且捲得到最上面（justify-content: center 溢出時上半截會捲不到） */
