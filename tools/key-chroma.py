@@ -135,7 +135,9 @@ def key(src, dst, flip=False):
             continue
         lo_v = max(px[c] for c in lo)
         lo_bg = max(bg[c] for c in lo)
-        if lo_v >= GLOW_LOW and min(px[c] for c in hi) >= GLOW_BRIGHT:
+        # 要比背景本身的暗通道亮才算光：AI 生的綠背景常帶一點紅（實測 40,230,10），暗通道不是 0，
+        # 不加這條的話暗通道 30～40 的像素算出負的透明度
+        if lo_v >= GLOW_LOW and lo_v > lo_bg and min(px[c] for c in hi) >= GLOW_BRIGHT:
             a = min(1.0, (lo_v - lo_bg) / (255 - lo_bg))
             col = tuple((px[c] - (1 - a) * bg[c]) / a for c in range(3)) if a > 0 else (0, 0, 0)
         else:
