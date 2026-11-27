@@ -2,7 +2,8 @@
 // 用法：node tools/ui-check.mjs <遊戲網址> <輸出資料夾> [字體放大倍率] [寬] [高] [職業 id，預設 necro]
 //
 // 預設條件取自一支玩家手機在 LINE 內建瀏覽器裡的實機截圖（2026-11 回報）：
-//   可用畫面約 408×673 CSS px（比一般測試用的 390×780 寬一點、矮很多），
+//   可用畫面 360×620 CSS px：寬度取版面的下限（index.html 的 MIN_LAYOUT_W，再窄的手機會被撐回 360），
+//   高度取「瀏覽器網頁縮放 150%」那支手機換算到 360 寬時的高度 —— 比兩支實機回報（408×673、273×469）都窄也都矮，這裡過了它們就過，
 //   系統「字型大小」讓字放大約 1.5～1.8 倍、框不變，而且那個瀏覽器不理會 text-size-adjust。
 // 遊戲用 cancelTextZoom（game.js）把放大量回去；這裡模擬放大、再呼叫一次 cancelTextZoom 驗證它算得對。
 // 環境變數 FIX=0 可以看「不補償」時的樣子（應該會跟那張實機截圖一樣：按鈕字變直排、數字超出框）。
@@ -13,7 +14,7 @@ import { join } from 'node:path';
 const URL = process.argv[2];
 const OUT = process.argv[3];
 const SCALE = Number(process.argv[4] || 1.8);
-const W = Number(process.argv[5] || 408), H = Number(process.argv[6] || 673);
+const W = Number(process.argv[5] || 360), H = Number(process.argv[6] || 620);
 const CLASS = process.argv[7] || 'necro';
 // 實機截圖量出來的每 CSS px 像素數
 const DPR = 2.25;
