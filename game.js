@@ -73,7 +73,6 @@ const uiElements = {
     waveInfo: $id('wave-info'),
     timerInfo: $id('timer-info'),
     wavePlate: $id('wave-plate'),
-    hudBottom: $id('hud-bottom'),
     victoryScreen: $id('victory-screen'), victoryReward: $id('victory-reward'), victoryUnlock: $id('victory-unlock'), victoryTime: $id('victory-time'),
     victoryContinueBtn: $id('victory-continue-btn'), victoryEndBtn: $id('victory-end-btn'),
     titleCurseBtn: $id('title-curse-btn'), curseScreen: $id('curse-screen'), curseList: $id('curse-list'),
@@ -95,7 +94,6 @@ const uiElements = {
     playerHealthInfo: $id('player-health-info'),
     hpFill: $id('hp-fill'),
     pauseResumeBtn: $id('pause-resume-btn'),
-    skipWaveBtn: $id('skip-wave-btn'),
     finalKiller: $id('final-killer'),
     messageArea: $id('message-area'),
     titleScreen: $id('title-screen'),
@@ -8413,7 +8411,6 @@ function updateUI() {
     }
     uiElements.wavePlate.classList.toggle('urgent', gameState.betweenWaves && !holding && secs <= COUNTDOWN_SECONDS);
 
-    setStyleIfChanged(uiElements.skipWaveBtn, 'display', gameState.betweenWaves && !gameState.gameOver && !(tutorial && gameState.currentWave === 0) ? '' : 'none');
 }
 
 // updateUI 每格都跑。寫進 DOM 就算內容一模一樣，瀏覽器也要重新排版、重畫那一塊 ——
@@ -9094,11 +9091,8 @@ function drawOffscreenPointers() {
     let bounds = null;
     let anyVisible = false, nearest = null, nearestD = Infinity;
     const p = gameState.player.pos;
-    // 「看得到」= 在上方狀態列與下方召喚面板之間：被面板蓋住的竊賊、祭壇也算畫面外，一樣要標方位
-    // （只看整個畫布的話，手機上很高的召喚面板底下那一片完全沒有提示）
-    const hb = uiElements.hudBottom.getBoundingClientRect();
-    const visTop = hudTop, visBottom = hb.height ? hb.top : view.cssH;
-    const seen = (sx, sy) => sx > 0 && sx < view.cssW && sy > visTop && sy < visBottom;
+    // 「看得到」= 在上方狀態列底下：被狀態列蓋住的竊賊、祭壇也算畫面外，一樣要標方位
+    const seen = (sx, sy) => sx > 0 && sx < view.cssW && sy > hudTop && sy < view.cssH;
     for (const r of gameState.relics) {
         if (r.done) continue;
         const sx = (r.x - camera.x) * view.unitPx, sy = (r.y - camera.y) * view.unitPx;
@@ -9129,12 +9123,11 @@ function drawOffscreenPointers() {
     drawEdgePointer(sx, sy, POINTER_NEAREST_COLOR, bounds || pointerBounds(), sprite, nearest.imageWidth * k, nearest.imageHeight * k);
 }
 
-// 標記能放的範圍：避開上方狀態列與下方召喚面板
+// 標記能放的範圍：避開上方狀態列
 function pointerBounds() {
-    const hb = uiElements.hudBottom.getBoundingClientRect();
     return {
         left: POINTER_EDGE_PAD, right: view.cssW - POINTER_EDGE_PAD,
-        top: hudTop + POINTER_TOP_EXTRA, bottom: (hb.height ? hb.top : view.cssH) - POINTER_EDGE_PAD,
+        top: hudTop + POINTER_TOP_EXTRA, bottom: view.cssH - POINTER_EDGE_PAD,
     };
 }
 
@@ -9921,15 +9914,6 @@ function init() {
     });
     window.addEventListener('keyup', (e) => keysDown.delete(e.code));
     window.addEventListener('blur', () => keysDown.clear());
-
-    // 用 pointerdown 不用 click：另一隻手指還按著搖桿時，瀏覽器不會把這一下算成 click
-    uiElements.skipWaveBtn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        if (gameState.betweenWaves && !gameState.isPaused && !gameState.gameOver) {
-            gameState.timeToNextWave = 0;
-            ensureMusicPlaying();
-        }
-    });
 
     startGameLoop();
     Promise.all([loadAllImages(), trackLoad(preloadIconImages()), trackLoad(waitForFonts())]).then(() => {

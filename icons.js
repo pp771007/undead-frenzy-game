@@ -130,7 +130,6 @@ const ICON_BODIES = {
     pause: `<rect x="15" y="12" width="12" height="40" rx="4" fill="#f1ead6"/><rect x="37" y="12" width="12" height="40" rx="4" fill="#f1ead6"/>`,
     play: `<path d="M21 11 L53 32 L21 53 Z" fill="#f1ead6"/>`,
     burst: `<path d="${starPath(32, 32, 28, 13, 10)}" fill="#c06bf5"/><circle cx="32" cy="32" r="9" fill="#f6dcff"/>`,
-    fastForward: `<path d="M7 14 L30 32 L7 50 Z" fill="#8fd3ff"/><path d="M32 14 L55 32 L32 50 Z" fill="#8fd3ff"/>`,
     star: `<path d="${starPath(32, 33, 27, 12, 5)}" fill="#ffd54f"/>${shine(26, 22, 4, 2.5)}`,
     crown: `<path d="M9 46 L13 17 L24 30 L32 11 L40 30 L51 17 L55 46 Z" fill="#ffd54f"/><rect x="9" y="45" width="46" height="9" rx="2" fill="#e0a82e"/>
         <circle cx="32" cy="49.5" r="3" fill="#e5484d" stroke-width="2.5"/><circle cx="20" cy="49.5" r="2.5" fill="#62dbe2" stroke-width="2.5"/><circle cx="44" cy="49.5" r="2.5" fill="#62dbe2" stroke-width="2.5"/>`,
