@@ -47,17 +47,9 @@ const SHADOW_LIFE = 20, SHADOW_CAP = 3, SHADOW_CAP_PER_LEVELS = 10;
 // 毒：每層每秒傷害（跟著波數）、一層持續幾秒、最多幾層
 const POISON = { dps: 1.2, time: 3, maxStacks: 5, tick: 0.5 };
 
-Object.assign(CONFIG.evolution.names, {
-    Knives: ['飛刀手', '雙刀', '千刃'],
-    Venom: ['毒師', '蛇毒', '黑死之觸'],
-    Shadow: ['殘影', '暗影', '無面者'],
-});
-Object.assign(CONFIG.evolution.perks, {
-    Knives: ['每次多丟一把', '飛刀彈到附近一隻', '處決門檻 +10%'],
-    Venom: ['毒層上限 +3', '中毒的怪攻擊力 -25%', '毒死的怪炸出毒霧'],
-    Shadow: ['影子存在時間加倍', '影子的攻擊也會上毒', '影子消失時伏擊身邊的怪'],
-});
-const KNIVES_TIER3_EXECUTE = 0.1, VENOM_TIER1_STACKS = 3, VENOM_CLOUD_RADIUS = 50;
+// 傳染、傳說「瘟疫毒霧」：毒死的怪身邊這一圈；傳說「影爆」：影子消失時炸多大、傷害是伏擊的幾成
+const VENOM_CLOUD_RADIUS = 50;
+const SHADOW_BURST_RADIUS = 45, SHADOW_BURST_SHARE = 0.5;
 // 中毒看得出來：怪身上蓋一層綠光（層數越多越濃）、頭上冒毒泡（最多 POISON_BUBBLES 顆）、毒死爆一團綠霧
 const POISON_GREEN = '#76FF03', POISON_BUBBLE = '#CCFF90', POISON_BUBBLE_EDGE = '#1B5E20';
 const POISON_GLOW_BASE = 0.35, POISON_GLOW_PER_STACK = 0.07, POISON_GLOW_MAX = 0.75, POISON_GLOW_SIZE = 1.4;  // 大小 × 圖寬
@@ -103,11 +95,14 @@ Object.assign(BLESSINGS, {
     spoils: { school: 'intel', name: '戰利品', max: 2, per: 0.08, desc: b => `目標倒下時你回 ${pct(b.per)} 血` },
     oldMan: { school: 'intel', name: '山中老人', legendary: true, max: 1, per: 3, desc: b => `目標倒下時，牠身邊 ${b.per} 隻怪倒戈成為你的影子` },
     pillowDagger: { school: 'assassination', name: '枕邊匕首', legendary: true, max: 1, per: 160, desc: () => '目標被標記的那一刻起，牠身邊的怪攻擊力下降' },
+    boomerangKnife: { school: 'assassination', name: '回旋飛刀', legendary: true, max: 1, per: 1, desc: () => '飛刀命中後，彈到附近再打一隻' },
     fidai: { school: 'smoke', name: '菲達伊', legendary: true, max: 1, per: 0.5, desc: b => `隱身時移速 +${pct(b.per)}，隱身中的飛刀傷害 ×${FIDAI_KNIFE}` },
     // 迷魂毒：疊層要時間，所以要挑一隻大的一直射；換來的是牠在怪堆裡替你打
     madVenom: { school: 'venomschool', name: '迷魂毒', legendary: true, max: 1, per: MAD_TIME, desc: b => `毒疊到 ${MAD_STACKS} 層的怪發瘋 ${b.per} 秒，改打身邊的怪（首領不會）` },
+    plagueCloud: { school: 'venomschool', name: '瘟疫毒霧', legendary: true, max: 1, per: 1, desc: () => '毒死的怪炸出一團毒霧，霧裡的怪全部中毒' },
     // 移形換影：影子變成刺客的傳送點，影子養在目標附近就能一直貼身伏擊
     shadowSwap: { school: 'shadowschool', name: '移形換影', legendary: true, max: 1, per: SWAP_EVERY, desc: b => `影子撲向目標；每 ${b.per} 秒你和最近目標的影子換位，拿到伏擊` },
+    shadowBurst: { school: 'shadowschool', name: '影爆', legendary: true, max: 1, per: 1, desc: () => '影子時間到消失時炸開，炸傷身邊的怪' },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
     poisonAmbush: { school: DUO_SCHOOL, duo: ['assassination', 'venomschool'], name: '淬毒匕首', legendary: true, max: 1, per: 1, desc: () => '伏擊的那一刀把毒直接疊滿' },
     smokeShades: { school: DUO_SCHOOL, duo: ['shadowschool', 'smoke'], name: '煙中影', legendary: true, max: 1, per: 1, desc: () => '每放出一團煙，煙裡就站起一個影子' },
@@ -380,8 +375,7 @@ function rogueKnives(p, dt) {
     if (!rogueTargets.length) return;
     rogueTargets.sort((a, b) => a.d - b.d);
     r.knifeT = K.interval;
-    const tier = getTier(gameState.units.Knives.level);
-    const n = Math.min(rogueTargets.length, K.count + (tier >= 1 ? 1 : 0));
+    const n = Math.min(rogueTargets.length, K.count);
     for (let i = 0; i < n; i++) {
         const t = rogueTargets[i].m, isTarget = rogueTargets[i].d < 0;
         let dmg = knifeDamage();
@@ -401,13 +395,13 @@ function rogueKnives(p, dt) {
         if (t.poisonStacks > 0 && res('venomschool') >= 1) dmg *= RES_CORRODE_TAKEN;
         t.lastHitWasOneShot = t.currentHealth >= t.maxHealth && dmg >= t.currentHealth;
         const pr = getProjectileFromPool();
-        pr.init(p.pos.x, p.pos.y - 6, t, ROGUE_KNIFE, dmg, rogueKnifeOwner, tier >= 2 ? 1 : 0, false);
+        pr.init(p.pos.x, p.pos.y - 6, t, ROGUE_KNIFE, dmg, rogueKnifeOwner, bl('boomerangKnife') ? BLESSINGS.boomerangKnife.per : 0, false);
         gameState.projectiles.push(pr);
         if (crit) spawnParticles(t.pos.x, t.pos.y, ROGUE_MARK_COLOR, 6, 60, 0.3, 2);
     }
     Sfx.play('mageBolt');
 }
-function executeThreshold() { return ROGUE.execute + blessVal('executeUp') + classMeta('executeUp') + (getTier(gameState.units.Knives.level) >= 3 ? KNIVES_TIER3_EXECUTE : 0); }
+function executeThreshold() { return ROGUE.execute + blessVal('executeUp') + classMeta('executeUp'); }
 function knifeHit(m) {
     if (m.isAlive && !(m instanceof BossMonster) && m.currentHealth < m.maxHealth * executeThreshold()) {
         if (m.isElite) gameState.run.flags.rogueExecElite = true;
@@ -430,7 +424,7 @@ function knifeHit(m) {
 }
 
 // ---------- 毒 ----------
-function poisonCap() { return POISON.maxStacks + blessVal('poisonStacks') + (getTier(gameState.units.Venom.level) >= 1 ? VENOM_TIER1_STACKS : 0); }
+function poisonCap() { return POISON.maxStacks + blessVal('poisonStacks'); }
 function addPoison(m, stacks) {
     const r = rogueState();
     if (!m.poisonStacks) { m.poisonStacks = 0; r.poisoned.push(m); }
@@ -442,7 +436,6 @@ function addPoison(m, stacks) {
 function tickPoison() {
     const r = rogueState();
     if (!r.poisoned.length) return;
-    const tier = getTier(gameState.units.Venom.level);
     const per = POISON.dps * POISON.tick * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Venom.level * CONFIG.venom.upgradeBonus) * (1 + blessVal('poisonPower'));
     const live = [];
     for (const m of r.poisoned) {
@@ -451,7 +444,6 @@ function tickPoison() {
         if (m.poisonTime <= 0) { m.poisonStacks = 0; continue; }
         let dmg = per * m.poisonStacks;
         if (res('venomschool') >= 2 && Math.random() < blessVal('critChance')) dmg *= 2 * (1 + blessVal('critDamage'));
-        if (tier >= 2) m.weakenTimer = POISON.tick * 2;
         if (bl('poisonSlow')) m.applySlow(blessVal('poisonSlow'), POISON.tick * 2);
         m.takeDamage(dmg);
         if (!m.isAlive) { poisonDeath(m); m.poisonStacks = 0; continue; }
@@ -459,7 +451,7 @@ function tickPoison() {
     }
     r.poisoned = live;
 }
-// 毒死的怪：傳染、三階炸出毒霧
+// 毒死的怪：傳染、傳說「瘟疫毒霧」
 function poisonDeath(m) {
     const stacks = m.poisonStacks;
     if (inView(m.pos)) spawnParticles(m.pos.x, m.pos.y, POISON_GREEN, POISON_DEATH_PUFF, 70, 0.5, 3);
@@ -467,9 +459,9 @@ function poisonDeath(m) {
         let left = bl('poisonSpread');
         monsterGrid.forEachInRadius(m.pos, VENOM_CLOUD_RADIUS, o => { if (left > 0 && o.isAlive && o !== m) { addPoison(o, stacks); left--; } });
     }
-    if (getTier(gameState.units.Venom.level) >= 3) {
+    if (bl('plagueCloud')) {
         monsterGrid.forEachInRadius(m.pos, VENOM_CLOUD_RADIUS, o => { if (o.isAlive && distanceSq(o.pos, m.pos) <= VENOM_CLOUD_RADIUS * VENOM_CLOUD_RADIUS) addPoison(o, 1); });
-        spawnParticles(m.pos.x, m.pos.y, '#9CCC65', 12, 70, 0.6, 3);
+        if (inView(m.pos)) gameState.visualEffects.push(new PlagueCloudEffect(m.pos, VENOM_CLOUD_RADIUS));
     }
 }
 
@@ -560,6 +552,61 @@ class ShadowSwapEffect extends TimedEffect {
             ctx.fillStyle = '#EDE7F6';
             ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, Math.PI * 2); ctx.fill();
         }
+        ctx.restore();
+    }
+}
+
+// 傳說「瘟疫毒霧」：毒死的地方鼓起一團綠色毒霧（幾坨圓霧疊在一起，慢慢膨脹、往上飄、淡掉），裡面冒毒泡
+const PLAGUE_PUFFS = 6, PLAGUE_DARK = '#558B2F', PLAGUE_MID = '#9CCC65', PLAGUE_LIGHT = '#DCEDC8';
+class PlagueCloudEffect extends TimedEffect {
+    constructor(pos, radius) {
+        super({ x: pos.x, y: pos.y }, 0.9);
+        this.radius = radius;
+        this.puffs = Array.from({ length: PLAGUE_PUFFS }, (_, i) => { const a = i / PLAGUE_PUFFS * Math.PI * 2 + Math.random() * 0.5; return { a, d: 0.35 + Math.random() * 0.3, s: 0.45 + Math.random() * 0.25 }; });
+    }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos, R = this.radius;
+        const grow = 0.6 + 0.4 * Math.min(1, k * 3), rise = k * 10;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, this.life / 0.35) * 0.75;
+        for (const layer of [[PLAGUE_DARK, 1.15], [PLAGUE_MID, 1], [PLAGUE_LIGHT, 0.55]]) {
+            ctx.fillStyle = layer[0];
+            ctx.beginPath();
+            for (const p of this.puffs) {
+                const px = x + Math.cos(p.a) * R * p.d * grow, py = y - rise + Math.sin(p.a) * R * p.d * grow * 0.7, pr = R * p.s * grow * layer[1] * 0.6;
+                ctx.moveTo(px + pr, py); ctx.arc(px, py, pr, 0, Math.PI * 2);
+            }
+            ctx.fill();
+        }
+        ctx.fillStyle = POISON_BUBBLE;
+        for (let i = 0; i < 4; i++) {
+            const ph = (k * 1.5 + i / 4) % 1;
+            ctx.beginPath(); ctx.arc(x + (i - 1.5) * 9, y - rise - ph * 22, 2.2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+// 傳說「影爆」：影子縮成一點再炸開，一圈紫黑色的影刃往外甩
+const SHADOW_BURST_BLADES = 8;
+class ShadowBurstEffect extends TimedEffect {
+    constructor(pos, radius) { super({ x: pos.x, y: pos.y }, 0.45); this.radius = radius; this.spin = Math.random() * Math.PI; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos, R = this.radius, fade = 1 - k;
+        const r = R * (1 - Math.pow(1 - k, 2));
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.drawImage(getGlowSprite('#7E57C2'), x - r, y - r, r * 2, r * 2);
+        ctx.lineCap = 'round';
+        for (let i = 0; i < SHADOW_BURST_BLADES; i++) {
+            const a = this.spin + i / SHADOW_BURST_BLADES * Math.PI * 2 + k * 1.2;
+            const x0 = x + Math.cos(a) * r * 0.45, y0 = y + Math.sin(a) * r * 0.45, x1 = x + Math.cos(a + 0.35) * r, y1 = y + Math.sin(a + 0.35) * r;
+            ctx.strokeStyle = STEALTH_DARK; ctx.lineWidth = 6 * fade + 1;
+            ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo(x + Math.cos(a + 0.1) * r * 0.85, y + Math.sin(a + 0.1) * r * 0.85, x1, y1); ctx.stroke();
+            ctx.strokeStyle = STEALTH_COLOR; ctx.lineWidth = 2.5 * fade + 0.5;
+            ctx.stroke();
+        }
+        ctx.strokeStyle = STEALTH_COLOR; ctx.lineWidth = 3 * fade;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
     }
 }
@@ -722,7 +769,7 @@ UNIT_TYPES.Shadow.summon = (level) => { const p = gameState.player, pos = p.getS
 class ShadowClone extends SummonUnit {
     constructor(x, y, level, p) {
         super(x, y, CONFIG.shadowClone, level, p);
-        this.life = (SHADOW_LIFE + blessVal('shadowTime')) * (this.tier >= 1 ? 2 : 1);
+        this.life = SHADOW_LIFE + blessVal('shadowTime');
         this.firstHit = true;
     }
     computeStats() {
@@ -747,14 +794,17 @@ class ShadowClone extends SummonUnit {
         let dmg = this.attack;
         if (this.firstHit) { dmg *= 1 + blessVal('shadowStrike') * 2; this.firstHit = false; }
         t.takeDamage(dmg);
-        if (this.tier >= 2 && t.isAlive) addPoison(t, 1);
         const fx = getVisualEffectFromPool(SlashEffect);
         if (fx) { fx.init(this.pos, t.pos); gameState.visualEffects.push(fx); }
         this.attackCooldown = 1 / this.attackSpeed;
     }
-    // 時間到：三階影子消失前伏擊身邊的怪
+    // 時間到：傳說「影爆」讓影子消失前炸開
     fade() {
-        if (this.tier >= 3) monsterGrid.forEachInRadius(this.pos, 40, m => { if (m.isAlive) m.takeDamage(this.attack * ROGUE.ambushMult * 0.5); });
+        if (bl('shadowBurst')) {
+            const rSq = SHADOW_BURST_RADIUS * SHADOW_BURST_RADIUS, dmg = this.attack * ROGUE.ambushMult * SHADOW_BURST_SHARE;
+            monsterGrid.forEachInRadius(this.pos, SHADOW_BURST_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, this.pos) <= rSq) m.takeDamage(dmg); });
+            gameState.visualEffects.push(new ShadowBurstEffect(this.pos, SHADOW_BURST_RADIUS));
+        }
         this.die();
     }
     die() {

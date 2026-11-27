@@ -57,19 +57,9 @@ CONFIG.bloodBat = {
 CONFIG.bloodMagic = { type: 'BloodMagic', upgradeBonus: 0.25 };
 const BLOOD_BURST = { interval: 5, radius: 80, damage: 10, hpCost: 0.04, missingBonus: 1.5 };
 
-Object.assign(CONFIG.evolution.names, {
-    Thrall: ['血僕', '血騎', '血之公爵'],
-    BloodBat: ['吸血蝠', '蝠群', '夜之女王'],
-    BloodMagic: ['血咒', '血湧', '猩紅風暴'],
-});
-Object.assign(CONFIG.evolution.perks, {
-    Thrall: ['眷屬吸血 10%', '轉化機率加倍', '眷屬倒下時 50% 再站起來一次'],
-    BloodBat: ['蝙蝠攻速 +30%', '吸到的血加倍回給你', '每次咬兩下'],
-    BloodMagic: ['血爆範圍 +25%', '血爆緩速命中的怪', '血爆不再花自己的血'],
-});
-const THRALL_TIER1_LEECH = 0.1, THRALL_TIER3_REVIVE = 0.5;
-const BAT_TIER1_RATE = 1.3, BAT_DRAIN = 0.25;
-const BURST_TIER1_RADIUS = 1.25, BURST_TIER2_SLOW = 0.5;
+const BAT_DRAIN = 0.25;
+// 傳說「不滅眷屬」：眷屬倒下時站起來的機率、站起來剩幾成血
+const UNDYING_THRALL_CHANCE = 0.5, UNDYING_THRALL_HP = 0.5;
 
 // 蝠群風暴：轉幾秒、繞多遠（每隻蝙蝠半徑錯開一點，看起來是一團不是一條線）、轉多快、每隻多久咬一次、咬的傷害倍率
 const STORM_TIME = 5, STORM_RADIUS = 52, STORM_SPREAD = 22, STORM_SPIN = 3.2, STORM_BITE_EVERY = 0.3, STORM_HIT_RADIUS = 18, STORM_MULT = 1.5;
@@ -105,13 +95,16 @@ Object.assign(BLESSINGS, {
     vwPack: { school: 'werewolf', name: '狼伴', max: 2, per: 2, desc: b => `每波開始時有 ${b.per} 隻狼加入眷屬` },
     mistForm: { school: 'undying', name: '霧化', max: 3, per: 0.08, desc: b => `${pct(b.per)} 機率閃過攻擊` },
     sunWard: { school: 'undying', name: '斗篷', max: 3, per: 0.3, desc: b => `白天曬傷 -${pct(b.per)}` },
-    nightRegen: { school: 'undying', name: '夜息', max: 3, per: 0.004, desc: b => `入夜時每秒回 ${pct(b.per)} 血` },
+    nightRegen: { school: 'undying', name: '夜息', max: 3, per: 0.004, desc: b => `入夜時每秒回 ${(b.per * 100).toFixed(1)}% 血` },
     bloodBank: { school: 'undying', name: '血庫', max: 3, per: 0.3, desc: b => `撿血珠回的血 +${pct(b.per)}` },
     dracula: { school: 'kin', name: '德古拉', legendary: true, max: 1, per: 0.5, desc: () => '打倒的首領會站起來成為你的眷屬' },
+    undyingThrall: { school: 'kin', name: '不滅眷屬', legendary: true, max: 1, per: UNDYING_THRALL_CHANCE, desc: b => `眷屬倒下時，${pct(b.per)} 機率再站起來一次` },
     countess: { school: 'bloodmagic', name: '血伯爵夫人', legendary: true, max: 1, per: 0.2, desc: b => `補到滿血以上的部分，${pct(b.per)} 變成最大血量` },
+    freeBlood: { school: 'bloodmagic', name: '無償血祭', legendary: true, max: 1, per: 1, desc: () => '血爆不再花你自己的血' },
     garlic: { school: 'undying', name: '蒜也不怕', legendary: true, max: 1, per: 1, desc: () => '白天不再曬傷，眷屬白天也不變弱' },
     // 蝠群風暴：入夜那一刻是衝進怪堆的訊號
     batStorm: { school: 'bats', name: '蝠群風暴', legendary: true, max: 1, per: STORM_TIME, desc: b => `入夜那一刻，所有蝙蝠圍著你轉 ${b.per} 秒，碰到的怪都被吸血` },
+    batFrenzy: { school: 'bats', name: '連咬', legendary: true, max: 1, per: 2, desc: b => `蝙蝠每次咬 ${b.per} 下` },
     // 月狼：夜裡從遠程換成近戰，狼化流派的「入夜變強」推到底
     moonWolf: { school: 'werewolf', name: '月狼', legendary: true, max: 1, per: MOONWOLF_LEECH, desc: b => `入夜時飛刃換成扇形爪擊，吸血 ×${b.per}、移速 +${pct(MOONWOLF_SPEED - 1)}` },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
@@ -285,7 +278,7 @@ function vampState() { return gameState.vamp || (gameState.vamp = newVampState()
 function thrallCap() { return VAMPIRE.thrallCap + Math.floor(gameState.units.Thrall.level / VAMPIRE.capPerLevels) + blessVal('kinCap'); }
 function convertChance() {
     const t = gameState.units.Thrall;
-    return (VAMPIRE.convertChance + blessVal('kinRate') + classMeta('kinRate')) * (getTier(t.level) >= 2 ? 2 : 1) * (vampState().night ? VAMPIRE.nightConvert : 1);
+    return (VAMPIRE.convertChance + blessVal('kinRate') + classMeta('kinRate')) * (vampState().night ? VAMPIRE.nightConvert : 1);
 }
 function nightMult() {
     const v = vampState();
@@ -538,14 +531,14 @@ function drawBatStorm(ctx) {
 
 // ---------- 血魔法：花一點自己的血，炸開身邊；越殘越痛 ----------
 function bloodBurst(p, dt) {
-    const v = vampState(), lv = gameState.units.BloodMagic.level, tier = getTier(lv);
+    const v = vampState(), lv = gameState.units.BloodMagic.level;
     if (lv <= 0 && !bl('bmPower')) return;
     v.burstT -= dt;
     if (v.burstT > 0) return;
-    const radius = BLOOD_BURST.radius * (1 + blessVal('bmRadius')) * (tier >= 1 ? BURST_TIER1_RADIUS : 1), rSq = radius * radius;
+    const radius = BLOOD_BURST.radius * (1 + blessVal('bmRadius')), rSq = radius * radius;
     if (!monsterGrid.anyWithin(p.pos, radius)) return;
     v.burstT = BLOOD_BURST.interval * (1 - blessVal('bmRate'));
-    if (tier < 3) p.currentHealth = Math.max(1, p.currentHealth - p.currentHealth * BLOOD_BURST.hpCost);
+    if (!bl('freeBlood')) p.currentHealth = Math.max(1, p.currentHealth - p.currentHealth * BLOOD_BURST.hpCost);
     const missing = 1 - p.currentHealth / p.maxHealth;
     const dmg = BLOOD_BURST.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + lv * CONFIG.bloodMagic.upgradeBonus)
         * (1 + missing * BLOOD_BURST.missingBonus) * (1 + blessVal('bmPower')) * sacrificeMult();
@@ -553,7 +546,6 @@ function bloodBurst(p, dt) {
     monsterGrid.forEachInRadius(p.pos, radius, m => {
         if (!m.isAlive || distanceSq(m.pos, p.pos) > rSq) return;
         m.takeDamage(dmg); total += dmg;
-        if (tier >= 2 && m.isAlive) m.applySlow(BURST_TIER2_SLOW, 1.2);
     });
     if (bl('bmLeech')) healHero(total * blessVal('bmLeech'));
     // 雙流派「血之紐帶」：範圍裡的眷屬回血，身上冒一圈紫色的血光
@@ -564,6 +556,29 @@ function bloodBurst(p, dt) {
     });
     gameState.visualEffects.push(new BloodBurstEffect(p.pos, radius));
     addShake(3);
+}
+// 傳說「不滅眷屬」：倒下的眷屬腳下升起一道夜紫色的光柱，光點往上飄，再站起來
+const RISE_LIGHT = '#B388FF', RISE_CORE = '#EDE7F6';
+class ThrallRiseEffect extends TimedEffect {
+    constructor(pos) { super({ x: pos.x, y: pos.y }, 0.6); }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos, fade = 1 - k;
+        const h = 46 * Math.min(1, k * 3), w = 14 * fade + 4;
+        ctx.save();
+        ctx.globalAlpha = fade * 0.8;
+        ctx.drawImage(getGlowSprite(RISE_LIGHT), x - 22, y - 8, 44, 24);
+        const g = ctx.createLinearGradient(x, y, x, y - h);
+        g.addColorStop(0, RISE_LIGHT); g.addColorStop(1, 'rgba(179, 136, 255, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x - w / 2, y - h, w, h);
+        ctx.fillStyle = RISE_CORE;
+        for (let i = 0; i < 5; i++) {
+            const ph = (k * 1.4 + i / 5) % 1;
+            ctx.globalAlpha = fade * (1 - ph);
+            ctx.beginPath(); ctx.arc(x + (i - 2) * 4, y - ph * 40, 2, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
+    }
 }
 class BloodBurstEffect extends TimedEffect {
     constructor(pos, radius) { super(pos, 0.35); this.radius = radius; }
@@ -684,7 +699,7 @@ class Thrall extends SummonUnit {
     }
     healFromDamage(dealt) {
         super.healFromDamage(dealt);
-        const ls = blessVal('kinLeech') + (this.tier >= 1 ? THRALL_TIER1_LEECH : 0);
+        const ls = blessVal('kinLeech');
         if (ls > 0) this.currentHealth = Math.min(this.maxHealth, this.currentHealth + dealt * ls);
     }
     attackTarget() {
@@ -724,10 +739,10 @@ class Thrall extends SummonUnit {
     onHit(m) { m.lastHitByThrall = true; }
     die() {
         if (!this.isAlive) return;
-        if (this.tier >= 3 && !this.revived && Math.random() < THRALL_TIER3_REVIVE) {
+        if (bl('undyingThrall') && !this.revived && Math.random() < UNDYING_THRALL_CHANCE) {
             this.revived = true;
-            this.currentHealth = Math.round(this.maxHealth * 0.5);
-            spawnParticles(this.pos.x, this.pos.y, '#CE93D8', 10, 60, 0.5);
+            this.currentHealth = Math.round(this.maxHealth * UNDYING_THRALL_HP);
+            gameState.visualEffects.push(new ThrallRiseEffect(this.pos));
             return;
         }
         this.isAlive = false;
@@ -765,15 +780,15 @@ class BloodBat extends SummonUnit {
         this.attack *= (1 + blessVal('batFang')) * nightMult();
         const sp = 1 + blessVal('batSpeed');
         this.moveSpeed *= sp;
-        this.attackSpeed *= sp * (this.tier >= 1 ? BAT_TIER1_RATE : 1) * (v.night && res('bats') >= 1 ? RES_NIGHTWING_RATE : 1);
+        this.attackSpeed *= sp * (v.night && res('bats') >= 1 ? RES_NIGHTWING_RATE : 1);
     }
     attackTarget() {
         const t = this.target;
         if (!t || !t.isAlive) return;
-        const bites = this.tier >= 3 ? 2 : 1;
+        const bites = bl('batFrenzy') ? BLESSINGS.batFrenzy.per : 1;
         for (let i = 0; i < bites; i++) t.takeDamage(this.attack);
         t.lastHitByThrall = true;
-        const drain = this.attack * bites * (BAT_DRAIN + blessVal('batDrain')) * (this.tier >= 2 ? 2 : 1);
+        const drain = this.attack * bites * (BAT_DRAIN + blessVal('batDrain'));
         healHero(drain);
         this.attackCooldown = 1 / this.attackSpeed;
         if (Math.random() < 0.25) spawnParticles(t.pos.x, t.pos.y, VAMP_ATTACK_COLOR, 2, 40, 0.3, 2);

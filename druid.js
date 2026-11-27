@@ -54,22 +54,11 @@ CONFIG.bear = {
     baseHealth: 140, baseAttack: 12, attackRange: 28, attackSpeed: 0.8, moveSpeed: 78, upgradeBonus: 0.35,
 };
 
-Object.assign(CONFIG.evolution.names, {
-    SacredOak: ['古橡', '聖橡', '萬年神木'],
-    Wolf: ['灰狼', '撲狼', '芬里爾之子'],
-    Bear: ['棕熊', '洞熊', '熊靈'],
-});
-Object.assign(CONFIG.evolution.perks, {
-    SacredOak: ['身邊的野獸持續回血', '長大速度加倍', '被打時把傷害刺回去'],
-    Wolf: ['移速 +25%', '撲咬：咬新目標的第一口 ×3', '每次咬兩口'],
-    Bear: ['受到的傷害 -25%', '拍擊波及身邊的怪', '每 5 秒震地，擊退並緩速'],
-});
-const OAK_TIER1_HEAL = 0.015, OAK_TIER1_RADIUS = 80;
-const OAK_TIER2_GROWTH = 2;
-const OAK_TIER3_THORNS = 0.3;
-const WOLF_TIER1_SPEED = 1.25, WOLF_TIER2_POUNCE = 3;
-const BEAR_TIER1_TAKEN = 0.75, BEAR_CLEAVE_RADIUS = 30, BEAR_CLEAVE_SHARE = 0.5;
-const BEAR_SLAM_EVERY = 5, BEAR_SLAM_RADIUS = 55, BEAR_SLAM_MULT = 1.5, BEAR_SLAM_SLOW = 0.7, BEAR_SLAM_SLOW_TIME = 1.2;
+// 樹蔭：橡樹這麼近的野獸會回血
+const OAK_HEAL_RADIUS = 80;
+// 熊爪橫掃：拍擊波及目標身邊這一圈；傳說「震地」：每幾秒震一次、範圍、傷害是拍擊的幾倍、把怪震飛的速度（首領只推一點）
+const BEAR_CLEAVE_RADIUS = 30;
+const BEAR_SLAM_EVERY = 5, BEAR_SLAM_RADIUS = 60, BEAR_SLAM_MULT = 1.5, BEAR_SLAM_KNOCK = 240;
 
 // ---------- 四大節：每一波輪一個 ----------
 // mult 是「效果強度」：四大節流派的祝福、稀有祝福會放大它
@@ -98,7 +87,7 @@ const GROVE_BEAR_TAKEN = 0.5, GROVE_BEAR_RADIUS = 90, THORN_WOLF_ROOT = 0.6, HUN
 Object.assign(SCHOOLS, {
     grove: { name: '聖林', img: 'sacred_oak.png', color: '#AED581', res: [{ name: '根深', desc: '橡樹受到的傷害 -40%' }, { name: '森林覺醒', desc: '第 3 階的橡樹拔根成為樹人，會走過去打' }] },
     pack: { name: '狼群', img: 'druid_wolf.png', color: '#B0BEC5', res: [{ name: '狼嚎', desc: '每 10 秒全體狼攻速 +40%，持續 4 秒' }, { name: '狼王', desc: '每 6 隻狼出一隻狼王，身邊的狼攻速 +25%' }] },
-    bear: { name: '巨熊', img: 'druid_bear.png', color: '#BCAAA4', res: [{ name: '熊皮', desc: '熊會嘲諷身邊的怪' }, { name: '熊靈', desc: '化身時所有熊一起狂暴，傷害 ×1.6' }] },
+    bear: { name: '巨熊', img: 'druid_bear.png', color: '#BCAAA4', res: [{ name: '熊皮', desc: '熊會嘲諷身邊的怪' }, { name: '熊靈', desc: '熊受到的傷害 -30%' }] },
     wild: { name: '荒野', icon: 'thorns', color: '#9CCC65', res: [{ name: '荊棘之地', desc: '種子落地留下一片荊棘，持續刺傷' }, { name: '荊棘之冠', desc: '每棵橡樹周圍長出一圈荊棘' }] },
     seasons: { name: '四大節', icon: 'wheel', color: '#FFCC80', res: [{ name: '節慶', desc: '當前節氣效果加倍' }, { name: '輪轉', desc: '四個節氣的效果同時生效' }] },
 });
@@ -110,11 +99,11 @@ Object.assign(BLESSINGS, {
     wolfFang: { school: 'pack', name: '利齒', max: 5, per: 0.3, desc: b => `狼的傷害 +${pct(b.per)}` },
     packHunt: { school: 'pack', name: '群獵', max: 3, per: 0.06, desc: b => `身邊每多一隻狼，狼的傷害 +${pct(b.per)}` },
     wolfSpeed: { school: 'pack', name: '疾足', max: 3, per: 0.2, desc: b => `狼的移速與攻速 +${pct(b.per)}` },
-    wolfCrit: { school: 'pack', name: '咬喉', max: 3, per: 0.12, desc: b => `狼有 ${pct(b.per)} 機率咬出雙倍傷害` },
+    wolfPounce: { school: 'pack', name: '撲咬', max: 3, per: 1, desc: b => `狼咬新目標的第一口，傷害 +${pct(b.per)}` },
     bearHide: { school: 'bear', name: '厚皮', max: 5, per: 0.35, desc: b => `熊的血量 +${pct(b.per)}` },
     bearMaul: { school: 'bear', name: '熊掌', max: 5, per: 0.3, desc: b => `熊的傷害 +${pct(b.per)}` },
     bearTime: { school: 'bear', name: '冬眠甦醒', needsUlt: true, max: 2, per: 3, desc: b => `巨熊化身多 ${b.per} 秒` },
-    bearStun: { school: 'bear', name: '震懾', max: 3, per: 0.2, desc: b => `被熊打中的怪緩速 ${pct(b.per)}` },
+    bearSwipe: { school: 'bear', name: '熊爪橫掃', max: 3, per: 0.35, desc: b => `熊的拍擊波及目標身邊的怪（${pct(b.per)} 傷害）` },
     seedPower: { school: 'wild', name: '毒棘', max: 5, per: 0.35, desc: b => `荊棘種子傷害 +${pct(b.per)}` },
     seedRoot: { school: 'wild', name: '纏根', max: 3, per: 0.4, desc: b => `種子纏住怪的時間 +${b.per} 秒` },
     seedCount: { school: 'wild', name: '撒種', max: 2, per: 1, desc: b => `每次多丟 ${b.per} 顆種子` },
@@ -126,8 +115,10 @@ Object.assign(BLESSINGS, {
     goldenSickle: { school: 'grove', name: '金鐮', legendary: true, max: 1, per: 0.1, desc: b => `每波第 3 階的橡樹結出槲寄生，撿到回 ${pct(b.per)} 血、全軍狂暴` },
     yggdrasil: { school: 'grove', name: '世界樹', legendary: true, max: 1, per: 1, desc: () => '最老的那棵橡樹不會死：倒下時在你腳邊重新長成樹苗' },
     whiteBull: { school: 'bear', name: '白牛獻祭', legendary: true, max: 1, per: 3, desc: b => `熊倒下時，整片林地這一波長大速度 ×${b.per}` },
+    bearQuake: { school: 'bear', name: '震地', legendary: true, max: 1, per: BEAR_SLAM_EVERY, desc: b => `熊每 ${b.per} 秒震地一次，把身邊的怪震飛` },
     // 狼母：狼群要「養大」才有回報，林地上限不再是狼數的天花板
     wolfMother: { school: 'pack', name: '狼母', legendary: true, max: 1, per: 1, desc: () => '狼長到第 3 階時生出一隻小狼，小狼不佔林地' },
+    wolfFrenzy: { school: 'pack', name: '狂咬', legendary: true, max: 1, per: 2, desc: b => `狼每次咬 ${b.per} 口` },
     // 綠人：凱爾特的葉面人，死去之處長出新芽。被纏住的怪一倒，種子就往旁邊迸，一路連鎖
     greenMan: { school: 'wild', name: '綠人', legendary: true, max: 1, per: GREEN_MAN_SEEDS, desc: b => `被纏住的怪死掉時迸出 ${b.per} 顆種子，把旁邊的怪也纏住` },
     // 巨石陣：四大節原本整片地圖都吃，這張把它綁在一個位置上，跟德魯伊「選地方打這一仗」同一個方向
@@ -141,7 +132,7 @@ const RES_ROOTS_TAKEN = 0.6;
 const RES_HOWL_EVERY = 10, RES_HOWL_TIME = 4, RES_HOWL_RATE = 1.4;
 const RES_KING_EVERY = 6, RES_KING_MULT = 2, RES_KING_RADIUS = 100, RES_KING_RATE = 1.25, RES_KING_SCALE = 1.35;
 const RES_BEARHIDE_RADIUS = 60, RES_BEARHIDE_EVERY = 0.5, RES_BEARHIDE_TIME = 1.2;
-const RES_BEARSPIRIT_MULT = 1.6, RES_BEARSPIRIT_HEAL = 0.3;
+const RES_BEARSPIRIT_TAKEN = 0.7;
 const BEAR_LEAVES = 16;   // 變身時捲起的落葉片數
 const RES_THORNPATCH_TIME = 3, RES_THORNPATCH_TICK = 0.5, RES_THORNPATCH_SHARE = 0.25;
 const RES_CROWN_RADIUS = 70, RES_CROWN_EVERY = 1, RES_CROWN_SHARE = 0.5;
@@ -554,8 +545,6 @@ function useBearForm() {
     d.swipeT = 0;
     setHeroImage(p, 'druid_bearform');
     gameState.frenzyTimer = Math.max(gameState.frenzyTimer, d.bearT);
-    // 熊靈：所有熊一起狂暴、回一截血
-    if (res('bear') >= 2) for (const s of gameState.summons) if (s.isAlive && s instanceof Bear) { s.currentHealth = Math.min(s.maxHealth, s.currentHealth + s.maxHealth * RES_BEARSPIRIT_HEAL); spawnParticles(s.pos.x, s.pos.y, '#FFAB91', 8, 70, 0.5, 3); }
     spawnParticles(p.pos.x, p.pos.y, '#A1887F', 30, 180, 0.6, 3);
     // 變身：落葉繞著身體捲成一陣旋風往外散，同時一聲咆哮震開兩圈
     addWorldFx({ kind: 'leaves', x: p.pos.x, y: p.pos.y, r: B.radius * 1.6, count: BEAR_LEAVES, spin: Math.PI * 3, seed: Math.random() * 6, life: 0.9 });
@@ -675,6 +664,62 @@ class GreenBurstEffect extends TimedEffect {
             const a = this.spin + i * Math.PI * 2 / GREEN_BURST_LEAVES, r = 10 + 40 * k;
             drawLeaf(ctx, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7 - 8 * Math.sin(k * Math.PI), a + k * 6, 1.4);
         }
+        ctx.restore();
+    }
+}
+
+// 撲咬：咬新目標那一下冒的火花（我方特效不用紅，見專案 CLAUDE.md）
+const WOLF_POUNCE_COLOR = '#FFE0B2';
+// 熊爪橫掃：目標身上劃過三道爪痕，往熊面向的方向一道接一道
+const CLAW_LIGHT = '#FFF3E0', CLAW_MID = '#BCAAA4';
+class BearSwipeEffect extends TimedEffect {
+    constructor(pos, facing) { super({ x: pos.x, y: pos.y }, 0.32); this.dir = facing >= 0 ? 1 : -1; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos;
+        ctx.save();
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+            const t = Math.min(1, Math.max(0, (k - i * 0.12) / 0.45));
+            if (t <= 0) continue;
+            const off = (i - 1) * 7, a0 = -0.9, a1 = a0 + 1.8 * t;
+            ctx.globalAlpha = Math.min(1, this.life / 0.12);
+            ctx.beginPath();
+            ctx.ellipse(x - this.dir * 6, y + off, 20, 12, 0, this.dir > 0 ? a0 : Math.PI - a1, this.dir > 0 ? a1 : Math.PI - a0);
+            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 6; ctx.stroke();
+            ctx.strokeStyle = CLAW_MID; ctx.lineWidth = 3.5; ctx.stroke();
+            ctx.strokeStyle = CLAW_LIGHT; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+// 傳說「震地」：熊腳下一圈土黃色的震波往外推，地面裂出幾道縫，碎石往外噴
+const QUAKE_DUST = '#A1887F', QUAKE_LIGHT = '#D7CCC8', QUAKE_CRACKS = 7;
+class BearQuakeEffect extends TimedEffect {
+    constructor(pos, radius) {
+        super({ x: pos.x, y: pos.y + 6 }, 0.55);
+        this.radius = radius;
+        this.cracks = Array.from({ length: QUAKE_CRACKS }, (_, i) => ({ a: i / QUAKE_CRACKS * Math.PI * 2 + Math.random() * 0.4, len: 0.6 + Math.random() * 0.35, bend: (Math.random() - 0.5) * 0.5 }));
+        spawnParticles(pos.x, pos.y + 6, QUAKE_DUST, 14, 120, 0.5, 3);
+    }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos, R = this.radius, fade = 1 - k;
+        ctx.save();
+        // 地上的裂縫：先竄出去、再淡掉
+        ctx.lineCap = 'round';
+        const reach = Math.min(1, k * 3);
+        for (const c of this.cracks) {
+            const r = R * c.len * reach, mx = Math.cos(c.a + c.bend) * r * 0.5, my = Math.sin(c.a + c.bend) * r * 0.5 * 0.6;
+            ctx.globalAlpha = fade;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + mx, y + my); ctx.lineTo(x + Math.cos(c.a) * r, y + Math.sin(c.a) * r * 0.6);
+            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 3.5; ctx.stroke();
+            ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 1.6; ctx.stroke();
+        }
+        // 震波：扁的土黃色環（貼著地面）
+        const r = R * (1 - Math.pow(1 - k, 2));
+        ctx.globalAlpha = 0.85 * fade;
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = QUAKE_DUST; ctx.lineWidth = 10 * fade + 2; ctx.stroke();
+        ctx.strokeStyle = QUAKE_LIGHT; ctx.lineWidth = 2.5; ctx.stroke();
         ctx.restore();
     }
 }
@@ -825,7 +870,7 @@ class SacredOak extends SummonUnit {
         this.maxHealth = Math.round(this.maxHealth * k * (1 + blessVal('oakHp')));
         this.attack = this.config.treantAttack * (1 + this.level * this.config.upgradeBonus) * k;
         // 樹苗小、長大才高聳；樹人換成會走的那張圖
-        this.drawScale = (0.55 + 0.17 * (this.stage || 0)) * (1 + CONFIG.evolution.sizeBonusPerTier * this.tier);
+        this.drawScale = 0.55 + 0.17 * (this.stage || 0);
         const img = images[this.treant ? 'druid_treant' : 'sacred_oak'];
         if (img && this.image !== img) { this.image = img; this.imageHeight = this.imageWidth * img.naturalHeight / img.naturalWidth; this._spriteW = null; this._flashSprites = null; }
     }
@@ -833,13 +878,13 @@ class SacredOak extends SummonUnit {
         if (!this.isAlive) return;
         this.tickFlash(dt);
         const before = this.stage;
-        this.age += dt * growthRate() * (this.tier >= 2 ? OAK_TIER2_GROWTH : 1);
+        this.age += dt * growthRate();
         if (Math.floor(this.age / DRUID.growEvery) !== before && before < DRUID.maxStage) this.syncStage();
-        // 一階起：身邊的野獸回血（再加上祝福「樹蔭」）
-        const heal = (this.tier >= 1 ? OAK_TIER1_HEAL : 0) + blessVal('oakHeal');
+        // 祝福「樹蔭」：身邊的野獸回血
+        const heal = blessVal('oakHeal');
         if (heal > 0) {
-            const rSq = OAK_TIER1_RADIUS * OAK_TIER1_RADIUS;
-            summonGrid.forEachInRadius(this.pos, OAK_TIER1_RADIUS, s => { if (s.isAlive && s instanceof Beast && distanceSq(s.pos, this.pos) <= rSq) s.currentHealth = Math.min(s.maxHealth, s.currentHealth + s.maxHealth * heal * dt); });
+            const rSq = OAK_HEAL_RADIUS * OAK_HEAL_RADIUS;
+            summonGrid.forEachInRadius(this.pos, OAK_HEAL_RADIUS, s => { if (s.isAlive && s instanceof Beast && distanceSq(s.pos, this.pos) <= rSq) s.currentHealth = Math.min(s.maxHealth, s.currentHealth + s.maxHealth * heal * dt); });
         }
         if (!this.treant) { this.pos.x = this.anchor.x; this.pos.y = this.anchor.y; return; }
         // 樹人：在自己的根附近找怪打，追太遠就走回去
@@ -868,7 +913,6 @@ class SacredOak extends SummonUnit {
         if (!this.isAlive) return;
         const k = res('grove') >= 1 ? RES_ROOTS_TAKEN : 1;
         this.attackedT = DRUID.attackedTime;
-        if (this.tier >= 3 && source instanceof Monster && source.isAlive) source.takeDamage(amount * OAK_TIER3_THORNS);
         // 世界樹：最老的那棵不會死，在德魯伊腳邊重新長成樹苗（原地不死的話，怪會圍著它啃到這一波永遠打不完）
         if (bl('yggdrasil') && this.currentHealth - amount * k <= 0 && this === eldestOak() && gameState.player) {
             spawnParticles(this.pos.x, this.pos.y, '#C5E1A5', 20, 90, 0.7, 3);
@@ -937,10 +981,10 @@ class Beast extends SummonUnit {
         this.attack *= k * (type === 'Wolf' ? 1 + blessVal('wolfFang') : 1 + blessVal('bearMaul'));
         if (type === 'Wolf') {
             const sp = 1 + blessVal('wolfSpeed');
-            this.moveSpeed *= sp * (this.tier >= 1 ? WOLF_TIER1_SPEED : 1);
+            this.moveSpeed *= sp;
             this.attackSpeed *= sp;
         }
-        this.drawScale = (0.85 + 0.08 * (this.stage || 0)) * (1 + CONFIG.evolution.sizeBonusPerTier * this.tier) * (this.king ? RES_KING_SCALE : 1) * (this.pup ? PUP_SCALE : 1);
+        this.drawScale = (0.85 + 0.08 * (this.stage || 0)) * (this.king ? RES_KING_SCALE : 1) * (this.pup ? PUP_SCALE : 1);
         if (this.pup) { this.tint = PUP_TINT; this.tintStrength = PUP_TINT_STRENGTH; }
         if (this.king) { this.tint = '#FFD54F'; this.tintStrength = 0.35; }
         if (this.spirited) { this.tint = '#B388FF'; this.tintStrength = 0.5; }
@@ -963,20 +1007,20 @@ class Beast extends SummonUnit {
             let pack = 0;
             if (bl('packHunt')) summonGrid.forEachInRadius(this.pos, 60, s => { if (s !== this && s.isAlive && s instanceof Wolf) pack++; });
             dmg *= 1 + pack * blessVal('packHunt');
-            if (this.tier >= 2 && t !== this.lastTarget) dmg *= WOLF_TIER2_POUNCE;
-            if (Math.random() < blessVal('wolfCrit')) dmg *= 2;
+            if (bl('wolfPounce') && t !== this.lastTarget) {
+                dmg *= 1 + blessVal('wolfPounce');
+                if (inView(t.pos)) spawnParticles(t.pos.x, t.pos.y, WOLF_POUNCE_COLOR, 6, 80, 0.3, 2);
+            }
             if (bl('thornWolves') && !(t instanceof BossMonster) && !t.isElite) thornSnare(t);
-        } else if (d.bearT > 0 && res('bear') >= 2) dmg *= RES_BEARSPIRIT_MULT;
+        }
         this.lastTarget = t;
-        const bites = type === 'Wolf' && this.tier >= 3 ? 2 : 1;
+        const bites = type === 'Wolf' && bl('wolfFrenzy') ? BLESSINGS.wolfFrenzy.per : 1;
         for (let i = 0; i < bites; i++) t.takeDamage(dmg);
         this.healFromDamage(dmg);
-        if (type === 'Bear') {
-            if (bl('bearStun') && t.isAlive) t.applySlow(blessVal('bearStun'), 0.8);
-            if (this.tier >= 2) {
-                const rSq = BEAR_CLEAVE_RADIUS * BEAR_CLEAVE_RADIUS;
-                monsterGrid.forEachInRadius(t.pos, BEAR_CLEAVE_RADIUS, m => { if (m !== t && m.isAlive && distanceSq(m.pos, t.pos) <= rSq) m.takeDamage(dmg * BEAR_CLEAVE_SHARE); });
-            }
+        if (type === 'Bear' && bl('bearSwipe')) {
+            const rSq = BEAR_CLEAVE_RADIUS * BEAR_CLEAVE_RADIUS, share = blessVal('bearSwipe');
+            monsterGrid.forEachInRadius(t.pos, BEAR_CLEAVE_RADIUS, m => { if (m !== t && m.isAlive && distanceSq(m.pos, t.pos) <= rSq) m.takeDamage(dmg * share); });
+            if (inView(t.pos)) gameState.visualEffects.push(new BearSwipeEffect(t.pos, this.facingDirection));
         }
         if (festivalStrength('beltane') > 0 && Math.random() < 0.3) spawnParticles(t.pos.x, t.pos.y, '#FF7043', 3, 40, 0.35, 2);
         const fx = getVisualEffectFromPool(SlashEffect);
@@ -987,8 +1031,8 @@ class Beast extends SummonUnit {
             if (res('pack') >= 2 && !this.king && summonGrid.forEachInRadius(this.pos, RES_KING_RADIUS, s => s.isAlive && s.king)) rate *= RES_KING_RATE;
         }
         this.attackCooldown = 1 / (this.attackSpeed * rate);
-        // 三階熊：定時震地
-        if (type === 'Bear' && this.tier >= 3) {
+        // 傳說「震地」：熊定時震一下，把身邊的怪震飛（首領只推一點）
+        if (type === 'Bear' && bl('bearQuake')) {
             this.slamT -= 1 / this.attackSpeed;
             if (this.slamT <= 0) {
                 this.slamT = BEAR_SLAM_EVERY;
@@ -996,15 +1040,20 @@ class Beast extends SummonUnit {
                 monsterGrid.forEachInRadius(this.pos, BEAR_SLAM_RADIUS, m => {
                     if (!m.isAlive || distanceSq(m.pos, this.pos) > rSq) return;
                     m.takeDamage(dmg * BEAR_SLAM_MULT);
-                    if (m.isAlive) m.applySlow(BEAR_SLAM_SLOW, BEAR_SLAM_SLOW_TIME);
+                    if (!m.isAlive) return;
+                    const dir = normalizeVector({ x: m.pos.x - this.pos.x, y: m.pos.y - this.pos.y });
+                    const kb = BEAR_SLAM_KNOCK * (m instanceof BossMonster ? CONFIG.nova.bossKnockbackMult : 1);
+                    m.knockVel = { x: dir.x * kb, y: dir.y * kb };
                 });
-                spawnParticles(this.pos.x, this.pos.y + 8, '#A1887F', 12, 90, 0.5, 3);
+                gameState.visualEffects.push(new BearQuakeEffect(this.pos, BEAR_SLAM_RADIUS));
+                addShake(3);
             }
         }
     }
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
-        super.takeDamage(amount * (this.config.type === 'Bear' && this.tier >= 1 ? BEAR_TIER1_TAKEN : 1) * (this.config.type === 'Bear' && bearInGrove(this) ? GROVE_BEAR_TAKEN : 1));
+        const bear = this.config.type === 'Bear';
+        super.takeDamage(amount * (bear && res('bear') >= 2 ? RES_BEARSPIRIT_TAKEN : 1) * (bear && bearInGrove(this) ? GROVE_BEAR_TAKEN : 1));
     }
     die() {
         if (!this.isAlive) return;

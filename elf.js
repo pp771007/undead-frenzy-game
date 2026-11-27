@@ -39,19 +39,10 @@ CONFIG.companion = { ...COMPANION_COMMON, type: 'Companion', imageName: 'spirit_
 CONFIG.hawk = { ...CONFIG.companion, imageName: 'hawk', color: '#A1887F', radius: 11, imgScaleMultiplier: 3.8,
     baseHealth: 110, baseAttack: 34, attackRange: 70, attackSpeed: 0.6, moveSpeed: 170, flying: true };
 
-Object.assign(CONFIG.evolution.names, {
-    Archery: ['獵弓手', '長弓手', '風之箭神'],
-    Traps: ['陷阱師', '獵場主', '機關大師'],
-    Companion: ['靈狐與鷹', '森林守護', '萬獸之友'],
-});
-Object.assign(CONFIG.evolution.perks, {
-    Archery: ['每次多射一支', '箭穿透一隻', '25% 爆擊造成雙倍傷害'],
-    Traps: ['陷阱範圍 +30%', '同時可放的陷阱 +3', '陷阱炸開後再補一個'],
-    Companion: ['夥伴攻速 +25%', '夥伴受到的傷害 -30%', '夥伴每擊多打一次'],
-});
-const ARCHERY_TIER3_CRIT = 0.25;
-const TRAPS_TIER1_RADIUS = 1.3, TRAPS_TIER2_MAX = 3;
-const COMP_TIER1_RATE = 1.25, COMP_TIER2_TAKEN = 0.7;
+// 傳說「穿心」：爆擊機率與倍率；「連環爆破」：多近的陷阱會被引爆、一顆接一顆的間隔；「破風箭」：回頭射把怪推開的速度
+const HEART_SHOT_CHANCE = 0.25, HEART_SHOT_MULT = 2.5, HEART_SHOT_COLOR = '#FFF59D';
+const CHAIN_TRAP_RADIUS = 110, CHAIN_TRAP_DELAY = 0.12;
+const PUSH_ARROW_KNOCK = 220;
 
 // 獵人之網：網住幾秒、網比陷阱的爆炸範圍大多少、首領被拖慢多少
 const NET_TIME = 2, NET_SCALE = 1.2, NET_BOSS_SLOW = 0.5;
@@ -90,10 +81,13 @@ Object.assign(BLESSINGS, {
     compSync: { school: 'wildfriends', name: '同步', max: 3, per: 0.2, desc: b => `你移動時，夥伴攻速 +${pct(b.per)}` },
     compHeal: { school: 'wildfriends', name: '舔傷', max: 3, per: 0.01, desc: b => `夥伴每秒回 ${pct(b.per)} 血` },
     windBow: { school: 'parthian', name: '風神之弓', legendary: true, max: 1, per: 1, desc: () => '移動中射出的箭會追蹤目標' },
+    pushArrow: { school: 'parthian', name: '破風箭', legendary: true, max: 1, per: PUSH_ARROW_KNOCK, desc: () => '回頭射中的怪被箭推開' },
     moonArrow: { school: 'longbow', name: '月光箭', legendary: true, max: 1, per: 20, desc: b => `每 ${b.per} 秒一道月光貫穿怪最多的那個方向` },
+    heartShot: { school: 'longbow', name: '穿心', legendary: true, max: 1, per: HEART_SHOT_CHANCE, desc: b => `箭有 ${pct(b.per)} 機率爆擊，傷害 ×${HEART_SHOT_MULT}` },
     noReturn: { school: 'elemental', name: '不歸之箭', legendary: true, max: 1, per: 3, desc: b => `箭打倒怪時，彈向下一隻（最多 ${b.per} 次）` },
     // 獵人之網：陷阱從「炸一下」變成「定住一群」，邊退邊射時身後追來的那一串都被攔下
     hunterNet: { school: 'trapper', name: '獵人之網', legendary: true, max: 1, per: NET_TIME, desc: b => `陷阱炸開時張開一張網，網住的怪 ${b.per} 秒動不了（首領只會變慢）` },
+    chainTrap: { school: 'trapper', name: '連環爆破', legendary: true, max: 1, per: 1, desc: () => '陷阱炸開時，順便引爆旁邊的陷阱' },
     // 狐火：靈狐從「只打一隻」變成會往旁邊撒火，近戰夥伴也能清一群
     foxfire: { school: 'wildfriends', name: '狐火', legendary: true, max: 1, per: FOXFIRE_SHARE, desc: () => '靈狐每咬一口就點起一團狐火，飛去炸附近的怪' },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
@@ -261,8 +255,7 @@ function elfShoot(p, dt) {
     if (!elfTargets.length) return;
     elfTargets.sort((a, b) => a.d - b.d);
     e.bowT = ELF.bow.interval;
-    const tier = getTier(gameState.units.Archery.level);
-    const n = 1 + (tier >= 1 ? 1 : 0) + bl('volley');
+    const n = 1 + bl('volley');
     const dmg = arrowDamage();
     for (let i = 0; i < n; i++) {
         const t = elfTargets[Math.min(i, elfTargets.length - 1)].m;
@@ -285,8 +278,7 @@ function fireArrow(x, y, target, dmg, elem) {
     const dir = { x: dx / d, y: dy / d };
     // 朝身後射（跟移動方向相反）＝回馬射
     const back = elfMoving() && (dir.x * e.mx + dir.y * e.my) < ELF.backDot;
-    const tier = getTier(gameState.units.Archery.level);
-    const pierce = (tier >= 2 ? 1 : 0) + (res('longbow') >= 1 ? 1 : 0) + (back && res('parthian') >= 2 ? 999 : 0);
+    const pierce = (res('longbow') >= 1 ? 1 : 0) + (back && res('parthian') >= 2 ? 999 : 0);
     gameState.visualEffects.push(new Arrow(x, y, dir, target, dmg * (back ? ELF.backMult + blessVal('backPower') : 1), pierce, back, elem, bl('windBow') && elfMoving(), bl('noReturn') ? BLESSINGS.noReturn.per : 0));
 }
 
@@ -326,7 +318,10 @@ class Arrow extends TimedEffect {
         const dist = Math.hypot(m.pos.x - this.from.x, m.pos.y - this.from.y);
         dmg *= 1 + blessVal('farShot') * dist / 100;
         if (res('longbow') >= 2) dmg *= Math.min(RES_FARSIGHT_MAX, 1 + dist / RES_FARSIGHT_PER / 2);
-        if (getTier(gameState.units.Archery.level) >= 3 && Math.random() < ARCHERY_TIER3_CRIT) dmg *= 2;
+        if (bl('heartShot') && Math.random() < HEART_SHOT_CHANCE) {
+            dmg *= HEART_SHOT_MULT;
+            spawnParticles(m.pos.x, m.pos.y, HEART_SHOT_COLOR, 8, 110, 0.3, 2.5);
+        }
         if (m.hawkMarkUntil > worldTime) dmg *= HAWK_MARK_MULT;
         const surge = (1 + blessVal('elemSurge')) * (res('elemental') >= 1 ? RES_RESONANCE_MULT : 1);
         const el = this.elem;
@@ -335,6 +330,7 @@ class Arrow extends TimedEffect {
         m.lastArrowHit = true;
         if (this.back) {
             if (!m.isAlive) stats().elfBackKills = (stats().elfBackKills || 0) + 1;
+            if (bl('pushArrow') && m.isAlive && !(m instanceof BossMonster)) m.knockVel = { x: this.dir.x * PUSH_ARROW_KNOCK, y: this.dir.y * PUSH_ARROW_KNOCK };
             if (bl('backSlow') && m.isAlive) m.applySlow(blessVal('backSlow'), 1);
             // 雙流派「誘敵深入」：追著你的那隻腳下留一個小陷阱
             const e = elfState();
@@ -405,7 +401,7 @@ class ZapEffect extends TimedEffect {
 
 // ---------- 陷阱 ----------
 const TRAP_KINDS = ['blast', 'slow', 'root'];
-function trapMax() { return ELF.trap.max + blessVal('trapCount') + classMeta('trapCount') + (getTier(gameState.units.Traps.level) >= 2 ? TRAPS_TIER2_MAX : 0); }
+function trapMax() { return ELF.trap.max + blessVal('trapCount') + classMeta('trapCount'); }
 function placeTrap(x, y, scale) {
     const e = elfState();
     if (e.traps.length >= trapMax()) e.traps.shift();
@@ -414,7 +410,6 @@ function placeTrap(x, y, scale) {
 }
 function updateTraps(dt) {
     const e = elfState(), T = ELF.trap;
-    const tier = getTier(gameState.units.Traps.level);
     for (let i = e.traps.length - 1; i >= 0; i--) {
         const t = e.traps[i];
         t.life -= dt;
@@ -424,9 +419,11 @@ function updateTraps(dt) {
             t.lureT = 99;
             monsterGrid.forEachInRadius(t, LURE_RADIUS, m => { if (m.isAlive && !(m instanceof BossMonster)) { m.tauntBy = { isAlive: true, pos: { x: t.x, y: t.y }, takeDamage() {} }; m.tauntT = LURE_TIME; } });
         }
-        if (!monsterGrid.anyWithin(t, T.trigger * t.scale)) continue;
+        // 傳說「連環爆破」：被旁邊炸開的陷阱點著的，倒數完就炸，不用等怪踩
+        if (t.chainT !== undefined) { t.chainT -= dt; if (t.chainT > 0) continue; }
+        else if (!monsterGrid.anyWithin(t, T.trigger * t.scale)) continue;
         e.traps.splice(i, 1);
-        const r = T.radius * t.scale * (tier >= 1 ? TRAPS_TIER1_RADIUS : 1), rSq = r * r;
+        const r = T.radius * t.scale, rSq = r * r;
         const dmg = T.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Traps.level * CONFIG.traps.upgradeBonus) * (1 + blessVal('trapPower')) * t.scale;
         monsterGrid.forEachInRadius(t, r, m => {
             if (!m.isAlive || distanceSq(m.pos, t) > rSq) return;
@@ -438,8 +435,13 @@ function updateTraps(dt) {
         gameState.visualEffects.push(new TrapBurstEffect(t, r, t.kind));
         if (bl('hunterNet')) castNet(t, r * NET_SCALE);
         if (bl('elemTrap')) elementalTrap(t, r, dmg);
-        // 獵場、三階：炸開後原地再補一個小的
-        if ((res('trapper') >= 2 || tier >= 3) && t.scale >= 1) e.traps.push({ x: t.x, y: t.y, kind: TRAP_KINDS[e.trapKind++ % 3], scale: RES_HUNTGROUND_SCALE, life: T.life, lureT: 99 });
+        if (bl('chainTrap')) for (const o of e.traps) {
+            if (o.chainT !== undefined || distanceSq(o, t) > CHAIN_TRAP_RADIUS * CHAIN_TRAP_RADIUS) continue;
+            o.chainT = CHAIN_TRAP_DELAY;
+            addWorldFx({ kind: 'beam', x: t.x, y: t.y, ...beamTo(t, o), w: 4, life: 0.25, color: TRAP_COLORS.blast });
+        }
+        // 獵場：炸開後原地再補一個小的
+        if (res('trapper') >= 2 && t.scale >= 1) e.traps.push({ x: t.x, y: t.y, kind: TRAP_KINDS[e.trapKind++ % 3], scale: RES_HUNTGROUND_SCALE, life: T.life, lureT: 99 });
     }
 }
 // 陷阱的顏色：爆炸金橘、冰霜淺藍、荊棘綠（我方的東西不用紅，見專案 CLAUDE.md）
@@ -827,12 +829,11 @@ class Companion extends SummonUnit {
         super.computeStats();
         this.maxHealth = Math.round(this.maxHealth * (1 + blessVal('compPower')));
         this.attack *= 1 + blessVal('compPower');
-        if (this.tier >= 1) this.attackSpeed *= COMP_TIER1_RATE;
     }
     attackTarget() {
         const t = this.target;
         if (!t || !t.isAlive) return;
-        const hits = 1 + (this.tier >= 3 ? 1 : 0) + (res('wildfriends') >= 1 ? 1 : 0);
+        const hits = 1 + (res('wildfriends') >= 1 ? 1 : 0);
         for (let i = 0; i < hits && t.isAlive; i++) t.takeDamage(this.attack);
         this.healFromDamage(this.attack);
         if (this.kind === 'hawk') {
@@ -844,9 +845,6 @@ class Companion extends SummonUnit {
         if (fx) { fx.init(this.pos, t.pos); gameState.visualEffects.push(fx); }
         const sync = elfMoving() ? 1 + blessVal('compSync') : 1;
         this.attackCooldown = 1 / (this.attackSpeed * sync);
-    }
-    takeDamage(amount) {
-        super.takeDamage(amount * (this.tier >= 2 ? COMP_TIER2_TAKEN : 1));
     }
     die() {
         if (!this.isAlive) return;

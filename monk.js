@@ -52,19 +52,14 @@ const RETURN_QI_MAX = 1.6, RETURN_QI_CATCH = 18, RETURN_QI_TRAIL = 9;
 // 雙流派：如影隨形（路上的怪挨幾成的拳、離路線多近算穿過）、丹田爆發（氣功波寬幾倍）、鐵拳（每幾下連擊減多少傷、最多減多少）
 const SHADOW_FIST_SHARE = 0.5, SHADOW_FIST_WIDTH = 20, DANTIAN_WIDTH = 3, IRON_FIST_EVERY = 50, IRON_FIST_STEP = 0.05, IRON_FIST_MAX = 0.3;
 
-Object.assign(CONFIG.evolution.names, {
-    Fist: ['羅漢拳', '伏虎拳', '如來神掌'],
-    Step: ['一葦步', '凌波步', '縮地成寸'],
-    Qi: ['小周天', '大周天', '先天罡氣'],
-});
-Object.assign(CONFIG.evolution.perks, {
-    Fist: ['每拳打兩下', '拳風擊退身邊的怪', '每 10 拳一記龍拳（×5）'],
-    Step: ['10% 機率閃過攻擊', '瞬步時無敵一瞬', '瞬步範圍加倍'],
-    Qi: ['每 6 拳就打出氣功波', '氣功波打到底會炸開', '一次打出兩道氣功波'],
-});
-const FIST_TIER2_KNOCK = 140, FIST_TIER3_EVERY = 10, FIST_TIER3_MULT = 5;
-const STEP_TIER1_DODGE = 0.1, STEP_TIER2_IFRAME = 0.15, STEP_TIER3_RANGE = 2;
-const QI_TIER1_EVERY = 6, QI_TIER2_BLAST = 50;
+// 傳說「龍拳」：每幾拳一記、傷害倍率；「無影步」：瞬步後無敵多久；「爆勁」：氣功波盡頭炸多大、傷害是波的幾成
+const DRAGON_FIST_EVERY = 10, DRAGON_FIST_MULT = 5, DRAGON_FIST_COLOR = '#FFB74D';
+const PHANTOM_STEP_IFRAME = 0.4;
+const QI_BURST_RADIUS = 55, QI_BURST_SHARE = 0.6;
+// 傳說「金剛不壞」：血量低於這個比例時受到的傷害減半
+const DIAMOND_BELOW = 0.3, DIAMOND_TAKEN = 0.5;
+// 虎嘯：連擊每滿這麼多下吼一聲，震暈身邊這一圈的怪
+const TIGER_ROAR_EVERY = 25, TIGER_ROAR_RADIUS = 80;
 
 // ---------- 五個流派（七十二藝五類）：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
@@ -76,10 +71,13 @@ Object.assign(SCHOOLS, {
 });
 Object.assign(BLESSINGS, {
     punchPower: { school: 'external', name: '鐵砂掌', max: 5, per: 0.3, desc: b => `拳的傷害 +${pct(b.per)}` },
+    // 武僧沒有召喚物，拿不到兩張「全軍」卡；補這兩張讓祝福數跟其他職業一樣
+    tigerRoar: { school: 'external', name: '虎嘯', max: 3, per: 0.4, desc: b => `連擊每滿 ${TIGER_ROAR_EVERY} 下大吼一聲，身邊的怪暈 ${b.per} 秒` },
     comboCap: { school: 'external', name: '無盡連打', max: 2, per: 1, desc: b => `連擊加成上限 +${pct(b.per)}` },
     comboGain: { school: 'external', name: '勢如破竹', max: 3, per: 0.5, desc: b => `連擊每 10 下的加成 +${pct(b.per)}` },
     flurry: { school: 'external', name: '連珠拳', max: 2, per: 1, desc: b => `每拳多打 ${b.per} 下` },
     ironBody: { school: 'hardstyle', name: '銅皮', max: 3, per: 0.1, desc: b => `受到的傷害 -${pct(b.per)}` },
+    arhatBless: { school: 'hardstyle', name: '羅漢加持', needsUlt: true, max: 2, per: 2, desc: b => `十八羅漢陣多 ${b.per} 秒` },
     counter: { school: 'hardstyle', name: '借力', max: 3, per: 0.3, desc: b => `把近身攻擊的 ${pct(b.per)} 打回去` },
     steadfast: { school: 'hardstyle', name: '不動如山', max: 3, per: 0.15, desc: b => `被打中時 ${pct(b.per)} 機率不斷連擊` },
     stoneSkin: { school: 'hardstyle', name: '石身', max: 3, per: 0.2, desc: b => `最大血量 +${pct(b.per)}` },
@@ -97,11 +95,15 @@ Object.assign(BLESSINGS, {
     qiFreq: { school: 'qigong', name: '運氣', max: 3, per: 1, desc: b => `少打 ${b.per} 拳就能出氣功波` },
     bodhidharma: { school: 'internal', name: '達摩面壁', legendary: true, max: 1, per: 9, desc: b => `入定滿 ${b.per} 秒頓悟：10 秒無敵、傷害 ×2` },
     reedCrossing: { school: 'lightfoot', name: '一葦渡江', legendary: true, max: 1, per: 3, desc: b => `瞬步走過的路長出蘆葦，${b.per} 秒內刺傷踩上去的怪` },
+    phantomStep: { school: 'lightfoot', name: '無影步', legendary: true, max: 1, per: PHANTOM_STEP_IFRAME, desc: b => `每次瞬步後 ${b.per} 秒內無敵` },
     thirteenMonks: { school: 'external', name: '十三棍僧', legendary: true, max: 1, per: STAFF_MONKS, desc: b => `每波開始時 ${b.per} 名棍僧助陣 ${STAFF_MONK_TIME} 秒` },
+    dragonFist: { school: 'external', name: '龍拳', legendary: true, max: 1, per: DRAGON_FIST_EVERY, desc: b => `每 ${b.per} 拳打出一記龍拳，傷害 ×${DRAGON_FIST_MULT}` },
+    diamondBody: { school: 'hardstyle', name: '金剛不壞', legendary: true, max: 1, per: DIAMOND_BELOW, desc: b => `血量低於 ${pct(b.per)} 時，受到的傷害減半` },
     // 金剛怒目：被打斷是武僧最大的懲罰，硬功把它變成反擊——疊得越高，斷的那一下炸得越大
     vajraWrath: { school: 'hardstyle', name: '金剛怒目', legendary: true, max: 1, per: VAJRA_MIN_COMBO, desc: b => `連擊 ${b.per} 以上被打斷時炸出震波，斷掉的連擊越多炸得越大` },
     // 回龍勁：同一排怪挨兩次，站位要讓怪排在你和波的路線上
     returningQi: { school: 'qigong', name: '回龍勁', legendary: true, max: 1, per: 1, desc: () => '氣功波飛到盡頭會折返，回程再打一次' },
+    qiBurst: { school: 'qigong', name: '爆勁', legendary: true, max: 1, per: QI_BURST_SHARE, desc: () => '氣功波飛到盡頭炸開，炸傷周圍的怪' },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
     shadowFist: { school: DUO_SCHOOL, duo: ['external', 'lightfoot'], name: '如影隨形', legendary: true, max: 1, per: SHADOW_FIST_SHARE, desc: () => '瞬步穿過的路上，每隻怪都挨一拳' },
     dantianBurst: { school: DUO_SCHOOL, duo: ['internal', 'qigong'], name: '丹田爆發', legendary: true, max: 1, per: DANTIAN_WIDTH, desc: b => `蓄氣的那一拳，同時打出 ${b.per} 倍寬的氣功波` },
@@ -176,12 +178,14 @@ CLASSES.monk = {
             gameState.visualEffects.push(new BellEffect(p.pos));
             return 0;
         }
-        if (Math.random() < MONK.dodge + blessVal('evade') + classMeta('evade') + (getTier(gameState.units.Step.level) >= 1 ? STEP_TIER1_DODGE : 0)) {
+        if (Math.random() < MONK.dodge + blessVal('evade') + classMeta('evade')) {
             if (res('lightfoot') >= 1) k.swallow = true;
             spawnFloatText(p.pos.x, p.pos.y - 30, '閃', '#B2EBF2', 12, 0.5);
             return 0;
         }
-        return MONK.armorTaken * (1 - blessVal('ironBody')) * (1 - ironFistCut());
+        const diamond = bl('diamondBody') && p.currentHealth < p.maxHealth * DIAMOND_BELOW ? DIAMOND_TAKEN : 1;
+        if (diamond < 1) spawnParticles(p.pos.x, p.pos.y, '#FFD54F', 5, 60, 0.3, 2.5);
+        return MONK.armorTaken * (1 - blessVal('ironBody')) * (1 - ironFistCut()) * diamond;
     },
     // 被打中：連擊歸零（硬功可以撐住）、入定被打斷、借力打回去
     onHeroHurt: (lostFrac) => {
@@ -315,8 +319,7 @@ function monkPunch(p, dt) {
     const rate = (res('external') >= 1 ? RES_CHAIN_RATE : 1) / (1 - blessVal('quickStep'));
     k.punchT -= dt * rate;
     if (k.punchT > 0) return;
-    const stepTier = getTier(gameState.units.Step.level);
-    const blink = (MONK.punch.blink + gameState.units.Step.level * CONFIG.step.upgradeBonus * MONK.punch.blink) * (1 + blessVal('blinkRange')) * (stepTier >= 3 ? STEP_TIER3_RANGE : 1);
+    const blink = (MONK.punch.blink + gameState.units.Step.level * CONFIG.step.upgradeBonus * MONK.punch.blink) * (1 + blessVal('blinkRange'));
     const t = monsterGrid.nearestShared(p.pos, blink + MONK.punch.reach);
     if (!t || !t.isAlive || t.stealthed) return;
     k.punchT = MONK.punch.interval;
@@ -327,7 +330,7 @@ function monkPunch(p, dt) {
         const stop = d - MONK.punch.reach * 0.8;
         p.pos.x += dx / d * stop; p.pos.y += dy / d * stop;
         p.facingDirection = dx >= 0 ? 1 : -1;
-        if (stepTier >= 2) k.iframeT = STEP_TIER2_IFRAME;
+        if (bl('phantomStep')) { k.iframeT = PHANTOM_STEP_IFRAME; spawnParticles(p.pos.x, p.pos.y, '#E1F5FE', 8, 60, 0.35, 2.5); }
         if (res('lightfoot') >= 2) k.ghosts.push({ x: from.x, y: from.y, life: 0.35, target: t });
         spawnParticles(from.x, from.y, '#B2EBF2', 5, 40, 0.3, 2);
         if (bl('shadowFist')) shadowFistPath(from, p.pos, t);
@@ -339,26 +342,30 @@ function monkPunch(p, dt) {
     }
     if (k.swallow) { dmg *= RES_SWALLOW_MULT; k.swallow = false; }
     k.punches++;
-    const fistTier = getTier(gameState.units.Fist.level);
-    if (fistTier >= 3 && k.punches % FIST_TIER3_EVERY === 0) { dmg *= FIST_TIER3_MULT; spawnFloatText(t.pos.x, t.pos.y - 24, '龍拳', '#FF8A65', 13, 0.7); }
-    const hits = 1 + (fistTier >= 1 ? 1 : 0) + bl('flurry') + (res('external') >= 2 && k.combo >= RES_THOUSAND_COMBO ? RES_THOUSAND_HITS : 0);
-    strikeMonk(t, dmg, hits, fistTier >= 2);
+    if (bl('dragonFist') && k.punches % DRAGON_FIST_EVERY === 0) {
+        dmg *= DRAGON_FIST_MULT;
+        spawnFloatText(t.pos.x, t.pos.y - 24, '龍拳', DRAGON_FIST_COLOR, 15, 0.8, 'dragonFist');
+        gameState.visualEffects.push(new DragonFistEffect(p.pos, t.pos));
+        addShake(3);
+    }
+    const hits = 1 + bl('flurry') + (res('external') >= 2 && k.combo >= RES_THOUSAND_COMBO ? RES_THOUSAND_HITS : 0);
+    strikeMonk(t, dmg, hits);
     // 殘影：踏雪無痕
-    for (const g of k.ghosts) if (g.target === t && !g.struck) { g.struck = true; strikeMonk(t, dmg * 0.5, 1, false); }
+    for (const g of k.ghosts) if (g.target === t && !g.struck) { g.struck = true; strikeMonk(t, dmg * 0.5, 1); }
     // 氣功波
-    const every = Math.max(2, (getTier(gameState.units.Qi.level) >= 1 ? QI_TIER1_EVERY : MONK.qiEvery) - bl('qiFreq'));
+    const every = Math.max(2, MONK.qiEvery - bl('qiFreq'));
     if (k.punches % every === 0) fireQi(p, t);
     gameState.visualEffects.push(new PunchEffect(t.pos));
     Sfx.play('hit');
 }
-// knock：二階「拳風擊退」
-function strikeMonk(t, dmg, hits, knock) {
+function strikeMonk(t, dmg, hits) {
     const k = monkState(), p = gameState.player;
     let dealt = 0;
     for (let i = 0; i < hits && t.isAlive; i++) {
         t.takeDamage(dmg);
         dealt += dmg;
         k.combo++;
+        if (bl('tigerRoar') && k.combo % TIGER_ROAR_EVERY === 0) tigerRoar(p);
     }
     if (p && p.currentHealth < p.maxHealth) p.currentHealth = Math.min(p.maxHealth, p.currentHealth + dealt * MONK.leech);
     k.bestCombo = Math.max(k.bestCombo, k.combo);
@@ -366,8 +373,16 @@ function strikeMonk(t, dmg, hits, knock) {
     monsterGrid.forEachInRadius(t.pos, MONK.splash, m => {
         if (m === t || !m.isAlive || distanceSq(m.pos, t.pos) > rSq) return;
         m.takeDamage(dmg * MONK.splashShare);
-        if (knock && m.isAlive && !(m instanceof BossMonster)) { const d = normalizeVector({ x: m.pos.x - p.pos.x, y: m.pos.y - p.pos.y }); m.knockVel = { x: d.x * FIST_TIER2_KNOCK, y: d.y * FIST_TIER2_KNOCK }; }
     });
+}
+// 虎嘯：連擊每滿一段大吼一聲，身邊的怪暈住（首領不會）
+function tigerRoar(p) {
+    const rSq = TIGER_ROAR_RADIUS * TIGER_ROAR_RADIUS, stun = blessVal('tigerRoar');
+    monsterGrid.forEachInRadius(p.pos, TIGER_ROAR_RADIUS, m => {
+        if (m.isAlive && !(m instanceof BossMonster) && distanceSq(m.pos, p.pos) <= rSq) m.applySlow(1, stun);
+    });
+    gameState.visualEffects.push(new TigerRoarEffect(p.pos, TIGER_ROAR_RADIUS));
+    spawnFloatText(p.pos.x, p.pos.y - 34, '虎嘯', '#FFCC80', 15, 0.8, 'tigerRoar');
 }
 class PunchEffect extends TimedEffect {
     constructor(pos) { super(pos, 0.16); }
@@ -392,13 +407,89 @@ class BellEffect extends TimedEffect {
     }
 }
 
+// 傳說「龍拳」：從武僧身上竄出一條金橘色的龍身（兩股交纏的彎弧），龍頭撞上目標炸開
+class DragonFistEffect extends TimedEffect {
+    constructor(from, to) { super({ x: to.x, y: to.y }, 0.4); this.from = { x: from.x, y: from.y }; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, f = this.from, t = this.pos;
+        const dx = t.x - f.x, dy = t.y - f.y, d = Math.hypot(dx, dy) || 1, nx = -dy / d, ny = dx / d;
+        const head = Math.min(1, k / 0.4), N = 16;
+        ctx.save();
+        ctx.globalAlpha = k < 0.5 ? 1 : (1 - k) / 0.5;
+        ctx.lineCap = 'round';
+        for (const side of [1, -1]) {
+            ctx.beginPath();
+            for (let i = 0; i <= N; i++) {
+                const s = head * i / N, wob = Math.sin(s * Math.PI * 3) * 9 * side;
+                const x = f.x + dx * s + nx * wob, y = f.y + dy * s + ny * wob;
+                if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+            }
+            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 8; ctx.stroke();
+            ctx.strokeStyle = DRAGON_FIST_COLOR; ctx.lineWidth = 5; ctx.stroke();
+            ctx.strokeStyle = '#FFF3E0'; ctx.lineWidth = 1.5; ctx.stroke();
+        }
+        const hx = f.x + dx * head, hy = f.y + dy * head;
+        ctx.drawImage(getGlowSprite(DRAGON_FIST_COLOR), hx - 26, hy - 26, 52, 52);
+        if (head >= 1) {
+            const r = 10 + 34 * (k - 0.4) / 0.6;
+            ctx.strokeStyle = DRAGON_FIST_COLOR; ctx.lineWidth = 6 * (1 - k) + 1;
+            ctx.beginPath(); ctx.arc(t.x, t.y, r, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+// 虎嘯：三道琥珀色的聲波弧從武僧往外一層一層推出去
+const TIGER_ROAR_COLOR = '#FFCC80';
+class TigerRoarEffect extends TimedEffect {
+    constructor(pos, radius) { super({ x: pos.x, y: pos.y }, 0.5); this.radius = radius; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos;
+        ctx.save();
+        for (let i = 0; i < 3; i++) {
+            const t = k - i * 0.12;
+            if (t <= 0 || t >= 1) continue;
+            const r = this.radius * t;
+            ctx.globalAlpha = 1 - t;
+            ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+            ctx.strokeStyle = TIGER_ROAR_COLOR; ctx.lineWidth = 3.5;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+// 傳說「爆勁」：氣功波撞到盡頭炸成一朵青色的氣爆，一圈氣流往外噴
+const QI_BURST_COLOR = '#80DEEA', QI_BURST_RAYS = 10;
+class QiBurstEffect extends TimedEffect {
+    constructor(pos, radius) { super(pos, 0.4); this.radius = radius; this.spin = Math.random() * Math.PI; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos, fade = 1 - k;
+        const r = this.radius * (1 - Math.pow(1 - k, 2));
+        ctx.save();
+        ctx.globalAlpha = fade;
+        ctx.drawImage(getGlowSprite(QI_BURST_COLOR), x - r, y - r, r * 2, r * 2);
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#E0F7FA'; ctx.lineWidth = 3 * fade + 1;
+        ctx.beginPath();
+        for (let i = 0; i < QI_BURST_RAYS; i++) {
+            const a = this.spin + i / QI_BURST_RAYS * Math.PI * 2;
+            ctx.moveTo(x + Math.cos(a) * r * 0.5, y + Math.sin(a) * r * 0.5);
+            ctx.lineTo(x + Math.cos(a) * r * 1.1, y + Math.sin(a) * r * 1.1);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = QI_BURST_COLOR; ctx.lineWidth = 7 * fade + 1;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+    }
+}
+
 // ---------- 氣功波：一道直線，穿透 ----------
 const QI_SPEED = 420;
 // width／power：雙流派「丹田爆發」那一道是加寬、吃蓄氣倍率的單一金色波
 function fireQi(p, t, width = 1, power = 1) {
     const k = monkState();
     const base = Math.atan2(t.pos.y - p.pos.y, t.pos.x - p.pos.x);
-    const n = width > 1 ? 1 : 1 + bl('qiCount') + (getTier(gameState.units.Qi.level) >= 3 ? 1 : 0);
+    const n = width > 1 ? 1 : 1 + bl('qiCount');
     const dmg = MONK.qiDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Qi.level * CONFIG.qi.upgradeBonus) * (1 + blessVal('qiPower')) * comboMult() * power;
     for (let i = 0; i < n; i++) {
         const a = base + (i - (n - 1) / 2) * 0.35;
@@ -453,9 +544,9 @@ function updateQiWaves(dt) {
             if (res('qigong') >= 1 && m.isAlive && !(m instanceof BossMonster)) m.knockVel = { x: q.ux * RES_QI_KNOCK, y: q.uy * RES_QI_KNOCK };
         });
         if (!q.back && q.dist >= MONK.qiLength) {
-            if (getTier(gameState.units.Qi.level) >= 2) {
-                monsterGrid.forEachInRadius(q, QI_TIER2_BLAST, m => { if (m.isAlive && distanceSq(m.pos, q) <= QI_TIER2_BLAST * QI_TIER2_BLAST) m.takeDamage(q.dmg * 0.5); });
-                spawnParticles(q.x, q.y, '#80DEEA', 14, 100, 0.4, 3);
+            if (bl('qiBurst')) {
+                monsterGrid.forEachInRadius(q, QI_BURST_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, q) <= QI_BURST_RADIUS * QI_BURST_RADIUS) m.takeDamage(q.dmg * QI_BURST_SHARE); });
+                gameState.visualEffects.push(new QiBurstEffect({ x: q.x, y: q.y }, QI_BURST_RADIUS));
             }
             if (bl('returningQi')) {
                 q.back = true; q.dist = 0; q.hit = new Set(); q.first = true; q.trail = [];
@@ -568,7 +659,7 @@ class VajraBlastEffect extends TimedEffect {
 // ---------- 大招：十八羅漢陣 ----------
 function useArhats() {
     const k = monkState(), p = gameState.player, A = MONK.arhats;
-    k.arhatT = A.duration; k.arhatTick = 0; k.arhatKills = 0;
+    k.arhatT = A.duration + blessVal('arhatBless'); k.arhatTick = 0; k.arhatKills = 0;
     k.arhatPos = { x: p.pos.x, y: p.pos.y };
     spawnFloatText(p.pos.x, p.pos.y - 44, '十八羅漢陣！', '#FFE082', 18, 1.3, 'arhats');
     spawnParticles(p.pos.x, p.pos.y, '#FFE082', 36, 200, 0.7, 3);

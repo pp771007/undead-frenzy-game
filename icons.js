@@ -276,11 +276,6 @@ const ICON_BODIES = {
     // 一串越跳越遠的狼爪印
     wolfSpeed: `${[[16, 50, 0.7], [32, 36, 0.85], [50, 20, 1]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="4" rx="7" ry="6" fill="#b0bec5"/>${[[-7, -4], [-2.5, -8], [2.5, -8], [7, -4]].map(([a, b]) => `<ellipse cx="${a}" cy="${b}" rx="2.6" ry="3.4" fill="#b0bec5" stroke-width="2.5"/>`).join('')}</g>`).join('')}
         <path d="M4 40 L12 32 M8 56 L18 46 M22 26 L30 18" stroke="#8fd3ff" stroke-width="3"/>`,
-    // 咬喉：張嘴露牙的狼頭，旁邊一顆會心一擊的星
-    wolfCrit: `<path d="${starPath(50, 14, 12, 4.5, 4)}" fill="#ffd54f" stroke-width="2.5"/>
-        <g transform="translate(28 36) scale(1.7)"><path d="M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z" fill="#90a4ae" stroke-width="2.4"/>
-        <path d="M-9 -9 L-8 -12 L-6 -7 Z M9 -9 L8 -12 L6 -7 Z" fill="#cfd8dc" stroke="none"/><path d="M-7 -1 L-3 0 M7 -1 L3 0" stroke-width="1.6"/><circle cx="-5" cy="1" r="1.5" fill="#ffd54f" stroke="none"/><circle cx="5" cy="1" r="1.5" fill="#ffd54f" stroke="none"/>
-        <path d="M-6 6 C-3 12 3 12 6 6 Z" fill="#4e342e" stroke-width="1.6"/><path d="M-5 6 L-4 9 L-3 6 M3 6 L4 9 L5 6" fill="#ffffff" stroke-width="1"/></g>`,
     // 巨熊
     bearHide: `<path d="M8 22 C8 10 20 6 32 6 C44 6 56 10 56 22 L56 44 C56 54 46 60 32 60 C18 60 8 54 8 44 Z" fill="#795548"/><circle cx="14" cy="10" r="6" fill="#795548"/><circle cx="50" cy="10" r="6" fill="#795548"/>
         <path d="M18 26 L46 26 M16 36 L48 36 M18 46 L46 46" stroke="#5d4037" stroke-width="3"/><path d="M26 20 L26 50 M38 20 L38 50" stroke="#a1887f" stroke-width="2"/>${shine(18, 18, 4, 2.5)}`,
@@ -289,8 +284,6 @@ const ICON_BODIES = {
     // 熊耳朵的時鐘：化身撐更久
     bearTime: `<circle cx="13" cy="15" r="8" fill="#8d6e63"/><circle cx="51" cy="15" r="8" fill="#8d6e63"/><circle cx="32" cy="36" r="24" fill="#8d6e63"/><circle cx="32" cy="36" r="17" fill="#fff3e0"/>
         <path d="M32 24 L32 36 L41 41" stroke-width="4"/>${[0, 1, 2, 3].map(i => { const a = i * Math.PI / 2; return `<circle cx="${(32 + Math.cos(a) * 13).toFixed(1)}" cy="${(36 + Math.sin(a) * 13).toFixed(1)}" r="1.6" fill="#1b1424" stroke="none"/>`; }).join('')}`,
-    bearStun: `${[[18, 18], [46, 18], [32, 10]].map(([x, y]) => `<path d="${starPath(x, y, 7, 3, 5)}" fill="#ffd54f" stroke-width="2"/>`).join('')}<ellipse cx="32" cy="44" rx="20" ry="14" fill="#ef9a9a"/>
-        <path d="M24 42 L28 46 M28 42 L24 46 M36 42 L40 46 M40 42 L36 46" stroke-width="2.5"/><path d="M26 52 C30 50 34 54 38 52" stroke-width="2.5"/>`,
     // 荒野
     seedPower: `${[[20, 24, -140], [44, 24, -40], [18, 44, 160], [46, 44, 20], [32, 16, -90], [32, 56, 90]].map(([x, y, r]) => { const c = Math.cos(r * Math.PI / 180), s = Math.sin(r * Math.PI / 180); return `<path d="M${(x - s * 4).toFixed(1)} ${(y + c * 4).toFixed(1)} L${(x + c * 10).toFixed(1)} ${(y + s * 10).toFixed(1)} L${(x + s * 4).toFixed(1)} ${(y - c * 4).toFixed(1)} Z" fill="#c5e1a5" stroke-width="2.5"/>`; }).join('')}
         <ellipse cx="32" cy="36" rx="14" ry="18" fill="#7cb342"/><path d="M32 20 L32 52" stroke="#33691e" stroke-width="2.5"/>
@@ -933,17 +926,6 @@ const ICON_BODIES = {
     weakGaze: `<path d="M6 32 C16 19 48 19 58 32 C48 45 16 45 6 32 Z" fill="#f1ead6"/><circle cx="32" cy="32" r="9" fill="#26a69a"/><circle cx="32" cy="32" r="3.5" fill="${ICON_OUTLINE}" stroke="none"/>`
         + `<circle cx="32" cy="32" r="22" stroke-width="7"/><circle cx="32" cy="32" r="22" stroke="#ffd54f" stroke-width="3"/>`
         + duoStroke('M32 2 L32 12 M32 52 L32 62 M2 32 L10 32 M54 32 L62 32', '#ffd54f', 3) + shine(26, 28, 2, 1.4),
-    // 屍山：一堆骸骨（兩顆骷髏疊在骨頭堆上），旁邊一個沙漏
-    boneHoard: `<path d="M4 58 C8 46 18 42 30 42 C40 42 46 46 50 58 Z" fill="#6d4c41"/>
-        <path d="M8 52 L40 44 M10 44 L42 54" stroke-width="8"/><path d="M8 52 L40 44 M10 44 L42 54" stroke="#efebe9" stroke-width="4"/>
-        ${[[15, 34, 0.55], [32, 30, 0.6]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -16 C-12 -16 -18 -8 -18 2 C-18 8 -15 12 -11 14 L-11 20 L11 20 L11 14 C15 12 18 8 18 2 C18 -8 12 -16 0 -16 Z" fill="#efebe9" stroke-width="${(4 / s).toFixed(1)}"/><ellipse cx="-7" cy="2" rx="4.5" ry="5.5" fill="#7e57c2" stroke="none"/><ellipse cx="7" cy="2" rx="4.5" ry="5.5" fill="#7e57c2" stroke="none"/></g>`).join('')}
-        <path d="M46 8 L60 8 M46 36 L60 36" stroke-width="4"/><path d="M48 10 C48 18 53 20 53 22 C53 24 48 26 48 34 L58 34 C58 26 53 24 53 22 C53 20 58 18 58 10 Z" fill="#e1bee7" stroke-width="2.5"/>
-        <path d="M50 12 L56 12 C55 16 53 18 53 20 C53 18 51 16 50 12 Z M49.5 33 C50 29 53 27 53 27 C53 27 56 29 56.5 33 Z" fill="#7e57c2" stroke="none"/>`,
-    // 骨爆：一堆交叉的骨頭被淡紫色的爆炸往外炸開，角落一個金色加號
-    boneBlastUp: `<path d="${starPath(28, 34, 27, 15, 10)}" fill="#b39ddb"/><path d="${starPath(28, 34, 17, 10, 10)}" fill="#ede7f6" stroke="none"/>
-        <path d="M12 46 L44 24 M12 24 L44 46" stroke-width="9"/><path d="M12 46 L44 24 M12 24 L44 46" stroke="#efebe9" stroke-width="5"/>
-        ${[[12, 46], [44, 24], [12, 24], [44, 46]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="4.5" fill="#efebe9" stroke-width="2.5"/>`).join('')}
-        <path d="M51 42 L51 60 M42 51 L60 51" stroke-width="9"/><path d="M51 42 L51 60 M42 51 L60 51" stroke="#ffd54f" stroke-width="4.5"/>`,
     // ---- 傳說祝福 ----
     // 怨靈附身：一隻青色怨靈從背後抱住一隻小怪，那隻怪的眼睛也變成青色
     possession: `<g transform="translate(-6 14) scale(0.9)"><path d="${GHOST_PATH}" fill="#78909c"/><ellipse cx="26" cy="27" rx="4" ry="4.5" fill="#80cbc4" stroke="none"/><ellipse cx="38" cy="27" rx="4" ry="4.5" fill="#80cbc4" stroke="none"/>
@@ -967,8 +949,6 @@ const ICON_BODIES = {
     // 跳彈魔眼：眼魔的金色眼彈在牆上彈了兩次，每次彈開都迸出火花
     ricochet: duoStroke('M4 54 L22 20 L38 46 L48 26', '#ffe082', 3) + `${[[22, 20], [38, 46]].map(([x, y]) => `<path d="${starPath(x, y, 7, 2.6, 6)}" fill="#fff8e1" stroke-width="1.8"/>`).join('')}`
         + `<circle cx="52" cy="18" r="10" fill="#ffc400"/><ellipse cx="52" cy="18" rx="4.5" ry="6.5" fill="#fff8e1" stroke-width="1.8"/><ellipse cx="52" cy="18" rx="1.6" ry="4.6" fill="${ICON_OUTLINE}" stroke="none"/>${shine(48, 13, 2.5, 1.5)}`,
-    frostNova: `<path d="${starPath(32, 32, 28, 16, 12)}" fill="#81d4fa"/>` + duoStroke('M32 14 L32 50 M16 23 L48 41 M16 41 L48 23', '#e1f5fe', 3.5) +
-        `<circle cx="32" cy="32" r="6" fill="#e1f5fe"/>`,
     eliteHunter: `<path d="M12 40 L15 18 L24 28 L32 13 L40 28 L49 18 L52 40 Z" fill="#ffd54f"/><rect x="12" y="39" width="40" height="8" rx="2" fill="#e0a82e"/>` +
         duoStroke('M32 49 L32 61 M23 55 L41 55', '#ce93d8', 3) + `<circle cx="32" cy="55" r="4" fill="#ce93d8" stroke-width="2.5"/>`,
     midas: `<circle cx="24" cy="38" r="15" fill="#ffd54f"/><circle cx="24" cy="38" r="9" stroke="#e0a82e" stroke-width="3"/>
@@ -979,9 +959,6 @@ const ICON_BODIES = {
     soulVolley: duoStroke('M8 22 L26 22', '#7ff0f0', 4) + duoStroke('M8 34 L32 34', '#7ff0f0', 4) + duoStroke('M8 46 L26 46', '#7ff0f0', 4) +
         `<circle cx="32" cy="22" r="7" fill="#7ff0f0"/><circle cx="40" cy="34" r="8" fill="#7ff0f0"/><circle cx="32" cy="46" r="7" fill="#7ff0f0"/>
         <circle cx="40" cy="34" r="3.5" fill="#e8ffff" stroke="none"/>${shine(30, 20, 2, 1.5)}${shine(38, 31, 2.5, 1.5)}${shine(30, 44, 2, 1.5)}`,
-    eagleEye: duoStroke('M32 3 L32 12 M32 52 L32 61', '#ffd54f', 3) +
-        `<path d="M5 32 C15 18 49 18 59 32 C49 46 15 46 5 32 Z" fill="#f1ead6"/><circle cx="32" cy="32" r="10" fill="#ffc400"/>
-        <circle cx="32" cy="32" r="4" fill="${ICON_OUTLINE}" stroke="none"/>${shine(28, 28, 2.5, 1.5)}`,
     auraMight: `<path d="${GHOST_PATH}" fill="#80cbc4"/><ellipse cx="26" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>
         <ellipse cx="38" cy="27" rx="3" ry="4" fill="${ICON_OUTLINE}" stroke="none"/>${shine(24, 17, 4, 2.5)}` +
         duoStroke('M38 58 L58 38', '#cfd8dc', 4) + duoStroke('M46 42 L54 50', '#ffd54f', 3),
@@ -1077,6 +1054,95 @@ Object.assign(ICON_BODIES, {
     // 鷹眼標記（長弓＋森林之友）：一根金色鷹羽插在準星上
     hawkMark: `<circle cx="32" cy="36" r="20" stroke-width="7"/><circle cx="32" cy="36" r="20" stroke="#a5d6a7" stroke-width="3"/>` + duoStroke('M32 10 L32 20 M32 52 L32 62 M6 36 L16 36 M48 36 L58 36', '#a5d6a7', 2.6)
         + placeAt(32, 36, -60, `<path d="M0 0 C6 -7 22 -7 30 0 C22 7 6 7 0 0 Z" fill="#ffd54f" stroke-width="2.4"/><path d="M-4 0 L28 0" stroke="#8d6e63" stroke-width="2"/><path d="M10 0 L14 -4 M18 0 L22 -4 M10 0 L14 4 M18 0 L22 4" stroke="#e0a82e" stroke-width="1.4"/>`),
+});
+
+// 熊掌（德魯伊的熊）：肉墊加四根腳趾，以 (x,y) 為中心
+function bearPawAt(x, y, s) {
+    return `<g transform="translate(${x} ${y}) scale(${s})"><ellipse cx="0" cy="5" rx="10" ry="8" fill="#8d6e63" stroke-width="${(3 / s).toFixed(1)}"/><ellipse cx="0" cy="6" rx="5.5" ry="4" fill="#d7ccc8" stroke="none"/>`
+        + `${[[-10, -6], [-4, -11], [4, -11], [10, -6]].map(([tx, ty]) => `<ellipse cx="${tx}" cy="${ty}" rx="3.6" ry="4.4" fill="#8d6e63" stroke-width="${(2.4 / s).toFixed(1)}"/>`).join('')}</g>`;
+}
+// 一口咬下去：深色的嘴，上下兩排白牙往中間咬
+function biteAt(x, y, s) {
+    const p = (dx, dy) => `${(x + dx * s).toFixed(1)} ${(y + dy * s).toFixed(1)}`;
+    const teeth = (sign) => [-9, -3, 3, 9].map(t => `<path d="M${p(t - 3.2, sign * 9)} L${p(t, sign * 1.5)} L${p(t + 3.2, sign * 9)} Z" fill="#fafafa" stroke-width="2"/>`).join('');
+    return `<path d="M${p(-15, 0)} C${p(-15, -12)} ${p(15, -12)} ${p(15, 0)} C${p(15, 12)} ${p(-15, 12)} ${p(-15, 0)} Z" fill="#4a148c"/>${teeth(-1)}${teeth(1)}`;
+}
+Object.assign(ICON_BODIES, {
+    // ---- 拿掉兵種進化後補上的祝福（同一個概念一張圖） ----
+    // 爆裂魔眼：眼魔射出的彈在前方炸成一朵金黃色爆光
+    eyeBlast: `<path d="${starPath(42, 24, 21, 10, 9)}" fill="#ffb300"/><path d="${starPath(42, 24, 12, 6, 9)}" fill="#fff3c4" stroke="none"/>`
+        + duoStroke('M24 42 L34 32', '#ffd54f', 4)
+        + `<path d="M3 46 C9 36 29 36 35 46 C29 56 9 56 3 46 Z" fill="#f1ead6"/><circle cx="19" cy="46" r="6.5" fill="#ffc400"/><circle cx="19" cy="46" r="2.8" fill="${ICON_OUTLINE}" stroke="none"/>${shine(14, 42, 2.2, 1.4)}`,
+    // 震波（新星）：紫色新星往右推出兩道震波弧，把一隻小怪震飛（身後拖速度線）
+    novaPush: `<path d="${starPath(16, 34, 14, 7, 8)}" fill="#c06bf5"/><circle cx="16" cy="34" r="5" fill="#f6dcff"/>`
+        + duoStroke('M30 18 C38 26 38 42 30 50', '#e1bee7', 4) + duoStroke('M38 12 C49 24 49 44 38 56', '#ce93d8', 3)
+        + foe(54, 30, 0.38) + duoStroke('M44 22 L48 22 M44 38 L48 38', '#e1bee7', 2),
+    // 黑洞新星：紫黑色的漩渦核心，外面一圈斜斜的光環，三顆光點被吸進去
+    blackHole: `<ellipse cx="32" cy="34" rx="29" ry="11" transform="rotate(-18 32 34)" stroke-width="7"/><ellipse cx="32" cy="34" rx="29" ry="11" transform="rotate(-18 32 34)" stroke="#ce93d8" stroke-width="3"/>`
+        + `<circle cx="32" cy="34" r="15" fill="#311b92"/><path d="M32 34 C36 28 44 30 42 36 M32 34 C28 40 20 38 22 32" stroke="#9575cd" stroke-width="2.5"/><circle cx="32" cy="34" r="4" fill="#0e0717" stroke-width="2"/>`
+        + `${[[10, 10], [56, 14], [52, 58]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="3" fill="#f3e5f5" stroke-width="2"/>`).join('')}${shine(26, 28, 3, 1.6)}`,
+    // 撲咬：狼頭往前撲，身後拖速度線，嘴邊一顆金色火花
+    wolfPounce: duoStroke('M2 20 L14 20 M4 32 L16 32 M2 44 L14 44', '#cfd8dc', 3) + wolfHeadAt(36, 32, 1.75) + `<path d="${starPath(54, 50, 9, 3.5, 4)}" fill="#ffe0b2" stroke-width="2.2"/>`,
+    // 熊爪橫掃：熊掌揮出三道弧形爪痕
+    bearSwipe: [0, 1, 2].map(i => duoStroke(`M${16 + i * 9} ${60 - i * 2} C${28 + i * 9} ${44 - i * 4} ${42 + i * 5} ${30 - i * 4} ${54 + i * 3} ${12 + i * 5}`, '#fff3e0', 5)).join('') + bearPawAt(15, 17, 0.95),
+    // 震地：熊掌往下砸在地上，地面裂開、兩道震波往兩邊擴
+    bearQuake: `<ellipse cx="32" cy="52" rx="28" ry="8" fill="#6d4c41"/><path d="M32 52 L22 58 M32 52 L44 59 M32 52 L14 50 M32 52 L52 49" stroke="#3e2723" stroke-width="2.5"/>`
+        + duoStroke('M8 40 C4 46 4 52 8 56', '#d7ccc8', 3) + duoStroke('M56 40 C60 46 60 52 56 56', '#d7ccc8', 3) + bearPawAt(32, 30, 1.25),
+    // 狂咬：狼頭旁邊兩排咬痕疊在一起
+    wolfFrenzy: wolfHeadAt(20, 30, 1.25) + biteAt(46, 22, 0.95) + biteAt(48, 46, 0.95),
+    // 狂戰之血：大劍插在一顆骷髏旁，劍身捲著橘色怒火
+    bloodRush: flameAt(30, 26, 0.8, '#ff9100', '#ffd54f') + placeAt(30, 6, 90, greatswordL(50)) + skullAt(48, 50, 0.42),
+    // 跳彈弩：弩箭命中第一隻後沿虛線彈到下一隻
+    ricochetBolt: `<path d="M24 36 L46 12 L50 44" stroke-width="7" stroke-dasharray="6 5"/><path d="M24 36 L46 12 L50 44" stroke="#90caf9" stroke-width="3.5" stroke-dasharray="6 5"/>`
+        + foe(22, 42, 0.42) + foe(50, 52, 0.42) + arrow(2, 8, 20, 28, STEEL, '#90caf9', 1.1)
+        + `<path d="${starPath(22, 34, 8, 3, 4)}" fill="#fff59d" stroke-width="2"/><path d="${starPath(46, 12, 7, 2.8, 4)}" fill="#fff59d" stroke-width="2"/>`,
+    // 凱旋：月桂冠圍著一顆金星
+    triumph: [-1, 1].map(side => `${[0, 1, 2, 3, 4].map(i => { const a = Math.PI / 2 + side * (0.5 + i * 0.42), x = 32 + Math.cos(a) * 22, y = 34 + Math.sin(a) * 22; return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="6" ry="3.2" transform="rotate(${(a * 180 / Math.PI + side * 60).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#7cb342" stroke-width="2.2"/>`; }).join('')}`).join('')
+        + `<path d="${starPath(32, 32, 14, 6, 5)}" fill="#ffd54f" stroke-width="3"/>${shine(28, 26, 3, 1.8)}`,
+    // 破風箭：一支箭帶著三道旋風往右，把小怪往後推
+    pushArrow: duoStroke('M4 22 C10 16 16 28 22 22 M2 34 C10 28 16 40 24 34 M4 46 C10 40 16 52 22 46', '#b2ebf2', 2.6) + arrow(14, 34, 44, 34, STEEL, '#80cbc4', 0.95) + foe(54, 30, 0.34),
+    // 穿心：一支箭斜斜射穿靶心，靶心爆出一顆白光
+    heartShot: `<circle cx="38" cy="30" r="22" fill="#f1ead6"/><circle cx="38" cy="30" r="14" fill="#a1887f"/><circle cx="38" cy="30" r="6" fill="#ffd54f" stroke-width="2.5"/>`
+        + arrow(6, 58, 44, 24, STEEL, '#a5d6a7', 0.95) + `<path d="${starPath(38, 30, 9, 3, 4)}" fill="#ffffff" stroke-width="1.8"/>`,
+    // 連環爆破：兩個捕獸夾一前一後炸開，中間一道火花把它們連起來
+    chainTrap: smallTrap(16, 46, 0.8) + smallTrap(48, 22, 0.8)
+        + `<path d="${starPath(16, 40, 13, 6, 8)}" fill="#ffb300" opacity="0.9"/><path d="${starPath(48, 16, 13, 6, 8)}" fill="#ffb300" opacity="0.9"/>`
+        + duoStroke('M22 36 L28 32 L30 36 L42 26', '#ffe082', 2.5),
+    // 回旋飛刀：一把飛刀射出去，一道彎弧箭頭繞回來
+    boomerangKnife: placeAt(8, 22, 0, throwKnifeL(40)) + duoStroke('M50 26 C62 36 54 56 32 54 C20 53 12 46 12 38', '#ffd740', 3) + `<path d="M6 40 L12 32 L18 40 Z" fill="#ffd740" stroke-width="2.4"/>`,
+    // 瘟疫毒霧：一團綠色毒霧，中間一顆小骷髏，上面冒毒泡
+    plagueCloud: `<path d="M6 48 C2 40 8 32 16 34 C16 24 28 20 34 28 C38 20 52 22 52 32 C60 32 62 44 56 48 Z" fill="#9ccc65"/><path d="M14 44 C20 40 26 42 30 46 M36 42 C42 38 48 40 50 44" stroke="#dcedc8" stroke-width="2.4"/>`
+        + skullAt(32, 40, 0.32) + `<circle cx="20" cy="16" r="4" fill="#ccff90" stroke-width="2"/><circle cx="44" cy="12" r="3" fill="#ccff90" stroke-width="2"/><circle cx="32" cy="8" r="2.4" fill="#ccff90" stroke-width="1.8"/>`,
+    // 影爆：紫色影子剪影炸開，一圈影刃往外甩
+    shadowBurst: `<path d="${starPath(32, 34, 30, 18, 8)}" fill="#7e57c2"/><path d="${starPath(32, 34, 20, 12, 8)}" fill="#b39ddb" stroke="none"/>`
+        + `<g transform="translate(32 38) scale(0.6)"><circle cx="0" cy="-14" r="9" fill="#311b92"/><path d="M-12 22 L-12 0 C-12 -6 12 -6 12 0 L12 22 Z" fill="#311b92"/><path d="M-4 -15 L-1 -13 M4 -15 L1 -13" stroke="#ffd740" stroke-width="2.4"/></g>`,
+    // 虎嘯：武僧張口大吼，三道琥珀色聲波往外擴
+    tigerRoar: monkAt(16, 40, 1.4) + [0, 1, 2].map(i => duoStroke(`M${30 + i * 9} ${18 - i * 4} C${38 + i * 10} ${28} ${38 + i * 10} ${46} ${30 + i * 9} ${56 + i * 4}`, '#ffcc80', 3.5 - i * 0.6)).join(''),
+    // 羅漢加持：一尊金色羅漢，旁邊一個沙漏
+    arhatBless: `<circle cx="26" cy="34" r="20" fill="#ffd54f" opacity="0.35" stroke="none"/>` + `<g transform="translate(26 36) scale(1.6)"><path d="M-9 14 L-9 1 C-9 -6 9 -6 9 1 L9 14 Z" fill="#ffca28"/><circle cx="0" cy="-11" r="6.5" fill="#ffe082"/></g>`
+        + `<path d="M44 8 L60 8 L60 12 C60 18 54 20 54 24 C54 28 60 30 60 36 L60 40 L44 40 L44 36 C44 30 50 28 50 24 C50 20 44 18 44 12 Z" fill="#fff8e1"/><path d="M47 37 L57 37 L52 30 Z" fill="#ffca28" stroke="none"/>`,
+    // 無影步：三個腳印越來越淡，最前面一顆亮晶晶的星
+    phantomStep: duoStroke('M4 60 C14 50 22 44 34 34', '#e0f7fa', 2.5)
+        + `${[[12, 50, 0.3, -1], [24, 38, 0.6, 1], [38, 26, 1, -1]].map(([x, y, o, side]) => `<g opacity="${o}" transform="translate(${x + side * 4} ${y}) rotate(40)"><path d="M0 -11 C6 -11 7 -2 5 6 C4 11 -4 11 -5 6 C-7 -2 -6 -11 0 -11 Z" fill="#80deea" stroke-width="2.6"/><path d="M-2 -6 L2 -6" stroke="#e0f7fa" stroke-width="2"/></g>`).join('')}`
+        + `<path d="${starPath(52, 14, 12, 4.5, 4)}" fill="#ffffff" stroke-width="2.4"/>${shine(50, 12, 2, 1.2)}`,
+    // 龍拳：拳頭外面纏著一條金橘色的龍身，龍頭在拳前
+    dragonFist: fistAt(30, 36, 0.62) + duoStroke('M6 54 C2 38 18 28 30 34 C42 40 56 30 50 14', '#ffb74d', 4.5)
+        + `<path d="M44 10 L58 6 L54 18 Z" fill="#ffb74d" stroke-width="2.5"/><circle cx="52" cy="11" r="1.6" fill="${ICON_OUTLINE}" stroke="none"/>`,
+    // 金剛不壞：金色菱形護身，裡面一尊盤坐的武僧
+    diamondBody: `<path d="M32 4 L58 32 L32 60 L6 32 Z" fill="#ffca28"/><path d="M32 12 L50 32 L32 52 L14 32 Z" fill="#fff8e1" stroke-width="2.5"/>` + monkAt(32, 34, 1.1) + shine(22, 22, 3, 1.8),
+    // 爆勁：一道青色氣功波打到盡頭炸開
+    qiBurst: [[10, 10, 5], [22, 14, 4.5], [34, 16, 4]].map(([x, h, w]) => duoStroke(`M${x - 6} ${32 - h} Q${x + 4} 32 ${x - 6} ${32 + h}`, '#80deea', w)).join('')
+        + `<path d="${starPath(48, 32, 16, 8, 10)}" fill="#80deea"/><circle cx="48" cy="32" r="6" fill="#e0f7fa" stroke-width="2.2"/>`,
+    // 不滅眷屬：棺木打開，一個紫色眷屬往上站起來
+    undyingThrall: `<path d="M18 30 L46 30 L50 40 L44 62 L20 62 L14 40 Z" fill="#5d4037"/><path d="M22 36 L42 36" stroke="#3e2723" stroke-width="2.5"/>`
+        + ghostAt(32, 22, 0.62, '#ce93d8') + duoStroke('M54 30 L54 10 M48 16 L54 10 L60 16', '#b388ff', 2.6),
+    // 無償血祭：金色高腳杯裝滿夜紫色的血，滿到溢出來
+    freeBlood: `<path d="M14 10 L50 10 C50 28 42 36 32 36 C22 36 14 28 14 10 Z" fill="#ffca28"/><path d="M17 14 L47 14 C46 26 40 32 32 32 C24 32 18 26 17 14 Z" fill="#7c4dff" stroke-width="2.2"/>`
+        + `<path d="M30 36 L34 36 L34 50 L30 50 Z" fill="#ffca28"/><path d="M20 56 C20 50 44 50 44 56 Z" fill="#ffca28"/>`
+        + `<path d="M48 14 C52 18 52 22 50 24 C48 26 46 24 47 21 C47 19 49 18 48 14 Z" fill="#7c4dff" stroke-width="1.8"/>${shine(22, 18, 3, 1.6)}`,
+    // 連咬：一隻蝙蝠，旁邊兩排咬痕
+    batFrenzy: `<g transform="translate(22 26) scale(1.05)"><path d="${BAT_SHAPE}" fill="#4527a0" stroke-width="3"/><circle cx="-3" cy="-2" r="1.8" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="1.8" fill="#ffd54f" stroke="none"/></g>`
+        + biteAt(44, 40, 0.85) + biteAt(28, 52, 0.85),
 });
 
 const ICON_SVGS =Object.fromEntries(Object.entries(ICON_BODIES).map(([k, v]) => [k, iconSvg(v)]));
