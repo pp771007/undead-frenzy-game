@@ -203,8 +203,6 @@ CLASSES.rogue = {
     },
     ultimate: {
         name: '斬首', icon: 'behead', hint: '斬首：影子飛到目標身邊連斬',
-        // 目標進了飛刀射程也放：斬首主要是拿來收目標的
-        reach: () => ROGUE.knife.range, wanted: () => ultCrowdNear(ROGUE.knife.range) || rogueState().targets.some(t => t.isAlive && distanceSq(t.pos, gameState.player.pos) <= ROGUE.knife.range ** 2),
         use: () => useBehead(),
     },
 };

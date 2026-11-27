@@ -320,7 +320,7 @@ CLASSES.warrior = {
     },
     ultimate: {
         name: '標槍', icon: 'javelin', hint: '標槍：全軍朝最近的怪齊射，再衝鋒',
-        reach: () => WARRIOR.javelin.length * 0.5, use: () => useJavelin(),
+        use: () => useJavelin(),
     },
 };
 

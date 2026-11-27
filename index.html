@@ -271,9 +271,64 @@
         }
 
         /* 上方一列在窄螢幕排不下時，由血量這塊讓位（法師腳下另有血條）；波次與靈魂數不縮，數字才不會被切掉 */
-        .hp-chip {
+        .hud-left {
             flex: 0 1 auto;
             min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .hp-chip {
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        /* 大招冷卻圈：外圈照冷卻跑滿（--fill），中間是大招圖示 */
+        #ult-chip {
+            --fill: 0%;
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            border: 2px solid var(--ink);
+            background: conic-gradient(#ba68c8 var(--fill), #2a2036 0);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        #ult-chip::before {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            background: radial-gradient(#3a2b4a, #17111f);
+        }
+
+        #ult-chip .icon {
+            position: absolute;
+            inset: 3px;
+            width: auto;
+            height: auto;
+        }
+
+        #ult-chip.soon {
+            animation: ult-soon 0.25s ease-in-out infinite alternate;
+        }
+
+        #ult-chip.cast {
+            animation: ult-cast 0.5s ease-out;
+        }
+
+        @keyframes ult-soon {
+            from { box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5), 0 0 0 0 rgba(206, 147, 216, 0.9); }
+            to { box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5), 0 0 12px 4px rgba(206, 147, 216, 0.9); }
+        }
+
+        @keyframes ult-cast {
+            0% { transform: scale(1); filter: brightness(1); }
+            30% { transform: scale(1.35); filter: brightness(1.8); }
+            100% { transform: scale(1); filter: brightness(1); }
         }
 
         #wave-plate,
@@ -2566,12 +2621,15 @@
 
     <div id="hud" class="hidden">
         <div id="hud-top">
-            <div class="hud-chip hp-chip">
-                <span class="chip-icon" data-icon="heart"></span>
-                <div class="hp-bar">
-                    <div id="hp-fill"></div>
-                    <span id="player-health-info"></span>
+            <div class="hud-left">
+                <div class="hud-chip hp-chip">
+                    <span class="chip-icon" data-icon="heart"></span>
+                    <div class="hp-bar">
+                        <div id="hp-fill"></div>
+                        <span id="player-health-info"></span>
+                    </div>
                 </div>
+                <div id="ult-chip" class="hidden"></div>
             </div>
             <div id="wave-plate">
                 <span class="plate-icon" data-icon="skull"></span>

@@ -259,7 +259,7 @@ CLASSES.druid = {
     },
     ultimate: {
         name: '化身', icon: 'bearform', hint: '野性化身：變成巨熊橫掃身邊、野獸狂暴',
-        reach: () => DRUID.bearForm.radius * 1.5, use: () => useBearForm(),
+        use: () => useBearForm(),
     },
 };
 

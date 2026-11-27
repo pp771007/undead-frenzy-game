@@ -138,6 +138,7 @@ const uiElements = {
     pauseSummonStats: $id('pause-summon-stats'),
     pauseSummonWrap: $id('pause-summon-wrap'),
     pauseTabs: $id('pause-tabs'),
+    ultChip: $id('ult-chip'),
     gameOverScreen: $id('game-over-screen'),
     finalWaveText: $id('final-wave-text'),
     bestWaveText: $id('best-wave-text'),
@@ -1176,6 +1177,8 @@ function renderAchievements() {
 function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + metaVal('pickupRange') + (res('soul') >= 1 ? RES_MAGNET : 0));
 }
+// 傳說「寒冰新星」：範圍變大
+function novaRadius() { return CONFIG.nova.radius * (bl('frostNova') > 0 ? FROST_NOVA_RADIUS_MULT : 1); }
 function getNovaCooldown() {
     return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (res('nova') >= 1 ? 1 - RES_NOVA_CD : 1);
 }
@@ -1199,8 +1202,8 @@ const UNIT_TYPES = {
 // 職業：這一局的三張卡是哪三種兵（或修練）、有哪幾個流派（祝福池跟著流派走）、主角的立繪與基本數值、普攻、大招。規劃見 docs/characters.md
 //   hero：imageName（images 的鍵）、baseHealth、moveSpeed
 //   attack(player, dt)：主角每格的普攻
-//   ultimate：大招卡（抽到之後自動放，見 tryAutoUltimate）。use() 放出去回傳 true、自己設 gameState.ultCooldown；
-//             hint 是「名字：效果」，卡片與職業介紹用；reach() 內有好幾隻怪（或首領）時放，wanted() 選填、寫了就用它判斷要不要放
+//   ultimate：大招卡（抽到之後冷卻一到就自動放，見 tryAutoUltimate）。use() 放出去回傳 true、自己設 gameState.ultCooldown；
+//             hint 是「名字：效果」，卡片與職業介紹用
 //   ultSchool：選填，整個流派都繞著大招打轉（亡靈法師的新星），拿到大招卡之前這個流派的卡不會出現
 // 以下選填（其他職業在自己的檔案裡定義，例如 warrior.js）：
 //   name／title／portrait／tagline：標題畫面選職業時顯示；unlock：解鎖它的成就 id（沒有就是一開始就能玩）
@@ -1239,7 +1242,7 @@ const CLASSES = {
         hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
         attack: (p, dt) => p.shootBolt(dt),
         drawWorld: (ctx) => drawNecroWorld(ctx),
-        ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', reach: () => CONFIG.nova.radius, wanted: () => ultCrowdNear(CONFIG.nova.radius) || bonesReady(), use: () => useNova() },
+        ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', use: () => useNova() },
         metaUpgrades: {
             summonHp: META_SUMMON_HP,
             vanguard: { icon: 'boneVanguard', name: '開局骷髏', max: 3, per: 2, costBase: 40, desc: m => `開局多帶 ${m.per} 隻骷髏`, total: (m, lv) => `${m.per * lv} 隻` },
@@ -1348,7 +1351,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
     waveEvent: null, lastEventWave: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], rerollsLeft: 0,
@@ -6046,15 +6049,7 @@ const BONE_PILE = {
     chainDelay: 0.004,                // 每離主角 1 單位晚幾秒炸：從主角往外一圈一圈炸開
 };
 const BONE_PILE_GLOW = '#B39DDB', BONE_BLAST_LIGHT = '#EDE7F6', BONE_BLAST_SHARDS = 7;
-function boneReach() { return CONFIG.nova.radius * (bl('frostNova') > 0 ? FROST_NOVA_RADIUS_MULT : 1) * BONE_PILE.reachMult; }
-// 新星自動放的另一個時機：範圍裡的骸骨夠多、旁邊又有怪（首領戰場上常只剩首領一隻，照「身邊很多怪」永遠引爆不了屍爆）
-const NOVA_AUTO_BONES = 6;
-function bonesReady() {
-    const p = gameState.player.pos, R = boneReach(), rSq = R * R;
-    let n = 0;
-    for (const b of gameState.bonePiles) if (distanceSq(b, p) <= rSq) n++;
-    return n >= NOVA_AUTO_BONES && monsterGrid.anyWithin(p, R);
-}
+function boneReach() { return novaRadius() * BONE_PILE.reachMult; }
 function leaveBonePile(pos) {
     const piles = gameState.bonePiles;
     if (piles.length >= BONE_PILE.max) piles.shift();
@@ -6132,38 +6127,48 @@ function drawBonePiles() {
     }
     ctx.globalAlpha = 1;
 }
-// 新星冷卻好時，引爆範圍內的骸骨一亮一暗發紫光、往上冒光點，主角腳下一圈虛線標出範圍。
-// 畫在最上層：骷髏多半死在首領腳下，骸骨被首領的身體蓋住，光要透出來才看得出「這裡有一堆可以炸」
+// 新星蓄力：冷卻剩最後 NOVA_CHARGE_TIME 秒，光點從新星的範圍邊緣收進法師身上、腳下的光越來越亮，
+// 範圍裡的骸骨跟著發光、往上冒光點（這一發會引爆它們）。新星是時間到就放，蓄力讓人看得到「快放了」。
+// 畫在最上層：骷髏多半死在首領腳下，骸骨被首領的身體蓋住，光要透出來才看得出來
+const NOVA_CHARGE_TIME = 0.8, NOVA_CHARGE_MOTES = 14, NOVA_CHARGE_TAIL = 14;
+const NOVA_CHARGE_GLOW = '#CE93D8', NOVA_CHARGE_MOTE = '#F3E5F5';
 const BONE_MOTES = 3, BONE_MOTE_RISE = 26;
-function drawBonePileReady() {
-    const piles = gameState.bonePiles, p = gameState.player;
-    if (!piles.length || !p || !p.isAlive || gameState.ultCooldown > 0 || runClass() !== 'necro' || !hasUlt()) return;
-    const R = boneReach(), rSq = R * R, pulse = 0.5 + 0.5 * Math.sin(worldTime * 6);
-    let anyInReach = false;
+function drawNovaCharge() {
+    const p = gameState.player, cd = gameState.ultCooldown;
+    if (runClass() !== 'necro' || !hasUlt() || !p || !p.isAlive || gameState.betweenWaves || cd <= 0 || cd > NOVA_CHARGE_TIME) return;
+    const k = 1 - cd / NOVA_CHARGE_TIME;
+    ctx.save();
+    const gs = 24 + 46 * k;
+    ctx.globalAlpha = 0.2 + 0.6 * k;
+    ctx.drawImage(getGlowSprite(NOVA_CHARGE_GLOW), p.pos.x - gs, p.pos.y - gs, gs * 2, gs * 2);
+    // 光點順著螺旋收進來，身後拖一小段尾巴
+    const R = novaRadius(), r = R * (1 - k * k) + 6;
+    ctx.strokeStyle = NOVA_CHARGE_MOTE;
+    ctx.fillStyle = NOVA_CHARGE_MOTE;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < NOVA_CHARGE_MOTES; i++) {
+        const a = i / NOVA_CHARGE_MOTES * Math.PI * 2 + k * 2;
+        const x = p.pos.x + Math.cos(a) * r, y = p.pos.y + Math.sin(a) * r;
+        const tx = p.pos.x + Math.cos(a - 0.25) * (r + NOVA_CHARGE_TAIL), ty = p.pos.y + Math.sin(a - 0.25) * (r + NOVA_CHARGE_TAIL);
+        ctx.globalAlpha = 0.35 + 0.65 * k;
+        ctx.lineWidth = 1.5 + 2 * k;
+        ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x, y, 2 + 2 * k, 0, Math.PI * 2); ctx.fill();
+    }
+    const reach = boneReach(), rSq = reach * reach, pulse = 0.5 + 0.5 * Math.sin(worldTime * 12);
     ctx.fillStyle = BONE_BLAST_LIGHT;
-    for (const b of piles) {
+    for (const b of gameState.bonePiles) {
         if (!inView(b) || distanceSq(b, p.pos) > rSq) continue;
-        anyInReach = true;
         const alpha = Math.min(1, b.life / BONE_PILE.fade), s = BONE_PILE_SIZE;
-        ctx.globalAlpha = alpha * (0.3 + 0.35 * pulse);
+        ctx.globalAlpha = alpha * (0.3 + 0.4 * k + 0.2 * pulse);
         ctx.drawImage(getGlowSprite(BONE_PILE_GLOW), b.x - s, b.y - s, s * 2, s * 2);
         for (let i = 0; i < BONE_MOTES; i++) {
-            const ph = (worldTime * 0.8 + i / BONE_MOTES + b.look * 0.21) % 1;
+            const ph = (worldTime * 1.6 + i / BONE_MOTES + b.look * 0.21) % 1;
             ctx.globalAlpha = alpha * (1 - ph) * 0.9;
             ctx.beginPath(); ctx.arc(b.x + (i - 1) * 5, b.y - ph * BONE_MOTE_RISE, 1.8, 0, Math.PI * 2); ctx.fill();
         }
     }
-    ctx.globalAlpha = 1;
-    if (anyInReach) {
-        ctx.save();
-        ctx.setLineDash([10, 8]);
-        ctx.lineDashOffset = -worldTime * 20;
-        ctx.strokeStyle = BONE_PILE_GLOW;
-        ctx.globalAlpha = 0.35 + 0.25 * pulse;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.arc(p.pos.x, p.pos.y, R, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
-    }
+    ctx.restore();
 }
 
 // 毒池：先飛（地上有預警圈）、落地後持續傷害圈內的召喚物與法師
@@ -7451,26 +7456,72 @@ class NovaEffect extends TimedEffect {
     }
 }
 
-// 大招卡：冷卻好、身邊夠多怪（或有首領）就自己放。波與波之間不放：沒有怪可打，白白耗掉冷卻
-const ULT_AUTO_NEAR = 4;
+// 新星的爆炸：中心一閃、一圈光束往外射、粗的震波環推出去，後面跟一道淡的第二波，地上一片光跟著擴散。
+// 共用的 NovaEffect 只是一個圈（怨靈脈衝、復活這些小招也用它），大招要一眼看得出「這是大招」
+const NOVA_BLAST_TIME = 0.75, NOVA_BLAST_RAYS = 16;
+const NOVA_BLAST_COLORS = { ground: '156, 39, 176', ring: '206, 147, 216', light: '243, 229, 245', core: '255, 255, 255' };
+const NOVA_FROST_COLORS = { ground: '41, 121, 255', ring: '128, 216, 255', light: '225, 245, 254', core: '255, 255, 255' };
+class NovaBlastEffect extends TimedEffect {
+    constructor(pos, radius, colors) {
+        super(pos, NOVA_BLAST_TIME);
+        this.radius = radius;
+        this.colors = colors;
+        this.spin = Math.random() * Math.PI;
+    }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        const t = 1 - this.life / this.duration, C = this.colors, { x, y } = this.pos, R = this.radius;
+        const r = R * (1 - Math.pow(1 - t, 3)), fade = 1 - t;
+        ctx.save();
+        ctx.fillStyle = `rgba(${C.ground}, ${(0.32 * fade).toFixed(2)})`;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        if (t < 0.35) {
+            const f = 1 - t / 0.35, cr = R * (0.25 + 0.35 * t / 0.35);
+            const g = ctx.createRadialGradient(x, y, 0, x, y, cr);
+            g.addColorStop(0, `rgba(${C.core}, ${f.toFixed(2)})`);
+            g.addColorStop(0.45, `rgba(${C.light}, ${(0.8 * f).toFixed(2)})`);
+            g.addColorStop(1, `rgba(${C.ring}, 0)`);
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(x, y, cr, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = `rgba(${C.light}, ${(0.9 * fade).toFixed(2)})`;
+        ctx.lineWidth = 1 + 3.5 * fade;
+        ctx.beginPath();
+        for (let i = 0; i < NOVA_BLAST_RAYS; i++) {
+            const a = this.spin + i / NOVA_BLAST_RAYS * Math.PI * 2 + t * 0.4;
+            // 光束從震波環往外射（畫在環裡面會像車輪的輻條）
+            const r0 = r * 0.92, r1 = r * (1.12 + (i % 2 ? 0.14 : 0.3) * fade);
+            ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0);
+            ctx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(${C.ring}, ${fade.toFixed(2)})`;
+        ctx.lineWidth = 2 + 13 * fade;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = `rgba(${C.core}, ${(0.85 * fade).toFixed(2)})`;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(x, y, r * 0.97, 0, Math.PI * 2); ctx.stroke();
+        const t2 = (t - 0.18) / 0.82;
+        if (t2 > 0) {
+            ctx.strokeStyle = `rgba(${C.ring}, ${(0.6 * (1 - t2)).toFixed(2)})`;
+            ctx.lineWidth = 5 * (1 - t2) + 1;
+            ctx.beginPath(); ctx.arc(x, y, R * 0.8 * (1 - Math.pow(1 - t2, 2)), 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.restore();
+    }
+}
+
+// 大招卡：冷卻一到就放。不看身邊有沒有怪：看情況才放的話，玩家看不出為什麼有時候放、有時候不放，固定節奏才看得懂。
+// 冷卻只在開戰中走（見 updateTimers）
 function tryAutoUltimate() {
     const p = gameState.player;
     if (!hasUlt() || gameState.ultCooldown > 0 || gameState.betweenWaves || !p || !p.isAlive) return;
-    const U = classDef().ultimate;
-    if (!(U.wanted ? U.wanted() : ultCrowdNear(U.reach()))) return;
-    if (!U.use()) return;
+    if (!classDef().ultimate.use()) return;
     // 各職業的大招自己設冷卻；局外的「大招冷卻」在這裡統一打折，七個職業都吃得到
     gameState.ultCooldown *= ultCooldownMult();
-}
-function ultCrowdNear(R) {
-    const p = gameState.player.pos, rSq = R * R;
-    let near = 0, boss = false;
-    monsterGrid.forEachInRadius(p, R, m => {
-        if (!m.isAlive || m.stealthed || distanceSq(m.pos, p) > rSq) return;
-        near++;
-        if (m instanceof BossMonster) boss = true;
-    });
-    return boss || near >= ULT_AUTO_NEAR;
+    gameState.ultCooldownMax = gameState.ultCooldown;
+    flashUltChip();
 }
 function ultCooldownMult() { return 1 - metaVal('ultMastery'); }
 
@@ -7480,7 +7531,7 @@ function useNova() {
     const dmg = getNovaDamage();
     // 傳說「寒冰新星」：範圍變大、緩速加強到幾乎凍住
     const frost = bl('frostNova') > 0;
-    const radius = c.radius * (frost ? FROST_NOVA_RADIUS_MULT : 1);
+    const radius = novaRadius();
     const rSq = radius * radius;
     let novaKills = 0;
     gameState.monsters.forEach(m => {
@@ -7504,7 +7555,7 @@ function useNova() {
     spawnFloatText(p.pos.x, p.pos.y - 34, '大軍狂暴！', '#E1BEE7', 18, 1.1, 'armyFrenzy');
     const live = gameState.summons, step = Math.max(1, Math.floor(live.length / FRENZY_SPARK_SUMMONS));
     for (let i = 0; i < live.length; i += step) if (live[i].isAlive) spawnParticles(live[i].pos.x, live[i].pos.y, FRENZY_SPARK_COLOR, 3, 60, 0.5, 3);
-    gameState.visualEffects.push(new NovaEffect(p.pos, radius));
+    gameState.visualEffects.push(new NovaBlastEffect(p.pos, radius, frost ? NOVA_FROST_COLORS : NOVA_BLAST_COLORS));
     detonateBonePiles(p.pos);
     if (bl('wailingNova')) wailingNova(dmg * WAILING_NOVA_SHARE);
     spawnParticles(p.pos.x, p.pos.y, frost ? '#B3E5FC' : '#CE93D8', 36, 260, 0.5, 3);
@@ -8205,7 +8256,8 @@ function updateTimers(deltaTime) {
     // 新手提示還沒走完前，第一波不開始倒數
     if (tutorialHolding()) return;
     updateSpawner(deltaTime);
-    gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
+    // 大招冷卻只在開戰中走：波與波之間沒有怪，冷卻在空檔裡跑完的話，開戰第一秒怪還在遠處就放掉了
+    if (!gameState.betweenWaves) gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
     tryAutoUltimate();
     gameState.reviveShield = Math.max(0, (gameState.reviveShield || 0) - deltaTime);
     // 波與波之間沒有怪打，狂暴不扣時間：不會白白耗在空檔裡
@@ -8400,6 +8452,7 @@ function updateUI() {
     if (lv > lastShownLevel && lastShownLevel > 0 && !uiElements.levelInfo.classList.contains('bump')) uiElements.levelInfo.classList.add('bump');
     lastShownLevel = lv;
     setStyleIfChanged(uiElements.xpFill, 'width', `${Math.floor(Math.min(1, gameState.xp / xpToNext(lv)) * 100)}%`);
+    updateUltChip();
 
     // 波次之間顯示「即將來的那一波」，不是剛打完的那一波
     const holding = tutorialHolding();
@@ -8417,6 +8470,25 @@ function updateUI() {
 
 // updateUI 每格都跑。寫進 DOM 就算內容一模一樣，瀏覽器也要重新排版、重畫那一塊 ——
 // 量過：每格無條件重寫介面，整個瀏覽器多吃約三成顆 CPU 核心，比畫整個戰場還多。所以一律變了才寫
+// 左上角的大招冷卻圈：圈越滿越快放，最後 ULT_SOON 秒閃，放出去那一下彈一下。沒拿大招卡就不顯示
+const ULT_SOON = 1;
+function updateUltChip() {
+    const el = uiElements.ultChip, on = hasUlt() && !!gameState.player;
+    el.classList.toggle('hidden', !on);
+    if (!on) return;
+    const U = classDef().ultimate;
+    if (el.dataset.icon !== U.icon) { el.dataset.icon = U.icon; el.innerHTML = iconHtml(U.icon); }
+    const cd = gameState.ultCooldown, max = gameState.ultCooldownMax || 1;
+    const fill = String(Math.round((1 - Math.min(1, cd / max)) * 100));
+    if (el.dataset.fill !== fill) { el.dataset.fill = fill; el.style.setProperty('--fill', `${fill}%`); }
+    el.classList.toggle('soon', cd > 0 && cd <= ULT_SOON && !gameState.betweenWaves);
+}
+function flashUltChip() {
+    const el = uiElements.ultChip;
+    el.classList.remove('cast');
+    void el.offsetWidth;
+    el.classList.add('cast');
+}
 function setTextIfChanged(el, text) {
     text = tidyNumbers(text);
     if (el.textContent !== text) el.textContent = text;
@@ -8662,7 +8734,7 @@ function resetGameInternalState() {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
         waveEvent: null, lastEventWave: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], rerollsLeft: 0,
@@ -9333,7 +9405,7 @@ function drawGame() {
         if (m.isAlive && m.mark) m.drawMark(ctx);
     }
     drawLobs();
-    drawBonePileReady();
+    drawNovaCharge();
     drawBossEntrance();
     drawBossMarks();
     drawWorldFx();
