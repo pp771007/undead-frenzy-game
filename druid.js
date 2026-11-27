@@ -77,7 +77,7 @@ const FESTIVALS = [
     { id: 'samhain', name: '亡者之夜', icon: 'fest_samhain', color: '#B388FF', desc: '野獸倒下時化成狼魂再戰一次' },
     { id: 'imbolc', name: '初春', icon: 'fest_imbolc', color: '#B2FF59', desc: '全體持續回血' },
     { id: 'beltane', name: '篝火', icon: 'fest_beltane', color: '#FF7043', desc: '野獸的攻擊帶火' },
-    { id: 'lughnasadh', name: '收穫', icon: 'fest_lughnasadh', color: '#FFD54F', desc: '靈魂 +30%' },
+    { id: 'lughnasadh', name: '收穫', icon: 'fest_lughnasadh', color: '#FFD54F', desc: '經驗 +30%' },
 ];
 const FEST_INDEX = Object.fromEntries(FESTIVALS.map((f, i) => [f.id, i]));
 const FEST_SAMHAIN_HP = 0.5;

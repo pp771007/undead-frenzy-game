@@ -99,7 +99,7 @@ Object.assign(BLESSINGS, {
     longHide: { school: 'smoke', name: '藏鋒', max: 3, per: 0.5, desc: b => `每次隱身多 ${b.per} 秒` },
     bounty: { school: 'intel', name: '懸賞', max: 3, per: 0.3, desc: b => `目標的賞金 +${pct(b.per)}` },
     earlyMark: { school: 'intel', name: '眼線', max: 1, per: 360, desc: () => '目標挑你身邊的怪標，不用跑去找' },
-    trashLoot: { school: 'intel', name: '順手牽羊', max: 3, per: 0.15, desc: b => `雜兵的靈魂 +${pct(b.per)}` },
+    trashLoot: { school: 'intel', name: '順手牽羊', max: 3, per: 0.15, desc: b => `雜兵的經驗 +${pct(b.per)}` },
     spoils: { school: 'intel', name: '戰利品', max: 2, per: 0.08, desc: b => `目標倒下時你回 ${pct(b.per)} 血` },
     oldMan: { school: 'intel', name: '山中老人', legendary: true, max: 1, per: 3, desc: b => `目標倒下時，牠身邊 ${b.per} 隻怪倒戈成為你的影子` },
     pillowDagger: { school: 'assassination', name: '枕邊匕首', legendary: true, max: 1, per: 160, desc: () => '目標被標記的那一刻起，牠身邊的怪攻擊力下降' },

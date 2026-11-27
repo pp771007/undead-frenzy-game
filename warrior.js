@@ -249,7 +249,7 @@ CLASSES.warrior = {
         }
         if (r.kind === 'coffin') {
             for (const type of CLASSES.warrior.cards) levelUpUnit(type);
-            spawnFloatText(r.x, r.y - 30, '軍餉：全軍升一級', '#FFE082', 16, 1.4, 'coin');
+            spawnFloatText(r.x, r.y - 30, '軍餉：全軍升一級', '#FFE082', 16, 1.4, 'legionPay');
             addShake(4);
             Sfx.play('upgrade');
             updateUI();

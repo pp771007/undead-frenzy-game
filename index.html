@@ -23,7 +23,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="亡靈狂潮">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="體驗黑暗奇幻生存！《亡靈狂潮》七個職業任你選：召喚骷髏大軍的亡靈法師、轉化眷屬的吸血鬼、帶兵衝鋒的戰士、德魯伊、精靈弓箭手、刺客、武僧。收集靈魂、練出你的流派，挑戰你的生存極限！">
+    <meta name="description" content="體驗黑暗奇幻生存！《亡靈狂潮》七個職業任你選：召喚骷髏大軍的亡靈法師、轉化眷屬的吸血鬼、帶兵衝鋒的戰士、德魯伊、精靈弓箭手、刺客、武僧。收集經驗、練出你的流派，挑戰你的生存極限！">
     <meta name="theme-color" content="#140f1c">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -374,7 +374,7 @@
             gap: 6px;
         }
 
-        /* 等級＋經驗條：靈魂就是經驗值，集滿升一級 */
+        /* 等級＋經驗條：集滿升一級 */
         .level-chip {
             position: relative;
             min-width: 76px;
@@ -411,7 +411,7 @@
             background: var(--soul);
         }
 
-        /* 結算：結晶是怎麼算出來的，一項一行 */
+        /* 結算：金幣是怎麼算出來的，一項一行 */
         .reward-detail {
             display: flex;
             flex-wrap: wrap;
@@ -434,10 +434,10 @@
         }
 
         .reward-detail b {
-            color: #e1d0ff;
+            color: #ffe082;
         }
 
-        /* 強化畫面頂端：結晶從哪來 */
+        /* 強化畫面頂端：金幣從哪來 */
         .meta-earn {
             display: flex;
             flex-wrap: wrap;
@@ -459,7 +459,7 @@
             height: 16px;
         }
 
-        /* 有結晶夠買東西時，進強化畫面的按鈕亮起來 */
+        /* 有金幣夠買東西時，進強化畫面的按鈕亮起來 */
         .btn.can-upgrade {
             animation: good-deal 0.9s ease-in-out infinite alternate;
         }
@@ -1717,7 +1717,7 @@
             gap: 3px;
             font-family: var(--font-display);
             font-weight: 900;
-            color: #d1b3ff;
+            color: #ffe082;
         }
 
         .crystal-count .icon {
@@ -2039,7 +2039,7 @@
             color: #ffcdd2;
         }
 
-        /* 流派分頁固定四欄、剛好兩列（全部＋五個流派＋靈魂＋全軍），不橫向捲：橫捲的話後面幾個流派看不到，也不知道還有 */
+        /* 流派分頁固定四欄、剛好兩列（全部＋五個流派＋經驗＋全軍），不橫向捲：橫捲的話後面幾個流派看不到，也不知道還有 */
         #ban-tabs {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -2431,12 +2431,12 @@
             margin: 6px 0 4px;
             padding: 6px 16px;
             border-radius: 20px;
-            background: rgba(179, 136, 255, 0.15);
-            border: 2px solid rgba(179, 136, 255, 0.5);
+            background: rgba(255, 213, 79, 0.12);
+            border: 2px solid rgba(255, 213, 79, 0.5);
             font-family: var(--font-display);
             font-weight: 900;
             font-size: 18px;
-            color: #e1d0ff;
+            color: #ffe082;
         }
 
         .reward-line .icon {
@@ -2905,7 +2905,7 @@
             <button id="title-continue-btn" class="btn btn-gold btn-big hidden"></button>
             <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
             <div class="title-row">
-                <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
+                <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gold"></span>強化</button>
                 <button id="title-achv-btn" class="btn btn-dark"><span class="btn-icon" data-icon="trophy"></span>成就</button>
                 <button id="title-lb-btn" class="btn btn-dark"><span class="btn-icon" data-icon="podium"></span>排行</button>
                 <button id="title-curse-btn" class="btn btn-red hidden"><span class="btn-icon" data-icon="curse"></span>詛咒</button>
@@ -3083,7 +3083,7 @@
                 <button id="restart-button" class="btn btn-green btn-big">再戰一局</button>
                 <div class="btn-row" style="margin-top:0">
                     <button id="gameover-title-btn" class="btn btn-dark"><span class="btn-icon" data-icon="home"></span>標題</button>
-                    <button id="gameover-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="crystal"></span>強化</button>
+                    <button id="gameover-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gold"></span>強化</button>
                     <button id="gameover-lb-btn" class="btn btn-dark"><span class="btn-icon" data-icon="podium"></span>排行</button>
                 </div>
             </div>

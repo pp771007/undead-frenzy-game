@@ -689,7 +689,6 @@ const ICON_BODIES = {
     trophy: `<path d="M18 10 L46 10 L46 24 C46 34 40 40 32 40 C24 40 18 34 18 24 Z" fill="#ffd54f"/>
         <path d="M18 15 C8 15 8 29 19 30 M46 15 C56 15 56 29 45 30" stroke-width="4"/>
         <rect x="27" y="40" width="10" height="8" fill="#e0a82e"/><rect x="18" y="48" width="28" height="8" rx="2" fill="#e0a82e"/>${shine(25, 18, 3, 6, 0)}`,
-    crystal: `<path d="M32 6 L50 24 L32 58 L14 24 Z" fill="#b388ff"/><path d="M14 24 L50 24 M32 6 L26 24 L32 58 M32 6 L38 24 L32 58" stroke-width="2.5"/>${shine(24, 18, 3, 6, 30)}`,
     battery: `<rect x="4" y="14" width="50" height="36" rx="6" fill="#f1ead6"/><rect x="54" y="24" width="7" height="16" rx="2" fill="#f1ead6"/>
         <rect x="10" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/><rect x="25" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/>`,
     // 減少晃動：手機畫面兩側的震動線
@@ -865,8 +864,8 @@ const ICON_BODIES = {
     // 倒下復活（倒下時復活一次；祝福「重生」是 rebirth）：金色生命十字
     revive: `<ellipse cx="32" cy="17" rx="10" ry="12" stroke-width="11"/><ellipse cx="32" cy="17" rx="10" ry="12" stroke="#ffd54f" stroke-width="5"/>
         <path d="M12 33 L52 33 M32 30 L32 60" stroke-width="12"/><path d="M12 33 L52 33 M32 30 L32 60" stroke="#ffd54f" stroke-width="6"/>`,
-    // 戰士遺跡「軍餉」：一枚金幣
-    coin: `<circle cx="32" cy="32" r="24" fill="#ffca28"/><circle cx="32" cy="32" r="17" stroke="#e0a82e" stroke-width="3"/>
+    // 金幣（局外的錢：結算拿到、拿去買永久強化）：一枚印著錢字號的金幣
+    gold: `<circle cx="32" cy="32" r="24" fill="#ffca28"/><circle cx="32" cy="32" r="17" stroke="#e0a82e" stroke-width="3"/>
         <path d="M32 20 L32 44 M26 24 L36 24 C40 24 40 31 36 31 L28 31 C24 31 24 40 28 40 L38 40" stroke="#b8860b" stroke-width="3.5"/>${shine(22, 20, 4, 2.5)}`,
     close: duoStroke('M16 16 L48 48 M48 16 L16 48', '#f1ead6', 6),
     // ---- 祝福 ----

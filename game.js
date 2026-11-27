@@ -482,11 +482,11 @@ const CONFIG = {
     waveEvents: {
         startWave: 6, chance: 0.3,
         list: {
-            bloodMoon: { icon: 'hordeNight', name: '百鬼夜行', desc: '怪物 ×1.6、靈魂 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
+            bloodMoon: { icon: 'hordeNight', name: '百鬼夜行', desc: '怪物 ×1.6、經驗 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
             eliteTide: { icon: 'evEliteTide', name: '精英潮', desc: '精英怪大量出現', eliteMult: 4, eliteMax: 0.6, color: '#FFD54F' },
-            frenzy: { icon: 'claws', name: '躁動', desc: '怪物更快、靈魂 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
+            frenzy: { icon: 'claws', name: '躁動', desc: '怪物更快、經驗 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
             plague: { icon: 'plague', name: '腐屍狂潮', desc: '腐屍 ×3', bloaterMult: 3, color: '#AED581' },
-            treasure: { icon: 'sack', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量靈魂', thieves: 3, color: '#FFE082' },
+            treasure: { icon: 'sack', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量經驗', thieves: 3, color: '#FFE082' },
         },
     },
     elite: {
@@ -644,8 +644,8 @@ const BLESSINGS = {
     frenzyTime: { school: 'nova', name: '狂潮延長', max: 3, per: 1.5, desc: b => `新星的大軍狂暴多 ${b.per} 秒` },
     boneHoard: { school: 'nova', name: '屍山', max: 3, per: 5, desc: b => `陣亡留下的骸骨多留 ${b.per} 秒` },
     boneBlastUp: { school: 'nova', name: '骨爆', max: 4, per: 0.4, desc: b => `屍爆傷害 +${pct(b.per)}` },
-    soulHarvest: { school: 'soul', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
-    magnet: { school: 'soul', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
+    soulHarvest: { school: 'soul', name: '經驗收割', max: 4, per: 0.25, desc: b => `經驗 +${pct(b.per)}` },
+    magnet: { school: 'soul', name: '牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
     // needsSummon：要有召喚卡的職業才有用（武僧三張都是修練，抽到等於空卡），見 classCanSummon
     // ---- 傳說：首領波的三選一固定佔一張、一般波次偶爾出現（LEGEND_CHANCE_NORMAL），每種一局只能拿一次；改變打法，不只是加數字 ----
     boneBurst: { school: 'skel', name: '骸骨爆裂', legendary: true, max: 1, per: 3, desc: () => '骷髏陣亡時炸傷周圍的怪' },
@@ -660,10 +660,10 @@ const BLESSINGS = {
     ghostfireBones: { school: DUO_SCHOOL, duo: ['skel', 'wraith'], name: '冥火骨兵', legendary: true, max: 1, per: GHOSTFIRE_SHARE, desc: () => '怨靈光環裡的骷髏，每一擊都炸出冥火' },
     soulGaze: { school: DUO_SCHOOL, duo: ['eye', 'mage'], name: '靈視', legendary: true, max: 1, per: SOUL_GAZE_CHANCE, desc: b => `眼魔每次射擊有 ${pct(b.per)} 機率多射出一發法師的魂彈` },
     wailingNova: { school: DUO_SCHOOL, duo: ['wraith', 'nova'], name: '哀魂新星', legendary: true, max: 1, per: WAILING_NOVA_SHARE, desc: b => `放新星時，每隻怨靈也炸一圈（${pct(b.per)} 傷害）` },
-    soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
+    soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每撿一顆經驗，法師回 ${b.per} 血` },
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `補兵時 ${pct(b.per)} 機率多補一隻` },
-    midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
-    deathPact: { school: 'soul', name: '殘魂回收', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
+    midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍經驗` },
+    deathPact: { school: 'soul', name: '殘魂回收', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回經驗` },
 };
 // 卡片、暫停選單、飄字的圖示：有寫 icon 的用它，其他就是祝福自己的 id
 function blessIcon(id) { return BLESSINGS[id].icon || id; }
@@ -677,7 +677,7 @@ const SCHOOLS = {
     wraith: { name: '怨靈', img: 'wraith.png', color: '#80CBC4', res: [{ name: '冥域', desc: '怨靈光環範圍 +30%' }, { name: '哀嚎', desc: '怨靈每 3 秒脈衝，傷害 ×2' }] },
     mage: { name: '法師', img: 'player.png', color: '#80DEEA', res: [{ name: '魂彈連發', desc: '法師射速 +40%' }, { name: '魂彈分裂', desc: '魂彈命中時分裂出 2 顆小魂彈，射向附近的怪' }] },
     nova: { name: '新星', icon: 'burst', color: '#CE93D8', res: [{ name: '新星湧動', desc: '新星冷卻 -25%' }, { name: '狂潮不息', desc: '大軍狂暴時每打倒一隻怪，狂暴多 0.1 秒' }] },
-    soul: { name: '靈魂', icon: 'soulSchool', color: '#B2EBF2', res: [{ name: '引魂', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '靈魂掉落 +30%' }] },
+    soul: { name: '經驗', icon: 'soulSchool', color: '#B2EBF2', res: [{ name: '引力', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '經驗 +30%' }] },
 };
 // 稀有祝福的實際數值（SCHOOLS 的說明文字跟著這裡寫）
 const RES_SKEL_ATK_SPEED = 0.25;
@@ -824,7 +824,7 @@ const META_UPGRADES = {
     might: { icon: 'might', name: '全軍傷害', group: 'power', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     mageHp: { icon: 'heart', name: '主角血量', group: 'power', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     ultMastery: { icon: 'ultMastery', name: '大招冷卻', group: 'power', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
-    soulAffinity: { icon: 'soulAffinity', name: '靈魂掉落', group: 'power', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    soulAffinity: { icon: 'soulAffinity', name: '經驗加成', group: 'power', max: 5, per: 0.08, costBase: 40, desc: m => `經驗 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     startSouls: { icon: 'soul', name: '開局經驗', group: 'power', max: 5, per: 15, costBase: 25, desc: m => `開局經驗 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
     revive: { icon: 'revive', name: '倒下復活', group: 'tools', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
     freeReroll: { icon: 'reroll', name: '重抽次數', group: 'tools', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
@@ -967,9 +967,9 @@ const ACHV_CAREER = [
     ['summons1k', '統領', '累計召喚 1000 隻', 15, s => s.summons >= 1e3],
     ['summons10k', '萬軍之主', '累計召喚 1 萬隻', 50, s => s.summons >= 1e4],
     ['summons100k', '無盡之師', '累計召喚 10 萬隻', 150, s => s.summons >= 1e5],
-    ['souls100k', '收魂人', '累計收集 10 萬靈魂', 20, s => s.souls >= 1e5],
-    ['souls1m', '靈魂富豪', '累計收集 100 萬靈魂', 60, s => s.souls >= 1e6],
-    ['souls10m', '吞天', '累計收集 1000 萬靈魂', 200, s => s.souls >= 1e7],
+    ['souls100k', '積少成多', '累計收集 10 萬經驗', 20, s => s.souls >= 1e5],
+    ['souls1m', '經驗老到', '累計收集 100 萬經驗', 60, s => s.souls >= 1e6],
+    ['souls10m', '吞天', '累計收集 1000 萬經驗', 200, s => s.souls >= 1e7],
     ['runs10', '常客', '玩 10 局', 20, s => s.runs >= 10],
     ['runs50', '不死之心', '玩 50 局', 60, s => s.runs >= 50],
     ['runs100', '輪迴百世', '玩 100 局', 150, s => s.runs >= 100],
@@ -1114,7 +1114,7 @@ function showNextAchvToast() {
     const el = uiElements.achvToast;
     if (!a) { achvToastBusy = false; el.classList.remove('show'); return; }
     achvToastBusy = true;
-    el.innerHTML = `${achvIconHtml(a)}<div class="achv-toast-text"><b>${a.name}</b><span>${a.desc}</span></div><span class="crystal-count">${iconHtml('crystal')}+${a.reward}</span>`;
+    el.innerHTML = `${achvIconHtml(a)}<div class="achv-toast-text"><b>${a.name}</b><span>${a.desc}</span></div><span class="crystal-count">${iconHtml('gold')}+${a.reward}</span>`;
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');
@@ -1142,7 +1142,7 @@ function renderAchievements() {
     }).join('');
     uiElements.achvList.innerHTML = all.filter(a => a.cat === achvTab && (!byClass || a.cls === achvClassTab)).map(a => {
         const ok = achvDone(a.id);
-        return `<div class="meta-row achv-row ${ok ? 'done' : ''}">${achvIconHtml(a)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('crystal')}${a.reward}</span></div>`;
+        return `<div class="meta-row achv-row ${ok ? 'done' : ''}">${achvIconHtml(a)}<div class="meta-info"><div class="meta-name">${a.name}</div><div class="meta-desc">${a.desc}</div></div><span class="crystal-count">${iconHtml('gold')}${a.reward}</span></div>`;
     }).join('');
 }
 
@@ -6640,7 +6640,7 @@ const CURSES = [
     { icon: 'curseBrutal', name: '兇暴', desc: '怪物血量 +25%', hpMult: 1.25 },
     { icon: 'curseBats', name: '蝠潮', desc: '蝙蝠群提早出現、數量加倍', batsEarly: true },
     { icon: 'curseSwift', name: '疾行', desc: '怪物移速 +15%', speedMult: 1.15 },
-    { icon: 'curseBarren', name: '貧瘠', desc: '靈魂掉落 -20%', soulMult: 0.8 },
+    { icon: 'curseBarren', name: '貧瘠', desc: '經驗 -20%', soulMult: 0.8 },
     { icon: 'curseElite', name: '精英橫行', desc: '精英怪機率 ×2', eliteMult: 2 },
     { icon: 'curseTyrant', name: '暴君', desc: '首領血量 +50%', bossHpMult: 1.5 },
     { icon: 'curseFrail', name: '脆弱', desc: '主角血量 -30%', mageHpMult: 0.7 },
@@ -6958,7 +6958,7 @@ function showVictory() {
     if (lv >= unlockedBefore && unlockedBefore < CURSES.length) meta.curseUnlocked = lv + 1;
     saveMeta();
     gameState.victoryOpen = true;
-    uiElements.victoryReward.innerHTML = `${iconHtml('crystal')}+${bonus}`;
+    uiElements.victoryReward.innerHTML = `${iconHtml('gold')}+${bonus}`;
     uiElements.victoryTime.innerHTML = `${iconHtml('clock')}${formatClock(gameState.run.clearTime)}` +
         (isRecord ? '<b class="new-record">新紀錄</b>' : `<span class="best-time">最快 ${formatClock(prevBest.time)}</span>`);
     const newCurse = (meta.curseUnlocked || 0) > unlockedBefore;
@@ -7719,7 +7719,7 @@ function refreshTitle() {
     uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('record')}最佳 ${best} 波　` : '') +
         (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         (fastest ? `${iconHtml('clock')}最快 ${formatClock(fastest.time)}　` : '') +
-        `<span class="crystal-count">${iconHtml('crystal')}${meta.crystals}</span>`;
+        `<span class="crystal-count">${iconHtml('gold')}${meta.crystals}</span>`;
     uiElements.titleMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
 }
 
@@ -7790,7 +7790,7 @@ function startNewRun() {
 // 只講「這個職業跟別人哪裡不一樣」：怎麼變強、要注意什麼；三張卡各一句、大招一句。重點字用 <b>
 const CLASS_GUIDES = {
     necro: {
-        rules: ['召喚卡選一次，那種兵就<b>自己一直補</b>；多選幾張，隻數變多、補得更快', '撿靈魂升級，<b>大軍跟著你一起變強</b>', '法師很脆，<b>躲在大軍後面、邊走邊打</b>'],
+        rules: ['召喚卡選一次，那種兵就<b>自己一直補</b>；多選幾張，隻數變多、補得更快', '撿經驗升級，<b>大軍跟著你一起變強</b>', '法師很脆，<b>躲在大軍後面、邊走邊打</b>'],
         cards: ['近戰主力，便宜又耐打', '光環讓身邊的怪變慢，陣亡時爆炸', '遠程射擊，躲在後排輸出'],
     },
     warrior: {
@@ -7920,7 +7920,7 @@ function metaRowHtml(scope, id, m) {
     const pips = Array.from({ length: m.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
     const btn = maxed
         ? '<button class="btn btn-dark" disabled>已滿</button>'
-        : `<button class="btn btn-gold" data-meta="${scope}:${id}" ${meta.crystals < cost ? 'disabled' : ''}><span class="price">${iconHtml('crystal')}${cost}</span></button>`;
+        : `<button class="btn btn-gold" data-meta="${scope}:${id}" ${meta.crystals < cost ? 'disabled' : ''}><span class="price">${iconHtml('gold')}${cost}</span></button>`;
     const amount = m.max <= 1 || !m.total ? m.desc(m)
         : lv === 0 ? `每級 ${m.total(m, 1)}`
             : maxed ? `<b>${m.total(m, lv)}</b>`
@@ -7934,7 +7934,7 @@ function affordableCount(scope) {
 }
 const META_GROUPS = [['power', '變強'], ['tools', '選卡與保命']];
 function renderMeta() {
-    uiElements.metaCrystals.innerHTML = `${iconHtml('crystal')}${meta.crystals}`;
+    uiElements.metaCrystals.innerHTML = `${iconHtml('gold')}${meta.crystals}`;
     uiElements.metaEarn.innerHTML = `<span>${iconHtml('skull')}每撐過 1 波 +${CRYSTALS_PER_WAVE}</span><span>${iconHtml('boss')}首領 +${CRYSTALS_PER_BOSS}</span><span>${iconHtml('crown')}通關 +${VICTORY_CRYSTALS}</span>`;
     uiElements.metaRefundBtn.disabled = metaRefundTotal() <= 0;
     // 一排分頁：通用＋每個職業（頭像＋名字，沒解鎖的上鎖、點不了），只列選中那一組
@@ -8057,7 +8057,7 @@ function renderCurse() {
     const unlocked = meta.curseUnlocked || 0;
     const sel = Math.min(meta.curseSelected || 0, unlocked);
     uiElements.curseLevel.textContent = sel;
-    uiElements.curseMult.innerHTML = `${iconHtml('crystal')}×${curseCrystalMult(sel).toFixed(1)}`;
+    uiElements.curseMult.innerHTML = `${iconHtml('gold')}×${curseCrystalMult(sel).toFixed(1)}`;
     uiElements.curseMinus.disabled = sel <= 0;
     uiElements.cursePlus.disabled = sel >= unlocked;
     uiElements.curseList.innerHTML = CURSES.map((c, i) => {
@@ -8433,7 +8433,7 @@ function getRunReward() {
 }
 
 function endRunFromPause() {
-    showConfirm('結束這局？', `結算並獲得 ${getRunReward()} 結晶`, '結束', () => {
+    showConfirm('結束這局？', `結算並獲得 ${getRunReward()} 金幣`, '結束', () => {
         showScreen(uiElements.pauseMenu, false);
         gameState.isPaused = false;
         gameState.gameOver = true;
@@ -8483,7 +8483,7 @@ function showGameOver(reason = 'died') {
     meta.crystals += reward;
     renderRewardDetail(survived);
     saveMeta();
-    uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward + gameState.achvCrystals}`;
+    uiElements.finalReward.innerHTML = `${iconHtml('gold')}+${reward + gameState.achvCrystals}`;
     uiElements.gameoverMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
     renderBlessingList(uiElements.finalBlessings);
     uiElements.hud.classList.add('hidden');
@@ -8698,7 +8698,7 @@ function updatePauseMenuStats() {
     uiElements.pauseSummonStats.innerHTML = classDef().cards.map(type =>
         `<div class="stat-cell"><img src="${UNIT_TYPES[type].img}" alt=""><b>${formatNumberK(gameState.totalSummons[type])}</b></div>`).join('');
     renderBlessingDetail(uiElements.pauseBlessings);
-    uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('crystal')}+${getRunReward()}`;
+    uiElements.pauseReward.innerHTML = `結束可得 ${iconHtml('gold')}+${getRunReward()}`;
 }
 
 function togglePause() {
@@ -9833,7 +9833,7 @@ function init() {
     onTap(uiElements.titleSettingsBtn, () => { syncSettingControls(); showScreen(uiElements.settingsScreen, true); });
     onTap(uiElements.settingsCloseBtn, () => { saveMeta(); showScreen(uiElements.settingsScreen, false); });
     onTap(uiElements.metaCloseBtn, closeMeta);
-    onTap(uiElements.metaRefundBtn, () => showConfirm('全部退還？', '結晶全數退回，可以重新分配', '退還', refundMeta));
+    onTap(uiElements.metaRefundBtn, () => showConfirm('全部退還？', '金幣全數退回，可以重新分配', '退還', refundMeta));
     onTap(uiElements.titleCurseBtn, () => { renderCurse(); showScreen(uiElements.curseScreen, true); });
     onTap(uiElements.curseCloseBtn, () => { showScreen(uiElements.curseScreen, false); refreshTitle(); });
     onTap(uiElements.titleAchvBtn, () => { renderAchievements(); showScreen(uiElements.achvScreen, true); });
