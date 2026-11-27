@@ -835,9 +835,14 @@ const META_KEY = 'undeadFrenzy_meta';
 const META_UPGRADES = {
     might: { icon: 'might', name: '全軍傷害', group: 'power', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     mageHp: { icon: 'heart', name: '主角血量', group: 'power', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    // 移速跟其他倖存者遊戲一樣給得很少（寶可夢倖存者全滿 +12%、吸血鬼倖存者 +10%）：閃招是這個遊戲的核心，
+    // 給多了首領的預警圈、蝙蝠都追不上，閃避就沒有意思。首領前搖照「最慢的主角、沒有加成」算，這裡加的只是餘裕
+    moveSpeed: { icon: 'swift', name: '移動速度', group: 'power', max: 5, per: 0.02, costBase: 35, desc: m => `主角移速 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     ultMastery: { icon: 'ultMastery', name: '大招冷卻', group: 'power', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     soulAffinity: { icon: 'soulAffinity', name: '經驗加成', group: 'power', max: 5, per: 0.08, costBase: 40, desc: m => `經驗 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     startSouls: { icon: 'soul', name: '開局經驗', group: 'power', max: 5, per: 15, costBase: 25, desc: m => `開局經驗 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+    // 經驗不會自動收回，拾取範圍直接決定一局撿得到多少（同吸血鬼倖存者的「磁鐵」）
+    pickupRange: { icon: 'magnet', name: '拾取範圍', group: 'power', max: 5, per: 0.12, costBase: 25, desc: m => `拾取範圍 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     revive: { icon: 'revive', name: '倒下復活', group: 'tools', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
     freeReroll: { icon: 'reroll', name: '重抽次數', group: 'tools', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
     // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑。
@@ -1159,7 +1164,7 @@ function renderAchievements() {
 }
 
 function getMagnetRadius() {
-    return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
+    return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + metaVal('pickupRange') + (res('soul') >= 1 ? RES_MAGNET : 0));
 }
 function getNovaCooldown() {
     return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (res('nova') >= 1 ? 1 - RES_NOVA_CD : 1);
@@ -2210,7 +2215,7 @@ class Player extends GameObject {
         this.hpTrail = ratio > this.hpTrail ? ratio : Math.max(ratio, this.hpTrail - PLAYER_HP_TRAIL_SPEED * deltaTime);
         this.absorbGlow = Math.max(0, this.absorbGlow - ABSORB_GLOW_DECAY * deltaTime);
         const cls = classDef();
-        this.moveSpeed = cls.hero.moveSpeed * (1 + blessVal('shadowStep')) * (cls.heroSpeedMult ? cls.heroSpeedMult() : 1);
+        this.moveSpeed = cls.hero.moveSpeed * (1 + blessVal('shadowStep') + metaVal('moveSpeed')) * (cls.heroSpeedMult ? cls.heroSpeedMult() : 1);
         this.castGlow = Math.max(0, this.castGlow - CAST_GLOW_DECAY * deltaTime);
         const moveX = moveVec.x * this.moveSpeed * deltaTime;
         const moveY = moveVec.y * this.moveSpeed * deltaTime;
