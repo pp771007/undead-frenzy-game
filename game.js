@@ -713,7 +713,8 @@ const BLESSINGS = {
     frostAura: { school: 'wraith', name: '寒冥光環', max: 3, per: 5, desc: b => `怨靈光環持續傷害 ${b.per}（隨怨靈等級成長）` },
     auraMight: { school: 'wraith', name: '冥界加持', max: 3, per: 0.2, desc: b => `怨靈光環裡的骷髏、眼魔傷害 +${pct(b.per)}` },
     // totalDesc：暫停選單顯示累積效果時用（「並回滿」只在選的當下成立）
-    vitality: { school: 'mage', name: '不死之軀', max: 5, per: 25, desc: b => `法師血量 +${b.per} 並回滿`, totalDesc: b => `法師血量 +${b.per}` },
+    // 每層血量：法師流派不加軍隊，首領把大軍打光後只剩法師自己撐（自動遊玩只走法師時多半倒在第 30 波首領，血 25／層時兩成勝率）
+    vitality: { school: 'mage', name: '不死之軀', max: 5, per: 40, desc: b => `法師血量 +${b.per} 並回滿`, totalDesc: b => `法師血量 +${b.per}` },
     soulBlade: { school: 'mage', name: '靈魂之刃', max: 4, per: 0.6, desc: b => `法師靈魂彈傷害 +${pct(b.per)}` },
     soulVolley: { school: 'mage', name: '靈魂連射', max: 2, per: 1, desc: b => `法師每次多射 ${b.per} 顆` },
     shadowStep: { school: 'mage', name: '幽影步', max: 3, per: 0.12, desc: b => `法師移速 +${pct(b.per)}` },
@@ -736,9 +737,9 @@ const BLESSINGS = {
     // 怨靈附身：怨靈的死變成換來一個打手，怨靈流派從「爆一下」變成「搶一隻怪過來」
     possession: { school: 'wraith', name: '怨靈附身', legendary: true, max: 1, per: POSSESS_TIME, desc: b => `怨靈爆炸時附身身邊最強的一隻怪，牠替你打 ${b.per} 秒（首領不會）` },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
-    ghostfireBones: { school: DUO_SCHOOL, duo: ['skel', 'wraith'], name: '冥火骨兵', legendary: true, max: 1, per: GHOSTFIRE_SHARE, desc: () => '怨靈光環裡的骷髏每一擊都炸出一團冥火，燒到身邊的怪' },
+    ghostfireBones: { school: DUO_SCHOOL, duo: ['skel', 'wraith'], name: '冥火骨兵', legendary: true, max: 1, per: GHOSTFIRE_SHARE, desc: () => '怨靈光環裡的骷髏，每一擊都炸出冥火' },
     soulGaze: { school: DUO_SCHOOL, duo: ['eye', 'mage'], name: '靈視', legendary: true, max: 1, per: SOUL_GAZE_CHANCE, desc: b => `眼魔每次射擊有 ${pct(b.per)} 機率多射出一發法師的魂彈` },
-    wailingNova: { school: DUO_SCHOOL, duo: ['wraith', 'nova'], name: '哀魂新星', legendary: true, max: 1, per: WAILING_NOVA_SHARE, desc: b => `放新星時，每隻怨靈也在原地炸開一圈（新星傷害的 ${pct(b.per)}）` },
+    wailingNova: { school: DUO_SCHOOL, duo: ['wraith', 'nova'], name: '哀魂新星', legendary: true, max: 1, per: WAILING_NOVA_SHARE, desc: b => `放新星時，每隻怨靈也炸一圈（${pct(b.per)} 傷害）` },
     soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },

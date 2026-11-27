@@ -148,11 +148,12 @@ Object.assign(BLESSINGS, {
     spartans: { school: 'phalanx', name: '三百壯士', legendary: true, max: 1, per: 2.5, desc: b => `人數上限減半，每個士兵血量與攻擊 ×${b.per}` },
     // 蠍弩：弩陣替槍陣定住靶子——弩手先釘、長槍再捅，兩個兵種要一起養
     scorpio: { school: 'crossbow', name: '蠍弩', legendary: true, max: 1, per: 1, desc: b => `弩箭把怪釘在原地 ${b.per} 秒，被釘住的怪挨長槍傷害 ×${SCORPIO_SPEAR_MULT}` },
-    // 刀槍不入：維京傳說裡狂戰士不怕刀劍。狂怒變成「衝進怪堆的時間」，砍得越多撐得越久
-    unbreakable: { school: 'berserk', name: '刀槍不入', legendary: true, max: 1, per: 0.3, desc: b => `狂怒中血量不會掉到 1 以下；每砍死一隻，狂怒多 ${b.per} 秒` },
+    // 刀槍不入：維京傳說裡狂戰士不怕刀劍。狂怒變成「衝進怪堆的時間」；不延長狂怒——
+    // 延長的話跟「熊皮戰士」（不虛脫）、戰意疊在一起幾乎整局無敵（自動遊玩只走狂戰時 6 局全勝，別的流派兩成）
+    unbreakable: { school: 'berserk', name: '刀槍不入', legendary: true, max: 1, per: 1, desc: () => '狂怒中血量不會掉到 1 以下（狂怒結束時剩多少就是多少）' },
     // ---- 雙流派傳說（兩個流派都到 3 層才出現）----
     shieldFury: { school: DUO_SCHOOL, duo: ['shieldwall', 'berserk'], name: '盾怒', legendary: true, max: 1, per: 4, desc: b => `盾兵每擋下一次攻擊，你的怒氣 +${b.per}` },
-    marchingTestudo: { school: DUO_SCHOOL, duo: ['shieldwall', 'legion'], name: '移動龜甲', legendary: true, max: 1, per: 1, desc: () => '龜甲陣在移動中也生效：盾兵把盾舉過頭頂，邊走邊減傷' },
+    marchingTestudo: { school: DUO_SCHOOL, duo: ['shieldwall', 'legion'], name: '移動龜甲', legendary: true, max: 1, per: 1, desc: () => '龜甲陣在移動中也生效' },
     furyVolley: { school: DUO_SCHOOL, duo: ['crossbow', 'berserk'], name: '怒射', legendary: true, max: 1, per: 2, desc: b => `你狂怒時，弩手每次多射 ${b.per} 支` },
 });
 // 戰士專屬成就的門檻
@@ -168,8 +169,6 @@ const RES_IRONLAW_TURN = 2;
 const RES_LASTSTAND_SHARE = 1 / 3;
 const AQUILA_RADIUS = 140;
 const SCORPIO_SPEAR_MULT = 2;
-// 刀槍不入：每次狂怒最多延長到原本的兩倍，不然清雜兵時狂怒永遠不停、等於整局無敵
-const UNBREAKABLE_EXTEND_MAX = WARRIOR.berserkTime;
 const UNBREAKABLE_TEXT_EVERY = 0.6;
 
 Object.assign(UNIT_TYPES, {
@@ -389,7 +388,7 @@ function addRage(amount) {
     if (w.rage < WARRIOR.rageMax) return;
     w.rage = 0;
     w.berserkT = WARRIOR.berserkTime + blessVal('rageLength');
-    w.extended = 0;
+    w.berserkAt = worldTime;
     const p = gameState.player;
     spawnParticles(p.pos.x, p.pos.y, BERSERK_COLOR, 36, 200, 0.7, 3);
     spawnFloatText(p.pos.x, p.pos.y - 40, '狂怒！', '#FFAB40', 20, 1.2, 'rage');
@@ -494,10 +493,6 @@ function warriorSwing(p, dt) {
     const dmg = WARRIOR.swingDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * (1 + w.drills * WARRIOR.drillDamage);
     let kills = 0;
     for (const m of hits) { m.takeDamage(dmg); if (!m.isAlive) kills++; }
-    if (kills > 0 && w.berserkT > 0 && bl('unbreakable')) {
-        const add = Math.min(kills * BLESSINGS.unbreakable.per, UNBREAKABLE_EXTEND_MAX - w.extended);
-        w.berserkT += add; w.extended += add;
-    }
     // 大劍親手砍死的怪回血：站最前線又沒有波間回血，戰士要靠打下去撐住
     if (kills > 0 && p.currentHealth < p.maxHealth) {
         const per = WARRIOR.killHeal + blessVal('rageLeech');
@@ -608,7 +603,7 @@ function drawWarriorHud(ctx, p) {
         ctx.drawImage(getGlowSprite(BERSERK_COLOR), p.pos.x - 45, p.pos.y - 45, 90, 90);
         ctx.restore();
     }
-    const k = w.berserkT > 0 ? Math.min(1, w.berserkT / WARRIOR.berserkTime) : w.exhaustT > 0 ? 0 : w.rage / WARRIOR.rageMax;
+    const k = w.berserkT > 0 ? Math.min(1, w.berserkT / (WARRIOR.berserkTime + blessVal('rageLength'))) : w.exhaustT > 0 ? 0 : w.rage / WARRIOR.rageMax;
     ctx.fillStyle = 'rgba(14, 10, 20, 0.85)';
     ctx.fillRect(x - 1.5, y - 1.5, RAGE_BAR_W + 3, RAGE_BAR_H + 3);
     ctx.fillStyle = w.berserkT > 0 ? BERSERK_COLOR : w.exhaustT > 0 ? '#607D8B' : '#FF9100';
@@ -904,7 +899,9 @@ function drawScorpioPins(ctx) {
 // ---------- 傳說「刀槍不入」：狂怒中倒不下 ----------
 function unbreakableSave() {
     const w = warState(), p = gameState.player;
-    if (!bl('unbreakable') || w.berserkT <= 0) return false;
+    // 狂怒要在這一下之前就開始：主角扣血時 onHeroHurt 會先加怒氣，致命的那一下本身就可能把怒氣灌滿、當場進入狂怒，
+    // 不排除的話「打死你的那一下」反而觸發狂怒救命，剩 1 血、下一下又一樣，整局死不了
+    if (!bl('unbreakable') || w.berserkT <= 0 || w.berserkAt === worldTime) return false;
     p.currentHealth = 1;
     if (!(w.unbreakableTextAt > worldTime)) {
         w.unbreakableTextAt = worldTime + UNBREAKABLE_TEXT_EVERY;
