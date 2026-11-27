@@ -64,6 +64,14 @@ const POISON_GREEN = '#76FF03', POISON_BUBBLE = '#CCFF90', POISON_BUBBLE_EDGE = 
 const POISON_GLOW_BASE = 0.35, POISON_GLOW_PER_STACK = 0.07, POISON_GLOW_MAX = 0.75, POISON_GLOW_SIZE = 1.4;  // 大小 × 圖寬
 const POISON_BUBBLES = 3, POISON_BUBBLE_RISE = 22, POISON_BUBBLE_SPEED = 0.9;
 const POISON_HIT_SPARKS = 3, POISON_DEATH_PUFF = 10;
+// 迷魂毒：發瘋幾秒、找同伴打的範圍、打同伴的傷害倍率（怪的攻擊是照著打主角調的，打同樣血厚的怪要放大才有感）、同一隻多久才能再瘋
+const MAD_TIME = 3, MAD_RADIUS = 130, MAD_DMG_MULT = 4, MAD_COOLDOWN = 2;
+// 疊到幾層發瘋：固定層數，不跟著毒層上限走（不然越投資劇毒、上限越高，反而越難瘋）
+const MAD_STACKS = 4;
+// 移形換影：幾秒換一次；影子要比你離目標近這麼多才換（換了反而更遠就不換）
+const SWAP_EVERY = 6, SWAP_GAIN = 40;
+// 有這張傳說時，影子在這個距離內看到目標就撲過去（要小於召喚物丟掉目標的距離，不然撲一下就放掉）
+const SWAP_HUNT = 230;
 
 // ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
@@ -97,6 +105,10 @@ Object.assign(BLESSINGS, {
     oldMan: { school: 'intel', name: '山中老人', legendary: true, max: 1, per: 3, desc: b => `目標倒下時，牠身邊 ${b.per} 隻怪倒戈成為你的影子` },
     pillowDagger: { school: 'assassination', name: '枕邊匕首', legendary: true, max: 1, per: 160, desc: () => '目標被標記的那一刻起，牠身邊的怪攻擊力下降' },
     fidai: { school: 'smoke', name: '菲達伊', legendary: true, max: 1, per: 0.5, desc: b => `隱身時移速 +${pct(b.per)}，隱身中的飛刀傷害 ×${FIDAI_KNIFE}` },
+    // 迷魂毒：疊層要時間，所以要挑一隻大的一直射；換來的是牠在怪堆裡替你打
+    madVenom: { school: 'venomschool', name: '迷魂毒', legendary: true, max: 1, per: MAD_TIME, desc: b => `毒疊到 ${MAD_STACKS} 層的怪發瘋 ${b.per} 秒，改打身邊的怪（首領不會）` },
+    // 移形換影：影子變成刺客的傳送點，影子養在目標附近就能一直貼身伏擊
+    shadowSwap: { school: 'shadowschool', name: '移形換影', legendary: true, max: 1, per: SWAP_EVERY, desc: b => `影子會撲向目標；每 ${b.per} 秒和最靠近目標的影子互換位置，換完拿到一次伏擊` },
 });
 const RES_MARKED_TAKEN = 1.3;
 // 菲達伊：隱身中的飛刀都乘這個（不延長隱身：隱身時間疊太長，怪又都不理刺客了）
@@ -193,7 +205,7 @@ const RELIC_STEALTH_CHANNEL = 3;
 // targets：目前標記的目標（共鳴「死亡宣告」時兩個）；markT：下一次標記還要等幾秒；trashValue：上一個目標之後雜兵原本該給的靈魂
 function newRogueState() {
     return { targets: [], markT: 0, trashValue: 0, knifeT: 0, hideT: 0, hideMax: 1, panicT: 0, vanishT: 0, ambush: false, smokes: [], poisoned: [], poisonT: 0,
-        daggerT: 0, waveTargets: 0, firstTargetThisWave: true, intelBonus: false };
+        daggerT: 0, waveTargets: 0, firstTargetThisWave: true, intelBonus: false, mad: [], swapT: SWAP_EVERY };
 }
 function rogueState() { return gameState.rogue || (gameState.rogue = newRogueState()); }
 function inSmoke(pos) { for (const s of rogueState().smokes) if (distanceSq(s, pos) <= SMOKE_RADIUS * SMOKE_RADIUS) return true; return false; }
@@ -255,6 +267,8 @@ function rogueUpdate(dt) {
     // 毒
     r.poisonT -= dt;
     if (r.poisonT <= 0) { r.poisonT = POISON.tick; tickPoison(); }
+    if (r.mad.length) updateMadness(dt);
+    if (bl('shadowSwap') && !gameState.betweenWaves) { r.swapT -= dt; if (r.swapT <= 0) tryShadowSwap(); }
     // 煙：裡面的怪緩速
     for (let i = r.smokes.length - 1; i >= 0; i--) {
         const s = r.smokes[i];
@@ -400,6 +414,7 @@ function addPoison(m, stacks) {
     if (!m.poisonStacks) { m.poisonStacks = 0; r.poisoned.push(m); }
     m.poisonStacks = Math.min(poisonCap(), m.poisonStacks + stacks);
     m.poisonTime = POISON.time;
+    if (bl('madVenom') && m.poisonStacks >= MAD_STACKS && !(m instanceof BossMonster) && !(m.madT > 0) && !(m.madCd > worldTime)) goMad(m);
     introduceRelic('venom', '飛刀帶毒', `每刀疊一層，最多 ${poisonCap()} 層`, '#AED581', 'venomschool');
 }
 function tickPoison() {
@@ -433,6 +448,132 @@ function poisonDeath(m) {
     if (getTier(gameState.units.Venom.level) >= 3) {
         monsterGrid.forEachInRadius(m.pos, VENOM_CLOUD_RADIUS, o => { if (o.isAlive && distanceSq(o.pos, m.pos) <= VENOM_CLOUD_RADIUS * VENOM_CLOUD_RADIUS) addPoison(o, 1); });
         spawnParticles(m.pos.x, m.pos.y, '#9CCC65', 12, 70, 0.6, 3);
+    }
+}
+
+// ---------- 傳說「迷魂毒」：毒疊滿的怪發瘋，改打身邊的怪 ----------
+// 怪的攻擊流程只認 target 的 isAlive／pos／maxHealth／takeDamage：給牠一個代理目標，打下去的傷害放大後轉給真正的同伴
+function madProxy(m) {
+    return m.madProxy || (m.madProxy = {
+        victim: null,
+        get isAlive() { return !!this.victim && this.victim.isAlive && m.madT > 0; },
+        // 怪的 update 在發現目標死掉之前就會先讀 target.pos，所以沒有同伴時也要回得出位置
+        get pos() { return this.victim ? this.victim.pos : m.pos; },
+        get maxHealth() { return this.victim ? this.victim.maxHealth : 1; },
+        takeDamage(d) { if (this.victim) this.victim.takeDamage(d * MAD_DMG_MULT); },
+    });
+}
+function goMad(m) {
+    m.madT = MAD_TIME;
+    m.madCd = worldTime + MAD_TIME + MAD_COOLDOWN;
+    rogueState().mad.push(m);
+    madRetarget(m);
+    if (inView(m.pos)) {
+        spawnFloatText(m.pos.x, m.pos.y - (m.imageHeight || 30) * 0.5 - 8, '發瘋', MAD_GREEN, 13, 0.9, 'madVenom');
+        spawnParticles(m.pos.x, m.pos.y - 10, MAD_GREEN, 8, 60, 0.4, 3);
+    }
+}
+function madRetarget(m) {
+    let best = null, bestD = MAD_RADIUS * MAD_RADIUS;
+    monsterGrid.forEachInRadius(m.pos, MAD_RADIUS, o => {
+        if (o === m || !o.isAlive || o.stealthed) return;
+        const d = distanceSq(o.pos, m.pos);
+        if (d < bestD) { bestD = d; best = o; }
+    });
+    const proxy = madProxy(m);
+    proxy.victim = best;
+    if (best) { m.tauntBy = proxy; m.tauntT = m.madT; m.target = proxy; }
+    else if (m.target === proxy) { m.target = null; m.tauntBy = null; m.tauntT = 0; }
+}
+function updateMadness(dt) {
+    const r = rogueState();
+    r.mad = r.mad.filter(m => {
+        if (!m.isAlive) return false;
+        m.madT -= dt;
+        if (m.madT <= 0) { m.madT = 0; if (m.tauntBy === m.madProxy) { m.tauntBy = null; m.tauntT = 0; m.target = null; } return false; }
+        if (!m.madProxy.victim || !m.madProxy.victim.isAlive) madRetarget(m);
+        return true;
+    });
+}
+// 頭上一圈轉動的毒綠漩渦，兩顆小星星繞著轉：一眼看得出「這隻瘋了、現在是幫你打的」
+const MAD_GREEN = '#B2FF59', MAD_SPIN = 7;
+function drawMadness(ctx, m) {
+    const x = m.pos.x, y = m.pos.y - m.imageHeight * 0.5 - 12, a0 = worldTime * MAD_SPIN;
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (const [col, lw] of [[SHAPE_OUTLINE, 4.5], [MAD_GREEN, 2]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = lw;
+        ctx.beginPath();
+        for (let i = 0; i <= 24; i++) {
+            const t = i / 24, a = a0 + t * Math.PI * 3, rr = 1.5 + t * 8;
+            const px = x + Math.cos(a) * rr, py = y + Math.sin(a) * rr * 0.6;
+            i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+    }
+    ctx.fillStyle = '#FFF59D'; ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 2; i++) {
+        const a = -a0 * 0.8 + i * Math.PI, sx = x + Math.cos(a) * 13, sy = y + Math.sin(a) * 5;
+        ctx.beginPath();
+        for (let j = 0; j < 8; j++) { const b = j * Math.PI / 4, rr = j % 2 ? 1.3 : 3.2; ctx.lineTo(sx + Math.cos(b) * rr, sy + Math.sin(b) * rr); }
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// ---------- 傳說「移形換影」：和最靠近目標的影子互換位置 ----------
+function tryShadowSwap() {
+    const r = rogueState(), p = gameState.player, RETRY = 0.5;
+    r.swapT = RETRY;
+    const t = r.targets.find(m => m.isAlive);
+    if (!t) return;
+    let best = null, bestD = Infinity;
+    for (const s of gameState.summons) {
+        if (!s.isAlive || !(s instanceof ShadowClone)) continue;
+        const d = Math.hypot(s.pos.x - t.pos.x, s.pos.y - t.pos.y);
+        if (d < bestD) { bestD = d; best = s; }
+    }
+    if (!best || bestD + SWAP_GAIN > Math.hypot(p.pos.x - t.pos.x, p.pos.y - t.pos.y)) return;
+    const from = { x: p.pos.x, y: p.pos.y }, to = { x: best.pos.x, y: best.pos.y };
+    p.pos.x = to.x; p.pos.y = to.y;
+    best.pos.x = from.x; best.pos.y = from.y; best.target = null;
+    r.ambush = true;
+    r.swapT = SWAP_EVERY;
+    gameState.visualEffects.push(new ShadowSwapEffect(from, to));
+    spawnParticles(from.x, from.y, '#7E57C2', 12, 80, 0.45, 3);
+    spawnParticles(to.x, to.y, '#7E57C2', 12, 80, 0.45, 3);
+    spawnFloatText(to.x, to.y - 40, '換影', STEALTH_COLOR, 14, 0.9, 'shadowSwap');
+    Sfx.play('vanish');
+}
+// 換位：兩點之間一上一下兩道弧線，各有一團紫影沿著弧線往對方那頭飛（看得出「是交換」不是「瞬移」）
+class ShadowSwapEffect extends TimedEffect {
+    constructor(a, b) { super(a, 0.45); this.a = a; this.b = b; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { a, b } = this;
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1;
+        const bend = Math.min(60, d * 0.3), nx = -dy / d * bend, ny = dx / d * bend;
+        const arcs = [[a, b, mx + nx, my + ny], [b, a, mx - nx, my - ny]];
+        // 影子頭跑在前面（前 60% 的時間飛完），後面拖一段由細到粗的尾巴，最後整條淡掉
+        const head = Math.min(1, k / 0.6), tail = Math.max(0, head - 0.45), N = 14;
+        const at = (s, e, cx, cy, t) => { const u = 1 - t; return [u * u * s.x + 2 * u * t * cx + t * t * e.x, u * u * s.y + 2 * u * t * cy + t * t * e.y]; };
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = k < 0.6 ? 1 : (1 - k) / 0.4;
+        for (const [s, e, cx, cy] of arcs) {
+            for (let i = 1; i <= N; i++) {
+                const t0 = tail + (head - tail) * (i - 1) / N, t1 = tail + (head - tail) * i / N, w = i / N;
+                const [x0, y0] = at(s, e, cx, cy, t0), [x1, y1] = at(s, e, cx, cy, t1);
+                ctx.strokeStyle = STEALTH_DARK; ctx.lineWidth = 3 + 6 * w;
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+                ctx.strokeStyle = STEALTH_COLOR; ctx.lineWidth = 1 + 3 * w;
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+            }
+            const [hx, hy] = at(s, e, cx, cy, head);
+            ctx.drawImage(getGlowSprite('#7E57C2'), hx - 24, hy - 24, 48, 48);
+            ctx.fillStyle = '#EDE7F6';
+            ctx.beginPath(); ctx.arc(hx, hy, 4.5, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.restore();
     }
 }
 
@@ -564,6 +705,7 @@ function drawRogueWorld(ctx) {
         }
     }
     ctx.globalAlpha = 1;
+    for (const m of r.mad) if (m.isAlive && inView(m.pos)) drawMadness(ctx, m);
 }
 // 目標在畫面外時，邊緣一個金箭頭指著牠
 function drawTargetPointers(ctx) {
@@ -606,6 +748,11 @@ class ShadowClone extends SummonUnit {
         if (!this.isAlive) return;
         this.life -= dt;
         if (this.life <= 0) { this.fade(); return; }
+        // 移形換影：影子撲向目標，刺客才換得過去
+        if (bl('shadowSwap')) {
+            const t = rogueState().targets.find(m => m.isAlive && distanceSq(m.pos, this.pos) <= SWAP_HUNT * SWAP_HUNT);
+            if (t) this.target = t;
+        }
         super.update(dt, monsters, summons, player);
     }
     attackTarget() {

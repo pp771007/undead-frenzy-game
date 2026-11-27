@@ -538,6 +538,18 @@ const ICON_BODIES = {
         <path d="M34 8 L34 36" stroke-width="5"/><path d="M34 8 L34 36" stroke="#eceff1" stroke-width="2.5"/><path d="M28 10 L40 10" stroke-width="4"/><path d="M28 10 L40 10" stroke="#ffd54f" stroke-width="2"/>`,
     fidai: `<path d="M32 6 L56 18 L50 50 L32 60 L14 50 L8 18 Z" fill="#212121"/><path d="M20 28 L28 32 M44 28 L36 32" stroke="#ffd740" stroke-width="3.5"/><path d="M8 18 L32 6 L56 18 L32 22 Z" fill="#424242"/>
         <path d="M2 58 L14 46 M62 58 L50 46" stroke="#b39ddb" stroke-width="3"/>`,
+    // 迷魂毒：中毒發綠的小怪，眼睛轉成漩渦、咧嘴傻笑，頭上一圈毒綠漩渦和兩顆星
+    madVenom: `<g transform="translate(0 10)"><path d="${GHOST_PATH}" fill="#9ccc65"/>
+            <path d="M25 27 m-1 0 a1 1 0 1 1 2 0 a3 3 0 1 1 -5 -1 a5 5 0 1 1 8 3 M40 27 m-1 0 a1 1 0 1 1 2 0 a3 3 0 1 1 -5 -1 a5 5 0 1 1 8 3" stroke-width="2.4"/>
+            <path d="M23 38 L27 41 L31 38 L35 41 L39 38" stroke-width="2.6"/><path d="M20 15 C24 12 28 12 30 15" stroke="#dcedc8" stroke-width="2.4"/></g>
+        <path d="M53 44 C53 48 55 50 55 52 C55 55 51 55 51 52 C51 50 53 48 53 44 Z" fill="#76ff03" stroke-width="1.8"/>`
+        + duoStroke('M32 12 C35 12 36 9 33.5 7.5 C30 6 26 9 27.5 13 C29 17 37 17 39 11 C40.5 6 35 2 29 3.5', '#b2ff59', 2.4)
+        + `${[[14, 8], [50, 9]].map(([x, y]) => `<path d="${starPath(x, y, 5, 2, 4)}" fill="#fff59d" stroke-width="1.6"/>`).join('')}`,
+    // 移形換影：刺客和一個紫色影子，中間上下兩道弧形箭頭互相指向對方
+    shadowSwap: `${[[15, 40, '#455a64', 1], [49, 40, '#7e57c2', 0.75]].map(([x, y, c, o]) => `<g transform="translate(${x} ${y}) scale(0.8)" opacity="${o}"><path d="M-12 22 L-12 0 C-12 -6 -8 -10 0 -24 C8 -10 12 -6 12 0 L12 22 Z" fill="${c}"/>
+            <ellipse cx="0" cy="-8" rx="6" ry="5" fill="#1b1424" stroke="none"/><path d="M-4 -9 L-1.5 -7.5 M4 -9 L1.5 -7.5" stroke="#ffd740" stroke-width="2"/></g>`).join('')}`
+        + duoStroke('M18 14 C24 4 40 4 46 14', '#b39ddb', 3) + `<path d="M50 20 L42 15 L49 10 Z" fill="#b39ddb" stroke-width="2"/>`
+        + duoStroke('M46 60 C40 64 24 64 18 58', '#b39ddb', 3) + `<path d="M13 53 L22 56 L16 62 Z" fill="#b39ddb" stroke-width="2"/>`,
     // ---- 武僧（monk.js）----
     // 大招「十八羅漢陣」：一圈金色小人
     arhats: `<circle cx="32" cy="32" r="22" stroke="#ffd54f" stroke-width="3" stroke-dasharray="3 4"/>${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4, x = 32 + Math.cos(a) * 22, y = 32 + Math.sin(a) * 22; return `<circle cx="${x.toFixed(1)}" cy="${(y - 3).toFixed(1)}" r="3.5" fill="#ffcc80" stroke-width="2"/><path d="M${(x - 4).toFixed(1)} ${(y + 5).toFixed(1)} L${(x + 4).toFixed(1)} ${(y + 5).toFixed(1)} L${x.toFixed(1)} ${(y - 1).toFixed(1)} Z" fill="#ffa726" stroke-width="2"/>`; }).join('')}
