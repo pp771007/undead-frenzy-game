@@ -78,7 +78,12 @@ const THRALL_TIER1_LEECH = 0.1, THRALL_TIER3_REVIVE = 0.5;
 const BAT_TIER1_RATE = 1.3, BAT_DRAIN = 0.25;
 const BURST_TIER1_RADIUS = 1.25, BURST_TIER2_SLOW = 0.5;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// 蝠群風暴：轉幾秒、繞多遠（每隻蝙蝠半徑錯開一點，看起來是一團不是一條線）、轉多快、每隻多久咬一次、咬的傷害倍率
+const STORM_TIME = 5, STORM_RADIUS = 52, STORM_SPREAD = 22, STORM_SPIN = 3.2, STORM_BITE_EVERY = 0.3, STORM_HIT_RADIUS = 18, STORM_MULT = 1.5;
+// 月狼：爪擊範圍、扇形角度、間隔、傷害是飛刃的幾倍（近戰要貼身，比遠程危險）、吸血倍率、夜裡移速
+const MOONWOLF_RANGE = 62, MOONWOLF_ARC = Math.PI * 0.75, MOONWOLF_EVERY = 0.55, MOONWOLF_MULT = 2.4, MOONWOLF_LEECH = 2, MOONWOLF_SPEED = 1.4;
+
+// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     bloodmagic: { name: '血魔法', icon: 'bloodmagic', color: '#B388FF', res: [{ name: '血箭', desc: '血之飛刃每次多射一把' }, { name: '血祭', desc: '血量低於一半時，你的傷害加倍' }] },
     kin: { name: '眷屬', icon: 'kin', color: '#CE93D8', res: [{ name: '饗宴', desc: '眷屬每打倒一隻怪，你回 1% 血' }, { name: '血親', desc: '精英怪也能轉化，而且保留精英的強度' }] },
@@ -110,6 +115,10 @@ Object.assign(BLESSINGS, {
     dracula: { school: 'kin', name: '德古拉', legendary: true, max: 1, per: 0.5, desc: () => '打倒的首領會站起來成為你的眷屬' },
     countess: { school: 'bloodmagic', name: '血伯爵夫人', legendary: true, max: 1, per: 0.2, desc: b => `補到滿血以上的部分，${pct(b.per)} 變成最大血量` },
     garlic: { school: 'undying', name: '蒜也不怕', legendary: true, max: 1, per: 1, desc: () => '白天不再曬傷，眷屬白天也不變弱' },
+    // 蝠群風暴：入夜那一刻是衝進怪堆的訊號
+    batStorm: { school: 'bats', name: '蝠群風暴', legendary: true, max: 1, per: STORM_TIME, desc: b => `入夜那一刻，所有蝙蝠圍著你轉 ${b.per} 秒，碰到的怪都被吸血` },
+    // 月狼：夜裡從遠程換成近戰，狼化流派的「入夜變強」推到底
+    moonWolf: { school: 'werewolf', name: '月狼', legendary: true, max: 1, per: MOONWOLF_LEECH, desc: b => `入夜時飛刃換成扇形爪擊，吸血 ×${b.per}、移速 +${pct(MOONWOLF_SPEED - 1)}` },
 });
 const RES_FEAST_HEAL = 0.01;
 const RES_NIGHTWING_RATE = 1.4;
@@ -172,7 +181,7 @@ CLASSES.vampire = {
     },
     onWaveEnd: () => { if (bl('bloodBank')) gameState.souls = Math.round(gameState.souls * (1 + blessVal('bloodBank'))); },
     onBossKill: () => { if (!vampState().night) gameState.run.flags.vampDayBoss = true; },
-    heroSpeedMult: () => (1 + blessVal('vwSpeed')) * (vampState().night && res('werewolf') >= 1 ? RES_WOLFWALK_SPEED : 1),
+    heroSpeedMult: () => (1 + blessVal('vwSpeed')) * (vampState().night && res('werewolf') >= 1 ? RES_WOLFWALK_SPEED : 1) * (moonWolfActive() ? MOONWOLF_SPEED : 1),
     heroDamageTakenMult: () => {
         const v = vampState();
         if (v.batFormT > 0) return 0;
@@ -231,6 +240,8 @@ CLASSES.vampire = {
         return true;
     },
     drawHero: (ctx, p) => drawVampHud(ctx, p),
+    drawHeroUnder: (ctx, p) => drawMoonWolfAura(ctx, p),
+    drawWorld: (ctx) => drawBatStorm(ctx),
     drawScreen: (ctx) => drawVampSky(ctx),
     saveExtra: () => {
         const v = vampState();
@@ -262,7 +273,7 @@ const HOLY_WATER_TICK = 0.5, HOLY_WATER_BURN = 0.06;
 
 // cycle：晝夜走到哪（0～dayTime+nightTime）；moonT：血月或棺木強制入夜的剩餘秒數；night：這一格是不是黑夜
 function newVampState() {
-    return { cycle: 0, moonT: 0, night: false, bladeT: 0, burstT: 0, biteT: 0, batFormT: 0, batFormCd: 0, holyT: 0, reborn: false, bonusHp: 0, beacons: [] };
+    return { cycle: 0, moonT: 0, night: false, bladeT: 0, burstT: 0, biteT: 0, batFormT: 0, batFormCd: 0, holyT: 0, reborn: false, bonusHp: 0, beacons: [], stormT: 0, clawT: 0 };
 }
 function vampState() { return gameState.vamp || (gameState.vamp = newVampState()); }
 function thrallCap() { return VAMPIRE.thrallCap + Math.floor(gameState.units.Thrall.level / VAMPIRE.capPerLevels) + blessVal('kinCap'); }
@@ -329,6 +340,11 @@ function vampUpdate(dt) {
     const wasNight = v.night;
     v.night = v.moonT > 0 || !fighting || v.cycle >= VAMPIRE.dayTime;
     if (wasNight !== v.night && fighting) spawnFloatText(p.pos.x, p.pos.y - 44, v.night ? '入夜' : '天亮了', v.night ? '#B39DDB' : '#FFE082', 15, 1.2, v.night ? 'moon' : 'sun');
+    if (!wasNight && v.night && fighting) {
+        if (bl('batStorm')) startBatStorm();
+        if (bl('moonWolf')) { spawnFloatText(p.pos.x, p.pos.y - 60, '月狼', MOONWOLF_SILVER, 15, 1.2, 'moonWolf'); spawnParticles(p.pos.x, p.pos.y, MOONWOLF_SILVER, 20, 120, 0.6, 3); }
+    }
+    v.stormT = Math.max(0, v.stormT - dt);
     if (wasNight !== v.night) for (const s of gameState.summons) if (s.isAlive && (s instanceof Thrall || s instanceof BloodBat)) s.refreshStats();
     v.batFormT = Math.max(0, v.batFormT - dt);
     v.batFormCd = Math.max(0, v.batFormCd - dt);
@@ -383,6 +399,7 @@ const vampBladeOwner = { healFromDamage: (dealt) => healHero(dealt * bladeLeech(
 const vampTargets = [];
 function vampAttack(p, dt) {
     const v = vampState(), B = VAMPIRE.blade;
+    if (moonWolfActive()) { moonClaw(p, dt); return; }
     v.bladeT -= dt;
     if (v.bladeT > 0) return;
     const rSq = B.range * B.range;
@@ -399,6 +416,120 @@ function vampAttack(p, dt) {
         gameState.projectiles.push(pr);
     }
     Sfx.play('mageBolt');
+}
+
+// ---------- 傳說「月狼」：入夜時飛刃換成扇形爪擊 ----------
+const MOONWOLF_SILVER = '#E1D5FF';
+function moonWolfActive() { return bl('moonWolf') && vampState().night; }
+function moonClaw(p, dt) {
+    const v = vampState();
+    v.clawT -= dt;
+    if (v.clawT > 0) return;
+    const t = monsterGrid.nearestShared(p.pos, MOONWOLF_RANGE);
+    if (!t || !t.isAlive || t.stealthed) return;
+    v.clawT = MOONWOLF_EVERY;
+    const ang = Math.atan2(t.pos.y - p.pos.y, t.pos.x - p.pos.x), cosHalf = Math.cos(MOONWOLF_ARC / 2), rSq = MOONWOLF_RANGE * MOONWOLF_RANGE;
+    const dmg = VAMPIRE.blade.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * runMods().boltDmgMult * sacrificeMult() * MOONWOLF_MULT;
+    let total = 0;
+    monsterGrid.forEachInRadius(p.pos, MOONWOLF_RANGE, m => {
+        if (!m.isAlive || m.stealthed) return;
+        const dx = m.pos.x - p.pos.x, dy = m.pos.y - p.pos.y, dSq = dx * dx + dy * dy;
+        if (dSq > rSq) return;
+        const d = Math.sqrt(dSq) || 1;
+        if ((dx * Math.cos(ang) + dy * Math.sin(ang)) / d < cosHalf && d > m.radius) return;
+        m.takeDamage(dmg); total += dmg;
+    });
+    healHero(total * bladeLeech() * MOONWOLF_LEECH);
+    p.facingDirection = Math.cos(ang) >= 0 ? 1 : -1;
+    gameState.visualEffects.push(new MoonClawEffect(p.pos, ang));
+    Sfx.play('hit');
+}
+// 爪擊：三道彎月形的爪痕沿著扇形劃過去，銀紫色（我方攻擊不用紅）
+class MoonClawEffect extends TimedEffect {
+    constructor(pos, ang) { super({ x: pos.x, y: pos.y }, 0.28); this.ang = ang; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos, half = MOONWOLF_ARC / 2;
+        const sweep = Math.min(1, k * 2.2), from = this.ang - half, to = from + MOONWOLF_ARC * sweep;
+        ctx.save();
+        ctx.globalAlpha = k < 0.5 ? 1 : (1 - k) / 0.5;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+            const r = MOONWOLF_RANGE * (0.55 + i * 0.2);
+            for (const [col, lw] of [[VAMP_ATTACK_DARK, 7], [VAMP_ATTACK_COLOR, 4.5], [MOONWOLF_SILVER, 1.8]]) {
+                ctx.strokeStyle = col; ctx.lineWidth = lw * (1 - i * 0.15);
+                ctx.beginPath(); ctx.arc(x, y, r, from + i * 0.08, to + i * 0.08); ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+}
+// 入夜的月狼：腳下一圈銀紫光，頭頂冒出兩隻尖尖的狼耳（畫在身體之前，看起來是從頭後面長出來的）
+function drawMoonWolfAura(ctx, p) {
+    if (!moonWolfActive()) return;
+    const top = p.pos.y - p.imageHeight * 0.5 + 4;
+    ctx.save();
+    ctx.globalAlpha = 0.45 + 0.15 * Math.sin(worldTime * 5);
+    ctx.drawImage(getGlowSprite(MOONWOLF_SILVER), p.pos.x - 36, p.pos.y + p.imageHeight * 0.3 - 14, 72, 28);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#B0A8C8'; ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 2;
+    for (const s of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(p.pos.x + s * 3, top + 2); ctx.lineTo(p.pos.x + s * 11, top - 11); ctx.lineTo(p.pos.x + s * 13, top + 3); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = MOONWOLF_SILVER;
+        ctx.beginPath(); ctx.moveTo(p.pos.x + s * 6, top + 1); ctx.lineTo(p.pos.x + s * 10.5, top - 6); ctx.lineTo(p.pos.x + s * 11.5, top + 1); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#B0A8C8';
+    }
+    ctx.restore();
+}
+
+// ---------- 傳說「蝠群風暴」：入夜那一刻，所有蝙蝠繞著你轉 ----------
+function startBatStorm() {
+    const v = vampState(), bats = gameState.summons.filter(s => s.isAlive && s instanceof BloodBat);
+    if (!bats.length) return;
+    v.stormT = STORM_TIME;
+    bats.forEach((b, i) => { b.stormSlot = i / bats.length; b.stormR = STORM_RADIUS + STORM_SPREAD * ((i * 0.618) % 1); b.stormBite = Math.random() * STORM_BITE_EVERY; });
+    const p = gameState.player;
+    spawnFloatText(p.pos.x, p.pos.y - 72, '蝠群風暴', '#D1C4E9', 15, 1.2, 'batStorm');
+}
+function stormBat(b, dt) {
+    const p = gameState.player, a = worldTime * STORM_SPIN + b.stormSlot * Math.PI * 2;
+    const gx = p.pos.x + Math.cos(a) * b.stormR, gy = p.pos.y + Math.sin(a) * b.stormR * 0.8;
+    const f = Math.min(1, dt * 12), dx = (gx - b.pos.x) * f;
+    b.pos.x += dx; b.pos.y += (gy - b.pos.y) * f;
+    if (Math.abs(dx) > 0.2) b.facingDirection = dx > 0 ? 1 : -1;
+    b.stormBite -= dt;
+    if (b.stormBite > 0) return;
+    b.stormBite = STORM_BITE_EVERY;
+    const dmg = b.attack * STORM_MULT, rSq = STORM_HIT_RADIUS * STORM_HIT_RADIUS;
+    let hit = 0;
+    monsterGrid.forEachInRadius(b.pos, STORM_HIT_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, b.pos) <= rSq) { m.takeDamage(dmg); m.lastHitByThrall = true; hit += dmg; } });
+    if (hit > 0) { healHero(hit * (BAT_DRAIN + blessVal('batDrain'))); if (inView(b.pos)) spawnParticles(b.pos.x, b.pos.y, VAMP_ATTACK_COLOR, 2, 40, 0.3, 2); }
+}
+// 風暴：繞著吸血鬼的幾道紫色氣旋（蝙蝠本身照常畫，氣旋讓「一圈在轉」一眼看得出來）
+const STORM_ARCS = 4, STORM_TRAIL = 0.7;
+function drawBatStorm(ctx) {
+    const v = vampState(), p = gameState.player;
+    if (v.stormT <= 0 || !p) return;
+    const alpha = Math.min(1, v.stormT / 0.5, (STORM_TIME - v.stormT) / 0.3);
+    ctx.save();
+    ctx.lineCap = 'round';
+    for (let i = 0; i < STORM_ARCS; i++) {
+        const r = STORM_RADIUS + STORM_SPREAD * (i / STORM_ARCS), a = worldTime * STORM_SPIN * (1 + i * 0.1) + i * 1.7;
+        ctx.globalAlpha = alpha * (0.5 - i * 0.08);
+        ctx.strokeStyle = i % 2 ? '#B39DDB' : VAMP_ATTACK_COLOR; ctx.lineWidth = 5 - i;
+        ctx.beginPath(); ctx.ellipse(p.pos.x, p.pos.y, r, r * 0.8, 0, a, a + Math.PI * 0.9); ctx.stroke();
+    }
+    // 每隻蝙蝠身後一道拖尾、身上一圈光：黑夜裡深紫的蝙蝠才看得出在繞圈
+    const glow = getGlowSprite('#B39DDB');
+    for (const b of gameState.summons) {
+        if (!b.isAlive || !(b instanceof BloodBat) || b.stormSlot === undefined) continue;
+        const a = worldTime * STORM_SPIN + b.stormSlot * Math.PI * 2;
+        ctx.globalAlpha = alpha * 0.8;
+        ctx.strokeStyle = '#D1C4E9'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(p.pos.x, p.pos.y, b.stormR, b.stormR * 0.8, 0, a - STORM_TRAIL, a); ctx.stroke();
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.drawImage(glow, b.pos.x - 15, b.pos.y - 15, 30, 30);
+    }
+    ctx.restore();
 }
 
 // ---------- 血魔法：花一點自己的血，炸開身邊；越殘越痛 ----------
@@ -626,6 +757,11 @@ class Thrall extends SummonUnit {
 // ---------- 蝙蝠 ----------
 class BloodBat extends SummonUnit {
     constructor(x, y, level, p) { super(x, y, CONFIG.bloodBat, level, p); }
+    update(dt, monsters, summons, player) {
+        if (!this.isAlive) return;
+        if (vampState().stormT > 0 && this.stormSlot !== undefined) { this.tickFlash(dt); stormBat(this, dt); return; }
+        super.update(dt, monsters, summons, player);
+    }
     computeStats() {
         super.computeStats();
         const v = vampState();

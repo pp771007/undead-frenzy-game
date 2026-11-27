@@ -417,6 +417,17 @@ const ICON_BODIES = {
         <path d="M18 34 C12 46 18 58 32 58 C46 58 52 46 46 34 Z" fill="#5e35b1"/><path d="M22 40 C24 50 40 50 42 40" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 40, 3, 5, 20)}`,
     garlic: `<path d="M32 12 C22 14 10 24 12 40 C14 54 26 60 32 60 C38 60 50 54 52 40 C54 24 42 14 32 12 Z" fill="#fff8e1"/><path d="M32 14 C26 26 26 48 32 60 M32 14 C38 26 38 48 32 60 M20 22 C16 34 18 50 26 58 M44 22 C48 34 46 50 38 58" stroke="#d7ccc8" stroke-width="2.5"/>
         <path d="M32 12 C30 6 34 2 38 4" stroke="#9ccc65" stroke-width="4"/>${duoStroke('M8 8 L56 56', '#e53935', 3)}`,
+    // 蝠群風暴：一圈紫色氣旋繞著一輪彎月，四隻蝙蝠順著氣旋飛
+    batStorm: `<path d="M38 22 C30 22 26 28 26 34 C26 40 30 46 38 46 C32 44 30 39 30 34 C30 29 32 24 38 22 Z" fill="#fff3c4" stroke-width="2.5"/>`
+        + duoStroke('M30 8 C46 7 56 16 57 28', '#7c4dff', 2.4) + duoStroke('M56 40 C52 52 42 58 32 58', '#b39ddb', 2.4)
+        + duoStroke('M20 55 C10 49 6 40 7 30', '#7c4dff', 2.4) + duoStroke('M9 20 C13 13 18 10 22 9', '#b39ddb', 2.4)
+        + `${[[32, 9, 0.62, 10], [56, 33, 0.62, 100], [27, 57, 0.62, 190], [8, 25, 0.62, 280]].map(([x, y, s, r]) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})"><path d="M0 -4 C-8 -14 -22 -12 -24 -2 C-18 -6 -14 -2 -12 2 C-8 -2 -4 0 0 6 C4 0 8 -2 12 2 C14 -2 18 -6 24 -2 C22 -12 8 -14 0 -4 Z" fill="#4527a0" stroke-width="4"/><circle cx="-3" cy="-2" r="2" fill="#ffd54f" stroke="none"/><circle cx="3" cy="-2" r="2" fill="#ffd54f" stroke="none"/></g>`).join('')}`,
+    // 月狼：銀紫色的狼仰頭對著彎月嚎叫，前面三道爪痕
+    moonWolf: `<path d="M58 3 C51 3 46 8 46 15 C46 22 51 27 58 27 C54 24 52 20 52 15 C52 10 54 6 58 3 Z" fill="#fff3c4" stroke-width="2.5"/>
+        <path d="M8 60 C8 50 9 42 12 34 C13 28 14 24 16 20 L14 7 L22 15 L30 11 L42 5 L38 12 L31 19 C29 24 28 28 30 34 C32 42 33 52 34 60 Z" fill="#9e94bc"/>
+        <path d="M15.5 17 L15 10 L20 15 Z" fill="#e1d5ff" stroke="none"/><path d="M38 12 L32 15" stroke-width="2"/><circle cx="25" cy="16" r="1.9" fill="#ffd54f" stroke="none"/>
+        <path d="M16 36 C18 44 20 50 20 58 M24 38 C25 46 26 52 26 58" stroke="#e1d5ff" stroke-width="1.8"/><path d="M44 3 L47 1 M45 8 L49 8" stroke="#e1d5ff" stroke-width="1.8"/>`
+        + `${[0, 1, 2].map(i => duoStroke(`M${40 + i * 7} ${38 + i * 2} C${48 + i * 6} ${44 + i * 2} ${50 + i * 5} ${52 + i * 2} ${46 + i * 5} ${60}`, '#b39ddb', 2.6)).join('')}`,
     // ---- 精靈弓箭手（elf.js）----
     // 大招「箭雨」
     arrowrain: `<path d="M10 20 C2 20 2 8 12 8 C14 0 30 0 32 6 C38 0 52 2 52 10 C62 10 62 20 54 20 Z" fill="#90a4ae"/>
