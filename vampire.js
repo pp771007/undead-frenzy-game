@@ -26,6 +26,7 @@ const VAMPIRE = {
 
 OPTIONAL_ART.vampire = 'vampire.png';
 OPTIONAL_ART.blood_bat = 'blood_bat.png';
+OPTIONAL_ART.blood_wolf = 'blood_wolf.png';
 // 吸血鬼的攻擊、特效用夜紫：紅色是警示色，留給敵人與危險（血瞳的血彈用 game.js 的 blood）
 // 自己一個 key，不要蓋掉 BOLT_STYLES.blood，不然所有角色的局裡血瞳的彈都變成吸血鬼的樣子
 BOLT_STYLES.nightblade = { glowIn: 'rgba(209, 196, 255, 0.9)', glowMid: 'rgba(124, 77, 255, 0.4)', glowOut: 'rgba(124, 77, 255, 0)', body: '#7C4DFF', core: '#EDE7F6' };
@@ -487,8 +488,8 @@ function spawnThrall(x, y, src, level, elite = false, boss = false) {
 
 // 每種怪轉化後的設定（同一種怪共用一份）
 const thrallCfgCache = {};
-// 狼伴：不是怪變的，用德魯伊的狼圖
-const THRALL_WOLF = { type: 'wolf', name: '狼', baseHealth: 30, baseAttack: 7, radius: 10, attackRange: 22, attackSpeed: 1.3, moveSpeed: 120, imageName: 'druid_wolf', imgScaleMultiplier: 3.3 };
+// 狼伴：不是怪變的，有自己的圖（黑毛紫紋的血月之狼）
+const THRALL_WOLF = { type: 'wolf', name: '狼', baseHealth: 30, baseAttack: 7, radius: 10, attackRange: 22, attackSpeed: 1.3, moveSpeed: 120, imageName: 'blood_wolf', imgScaleMultiplier: 4.1 };
 const configKeys = new Map();
 function configKeyOf(config) {
     if (!configKeys.size) for (const k in CONFIG) if (CONFIG[k] && typeof CONFIG[k] === 'object') configKeys.set(CONFIG[k], k);
@@ -537,7 +538,8 @@ class Thrall extends SummonUnit {
         const moon = vampState().night && res('werewolf') >= 2 && this.config.arche === 'melee';
         if (moon) { this.attack *= RES_MOONPACK_DMG; this.moveSpeed *= RES_MOONPACK_SPEED; }
         // 眷屬染成淡紫，一眼分得出是自己人；精英、首領保留原本的大小
-        this.tint = THRALL_TINT; this.tintStrength = THRALL_TINT_STRENGTH;
+        // 狼伴不是怪變的、圖本來就是我方的紫色配色，不染（染了整隻變粉紫，細節被洗掉）
+        if (this.config.srcType !== 'wolf') { this.tint = THRALL_TINT; this.tintStrength = THRALL_TINT_STRENGTH; }
         if (this.elite) this.drawScale *= CONFIG.elite.sizeMult;
     }
     healFromDamage(dealt) {

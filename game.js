@@ -192,7 +192,7 @@ const CONFIG = {
     },
     eyeMonster: {
         type: 'EyeMonster', baseHealth: 12, baseAttack: 15, radius: 11,
-        imageName: 'eye_monster', imgScaleMultiplier: 3,
+        imageName: 'eye_monster', imgScaleMultiplier: 2.8,
         attackRange: 120,
         attackRangeUpgrade: 3,
         attackSpeed: 0.8, moveSpeed: 60, color: '#A1887F',
@@ -213,7 +213,7 @@ const CONFIG = {
     },
     wraith: {
         type: 'Wraith', baseHealth: 15, baseAttack: 0, radius: 11,
-        imageName: 'wraith', imgScaleMultiplier: 2.7,
+        imageName: 'wraith', imgScaleMultiplier: 2.4,
         attackRange: 0,
         slowRadiusBase: 80,
         slowRadiusUpgrade: 5,
@@ -246,7 +246,7 @@ const CONFIG = {
     },
     fastMeleeMonster: {
         type: 'FastMelee', name: '赤鷲', baseHealth: 14, baseAttack: 6, radius: 11,
-        imageName: 'fast_melee', imgScaleMultiplier: 3,
+        imageName: 'fast_melee', imgScaleMultiplier: 3.8,
         attackRange: 18, attackSpeed: 1.2, moveSpeed: 95, color: '#FF7043',
         soulDrop: 2, waveSpeedIncreaseFactor: 0.012,
         minWave: 3, waveInterval: 1.3,
@@ -262,7 +262,7 @@ const CONFIG = {
     },
     armoredMeleeMonster: {
         type: 'ArmoredMelee', name: '血牙野豬', baseHealth: 90, baseAttack: 18, radius: 15,
-        imageName: 'armored_melee', imgScaleMultiplier: 6,
+        imageName: 'armored_melee', imgScaleMultiplier: 6.4,
         attackRange: 22, attackSpeed: 0.8, moveSpeed: 30, color: '#B71C1C',
         soulDrop: 5, waveSpeedIncreaseFactor: 0.008,
         minWave: 9, waveInterval: 4,
@@ -367,8 +367,7 @@ const CONFIG = {
     },
     spitter: {
         type: 'Spitter', name: '瘟疫投手', baseHealth: 30, baseAttack: 5, radius: 12,
-        // 沒有專屬圖：借疫病母巢的圖縮小、染紫，跟首領分得開
-        imageName: 'basic_melee', art: 'boss_plague', imgScaleMultiplier: 5, artScale: 3.6, tint: '#8E24AA', tintStrength: 0.5, keepTintOnArt: true,
+        imageName: 'basic_melee', art: 'spitter', imgScaleMultiplier: 5, artScale: 3.2, tint: '#8E24AA', tintStrength: 0.5,
         // attackRange = 站在多遠外丟毒（不貼身），attackSpeed = 每秒丟幾次
         attackRange: 170, attackSpeed: 0.28, moveSpeed: 45, color: '#8E24AA',
         soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
@@ -429,7 +428,7 @@ const CONFIG = {
     },
     slime: {
         type: 'Slime', name: '瘟膿史萊姆', baseHealth: 24, baseAttack: 4, radius: 13,
-        imageName: 'basic_melee', art: 'slime', imgScaleMultiplier: 4, artScale: 3.2, tint: '#C0CA33', tintStrength: 0.6,
+        imageName: 'basic_melee', art: 'slime', imgScaleMultiplier: 4, artScale: 3.3, tint: '#C0CA33', tintStrength: 0.6,
         attackRange: 20, attackSpeed: 1, moveSpeed: 42, color: '#C0CA33',
         soulDrop: 1, waveSpeedIncreaseFactor: 0.008,
         minWave: 5, waveInterval: 3,
@@ -1386,6 +1385,7 @@ const OPTIONAL_ART = {
     thief: 'thief.png',
     assassin: 'assassin.png',
     slime: 'slime.png',
+    spitter: 'spitter.png',
     bat: 'bat.png',
     witch_doctor: 'witch_doctor.png',
     shield_guard: 'shield_guard.png',
@@ -3662,13 +3662,12 @@ function getWaveStatMultiplier(wave) {
 // 場上的怪物和新威脅橫幅都照這裡挑圖，兩邊才不會一個是新圖、一個是染色的舊圖
 function monsterLook(config) {
     const art = config.art && images[config.art] ? config.art : null;
-    const keepTint = !art || config.keepTintOnArt;
     return {
         imageName: art || config.imageName,
         // 新圖的留白和舊圖不同，各自有一個縮放
         scale: art && config.artScale ? config.artScale : config.imgScaleMultiplier,
-        tint: keepTint ? config.tint : null,
-        tintStrength: keepTint ? config.tintStrength : 0,
+        tint: art ? null : config.tint,
+        tintStrength: art ? 0 : config.tintStrength,
     };
 }
 
