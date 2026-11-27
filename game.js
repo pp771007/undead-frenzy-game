@@ -91,7 +91,6 @@ const uiElements = {
     pauseReward: $id('pause-reward'),
     gameoverTitle: $id('gameover-title'),
     soulsInfo: $id('souls-info'),
-    crystalsInfo: $id('crystals-info'),
     playerHealthInfo: $id('player-health-info'),
     hpFill: $id('hp-fill'),
     unitCards: $id('unit-cards'),
@@ -4450,7 +4449,6 @@ class BossMonster extends Monster {
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 50, 220, 1.0, 4);
         addWorldFx({ kind: 'ring', x: this.pos.x, y: this.pos.y, r0: this.radius, r1: 220, life: 0.9, color: '#E1BEE7', width: 10 });
         spawnFloatText(this.pos.x, this.pos.y - 30, '首領擊破！', '#E1BEE7', 20, 1.6);
-        spawnFloatText(this.pos.x, this.pos.y - 8, `+${CRYSTALS_PER_BOSS}`, '#CE93D8', 17, 1.6, 'crystal');
         gameState.rerollsLeft += REROLLS_PER_BOSS;
         spawnFloatText(this.pos.x, this.pos.y + 14, `+${REROLLS_PER_BOSS}`, '#90CAF9', 17, 1.6, 'reroll');
         // 首領倒下時牠放出去還沒落下的預警一起消失：贏了就不該再被打
@@ -6725,7 +6723,6 @@ function checkWaveEndCondition() {
         if (classDef().onWaveEnd) classDef().onWaveEnd();
         checkAchievements();
         saveMeta();
-        spawnCrystalText(CRYSTALS_PER_WAVE);
         queueDraftIfDue();
         settleRelicsAtWaveEnd();
         gameState.projectiles.forEach(returnProjectileToPool);
@@ -8264,7 +8261,6 @@ function stopHoldAction(actionType, unitType) {
 
 
 let lastShownSouls = 0;
-let lastShownCrystals = 0;
 // 底部的兵種卡：照這一局職業的 cards 產生（buildUnitCards），每張記著是哪種兵與自己的元素
 let UNIT_UI = [];
 let builtCardsFor = null;
@@ -8356,13 +8352,6 @@ function updateUI() {
     setTextIfChanged(uiElements.soulsInfo, formatNumberK(souls));
     if (souls > lastShownSouls && !uiElements.soulsInfo.classList.contains('bump')) uiElements.soulsInfo.classList.add('bump');
     lastShownSouls = souls;
-    // 這一局到目前為止賺到的結晶（結束時入帳）：局外貨幣要在局內看得到，才知道是怎麼賺來的
-    const crystals = getRunReward();
-    if (uiElements.crystalsInfo.textContent !== String(crystals)) {
-        if (crystals > lastShownCrystals) uiElements.crystalsInfo.classList.add('bump');
-        uiElements.crystalsInfo.textContent = String(crystals);
-    }
-    lastShownCrystals = crystals;
 
     // 波次之間顯示「即將來的那一波」，不是剛打完的那一波
     const holding = tutorial && gameState.currentWave === 0;
@@ -8458,10 +8447,6 @@ function renderRewardDetail(survived) {
 
 function getRunReward() {
     return Math.round((getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS) * curseCrystalMult());
-}
-function spawnCrystalText(amount) {
-    const p = gameState.player;
-    if (p && amount > 0) spawnFloatText(p.pos.x, p.pos.y - 44, `+${formatNumberK(amount)}`, '#CE93D8', 15, 1.4, 'crystal');
 }
 
 function endRunFromPause() {
@@ -9947,7 +9932,6 @@ function init() {
         if (action) action();
     });
     uiElements.soulsInfo.addEventListener('animationend', () => uiElements.soulsInfo.classList.remove('bump'));
-    uiElements.crystalsInfo.addEventListener('animationend', () => uiElements.crystalsInfo.classList.remove('bump'));
 
     uiElements.ultBtn.addEventListener('pointerdown', (e) => {
         e.preventDefault();

@@ -379,13 +379,8 @@
             color: var(--soul);
         }
 
-        #souls-info.bump,
-        #crystals-info.bump {
+        #souls-info.bump {
             animation: bump 0.25s;
-        }
-
-        .crystal-chip {
-            color: #e1d0ff;
         }
 
         /* 結算：結晶是怎麼算出來的，一項一行 */
@@ -2584,7 +2579,6 @@
             </div>
             <div class="hud-right">
                 <div class="hud-chip"><span class="chip-icon" id="currency-icon"></span><span id="souls-info">0</span></div>
-                <div class="hud-chip crystal-chip"><span class="chip-icon" data-icon="crystal"></span><span id="crystals-info">0</span></div>
                 <button id="pause-resume-btn" class="btn btn-dark"><span class="btn-icon" data-icon="pause"></span>暫停</button>
             </div>
         </div>
