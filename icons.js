@@ -327,6 +327,29 @@ const ICON_BODIES = {
     whiteBull: `<path d="M14 26 C4 22 4 10 10 6 C12 14 16 18 22 20 Z M50 26 C60 22 60 10 54 6 C52 14 48 18 42 20 Z" fill="#fff8e1"/>
         <path d="M18 22 C18 14 46 14 46 22 L48 40 C48 52 40 58 32 58 C24 58 16 52 16 40 Z" fill="#f5f5f5"/><ellipse cx="32" cy="48" rx="10" ry="7" fill="#ffcdd2"/>
         <circle cx="28" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="36" cy="48" r="1.8" fill="#1b1424" stroke="none"/><circle cx="25" cy="32" r="2.2" fill="#1b1424" stroke="none"/><circle cx="39" cy="32" r="2.2" fill="#1b1424" stroke="none"/>`,
+    // 狼母：灰色的母狼低頭，銀白小狼依偎在牠下巴前，地上一片新葉
+    wolfMother: `<path d="M4 58 C14 52 50 52 60 58" stroke-width="4"/><path d="M4 58 C14 52 50 52 60 58" stroke="#7cb342" stroke-width="2"/>
+        <g transform="translate(24 28) scale(1.75)"><path d="M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z" fill="#90a4ae" stroke-width="2.3"/>
+            <path d="M-9 -9 L-8 -12 L-6 -7 Z M9 -9 L8 -12 L6 -7 Z" fill="#cfd8dc" stroke="none"/><path d="M-7 1 C-5 -0.5 -3 -0.5 -2 1 M2 1 C3 -0.5 5 -0.5 7 1" stroke-width="1.5"/>
+            <path d="M-4 6 C-2 9 2 9 4 6 C2 4 -2 4 -4 6 Z" fill="#eceff1" stroke-width="1.3"/><circle cx="0" cy="5.6" r="1.4" fill="#1b1424" stroke="none"/></g>
+        <g transform="translate(46 46) scale(0.9)"><path d="M-12 8 L-12 -6 L-8 -14 L-4 -6 L4 -6 L8 -14 L12 -6 L12 8 C8 14 -8 14 -12 8 Z" fill="#eceff1"/>
+            <path d="M-9 -9 L-8 -12 L-6 -7 Z M9 -9 L8 -12 L6 -7 Z" fill="#ffccbc" stroke="none"/><circle cx="-5" cy="0" r="2.4" fill="#1b1424" stroke="none"/><circle cx="5" cy="0" r="2.4" fill="#1b1424" stroke="none"/>
+            <circle cx="-4.3" cy="-0.8" r="0.8" fill="#fff" stroke="none"/><circle cx="5.7" cy="-0.8" r="0.8" fill="#fff" stroke="none"/><circle cx="0" cy="6" r="1.8" fill="#1b1424" stroke="none"/></g>
+        <path d="M54 22 C54 14 60 12 62 12 C62 18 58 22 54 22 Z" fill="#9ccc65" stroke-width="2"/><path d="M54 22 L50 28" stroke-width="2.2"/>`,
+    // 綠人：一張由葉子圍成的臉，嘴裡吐出帶葉的藤
+    greenMan: `${[[-150, 26], [-120, 27], [-90, 28], [-60, 27], [-30, 26], [180, 24], [0, 24], [150, 23], [30, 23]].map(([deg, r]) => { const a = deg * Math.PI / 180, x = 32 + Math.cos(a) * r * 0.82, y = 32 + Math.sin(a) * r * 0.85; return `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="10" ry="5.5" transform="rotate(${deg} ${x.toFixed(1)} ${y.toFixed(1)})" fill="#558b2f" stroke-width="2.5"/><path d="M${(x - Math.cos(a) * 7).toFixed(1)} ${(y - Math.sin(a) * 7).toFixed(1)} L${(x + Math.cos(a) * 7).toFixed(1)} ${(y + Math.sin(a) * 7).toFixed(1)}" stroke="#aed581" stroke-width="1.4"/>`; }).join('')}
+        <ellipse cx="32" cy="33" rx="15" ry="18" fill="#9ccc65"/><path d="M20 26 C24 22 28 22 30 26 M34 26 C36 22 40 22 44 26" stroke-width="2.6"/>
+        <ellipse cx="25.5" cy="30" rx="2.6" ry="3" fill="#1b1424" stroke="none"/><ellipse cx="38.5" cy="30" rx="2.6" ry="3" fill="#1b1424" stroke="none"/><circle cx="26.3" cy="29" r="0.9" fill="#f1f8e9" stroke="none"/><circle cx="39.3" cy="29" r="0.9" fill="#f1f8e9" stroke="none"/>
+        <path d="M32 31 L30 38 L34 38" stroke-width="2"/><ellipse cx="32" cy="43" rx="5" ry="3.5" fill="#33691e" stroke-width="2.2"/>`
+        + duoStroke('M32 45 C30 52 38 54 44 56 C50 58 54 54 58 58', '#7cb342', 2.5)
+        + `<ellipse cx="45" cy="52" rx="4" ry="2.2" transform="rotate(-30 45 52)" fill="#9ccc65" stroke-width="1.6"/><ellipse cx="55" cy="54" rx="4" ry="2.2" transform="rotate(20 55 54)" fill="#9ccc65" stroke-width="1.6"/>${shine(26, 22, 3, 2)}`,
+    // 巨石陣：兩座三石門和一塊立石站在草地上，後面升起一輪夏至的太陽
+    stonehenge: `<circle cx="32" cy="30" r="15" fill="#ffd54f"/>${Array.from({ length: 8 }, (_, i) => { const a = Math.PI + i * Math.PI / 7; return `<path d="M${(32 + Math.cos(a) * 19).toFixed(1)} ${(30 + Math.sin(a) * 19).toFixed(1)} L${(32 + Math.cos(a) * 25).toFixed(1)} ${(30 + Math.sin(a) * 25).toFixed(1)}" stroke="#ffd54f" stroke-width="3"/>`; }).join('')}
+        <path d="M2 50 C16 46 48 46 62 50 L62 60 L2 60 Z" fill="#7cb342"/>
+        ${[[4, 24], [40, 24]].map(([x, w]) => `<path d="M${x + 2} 52 L${x + 3} 32 L${x + 8} 32 L${x + 9} 52 Z M${x + w - 9} 52 L${x + w - 8} 32 L${x + w - 3} 32 L${x + w - 2} 52 Z" fill="#9e9e9e"/><rect x="${x}" y="26" width="${w}" height="7" rx="1.5" fill="#bdbdbd"/>
+            <path d="M${x + 4} 34 L${x + 4.5} 49 M${x + w - 6} 34 L${x + w - 5.5} 49" stroke="#e0e0e0" stroke-width="1.6"/>`).join('')}
+        <path d="M28 54 L29 38 C29 35 35 35 35 38 L36 54 Z" fill="#9e9e9e"/><path d="M30.5 40 L31 52" stroke="#e0e0e0" stroke-width="1.6"/>
+        <path d="M6 53 C8 51 10 51 12 53 M50 53 C52 51 54 51 56 53 M28 55 C30 53 33 53 36 55" stroke="#558b2f" stroke-width="2"/>`,
     // ---- 吸血鬼（vampire.js）----
     // 錢包：一滴血
     blood: `<path d="M32 4 C42 20 52 30 52 42 C52 54 43 60 32 60 C21 60 12 54 12 42 C12 30 22 20 32 4 Z" fill="#7e57c2"/><path d="M22 42 C22 48 26 52 32 52" stroke="#ffcdd2" stroke-width="3"/>${shine(24, 36, 3, 6, 20)}`,

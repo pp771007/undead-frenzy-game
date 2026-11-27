@@ -1185,7 +1185,7 @@ const UNIT_TYPES = {
 //   soulMult(monster)：這隻怪掉的靈魂倍率；onMonsterKill(monster)：怪死掉時
 //   heroHidden()：主角這一格怪看不到（刺客隱身）；heroAlpha()：主角身體的透明度；drawHeroUnder(ctx, player)：畫在主角身體之前（腳下）
 //   targetableSummons()：怪找目標時看得到的召喚物（沒有就是全部）；德魯伊離得太遠的橡樹會沉睡、怪不理
-//   drawWorld(ctx)：世界座標、畫在特效之後；drawScreen(ctx)：螢幕座標、畫在介面之前
+//   drawWorld(ctx)：世界座標、畫在特效之後；drawGround(ctx)：世界座標、畫在地面那一層（怪與召喚物之前）；drawScreen(ctx)：螢幕座標、畫在介面之前
 //   currency：{ icon, glow: [r, g, b] }，錢包與掉落物長什麼樣（吸血鬼是血）；沒有就是靈魂
 //   onSpring(relic, dt)：站在靈泉裡時取代回血（吸血鬼的聖水會燙）
 //   preventDeath()：主角血量歸零時問一次，回傳 true 就不死（職業自己把血補回來）
@@ -9857,6 +9857,8 @@ function drawGame() {
     drawBonePiles();
     drawRelicsGround();
     drawOwnedTombs();
+    const groundCls = classDef();
+    if (groundCls.drawGround && gameState.player && appScreen !== 'title') groundCls.drawGround(ctx);
     for (let i = 0; i < gameState.orbs.length; i++) if (inView(gameState.orbs[i].pos)) gameState.orbs[i].draw(ctx);
 
     drawAuraLayer();

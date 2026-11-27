@@ -88,7 +88,14 @@ const FEST_IMBOLC_BEAST = 0.02, FEST_IMBOLC_HERO = 0.006;
 const FEST_BELTANE_DMG = 0.35;
 const FEST_HARVEST_SOULS = 0.3;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// 綠人：每隻迸幾顆、種子傷害是普攻的幾成、迸多遠找目標；場上同時最多幾顆（一大群同時倒下時不要炸出幾百顆）
+const GREEN_MAN_SEEDS = 3, GREEN_MAN_SHARE = 0.6, GREEN_MAN_REACH = 110, GREEN_MAN_MAX_LIVE = 24;
+// 巨石陣：圈多大、圈裡節氣效果乘多少、幾顆石頭、立起來要多久
+const HENGE_MULT = 3, HENGE_RADIUS = 85, HENGE_STONES = 8, HENGE_RISE = 0.6;
+// 狼母生的小狼：體型比例、淡銀色的毛
+const PUP_SCALE = 0.7, PUP_TINT = '#ECEFF1', PUP_TINT_STRENGTH = 0.35;
+
+// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     grove: { name: '聖林', img: 'sacred_oak.png', color: '#AED581', res: [{ name: '根深', desc: '橡樹受到的傷害 -40%' }, { name: '森林覺醒', desc: '第 3 階的橡樹拔根成為樹人，會走過去打' }] },
     pack: { name: '狼群', img: 'druid_wolf.png', color: '#B0BEC5', res: [{ name: '狼嚎', desc: '每 10 秒全體狼攻速 +40%，持續 4 秒' }, { name: '狼王', desc: '每 6 隻狼出一隻狼王，身邊的狼攻速 +25%' }] },
@@ -120,6 +127,12 @@ Object.assign(BLESSINGS, {
     goldenSickle: { school: 'grove', name: '金鐮', legendary: true, max: 1, per: 0.1, desc: b => `每波第 3 階的橡樹結出槲寄生，撿到回 ${pct(b.per)} 血、全軍狂暴` },
     yggdrasil: { school: 'grove', name: '世界樹', legendary: true, max: 1, per: 1, desc: () => '最老的那棵橡樹不會死：倒下時在你腳邊重新長成樹苗' },
     whiteBull: { school: 'bear', name: '白牛獻祭', legendary: true, max: 1, per: 3, desc: b => `熊倒下時，整片林地這一波長大速度 ×${b.per}` },
+    // 狼母：狼群要「養大」才有回報，林地上限不再是狼數的天花板
+    wolfMother: { school: 'pack', name: '狼母', legendary: true, max: 1, per: 1, desc: () => '狼長到第 3 階時生出一隻小狼，小狼不佔林地' },
+    // 綠人：凱爾特的葉面人，死去之處長出新芽。被纏住的怪一倒，種子就往旁邊迸，一路連鎖
+    greenMan: { school: 'wild', name: '綠人', legendary: true, max: 1, per: GREEN_MAN_SEEDS, desc: b => `被纏住的怪死掉時迸出 ${b.per} 顆種子，把旁邊的怪也纏住` },
+    // 巨石陣：四大節原本整片地圖都吃，這張把它綁在一個位置上，跟德魯伊「選地方打這一仗」同一個方向
+    stonehenge: { school: 'seasons', name: '巨石陣', legendary: true, max: 1, per: HENGE_MULT, desc: b => `換節氣時在你腳下立起一圈巨石，站在圈裡節氣效果 ×${b.per}` },
 });
 const RES_ROOTS_TAKEN = 0.6;
 const RES_HOWL_EVERY = 10, RES_HOWL_TIME = 4, RES_HOWL_RATE = 1.4;
@@ -170,6 +183,8 @@ CLASSES.druid = {
         }
     },
     onWaveStart: () => druidWaveStart(),
+    onMonsterKill: (m) => { if (bl('greenMan') && m.rootedUntil > worldTime) greenManBurst(m); },
+    drawGround: (ctx) => drawStonehenge(ctx),
     onWaveEnd: () => {
         const d = druidState();
         d.evergreen = d.oakLostThisWave ? 0 : d.evergreen + 1;
@@ -245,7 +260,7 @@ CLASSES.druid = {
 // fest：這一波的節氣（FESTIVALS 的索引），prevFest：上一波的（共鳴、餘韻用）；planted：玩家自己種了幾棵（不含開局那棵）
 function newDruidState() {
     return { home: { pos: { x: 0, y: 0 } }, targetable: [], seedT: 0, bearT: 0, swipeT: 0, fest: -1, prevFest: -1, howlT: 0, howlCd: RES_HOWL_EVERY, tauntT: 0, crownT: 0, kingT: 0,
-        patches: [], sickles: [], boostWave: -1, evergreen: 0, oakLostThisWave: false, planted: 0, oakSeq: 0 };
+        patches: [], sickles: [], boostWave: -1, evergreen: 0, oakLostThisWave: false, planted: 0, oakSeq: 0, henge: null, greenLive: 0 };
 }
 function druidState() { return gameState.druid || (gameState.druid = newDruidState()); }
 
@@ -255,7 +270,11 @@ function festivalStrength(id) {
     const i = FEST_INDEX[id];
     const active = res('seasons') >= 2 || d.fest === i || (bl('festLinger') && d.prevFest === i);
     if (!active) return 0;
-    return (1 + blessVal('festPower')) * (res('seasons') >= 1 ? 2 : 1);
+    return (1 + blessVal('festPower')) * (res('seasons') >= 1 ? 2 : 1) * (inHenge() ? HENGE_MULT : 1);
+}
+function inHenge() {
+    const h = druidState().henge, p = gameState.player;
+    return !!(h && p && bl('stonehenge') && distanceSq(p.pos, h) <= HENGE_RADIUS * HENGE_RADIUS);
 }
 
 function oaks() { return gameState.summons.filter(s => s.isAlive && s instanceof SacredOak); }
@@ -314,6 +333,11 @@ function druidWaveStart() {
     d.fest = (gameState.currentWave - 1) % FESTIVALS.length;
     const F = FESTIVALS[d.fest];
     spawnFloatText(p.pos.x, p.pos.y - 46, `${F.name}：${F.desc}`, F.color, 14, 2.2, F.icon);
+    if (bl('stonehenge')) {
+        d.henge = { x: p.pos.x, y: p.pos.y, t: 0 };
+        spawnParticles(p.pos.x, p.pos.y, '#BCAAA4', 26, HENGE_RADIUS * 1.6, 0.7, 4);
+        addShake(4);
+    }
     if (bl('festRenew')) for (const s of gameState.summons) if (s.isAlive && s instanceof Beast) s.currentHealth = s.maxHealth;
     if (bl('festOffering')) for (const s of oaks()) s.grow(bl('festOffering'));
     for (const s of gameState.summons) if (s instanceof Beast && s.spirited) { s.spirited = false; s.refreshStats(); }
@@ -336,6 +360,7 @@ function druidUpdate(dt) {
     }
     d.home.pos.x = homeOak ? homeOak.pos.x : p.pos.x;
     d.home.pos.y = homeOak ? homeOak.pos.y : p.pos.y;
+    if (d.henge) d.henge.t += dt;
     if (d.bearT > 0) {
         d.bearT -= dt;
         if (d.bearT <= 0) { d.bearT = 0; setHeroImage(p, 'druid'); }
@@ -356,6 +381,8 @@ function druidUpdate(dt) {
         const wolves = gameState.summons.filter(s => s.isAlive && s instanceof Wolf).sort((a, b) => a.uid - b.uid);
         const kings = res('pack') >= 2 ? Math.floor(wolves.length / RES_KING_EVERY) : 0;
         wolves.forEach((w, i) => { const k = i < kings; if (w.king !== k) { w.king = k; w.refreshStats(); } });
+        // 狼母：長到第 3 階的成狼各生一隻小狼（小狼自己不會再生）
+        if (bl('wolfMother')) for (const w of wolves) if (w.stage >= DRUID.maxStage && !w.pup && !w.birthed) birthPup(w);
     }
     // 熊皮：熊嘲諷身邊的怪
     d.tauntT -= dt;
@@ -450,10 +477,11 @@ class SeedEffect extends TimedEffect {
         if (this.landed || this.duration - this.life < DRUID.seed.flight) return;
         this.landed = true;
         const S = DRUID.seed, rSq = this.radius * this.radius, rootTime = S.rootTime + blessVal('seedRoot');
+        if (this.green) druidState().greenLive--;
         monsterGrid.forEachInRadius(this.to, this.radius, m => {
             if (!m.isAlive || distanceSq(m.pos, this.to) > rSq) return;
             m.takeDamage(this.dmg);
-            if (m.isAlive && !(m instanceof BossMonster) && !m.isElite) m.applySlow(S.root, rootTime);
+            if (m.isAlive && !(m instanceof BossMonster) && !m.isElite) { m.applySlow(S.root, rootTime); m.rootedUntil = worldTime + rootTime; }
         });
         if (res('wild') >= 1) druidState().patches.push({ x: this.to.x, y: this.to.y, r: this.radius, life: RES_THORNPATCH_TIME, tick: 0, dmg: this.dmg * RES_THORNPATCH_SHARE });
         spawnParticles(this.to.x, this.to.y, '#9CCC65', 6, 50, 0.4, 2);
@@ -565,6 +593,138 @@ function drawDruidWorld(ctx) {
         ctx.drawImage(getGlowSprite('#FFF59D'), k.x - 16, k.y - 16 + bob, 32, 32);
         ctx.drawImage(mist, k.x - 9, k.y - 9 + bob, 18, 18);
     }
+}
+
+// ---------- 傳說「狼母」：成狼生小狼 ----------
+function birthPup(w) {
+    w.birthed = true;
+    const p = gameState.player;
+    const pup = new Wolf(w.pos.x + randomInRange(-10, 10), w.pos.y + randomInRange(4, 12), gameState.units.Wolf.level, p);
+    pup.pup = true;
+    pup.refreshStats();
+    pup.currentHealth = pup.maxHealth;
+    gameState.summons.push(pup);
+    spawnParticles(pup.pos.x, pup.pos.y, PUP_TINT, 10, 50, 0.5, 3);
+    spawnParticles(pup.pos.x, pup.pos.y, '#C5E1A5', 8, 40, 0.6, 2);
+    addWorldFx({ kind: 'ring', x: pup.pos.x, y: pup.pos.y, r0: 6, r1: 34, life: 0.45, color: '#C5E1A5', width: 4 });
+    if (inView(pup.pos)) spawnFloatText(pup.pos.x, pup.pos.y - 22, '狼母', '#ECEFF1', 12, 1.0, 'wolfMother');
+}
+
+// ---------- 傳說「綠人」：被纏住的怪倒下，種子往旁邊迸 ----------
+function greenManBurst(m) {
+    const d = druidState();
+    if (d.greenLive >= GREEN_MAN_MAX_LIVE) return;
+    const near = [], rSq = GREEN_MAN_REACH * GREEN_MAN_REACH;
+    monsterGrid.forEachInRadius(m.pos, GREEN_MAN_REACH, o => { if (o !== m && o.isAlive && !o.stealthed && distanceSq(o.pos, m.pos) <= rSq) near.push(o); });
+    near.sort((a, b) => distanceSq(a.pos, m.pos) - distanceSq(b.pos, m.pos));
+    const dmg = seedDamage() * GREEN_MAN_SHARE, radius = DRUID.seed.radius * (1 + blessVal('seedRadius'));
+    for (let i = 0; i < GREEN_MAN_SEEDS && d.greenLive < GREEN_MAN_MAX_LIVE; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const to = near[i] ? { x: near[i].pos.x, y: near[i].pos.y } : { x: m.pos.x + Math.cos(a) * GREEN_MAN_REACH * 0.6, y: m.pos.y + Math.sin(a) * GREEN_MAN_REACH * 0.6 };
+        const fx = new SeedEffect(m.pos, to, dmg, radius);
+        fx.green = true;
+        d.greenLive++;
+        gameState.visualEffects.push(fx);
+    }
+    if (inView(m.pos)) gameState.visualEffects.push(new GreenBurstEffect(m.pos));
+}
+// 倒下的地方冒出一株兩片葉的新芽，一圈葉子往外翻飛
+const LEAF_GREEN = '#7CB342', LEAF_LIGHT = '#C5E1A5', GREEN_BURST_LEAVES = 7;
+function drawLeaf(ctx, x, y, a, s) {
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(a); ctx.scale(s, s);
+    ctx.beginPath(); ctx.moveTo(-5, 0); ctx.quadraticCurveTo(0, -4.5, 5, 0); ctx.quadraticCurveTo(0, 4.5, -5, 0); ctx.closePath();
+    ctx.fillStyle = LEAF_GREEN; ctx.fill();
+    ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.2 / s; ctx.stroke();
+    ctx.strokeStyle = LEAF_LIGHT; ctx.lineWidth = 0.8 / s;
+    ctx.beginPath(); ctx.moveTo(-3.5, 0); ctx.lineTo(3.5, 0); ctx.stroke();
+    ctx.restore();
+}
+class GreenBurstEffect extends TimedEffect {
+    constructor(pos) { super({ x: pos.x, y: pos.y }, 0.6); this.spin = Math.random() * Math.PI * 2; }
+    draw(ctx) {
+        const k = 1 - this.life / this.duration, { x, y } = this.pos;
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, this.life / 0.2);
+        ctx.drawImage(getGlowSprite(LEAF_LIGHT), x - 26, y - 26, 52, 52);
+        // 新芽：莖往上長，頂端兩片葉子張開
+        const h = 18 * Math.min(1, k * 3);
+        ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 5; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, y + 6 - h); ctx.stroke();
+        ctx.strokeStyle = '#558B2F'; ctx.lineWidth = 2.6;
+        ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, y + 6 - h); ctx.stroke();
+        const open = Math.min(1, k * 3);
+        drawLeaf(ctx, x - 8 * open, y + 6 - h, -0.5, 1.6 * open + 0.1);
+        drawLeaf(ctx, x + 8 * open, y + 6 - h, Math.PI + 0.5, 1.6 * open + 0.1);
+        // 往外翻飛的葉子
+        for (let i = 0; i < GREEN_BURST_LEAVES; i++) {
+            const a = this.spin + i * Math.PI * 2 / GREEN_BURST_LEAVES, r = 10 + 40 * k;
+            drawLeaf(ctx, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.7 - 8 * Math.sin(k * Math.PI), a + k * 6, 1.4);
+        }
+        ctx.restore();
+    }
+}
+
+// ---------- 傳說「巨石陣」：換節氣時腳下立起一圈巨石 ----------
+// 畫在地面那一層（人、怪站在石頭前面會擋住石頭）。站在圈裡時石頭與地上的圈泛金光
+const HENGE_GOLD = '#FFE082', HENGE_STONE = '#8E8A84', HENGE_STONE_DARK = '#6E6A65', HENGE_STONE_LIGHT = '#B5B0A8', HENGE_CRACK = '#4E4A46', HENGE_MOSS = '#689F38';
+const HENGE_STONE_W = 15, HENGE_STONE_H = 30;
+const HENGE_SHAPES = [
+    { w: 1, h: 1, lean: 0, bump: 1, chip: 2, crack: 3 }, { w: 0.85, h: 0.8, lean: 1.5, bump: -1, chip: 0, crack: -2 },
+    { w: 1.1, h: 1.1, lean: -1, bump: 2, chip: 3, crack: 1 }, { w: 0.9, h: 0.9, lean: 0.5, bump: 0, chip: 1, crack: -3 },
+];
+function drawStonehenge(ctx) {
+    const h = druidState().henge;
+    if (!h || !bl('stonehenge')) return;
+    const rise = Math.min(1, h.t / HENGE_RISE), inside = inHenge(), pulse = 0.5 + 0.5 * Math.sin(worldTime * 4);
+    ctx.save();
+    ctx.globalAlpha = inside ? 0.55 + 0.25 * pulse : 0.3;
+    ctx.strokeStyle = HENGE_GOLD; ctx.lineWidth = inside ? 4 : 2.5;
+    ctx.setLineDash([10, 8]);
+    ctx.beginPath(); ctx.arc(h.x, h.y, HENGE_RADIUS, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    if (inside) {
+        ctx.globalAlpha = 0.12 + 0.06 * pulse;
+        ctx.fillStyle = HENGE_GOLD;
+        ctx.beginPath(); ctx.arc(h.x, h.y, HENGE_RADIUS, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    const stones = [];
+    for (let i = 0; i < HENGE_STONES; i++) { const a = i * Math.PI * 2 / HENGE_STONES; stones.push({ i, x: h.x + Math.cos(a) * HENGE_RADIUS, y: h.y + Math.sin(a) * HENGE_RADIUS }); }
+    stones.sort((a, b) => a.y - b.y);
+    for (const s of stones) {
+        // 每塊石頭高矮、歪斜、輪廓的凹凸都不一樣（照編號固定，不會每格亂跳）
+        const v = HENGE_SHAPES[s.i % HENGE_SHAPES.length], w = HENGE_STONE_W * v.w, sh = HENGE_STONE_H * v.h * rise;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath(); ctx.ellipse(s.x, s.y + 2, w * 0.75, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+        if (sh < 2) continue;
+        const L = s.x - w / 2, R = s.x + w / 2, top = s.y - sh, tl = s.x - w * 0.38 + v.lean, tr = s.x + w * 0.4 + v.lean;
+        const outline = () => {
+            ctx.beginPath();
+            ctx.moveTo(L, s.y); ctx.lineTo(L + v.bump, s.y - sh * 0.45); ctx.lineTo(tl, top + 3);
+            ctx.lineTo(s.x + v.lean - 1, top); ctx.lineTo(tr, top + 2 + v.chip); ctx.lineTo(R - v.bump * 0.5, s.y - sh * 0.55); ctx.lineTo(R, s.y); ctx.closePath();
+        };
+        outline(); ctx.fillStyle = HENGE_STONE; ctx.fill();
+        // 右半暗面、左緣亮面
+        ctx.save(); outline(); ctx.clip();
+        ctx.fillStyle = HENGE_STONE_DARK; ctx.fillRect(s.x + w * 0.08 + v.lean * 0.5, top - 2, w, sh + 4);
+        ctx.fillStyle = HENGE_STONE_LIGHT; ctx.fillRect(L, top - 2, w * 0.22, sh + 4);
+        ctx.restore();
+        outline(); ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 2; ctx.stroke();
+        // 裂紋
+        ctx.strokeStyle = HENGE_CRACK; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(s.x + v.crack, top + sh * 0.2); ctx.lineTo(s.x + v.crack - 2, top + sh * 0.38); ctx.lineTo(s.x + v.crack + 1, top + sh * 0.5); ctx.stroke();
+        // 底部一撮青苔
+        ctx.fillStyle = HENGE_MOSS;
+        ctx.beginPath(); ctx.ellipse(s.x - w * 0.12, s.y - 2, w * 0.4, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+        // 刻在石上的符紋：站在圈裡時亮成金色
+        ctx.strokeStyle = inside ? HENGE_GOLD : HENGE_CRACK; ctx.lineWidth = inside ? 2 : 1.4;
+        ctx.beginPath();
+        ctx.moveTo(s.x - 1, top + sh * 0.55); ctx.lineTo(s.x - 1, top + sh * 0.85);
+        ctx.moveTo(s.x - 4, top + sh * 0.6); ctx.lineTo(s.x - 1, top + sh * 0.7); ctx.lineTo(s.x + 2, top + sh * 0.6);
+        ctx.stroke();
+    }
+    ctx.restore();
 }
 
 // ---------- 橡樹 ----------
@@ -715,7 +875,8 @@ class Beast extends SummonUnit {
             this.moveSpeed *= sp * (this.tier >= 1 ? WOLF_TIER1_SPEED : 1);
             this.attackSpeed *= sp;
         }
-        this.drawScale = (0.85 + 0.08 * (this.stage || 0)) * (1 + CONFIG.evolution.sizeBonusPerTier * this.tier) * (this.king ? RES_KING_SCALE : 1);
+        this.drawScale = (0.85 + 0.08 * (this.stage || 0)) * (1 + CONFIG.evolution.sizeBonusPerTier * this.tier) * (this.king ? RES_KING_SCALE : 1) * (this.pup ? PUP_SCALE : 1);
+        if (this.pup) { this.tint = PUP_TINT; this.tintStrength = PUP_TINT_STRENGTH; }
         if (this.king) { this.tint = '#FFD54F'; this.tintStrength = 0.35; }
         if (this.spirited) { this.tint = '#B388FF'; this.tintStrength = 0.5; }
     }
@@ -790,7 +951,7 @@ class Beast extends SummonUnit {
             return;
         }
         this.isAlive = false;
-        gameState.units[this.config.type].count--;
+        if (!this.pup) gameState.units[this.config.type].count--;
         if (this.config.type === 'Bear' && bl('whiteBull') && druidState().boostWave !== gameState.currentWave) {
             druidState().boostWave = gameState.currentWave;
             spawnFloatText(this.pos.x, this.pos.y - 24, '白牛獻祭', '#FFF8E1', 14, 1.4, 'whiteBull');
