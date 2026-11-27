@@ -608,10 +608,10 @@ const RUN_MOD_KEYS = ['soulMult', 'mageHpMult', 'hpMult', 'atkMult', 'speedMult'
 const BLESSINGS = {
     boneBlade: { school: 'skel', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
     cleave: { school: 'skel', name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
-    boneArmor: { school: ARMY_SCHOOL, name: '堅甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
+    boneArmor: { school: ARMY_SCHOOL, name: '堅甲', needsSummon: true, max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
     raiseDead: { school: 'skel', name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
     swiftBones: { school: 'skel', name: '疾骨', max: 3, per: 0.2, desc: b => `骷髏移速 +${pct(b.per)}` },
-    lifesteal: { school: ARMY_SCHOOL, name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
+    lifesteal: { school: ARMY_SCHOOL, name: '嗜魂', needsSummon: true, max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
     splitGaze: { school: 'eye', name: '分裂凝視', max: 3, per: 1, desc: b => `眼魔每次多射 ${b.per} 發` },
     frenzyEye: { school: 'eye', name: '狂熱之眼', max: 4, per: 0.3, desc: b => `眼魔攻速 +${pct(b.per)}` },
     eagleEye: { school: 'eye', name: '鷹眼', max: 3, per: 0.2, desc: b => `眼魔射程 +${pct(b.per)}` },
@@ -652,7 +652,7 @@ const BLESSINGS = {
     soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
     twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
-    deathPact: { school: 'soul', name: '殘魂回收', legendary: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
+    deathPact: { school: 'soul', name: '殘魂回收', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
 };
 // 卡片、暫停選單、飄字的圖示：有寫 icon 的用它，其他就是祝福自己的 id
 function blessIcon(id) { return BLESSINGS[id].icon || id; }
