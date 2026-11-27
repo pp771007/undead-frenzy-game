@@ -966,8 +966,8 @@ function defaultStats() {
 function stats() { return meta.stats; }
 // 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
 function emptyRunStats() {
-    // recruits：自己按卡片召喚了幾次（開局就帶的兵、免費送的不算）；splits：打完每一波首領時的時間（排行榜的分段計時）
-    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, recruits: 0, relics: {}, flags: {}, splits: {} };
+    // recruits：自己按卡片召喚了幾次（開局就帶的兵、免費送的不算）
+    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, recruits: 0, relics: {}, flags: {} };
 }
 function runUnitsUsed() { return Object.keys(gameState.totalSummons).filter(k => gameState.totalSummons[k] > 0); }
 function wonOnlyWith(type) { const u = runUnitsUsed(); return gameState.endless && u.length === 1 && u[0] === type; }
@@ -1055,8 +1055,12 @@ function checkAchievements(anywhere = false) {
         if (!anywhere) { gameState.achvCrystals += a.reward; gameState.achvCount++; }
         saveMeta();
         achvToastQueue.push(a);
-        if (!achvToastBusy) showNextAchvToast();
+        if (anywhere) releaseAchvToasts();
     }
+}
+// 戰鬥中達成的成就先存著，結算時才一個個跳出來：打到一半跳出來會蓋住戰場、搶走注意力
+function releaseAchvToasts() {
+    if (!achvToastBusy) showNextAchvToast();
 }
 // 成就圖示：圖鑑用那隻怪的立繪（跟場上一樣染色），其他用 achievement-icons.js 裡各自的向量圖
 const ACHV_PORTRAIT_PX = 64;
@@ -6821,7 +6825,6 @@ function checkWaveEndCondition() {
         spawnCrystalText(CRYSTALS_PER_WAVE);
         queueDraftIfDue();
         settleRelicsAtWaveEnd();
-        lbWaveEnd();
         gameState.projectiles.forEach(returnProjectileToPool);
         gameState.projectiles = [];
         gameState.visualEffects.forEach(returnVisualEffectToPool);
@@ -6860,6 +6863,7 @@ function showVictory() {
     const isRecord = recordClear();
     const prevBest = bestClearOf(runClass());
     checkAchievements();
+    releaseAchvToasts();
     const lv = gameState.curse || 0;
     const bonus = Math.round(VICTORY_CRYSTALS * curseCrystalMult(lv));
     meta.crystals += bonus;
@@ -6969,7 +6973,7 @@ function lbSubmit(reason) {
         kills: Object.values(gameState.totalKills).reduce((a, b) => a + b, 0),
         summons: Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0),
         streak: gameState.bestStreak, bosses: gameState.totalKills.Boss || 0,
-        blessings: { ...gameState.blessings }, splits: { ...gameState.run.splits },
+        blessings: { ...gameState.blessings },
     };
     meta.leaderboard.push(e);
     lbPrune();
@@ -6977,28 +6981,6 @@ function lbSubmit(reason) {
     return { entry: e, passed: LB_RIVALS.filter(r => lbCompare(e, r) < 0 && !lbBeaten(r, best)) };
 }
 
-// 波次結束時喊一聲：這一局第一次越過某個對手（以前的紀錄還沒贏過他），或是首領波的分段時間跟自己最快的通關比
-function lbWaveEnd() {
-    if (appScreen !== 'playing' || gameState.daily || gameState.endless) return;
-    const w = gameState.currentWave, run = gameState.run, now = lbRunNow();
-    if (w % CONFIG.wave.bossEvery === 0) run.splits[w] = gameState.runTime;
-    const best = lbOwnBest();
-    const passed = LB_RIVALS.filter(r => !r.won && r.wave === w - 1 && !lbBeaten(r, best));
-    if (passed.length > 0) {
-        gameState.banner = { text: `超越 ${passed[0].name}`, sub: `排行榜綜合第 ${lbPlace(now, LB_ALL)} 名`, color: '#FFD54F', life: CONFIG.wave.bannerDuration * 1.4, icon: 'podium' };
-        return;
-    }
-    const target = lbSplitTarget(w);
-    if (target != null && !isFinalWave(w)) {
-        const d = gameState.runTime - target;
-        gameState.banner = { text: `比最佳${d <= 0 ? '快' : '慢'} ${formatClock(Math.abs(d))}`, sub: `第 ${w} 波 · ${formatClock(gameState.runTime)}`, color: d <= 0 ? '#A5D6A7' : '#EF9A9A', life: CONFIG.wave.bannerDuration * 1.2, icon: 'clock' };
-    }
-}
-// 這個職業自己最快的那次通關，打到第 w 波時用了多久（沒有就 null）
-function lbSplitTarget(w) {
-    const best = meta.leaderboard.filter(e => e.won && e.cls === runClass() && e.splits && e.splits[w] != null).sort(lbCompare)[0];
-    return best ? best.splits[w] : null;
-}
 // 結算畫面的下一個目標：榜上排在這一局前面的那一筆，還差多少
 function lbNextTargetHtml(run) {
     if (gameState.daily) return '';
@@ -8686,6 +8668,7 @@ function showGameOver(reason = 'died') {
     uiElements.finalSummons.textContent = formatNumberK(summons);
     uiElements.finalStreak.textContent = formatNumberK(gameState.bestStreak);
     checkAchievements();
+    releaseAchvToasts();
     const ranked = lbSubmit(reason);
     const reward = getRunReward();
     meta.crystals += reward;
