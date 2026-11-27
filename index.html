@@ -4,6 +4,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <script>
+        // 瀏覽器開了「網頁縮放」或系統顯示大小調大時，網頁拿到的寬度會只剩 270 左右，
+        // 介面放不下（頭像超出畫面、HUD 疊在一起、召喚擠成直排）；比 360 窄就固定用 360 的版面、讓瀏覽器整頁縮小
+        (function () {
+            var MIN_LAYOUT_W = 360;
+            if (document.documentElement.clientWidth >= MIN_LAYOUT_W) return;
+            document.querySelector('meta[name="viewport"]').setAttribute('content', 'width=' + MIN_LAYOUT_W + ', user-scalable=no, viewport-fit=cover');
+        })();
+    </script>
+    <!-- 遊戲本來就是深色；宣告出來，手機瀏覽器的「深色模式」才不會再把它自動調暗（金色按鈕會被壓成咖啡色） -->
+    <meta name="color-scheme" content="dark">
     <title>亡靈狂潮 (Undead Frenzy)</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="manifest" href="manifest.webmanifest">
@@ -1521,6 +1532,17 @@
         /* 標題畫面 */
         #title-screen {
             background: radial-gradient(ellipse at 50% 40%, rgba(40, 20, 60, 0.35), rgba(8, 5, 12, 0.85));
+            /* 矮的手機放不下時要捲得到最上面的標題；只寫 center 的話超出的上半截捲不回來（同 #draft-screen 的置中法） */
+            overflow-y: auto;
+            justify-content: flex-start;
+        }
+
+        #title-screen > :first-child {
+            margin-top: auto;
+        }
+
+        #title-screen > :last-child {
+            margin-bottom: auto;
         }
 
         .logo {
@@ -1564,10 +1586,12 @@
             margin-top: 6px;
         }
 
+        /* 七個頭像排起來要 384 寬，窄手機放不下時一起縮，不要超出畫面 */
         .class-pick {
             position: relative;
-            width: 48px;
-            height: 48px;
+            flex: 0 1 48px;
+            min-width: 0;
+            aspect-ratio: 1;
             padding: 2px;
             border-radius: 50%;
             border: 2px solid var(--ink);
