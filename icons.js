@@ -1022,28 +1022,6 @@ const ICON_BODIES = {
     // 雷鳴：雷雲劈下紫色閃電
     pact_storm: `<path d="M14 34 C6 34 4 24 12 22 C12 12 24 8 30 14 C34 6 50 8 50 18 C58 18 60 30 52 34 Z" fill="#78909c"/>
         <path d="M34 30 L24 46 L32 46 L26 60 L42 40 L34 40 L40 30 Z" fill="#ce93d8"/><path d="M18 40 L14 50 M48 40 L52 48" stroke="#90caf9" stroke-width="3"/>`,
-
-    // ---- 每日變異：每條規則一張 ----
-    mut_glass: `<path d="M32 54 C12 41 5 28 12 17 C18 9 28 10 32 18 C36 10 46 9 52 17 C59 28 52 41 32 54 Z" fill="#b3e5fc"/>
-        <path d="M32 18 L28 28 L36 32 L30 44" stroke-width="2.5"/><path d="M14 24 L22 26 M44 22 L50 30" stroke-width="2"/>${shine(20, 22, 5, 3)}${shine(44, 20, 2.5, 1.5)}`,
-    mut_giants: `<ellipse cx="32" cy="40" rx="16" ry="18" fill="#795548"/><ellipse cx="14" cy="18" rx="6" ry="8" fill="#795548" transform="rotate(-20 14 18)"/>
-        <ellipse cx="27" cy="12" rx="6" ry="8" fill="#795548"/><ellipse cx="41" cy="12" rx="6" ry="8" fill="#795548"/><ellipse cx="52" cy="19" rx="6" ry="8" fill="#795548" transform="rotate(20 52 19)"/>
-        <path d="M24 40 L40 40 M26 48 L38 48" stroke="#4e342e" stroke-width="3"/>`,
-    mut_eyes: `<path d="M32 4 L32 12 M32 52 L32 60 M4 32 L12 32 M52 32 L60 32 M12 12 L18 18 M46 46 L52 52 M12 52 L18 46 M46 18 L52 12" stroke="#ffe082" stroke-width="4"/>
-        <path d="M10 32 C18 18 46 18 54 32 C46 46 18 46 10 32 Z" fill="#ffffff"/><circle cx="32" cy="32" r="10" fill="#ffc400"/><circle cx="32" cy="32" r="4.5" fill="#1b1424" stroke="none"/>${shine(28, 27, 2.5, 1.8)}`,
-    mut_bloodMoon: `<circle cx="32" cy="28" r="22" fill="#c62828"/><circle cx="24" cy="22" r="5" fill="#b71c1c" stroke-width="2.5"/><circle cx="40" cy="32" r="4" fill="#b71c1c" stroke-width="2.5"/>
-        <path d="M22 48 C22 54 26 56 26 60 C26 56 30 54 30 48 M38 49 C38 53 41 55 41 58 C41 55 44 53 44 49" fill="#e53935" stroke-width="2.5"/>${shine(20, 14, 4, 2.5)}`,
-    mut_feast: `<path d="M6 36 L58 36 C58 50 46 58 32 58 C18 58 6 50 6 36 Z" fill="#8d6e63"/><path d="M6 36 L58 36" stroke-width="4"/>
-        <path d="M20 36 C12 30 16 20 20 14 C22 22 26 24 26 30 C30 24 30 18 28 10 C38 18 40 28 36 36 Z" fill="#62dbe2"/>
-        <path d="M38 36 C36 30 40 24 44 22 C44 28 48 30 46 36 Z" fill="#62dbe2"/><path d="M14 44 C24 48 40 48 50 44" stroke="#5d4037" stroke-width="2.5"/>`,
-    mut_bones: `<circle cx="32" cy="32" r="12" fill="#fff59d"/><path d="M32 6 L32 14 M32 50 L32 58 M6 32 L14 32 M50 32 L58 32" stroke="#fff59d" stroke-width="4"/>
-        <path d="M10 50 C6 46 10 40 14 44 L44 14 C40 10 46 6 50 10 C54 6 60 12 54 16 C58 20 52 26 48 22 L18 52 C22 56 16 60 12 56 C8 60 2 54 6 50 C2 46 6 40 10 44 Z" fill="#f1ead6" transform="translate(64 0) scale(-1 1)"/>
-        <path d="M10 50 C6 46 10 40 14 44 L44 14 C40 10 46 6 50 10 C54 6 60 12 54 16 C58 20 52 26 48 22 L18 52 C22 56 16 60 12 56 C8 60 2 54 6 50 C2 46 6 40 10 44 Z" fill="#f1ead6"/>`,
-    mut_market: `<path d="M32 10 L32 52 M18 56 L46 56 M10 22 L54 22" stroke-width="4"/><path d="M8 22 L2 38 L18 38 Z" fill="#ffd54f"/><path d="M56 22 L46 38 L62 38 Z" fill="#ffd54f"/>
-        <path d="M2 38 C2 44 18 44 18 38 Z M46 38 C46 44 62 44 62 38 Z" fill="#ffd54f"/>
-        <path d="M24 12 C20 4 14 4 12 6 C16 8 18 10 20 14 Z M40 12 C44 4 50 4 52 6 C48 8 46 10 44 14 Z" fill="#b71c1c"/><circle cx="32" cy="10" r="5" fill="#e5484d"/>`,
-    mut_storm: `<path d="M10 14 L54 14 C50 20 44 22 36 22 C44 24 48 28 46 32 C40 30 32 32 28 34 C34 36 38 40 36 44 C32 42 26 44 24 48 C28 50 30 54 28 58 C22 50 18 42 22 34 C14 32 12 24 18 22 C12 20 10 18 10 14 Z" fill="#9575cd"/>
-        <path d="${starPath(46, 46, 12, 5, 8)}" fill="#c06bf5" stroke-width="3"/><circle cx="46" cy="46" r="3.5" fill="#f6dcff" stroke-width="2"/>`,
 };
 
 // ---- 雙流派傳說：每張都把兩個流派的東西畫在一起 ----

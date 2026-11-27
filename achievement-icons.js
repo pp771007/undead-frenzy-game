@@ -199,10 +199,6 @@ const LEGEND_MEDAL = (inner) => `<circle cx="32" cy="32" r="28" fill="${C.goldDa
 const PACT_SCROLL = (inner) => `<path d="M12 6 L46 6 C50 6 52 10 52 14 L52 56 L18 56 C14 56 12 52 12 48 Z" fill="#fff3e0"/><path d="M18 16 L44 16 M18 24 L44 24 M18 32 L34 32" stroke="${C.wood}" stroke-width="2.5"/>
     <circle cx="42" cy="46" r="16" fill="${C.blood}"/>${at(42, 46, 0.36, `<g transform="translate(-32 -32)">${inner}</g>`)}`;
 for (const [id, icon] of [['bloodPact', 'pact_blood'], ['greedPact', 'pact_greed'], ['furyPact', 'pact_fury'], ['flamePact', 'pact_flame'], ['swarmPact', 'pact_swarm'], ['stormPact', 'pact_storm']]) ACHV_ICON_BODIES[`pact_${id}`] = PACT_SCROLL(ICON_BODIES[icon]);
-// 每日變異：日曆紙，中間是那一天的規則圖示
-const DAILY_PAGE = (inner) => `<rect x="8" y="8" width="48" height="50" rx="5" fill="${C.bone}"/><path d="M8 20 L56 20 L56 13 C56 10 54 8 51 8 L13 8 C10 8 8 10 8 13 Z" fill="${C.red}"/>
-    <path d="M20 4 L20 12 M44 4 L44 12" stroke-width="4"/>${at(32, 39, 0.5, `<g transform="translate(-32 -32)">${inner}</g>`)}`;
-for (const id of ['glass', 'giants', 'eyes', 'bloodMoon', 'feast', 'bones', 'market', 'storm']) ACHV_ICON_BODIES[`daily_${id}`] = DAILY_PAGE(ICON_BODIES[`mut_${id}`]);
 Object.assign(ACHV_ICON_BODIES, {
     legends: `<rect x="6" y="14" width="22" height="34" rx="3" fill="#ffe082" transform="rotate(-18 17 31)"/><rect x="36" y="14" width="22" height="34" rx="3" fill="#ffe082" transform="rotate(18 47 31)"/>
         <rect x="21" y="10" width="22" height="36" rx="3" fill="${C.gold}"/>${at(32, 28, 0.42, P.star(C.white))}${sparks([[56, 54, 4]], '#fff3c4')}`,
@@ -239,9 +235,6 @@ Object.assign(ACHV_ICON_BODIES, {
     relicTrio: `<circle cx="32" cy="32" r="28" fill="#5d4037"/><circle cx="32" cy="32" r="22" fill="#d7ccc8" stroke-width="2.5"/><path d="M32 12 L32 52 M12 32 L52 32" stroke="${C.wood}" stroke-width="2" stroke-dasharray="3 3"/>
         <circle cx="32" cy="18" r="6" fill="${C.red}" stroke-width="2.5"/><circle cx="20" cy="42" r="6" fill="#4db6ac" stroke-width="2.5"/><circle cx="44" cy="42" r="6" fill="${C.gold}" stroke-width="2.5"/>
         <path d="M32 24 L22 37 M32 24 L42 37 M26 42 L38 42" stroke="${C.blood}" stroke-width="2"/>`,
-
-    dailyWeek: `<rect x="6" y="10" width="52" height="46" rx="5" fill="${C.bone}"/><path d="M6 22 L58 22 L58 15 C58 12 56 10 53 10 L11 10 C8 10 6 12 6 15 Z" fill="${C.red}"/>
-        ${(() => { let s = ''; for (let i = 0; i < 7; i++) { const x = 12 + (i % 4) * 12, y = 30 + Math.floor(i / 4) * 13; s += `<path d="M${x - 3} ${y} L${x} ${y + 4} L${x + 6} ${y - 4}" stroke="${C.green}" stroke-width="3"/>`; } return s; })()}`,
 
     // ---- 生涯：累積的東西越堆越高 ----
     kills10k: `<path d="M4 58 C10 44 20 40 32 40 C44 40 54 44 60 58 Z" fill="${C.boneDark}"/>${at(20, 48, 0.5, P.bone(), -20)}${at(42, 50, 0.5, P.bone(), 25)}${at(32, 30, 0.5, P.skull())}`,

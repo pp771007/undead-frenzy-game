@@ -103,7 +103,7 @@ const uiElements = {
     messageArea: $id('message-area'),
     titleScreen: $id('title-screen'),
     titleContinueBtn: $id('title-continue-btn'),
-    titleStartBtn: $id('title-start-btn'), titleDailyBtn: $id('title-daily-btn'),
+    titleStartBtn: $id('title-start-btn'),
     titleHero: $id('title-hero'), classPicker: $id('class-picker'), classInfo: $id('class-info'),
     titleMetaBtn: $id('title-meta-btn'),
     titleSettingsBtn: $id('title-settings-btn'),
@@ -606,15 +606,15 @@ const GHOSTFIRE_RADIUS = 30, GHOSTFIRE_SHARE = 0.5, SOUL_GAZE_CHANCE = 0.25, WAI
 const pct = (v) => `${Math.round(v * 100)}%`;
 // 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
 // 堅甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
-// 七個職業都抽得到的東西（全軍、靈魂流派、契約、每日變異、永久強化、成就）名字不要用亡靈法師的用語（骨、亡者、新星…）
+// 七個職業都抽得到的東西（全軍、靈魂流派、契約、永久強化、成就）名字不要用亡靈法師的用語（骨、亡者、新星…）
 const ARMY_SCHOOL = 'army';
 // 契約不屬於任何流派：不算共鳴、卡片標「契約」
 const PACT_SCHOOL = 'pact';
 // 雙流派傳說：祝福寫 duo: [流派A, 流派B]，兩個流派都疊到第一段共鳴（RESONANCE_STEPS[0] 層）才會出現。
 // 不算進任何一個流派的層數；抽傳說時權重拉滿，湊到兩條路的人首領波幾乎一定看得到
 const DUO_SCHOOL = 'duo';
-// 整局的乘數（詛咒、契約、每日變異共用，見 runMods）：每個鍵的中文說法，以及「大於 1 是好事嗎」
-// 契約與每日變異的說明文字都從數字產生，數字改了說明跟著變
+// 整局的乘數（詛咒、契約共用，見 runMods）：每個鍵的中文說法，以及「大於 1 是好事嗎」
+// 契約的說明文字從數字產生，數字改了說明跟著變
 const RUN_MOD_LABELS = {
     summonDmgMult: { label: '召喚物傷害', good: true },
     summonAtkSpeedMult: { label: '召喚物攻速', good: true },
@@ -636,7 +636,7 @@ function runModText(key, v) {
     return v >= 1 ? `${L} +${pct(v - 1)}` : `${L} -${pct(1 - v)}`;
 }
 function isGoodMod(key, v) { return (v > 1) === RUN_MOD_LABELS[key].good; }
-// 好處一行綠、壞處一行紅（卡片、每日變異共用）
+// 好處一行綠、壞處一行紅
 function runModsHtml(mods) {
     const keys = Object.keys(mods);
     return keys.filter(k => isGoodMod(k, mods[k])).concat(keys.filter(k => !isGoodMod(k, mods[k])))
@@ -811,7 +811,7 @@ function migrateMetaTable(m) {
 // 難度全擠在 35 波以後（波數成長 expGrowth 是指數），所以前半局很空、後面一口氣斷崖。
 // 改成從前幾波就慢慢加（MONSTER_ATK_RAMP、MONSTER_HP_RAMP），同時把 expGrowth 調小：前中期有壓力、後期一樣難但不再斷崖。
 // 整局一律加的話前期就被壓垮（死靈法師第 9 波就倒），只加後期的話斷崖更陡，兩種都試過。
-// 詛咒、契約、每日變異的倍率另外疊在上面
+// 詛咒、契約的倍率另外疊在上面
 // 攻擊與血量分開加：攻擊早點加（玩家第三到五分鐘就該第一次掉到半血，才有挑戰），血量晚點加、拉長
 // （血量一口氣加滿的話，加滿那幾波死亡率從 0 跳到四成，是斷崖；而且血量灌太多只會拖棚）。
 // 從第 1 波就加的話，沒有大軍的職業（武僧）傷害一路累積、第 10 波首領就倒
@@ -886,11 +886,11 @@ function classMeta(id) {
 // ---------- 成就：第一次達成就給結晶（跨局保留） ----------
 // 每一類成就都有「近的」與「遠的」目標，每一局都至少有幾個摸得到。
 // 條件都看目前狀態或跨局統計（meta.stats），不需要每格算；圖示見 achievement-icons.js（圖鑑那一類直接用那隻怪的立繪）。
-// 清單裡會用到稍後才宣告的 CURSES、DAILY_MUTATIONS，所以第一次用到時才建（achievements()）
+// 清單裡會用到稍後才宣告的 CURSES，所以第一次用到時才建（achievements()）
 const ACHV_CATEGORIES = [
     { id: 'journey', name: '征途' }, { id: 'endless', name: '無盡' }, { id: 'curse', name: '詛咒' }, { id: 'boss', name: '首領' },
     { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '共鳴' }, { id: 'legend', name: '傳說' },
-    { id: 'pact', name: '契約' }, { id: 'streak', name: '連殺' }, { id: 'relic', name: '遺跡' }, { id: 'daily', name: '每日' },
+    { id: 'pact', name: '契約' }, { id: 'streak', name: '連殺' }, { id: 'relic', name: '遺跡' },
     { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'class', name: '職業' }, { id: 'legacy', name: '傳承' },
 ];
 const ACHV_JOURNEY = [[5, 'wave5', '破曉', 10], [10, 'wave10', '初陣', 15], [15, 'wave15', '老兵', 20], [20, 'wave20', '百戰', 25], [25, 'wave25', '過半', 30],
@@ -954,14 +954,12 @@ const ACHV_BLITZ_SECONDS = 40;
 const ACHV_BOSS_CHALLENGE_WAVE = 30;
 const ACHV_LEGENDS = 3;
 const ACHV_PACTS = 3;
-const ACHV_DAILY_WAVE = 20;
-const ACHV_DAILY_DAYS = 7;
 const ACHV_BOSS_TOTAL = 25;
 // 精英潮一波就是幾十隻精英，一局打完會超過一千隻
 const ACHV_ELITES = [[500, 'elite500', '精英剋星', 30], [5000, 'elite5000', '王者殺手', 90]];
 
 function defaultStats() {
-    return { kills: {}, totalKills: 0, elites: 0, summons: 0, souls: 0, runs: 0, novas: 0, bosses: 0, relics: {}, legends: {}, pacts: {}, dailyDays: {} };
+    return { kills: {}, totalKills: 0, elites: 0, summons: 0, souls: 0, runs: 0, novas: 0, bosses: 0, relics: {}, legends: {}, pacts: {} };
 }
 function stats() { return meta.stats; }
 // 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
@@ -1006,8 +1004,6 @@ function buildAchievements() {
     for (const [n, id, name, r] of ACHV_STREAK) add('streak', id, name, `連殺 ${n}`, r, () => gameState.bestStreak >= n);
     for (const [id, name, desc, r, t] of ACHV_RELICS) add('relic', id, name, desc, r, () => t(S()));
     add('relic', 'relicTrio', '朝聖者', '一局內三種遺跡都用過', 40, () => Object.keys(RELIC_TYPES).every(k => gameState.run.relics[k]));
-    for (const d of DAILY_MUTATIONS) add('daily', `daily_${d.id}`, d.name, `在「${d.name}」撐過第 ${ACHV_DAILY_WAVE} 波`, 30, () => gameState.daily === d.id && getSurvivedWaves() >= ACHV_DAILY_WAVE);
-    add('daily', 'dailyWeek', '一週不缺席', `在 ${ACHV_DAILY_DAYS} 個不同的日子玩每日變異`, 60, () => Object.keys(S().dailyDays).length >= ACHV_DAILY_DAYS);
     for (const [id, name, desc, r, t] of ACHV_CAREER) add('career', id, name, desc, r, () => t(S()));
     add('challenge', 'noNova', '不靠新星', '一次新星都不放，通關', 100, () => necro() && gameState.endless && gameState.run.novas === 0);
     add('challenge', 'onlySkel', '純骨之軍', '只召喚骷髏，通關', 80, () => wonOnlyWith('SkeletonWarrior'));
@@ -2108,7 +2104,7 @@ const PLAYER_MAX_HIT_RATIO = 0.4;
 // 這個上限是一大塊難度：0.1～0.15 時躲在大軍後面的職業（亡靈法師、刺客、精靈）沒強化也常常通關，
 // 而加怪物攻擊、血量補不回來（只會磨大軍，碰不到主角）。0.2 = 至少被咬五下才倒
 const MELEE_HERO_HIT_RATIO = 0.2;
-// 契約、詛咒、每日變異的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
+// 契約、詛咒的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
 // 上限固定時，後期怪物攻擊早就超過上限，+30% 乘上去還是被壓回 20%；主角血量少三成，上限（最大血量的 20%）也跟著小三成，
 // 一樣被咬 5 下才倒 —— 兩種代價後期都等於沒有。所以上限 × 怪物攻擊倍率 ÷ 主角血量倍率（例：戰狂契約 20% → 26%，約 4 下倒）。
 // 首領大招、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
@@ -6271,7 +6267,7 @@ function finishRelic(r) {
 }
 
 function pickCoffinLoot() {
-    const levelable = classDef().cards.filter(t => unitAllowed(t) && !UNIT_TYPES[t].upgradeOnly && gameState.units[t]);
+    const levelable = classDef().cards.filter(t => !UNIT_TYPES[t].upgradeOnly && gameState.units[t]);
     const pool = COFFIN_LOOT.filter(l => l.id !== 'level' || levelable.length);
     let roll = Math.random() * pool.reduce((a, l) => a + l.weight, 0);
     for (const l of pool) { roll -= l.weight; if (roll < 0) return { loot: l, levelable }; }
@@ -6507,48 +6503,8 @@ const CURSES = [
 const CURSE_CRYSTAL_STEP = 0.3;
 const BATS_EARLY_WAVE = 4;
 const VICTORY_CRYSTALS = 100;
-// ---------- 每日變異：每天一條特殊規則，當天第一場結算的結晶 ×DAILY_CRYSTAL_MULT ----------
-// 照本地日期輪流，連續兩天不會重複；只有規則沒有排行榜，所以照樣吃永久強化，但不疊詛咒
-const DAILY_MS = 86400000;
-const DAILY_CRYSTAL_MULT = 2;
-const DAILY_MUTATIONS = [
-    { id: 'glass', icon: 'mut_glass', name: '玻璃之軀', mods: { mageHpMult: 0.25, summonDmgMult: 2, boltDmgMult: 2 } },
-    { id: 'giants', icon: 'mut_giants', name: '巨獸橫行', mods: { hpMult: 2, atkMult: 1.5, speedMult: 0.85, soulMult: 1.6 } },
-    // onlyUnit 的那兩條是亡靈法師專屬（別的職業的兵全被擋掉、一隻都叫不出來），只排給有那種兵的職業，見 todayMutation
-    { id: 'eyes', icon: 'mut_eyes', name: '千眼之日', rule: '只能召喚眼魔', onlyUnit: 'EyeMonster', mods: { summonDmgMult: 1.3 } },
-    { id: 'bloodMoon', icon: 'mut_bloodMoon', name: '永夜血月', rule: '每一波都是血月' , forceEvent: 'bloodMoon' },
-    { id: 'feast', icon: 'mut_feast', name: '靈魂盛宴', mods: { soulMult: 2, hpMult: 1.5, atkMult: 1.25 } },
-    { id: 'bones', icon: 'mut_bones', name: '白骨之日', rule: '只能召喚骷髏', onlyUnit: 'SkeletonWarrior', mods: { summonAtkSpeedMult: 1.3 } },
-    { id: 'market', icon: 'mut_market', name: '魔鬼市集', rule: '每次選祝福都有一張契約', pactAlways: true },
-    { id: 'storm', icon: 'mut_storm', name: '風暴之日', mods: { ultCdMult: 0.4, speedMult: 1.25 } },
-];
-function localDayNumber() {
-    const now = new Date();
-    return Math.floor((now.getTime() - now.getTimezoneOffset() * 60000) / DAILY_MS);
-}
-function todayKey() { return String(localDayNumber()); }
-// 照標題選的職業挑：輪替表裡只放這個職業玩得了的規則（不同職業同一天可能輪到不同條）
-function todayMutation() {
-    const cards = CLASSES[selectedClass()].cards;
-    const list = DAILY_MUTATIONS.filter(d => !d.onlyUnit || cards.includes(d.onlyUnit));
-    return list[localDayNumber() % list.length];
-}
-function dailyDef() { return gameState.daily ? DAILY_MUTATIONS.find(d => d.id === gameState.daily) || null : null; }
-// 規則的純文字（確認框、開戰橫幅）：特殊規則在前，乘數在後
-function dailyRulesText(d) {
-    return [d.rule, ...Object.keys(d.mods || {}).map(k => runModText(k, d.mods[k]))].filter(Boolean).join('、');
-}
-// 這一局是每日變異、而且那一天的加倍還沒領過
-function dailyCrystalMult() {
-    return gameState.daily && meta.dailyClaimed !== gameState.dailyDate ? DAILY_CRYSTAL_MULT : 1;
-}
-function unitAllowed(type) {
-    const d = dailyDef();
-    return !d || !d.onlyUnit || d.onlyUnit === type;
-}
-
-// 整局的乘數：詛咒、已立的契約、每日變異疊在一起（鍵見 RUN_MOD_LABELS）。
-// 生怪、算靈魂每次都要查，所以快取在 gameState.runModsCache；詛咒、契約、每日變異變動時呼叫 invalidateRunMods()
+// 整局的乘數：詛咒、已立的契約疊在一起（鍵見 RUN_MOD_LABELS）。
+// 生怪、算靈魂每次都要查，所以快取在 gameState.runModsCache；詛咒、契約變動時呼叫 invalidateRunMods()
 function runMods() {
     return gameState.runModsCache || (gameState.runModsCache = computeRunMods());
 }
@@ -6563,8 +6519,6 @@ function computeRunMods() {
         if (CURSES[i].batsEarly) m.batsEarly = true;
     }
     for (const id in gameState.blessings) if (BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0) apply(BLESSINGS[id].mods);
-    const d = dailyDef();
-    if (d && d.mods) apply(d.mods);
     return m;
 }
 function curseCrystalMult(lv = gameState.curse || 0) {
@@ -6578,8 +6532,6 @@ function getWaveEvent() {
 function rollWaveEvent(wave) {
     const W = CONFIG.waveEvents;
     const isBossWave = wave % CONFIG.wave.bossEvery === 0;
-    const d = dailyDef();
-    if (d && d.forceEvent) return isBossWave ? null : d.forceEvent;
     if (wave < W.startWave || isBossWave || gameState.lastEventWave === wave - 1) return null;
     if (Math.random() >= W.chance) return null;
     const ids = Object.keys(W.list);
@@ -6782,9 +6734,6 @@ function prepareNextWave() {
     // 首領波：先講「清光小怪首領才會出來」（名字等首領落地的登場演出再報）
     if (gameState.pendingBoss) {
         gameState.banner = { text: '首領波', sub: `清光小怪，${bossDisplayName(gameState.pendingBoss)}就會登場`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
-    } else if (waveNum === 1 && dailyDef()) {
-        const d = dailyDef();
-        gameState.banner = { text: d.name, sub: dailyRulesText(d), color: '#FF8A80', life: CONFIG.wave.bannerDuration * 1.8, icon: d.icon };
     } else if (getNewcomer(waveNum)) {
         const n = getNewcomer(waveNum);
         gameState.banner = { text: n.name, sub: `新威脅 · ${n.hint}`, color: n.color, life: CONFIG.wave.bannerDuration * 1.8, icon: n.icon, look: n.look };
@@ -6903,7 +6852,6 @@ function endRunFromVictory() {
 // ---------- 排行榜：綜合榜與各職業榜各留前十名（存在這台裝置的 meta 裡） ----------
 // 名次：通關的排前面、照通關時間快到慢；沒通關的照撐過的波數多到少，同波數用時短的在前。
 // time 是 runTime：通關後就不再走（無盡模式不算），所以通關的那筆就是通關時間。
-// 每日變異的規則每天不同（只能召喚眼魔、血量剩四分之一…），跟一般局比不公平，不上榜
 const LB_SIZE = 10;
 // 撐過這幾波才上榜：開局就放棄的不用跳恭喜
 const LB_MIN_WAVE = 5;
@@ -6963,7 +6911,7 @@ function seedLeaderboard(bestClear) {
 }
 // 這一局上榜就回傳那一筆（passed：這一局第一次超越的對手），沒上榜回 null
 function lbSubmit(reason) {
-    if (appScreen !== 'playing' || gameState.daily || getSurvivedWaves() < LB_MIN_WAVE) return null;
+    if (appScreen !== 'playing' || getSurvivedWaves() < LB_MIN_WAVE) return null;
     const best = lbOwnBest();
     const k = reason === 'died' ? gameState.killedBy : null;
     const e = {
@@ -6983,7 +6931,6 @@ function lbSubmit(reason) {
 
 // 結算畫面的下一個目標：榜上排在這一局前面的那一筆，還差多少
 function lbNextTargetHtml(run) {
-    if (gameState.daily) return '';
     const board = lbBoard(LB_ALL), place = lbPlace(run, LB_ALL);
     if (place === 1) return `${iconHtml('podium')}綜合榜第一`;
     const t = board[Math.min(place, board.length + 1) - 2];
@@ -7311,7 +7258,7 @@ function useUltimate() {
     const p = gameState.player;
     if (!p || !p.isAlive || gameState.ultCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
     if (!classDef().ultimate.use()) return false;
-    // 各職業的大招自己設冷卻；局外的「大招精通」、契約與每日變異的大招冷卻在這裡統一打折，七個職業都吃得到
+    // 各職業的大招自己設冷卻；局外的「大招精通」、契約的大招冷卻在這裡統一打折，七個職業都吃得到
     gameState.ultCooldown *= ultCooldownMult();
     markUltTaught();
     return true;
@@ -7411,8 +7358,7 @@ function rollDraftOptions(boss) {
     const count = draftOptionCount();
     const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
     const legend = legendRoll ? weightedPick(draftPool(true), 1)[0] : null;
-    const daily = dailyDef();
-    const pactRoll = !boss && ((daily && daily.pactAlways) || (gameState.currentWave >= PACT_START_WAVE && Math.random() < PACT_CHANCE));
+    const pactRoll = !boss && gameState.currentWave >= PACT_START_WAVE && Math.random() < PACT_CHANCE;
     const pact = pactRoll ? weightedPick(pactPool(), 1)[0] : null;
     const special = [legend, pact].filter(Boolean);
     const options = weightedPick(draftPool(false), count - special.length);
@@ -7692,10 +7638,6 @@ function refreshTitle() {
     const curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     uiElements.titleStartBtn.textContent = curse > 0 ? `開始遊戲 · 詛咒 ${curse}` : '開始遊戲';
     uiElements.titleCurseBtn.classList.toggle('hidden', !(meta.curseUnlocked > 0));
-    const daily = todayMutation();
-    const claimed = meta.dailyClaimed === todayKey();
-    uiElements.titleDailyBtn.innerHTML = `${iconHtml(daily.icon, 'icon btn-icon')}每日 · ${daily.name}` +
-        (claimed ? `<span class="price">${iconHtml('trophy')}</span>` : `<span class="price">${iconHtml('crystal')}×${DAILY_CRYSTAL_MULT}</span>`);
     const best = getBestWave();
     const wins = meta.wins || 0;
     renderClassPicker();
@@ -7767,14 +7709,6 @@ function startNewRun() {
     const save = peekSave();
     if (save && save.currentWave > 0) showConfirm('開始新的一局？', `第 ${save.currentWave} 波的進度會被覆蓋`, '開始', begin);
     else begin();
-}
-
-function startDailyRun() {
-    const d = todayMutation();
-    const save = peekSave();
-    const overwrite = save && save.currentWave > 0 ? `\n第 ${save.currentWave} 波的進度會被覆蓋` : '';
-    const bonus = meta.dailyClaimed === todayKey() ? '' : `\n今天第一場結晶 ×${DAILY_CRYSTAL_MULT}`;
-    showConfirm(`每日變異 · ${d.name}`, `${dailyRulesText(d)}${bonus}${overwrite}`, '出發', () => { resetGame(d); enterPlaying(); });
 }
 
 // ---------- 職業玩法介紹 ----------
@@ -8123,7 +8057,7 @@ function showMessage(msg, duration = 2000) {
 // combo：長按連段的第幾下（0 = 單點），連段時換成會往上爬的音效
 function trySummon(type, combo = 0) {
     const U = UNIT_TYPES[type];
-    if (!U || U.upgradeOnly || !unitAllowed(type) || summonBlocked(type)) return false;
+    if (!U || U.upgradeOnly || summonBlocked(type)) return false;
     const config = U.cfg(), SummonClass = U.Cls(), unit = gameState.units[type];
     const level = unit.level;
     const cost = getSummonCost(config);
@@ -8192,7 +8126,7 @@ function getUpgradeCost(type) {
 }
 
 function tryUpgrade(type, combo = 0) {
-    if (!UNIT_TYPES[type] || !unitAllowed(type)) return false;
+    if (!UNIT_TYPES[type]) return false;
     if (gameState.draftOpen) return false;
     const cost = getUpgradeCost(type);
     if (!payCost(cost)) return false;
@@ -8547,10 +8481,8 @@ function updateUI() {
         // 下一次升級剛好進化：按鈕直接寫「進化」，按下去會發生什麼一看就知道
         const evolvesNext = CONFIG.evolution.levels.includes(level + 1);
         setHtmlIfChanged(el.upgrade, priceButtonHtml(evolvesNext ? '進化' : U.upgradeLabel || '升級', upgradeCost));
-        const allowed = unitAllowed(u.type);
-        if (el.summon.disabled !== !(canAct && allowed && !capped)) el.summon.disabled = !(canAct && allowed && !capped);
-        if (el.upgrade.disabled !== !(canAct && allowed)) el.upgrade.disabled = !(canAct && allowed);
-        el.summon.closest('.unit-card').classList.toggle('daily-locked', !allowed);
+        if (el.summon.disabled !== !(canAct && !capped)) el.summon.disabled = !(canAct && !capped);
+        if (el.upgrade.disabled !== !canAct) el.upgrade.disabled = !canAct;
         const affordSummon = canAfford(summonCost), affordUpgrade = canAfford(upgradeCost);
         el.summon.classList.toggle('cant-afford', !affordSummon);
         el.upgrade.classList.toggle('cant-afford', !affordUpgrade);
@@ -8608,14 +8540,13 @@ function renderRewardDetail(survived) {
     let html = `<span>${iconHtml('skull')}${survived} 波 ×${CRYSTALS_PER_WAVE}<b>+${survived * CRYSTALS_PER_WAVE}</b></span>`;
     if (bosses > 0) html += `<span>${iconHtml('boss')}首領 ${bosses} 隻 ×${CRYSTALS_PER_BOSS}<b>+${bosses * CRYSTALS_PER_BOSS}</b></span>`;
     if (mult > 1) html += `<span>${iconHtml('curse')}詛咒<b>×${mult.toFixed(1)}</b></span>`;
-    if (dailyCrystalMult() > 1) html += `<span>${iconHtml(dailyDef().icon)}每日變異<b>×${DAILY_CRYSTAL_MULT}</b></span>`;
     // 成就的結晶達成當下就入帳了，這裡只是列出來，不算進 getRunReward
     if (gameState.achvCount > 0) html += `<span>${iconHtml('trophy')}成就 ${gameState.achvCount} 個<b>+${gameState.achvCrystals}</b></span>`;
     uiElements.finalRewardDetail.innerHTML = html;
 }
 
 function getRunReward() {
-    return Math.round((getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS) * curseCrystalMult() * dailyCrystalMult());
+    return Math.round((getSurvivedWaves() * CRYSTALS_PER_WAVE + gameState.totalKills.Boss * CRYSTALS_PER_BOSS) * curseCrystalMult());
 }
 function spawnCrystalText(amount) {
     const p = gameState.player;
@@ -8673,8 +8604,6 @@ function showGameOver(reason = 'died') {
     const reward = getRunReward();
     meta.crystals += reward;
     renderRewardDetail(survived);
-    // 那一天的加倍只算一場：有拿到結晶才算用掉（開了馬上放棄不會白白浪費）
-    if (dailyCrystalMult() > 1 && reward > 0) meta.dailyClaimed = gameState.dailyDate;
     saveMeta();
     uiElements.finalReward.innerHTML = `${iconHtml('crystal')}+${reward + gameState.achvCrystals}`;
     uiElements.gameoverMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
@@ -8730,8 +8659,6 @@ function saveGameState() {
         runTime: gameState.runTime,
         curse: gameState.curse,
         endless: gameState.endless,
-        daily: gameState.daily,
-        dailyDate: gameState.dailyDate,
     };
 
     try {
@@ -8798,8 +8725,6 @@ function loadGameState() {
         gameState.runTime = loadedState.runTime ?? 0;
         gameState.run = { ...emptyRunStats(), ...(loadedState.run || {}) };
         gameState.curse = loadedState.curse ?? 0;
-        gameState.daily = loadedState.daily ?? null;
-        gameState.dailyDate = loadedState.dailyDate ?? null;
         invalidateRunMods();
         // 已經過了最終波的舊存檔直接算進無盡模式，不會再跳一次通關
         gameState.endless = loadedState.endless ?? (gameState.currentWave >= CONFIG.wave.finalWave);
@@ -8879,14 +8804,12 @@ function resetGameInternalState() {
 }
 
 // 新的一局（不碰存檔）：永久強化在這裡套用
-function setupNewRun(daily = null) {
+function setupNewRun() {
     resetGameInternalState();
     gameState.classId = selectedClass();
     if (classDef().reset) classDef().reset();
     buildUnitCards();
-    gameState.daily = daily ? daily.id : null;
-    gameState.dailyDate = daily ? todayKey() : null;
-    gameState.curse = daily ? 0 : Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
+    gameState.curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     invalidateRunMods();
     gameState.player = new Player(0, 0);
     gameState.player.maxHealth = Math.round(classDef().hero.baseHealth * (1 + metaVal('mageHp')) * runMods().mageHpMult);
@@ -8900,12 +8823,11 @@ function setupNewRun(daily = null) {
     [uiElements.gameOverScreen, uiElements.pauseMenu, uiElements.draftScreen].forEach(el => showScreen(el, false));
 }
 
-function resetGame(daily = null) {
+function resetGame() {
     SaveStore.remove(SAVE_KEY);
-    setupNewRun(daily);
+    setupNewRun();
     if (classDef().onRunStart) classDef().onRunStart();
     stats().runs++;
-    if (daily) stats().dailyDays[todayKey()] = true;
     saveMeta();
     if (metaLv('headStart') > 0) queueDraft();
     updateUI();
@@ -10060,7 +9982,6 @@ function init() {
     onTap(uiElements.classGuideBtn, () => openClassGuide());
     onTap(uiElements.pauseGuideBtn, () => openClassGuide(runClass()));
     onTap(uiElements.cgOkBtn, closeClassGuide);
-    onTap(uiElements.titleDailyBtn, startDailyRun);
     uiElements.classPicker.addEventListener('click', (e) => { const b = e.target.closest('[data-class]'); if (b) pickClass(b.dataset.class); });
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
