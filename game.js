@@ -650,7 +650,8 @@ const CONFIG = {
 const CLEAVE_RADIUS = 35;
 const pct = (v) => `${Math.round(v * 100)}%`;
 // 全軍通用的祝福（骷髏、怨靈、眼魔都吃）：卡片標「全軍」、不算進任何流派的共鳴、抽卡不加權。
-// 骨甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
+// 堅甲、嗜魂原本被歸到骷髏流派，卡片上是骷髏頭像、說明卻寫「召喚物」，還會幫眼魔流派的人湊骷髏共鳴
+// 七個職業都抽得到的東西（全軍、靈魂流派、契約、每日變異、永久強化、成就）名字不要用亡靈法師的用語（骨、亡者、新星…）
 const ARMY_SCHOOL = 'army';
 // 契約不屬於任何流派：不算共鳴、卡片標「契約」
 const PACT_SCHOOL = 'pact';
@@ -662,7 +663,7 @@ const RUN_MOD_LABELS = {
     boltDmgMult: { label: '主角普攻傷害', good: true },
     soulMult: { label: '靈魂掉落', good: true },
     costMult: { label: '召喚費用', good: false },
-    novaCdMult: { label: '新星冷卻', good: false },
+    ultCdMult: { label: '大招冷卻', good: false },
     mageHpMult: { label: '主角血量', good: true },
     hpMult: { label: '怪物血量', good: false },
     atkMult: { label: '怪物攻擊', good: false },
@@ -687,7 +688,7 @@ function runModsHtml(mods) {
 const BLESSINGS = {
     boneBlade: { school: 'skel', name: '骨刃', max: 5, per: 0.35, desc: b => `骷髏傷害 +${pct(b.per)}` },
     cleave: { school: 'skel', name: '橫掃', max: 3, per: 0.3, desc: b => `骷髏攻擊波及周圍 ${pct(b.per)}` },
-    boneArmor: { school: ARMY_SCHOOL, name: '骨甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
+    boneArmor: { school: ARMY_SCHOOL, name: '堅甲', max: 5, per: 0.3, desc: b => `召喚物血量 +${pct(b.per)}` },
     raiseDead: { school: 'skel', name: '亡者復甦', max: 4, per: 0.05, desc: b => `擊殺時 ${pct(b.per)} 復活成骷髏` },
     lifesteal: { school: ARMY_SCHOOL, name: '嗜魂', max: 2, per: 0.15, desc: b => `召喚物造成傷害的 ${pct(b.per)} 回血` },
     splitGaze: { school: 'eye', name: '分裂凝視', max: 3, per: 1, desc: b => `眼魔每次多射 ${b.per} 發` },
@@ -706,7 +707,8 @@ const BLESSINGS = {
     frenzyTime: { school: 'mage', name: '狂潮延長', max: 3, per: 1.5, desc: b => `新星的大軍狂暴多 ${b.per} 秒` },
     soulHarvest: { school: 'soul', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
     magnet: { school: 'soul', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
-    pact: { school: 'soul', icon: 'summonDiscount', name: '亡者契約', max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
+    // needsSummon：要有「花錢召喚」的卡才有用（武僧三張都是修練卡，抽到等於空卡），見 classCanSummon
+    pact: { school: 'soul', icon: 'summonDiscount', name: '精打細算', needsSummon: true, max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
     // ---- 傳說：首領波的三選一固定佔一張、一般波次偶爾出現（LEGEND_CHANCE_NORMAL），每種一局只能拿一次；改變打法，不只是加數字 ----
     boneBurst: { school: 'skel', name: '骸骨爆裂', legendary: true, max: 1, per: 3, desc: () => '骷髏陣亡時炸傷周圍的怪' },
     giantBones: { school: 'skel', name: '巨骨', legendary: true, max: 1, per: 8, desc: b => `每 ${b.per} 隻骷髏出一隻巨人` },
@@ -715,7 +717,7 @@ const BLESSINGS = {
     frostNova: { school: 'mage', name: '寒冰新星', legendary: true, max: 1, per: 3, desc: b => `新星範圍變大，凍住敵人 ${b.per} 秒` },
     eliteHunter: { school: 'mage', name: '精英獵手', legendary: true, max: 1, per: 1, desc: () => '擊殺精英怪時新星冷卻歸零' },
     soulSiphon: { school: 'mage', name: '吸魂之軀', legendary: true, max: 1, per: 1, desc: b => `每吸一顆靈魂，法師回 ${b.per} 血` },
-    twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
+    twinSummon: { school: 'soul', name: '雙生召喚', legendary: true, needsSummon: true, max: 1, per: 0.3, desc: b => `召喚時 ${pct(b.per)} 機率多送一隻` },
     midas: { school: 'soul', name: '點金', legendary: true, max: 1, per: 0.15, desc: b => `擊殺時 ${pct(b.per)} 掉落三倍靈魂` },
     deathPact: { school: 'soul', name: '殘魂回收', legendary: true, max: 1, per: 0.3, desc: b => `召喚物陣亡時 ${pct(b.per)} 掉回靈魂` },
     // ---- 契約（同 PokeBonk 生存模式的 pact）：好處很大、壞處跟著整局。一般波次偶爾出一張（PACT_CHANCE），每種一局只能立一次。
@@ -724,8 +726,8 @@ const BLESSINGS = {
     greedPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_greed', name: '貪婪契約', max: 1, mods: { soulMult: 1.5, hpMult: 1.25 }, desc: b => runModsHtml(b.mods) },
     furyPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_fury', name: '戰狂契約', max: 1, mods: { summonAtkSpeedMult: 1.3, atkMult: 1.3 }, desc: b => runModsHtml(b.mods) },
     flamePact: { school: PACT_SCHOOL, pact: true, icon: 'pact_flame', name: '魂焰契約', max: 1, mods: { boltDmgMult: 2.5, speedMult: 1.15 }, desc: b => runModsHtml(b.mods) },
-    swarmPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_swarm', name: '群聚契約', max: 1, mods: { costMult: 0.7, eliteMult: 2 }, desc: b => runModsHtml(b.mods) },
-    stormPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_storm', name: '雷鳴契約', max: 1, mods: { novaCdMult: 0.6, bossHpMult: 1.4 }, desc: b => runModsHtml(b.mods) },
+    swarmPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_swarm', name: '群聚契約', needsSummon: true, max: 1, mods: { costMult: 0.7, eliteMult: 2 }, desc: b => runModsHtml(b.mods) },
+    stormPact: { school: PACT_SCHOOL, pact: true, icon: 'pact_storm', name: '雷鳴契約', max: 1, mods: { ultCdMult: 0.6, bossHpMult: 1.4 }, desc: b => runModsHtml(b.mods) },
 };
 // 卡片、暫停選單、飄字的圖示：契約寫在 icon，其他就是祝福自己的 id
 function blessIcon(id) { return BLESSINGS[id].icon || id; }
@@ -799,7 +801,7 @@ const META_KEY = 'undeadFrenzy_meta';
 // 價格：第 n 級是 costBase × n，第一級一局就買得起
 // total(m, lv)：買了 lv 級時合計的效果，強化畫面寫「目前 …」
 const META_UPGRADES = {
-    might: { icon: 'might', name: '亡者之力', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    might: { icon: 'might', name: '全軍之力', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     mageHp: { icon: 'heart', name: '主角體魄', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     ultMastery: { icon: 'ultMastery', name: '大招精通', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     soulAffinity: { icon: 'soulAffinity', name: '靈魂親和', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
@@ -935,16 +937,16 @@ const ACHV_BESTIARY = [
     ['ShieldGuard', 'shieldGuard', 500], ['CorpseWorm', 'corpseWorm', 300], ['GravePriest', 'gravePriest', 250], ['Tombstone', 'tombstone', 100], ['Thief', 'thief', 15],
 ];
 // 召喚費用隨數量變貴（SUMMON_COST_STEP）之後，自動遊玩一局的大軍最多 150～480 隻
-const ACHV_ARMY = [[50, 'army50', '一支軍隊', 10], [150, 'army150', '亡者之海', 30], [300, 'army300', '千軍萬馬', 50], [450, 'army450', '萬骨大軍', 80], [600, 'army600', '死亡天災', 150]];
+const ACHV_ARMY = [[50, 'army50', '一支軍隊', 10], [150, 'army150', '浩浩蕩蕩', 30], [300, 'army300', '千軍萬馬', 50], [450, 'army450', '萬軍壓境', 80], [600, 'army600', '遮天蔽日', 150]];
 const ACHV_UNITS = ['SkeletonWarrior', 'EyeMonster', 'Wraith'];
 const ACHV_STREAK = [[100, 'streak100', '開葷', 10], [250, 'streak250', '殺紅了眼', 20], [500, 'streak1', '殺戮狂潮', 30], [1000, 'streak1000', '千人斬', 45], [2000, 'streak2', '屠戮之王', 60], [5000, 'streak5000', '死神親臨', 120]];
 const ACHV_CAREER = [
     ['kills10k', '萬骨枯', '累計打倒 1 萬隻怪', 20, s => s.totalKills >= 1e4],
     ['kills100k', '十萬亡魂', '累計打倒 10 萬隻怪', 60, s => s.totalKills >= 1e5],
     ['kills1m', '百萬屠夫', '累計打倒 100 萬隻怪', 200, s => s.totalKills >= 1e6],
-    ['summons1k', '招魂師', '累計召喚 1000 隻', 15, s => s.summons >= 1e3],
-    ['summons10k', '亡者君主', '累計召喚 1 萬隻', 50, s => s.summons >= 1e4],
-    ['summons100k', '冥府之主', '累計召喚 10 萬隻', 150, s => s.summons >= 1e5],
+    ['summons1k', '統領', '累計召喚 1000 隻', 15, s => s.summons >= 1e3],
+    ['summons10k', '萬軍之主', '累計召喚 1 萬隻', 50, s => s.summons >= 1e4],
+    ['summons100k', '無盡之師', '累計召喚 10 萬隻', 150, s => s.summons >= 1e5],
     ['souls100k', '收魂人', '累計收集 10 萬靈魂', 20, s => s.souls >= 1e5],
     ['souls1m', '靈魂富豪', '累計收集 100 萬靈魂', 60, s => s.souls >= 1e6],
     ['souls10m', '吞天', '累計收集 1000 萬靈魂', 200, s => s.souls >= 1e7],
@@ -1143,7 +1145,7 @@ function getMagnetRadius() {
     return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + (res('soul') >= 1 ? RES_MAGNET : 0));
 }
 function getNovaCooldown() {
-    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (res('mage') >= 2 ? 1 - RES_NOVA_CD : 1) * runMods().novaCdMult;
+    return CONFIG.nova.cooldown * (1 - BLESSINGS.novaPower.cdPer * bl('novaPower')) * (res('mage') >= 2 ? 1 - RES_NOVA_CD : 1);
 }
 function getNovaDamage() {
     return Math.round(CONFIG.nova.baseDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('novaPower')));
@@ -3922,7 +3924,7 @@ class Monster extends GameObject {
 
     takeDamage(amount) {
         if (!this.isAlive) return;
-        // 打在怪身上的傷害都是我方造成的：局外的「亡者之力」在這裡統一加成，主角、召喚物、大招、反傷都算
+        // 打在怪身上的傷害都是我方造成的：局外的「全軍之力」在這裡統一加成，主角、召喚物、大招、反傷都算
         this.currentHealth -= amount * (1 + metaVal('might'));
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
         this.hitFlash = CONFIG.visuals.hitFlashDuration;
@@ -6819,19 +6821,25 @@ const DAILY_CRYSTAL_MULT = 2;
 const DAILY_MUTATIONS = [
     { id: 'glass', icon: 'mut_glass', name: '玻璃之軀', mods: { mageHpMult: 0.25, summonDmgMult: 2, boltDmgMult: 2 } },
     { id: 'giants', icon: 'mut_giants', name: '巨獸橫行', mods: { hpMult: 2, atkMult: 1.5, speedMult: 0.85, soulMult: 1.6 } },
+    // onlyUnit 的那兩條是亡靈法師專屬（別的職業的兵全被擋掉、一隻都叫不出來），只排給有那種兵的職業，見 todayMutation
     { id: 'eyes', icon: 'mut_eyes', name: '千眼之日', rule: '只能召喚眼魔', onlyUnit: 'EyeMonster', mods: { summonDmgMult: 1.3 } },
     { id: 'bloodMoon', icon: 'mut_bloodMoon', name: '永夜血月', rule: '每一波都是血月' , forceEvent: 'bloodMoon' },
     { id: 'feast', icon: 'mut_feast', name: '靈魂盛宴', mods: { soulMult: 2, hpMult: 1.5, atkMult: 1.25 } },
     { id: 'bones', icon: 'mut_bones', name: '白骨之日', rule: '只能召喚骷髏', onlyUnit: 'SkeletonWarrior', mods: { summonAtkSpeedMult: 1.3 } },
     { id: 'market', icon: 'mut_market', name: '魔鬼市集', rule: '每次選祝福都有一張契約', pactAlways: true },
-    { id: 'storm', icon: 'mut_storm', name: '新星風暴', mods: { novaCdMult: 0.4, speedMult: 1.25 } },
+    { id: 'storm', icon: 'mut_storm', name: '風暴之日', mods: { ultCdMult: 0.4, speedMult: 1.25 } },
 ];
 function localDayNumber() {
     const now = new Date();
     return Math.floor((now.getTime() - now.getTimezoneOffset() * 60000) / DAILY_MS);
 }
 function todayKey() { return String(localDayNumber()); }
-function todayMutation() { return DAILY_MUTATIONS[localDayNumber() % DAILY_MUTATIONS.length]; }
+// 照標題選的職業挑：輪替表裡只放這個職業玩得了的規則（不同職業同一天可能輪到不同條）
+function todayMutation() {
+    const cards = CLASSES[selectedClass()].cards;
+    const list = DAILY_MUTATIONS.filter(d => !d.onlyUnit || cards.includes(d.onlyUnit));
+    return list[localDayNumber() % list.length];
+}
 function dailyDef() { return gameState.daily ? DAILY_MUTATIONS.find(d => d.id === gameState.daily) || null : null; }
 // 規則的純文字（確認框、開戰橫幅）：特殊規則在前，乘數在後
 function dailyRulesText(d) {
@@ -7616,12 +7624,12 @@ function useUltimate() {
     const p = gameState.player;
     if (!p || !p.isAlive || gameState.ultCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
     if (!classDef().ultimate.use()) return false;
-    // 各職業的大招自己設冷卻；局外的「大招精通」在這裡統一打折，七個職業都吃得到
+    // 各職業的大招自己設冷卻；局外的「大招精通」、契約與每日變異的大招冷卻在這裡統一打折，七個職業都吃得到
     gameState.ultCooldown *= ultCooldownMult();
     markUltTaught();
     return true;
 }
-function ultCooldownMult() { return 1 - metaVal('ultMastery'); }
+function ultCooldownMult() { return (1 - metaVal('ultMastery')) * runMods().ultCdMult; }
 
 function useNova() {
     const p = gameState.player;
@@ -7695,14 +7703,18 @@ function draftOptionCount() {
 // 這個職業抽得到的祝福：自己的流派，加上全軍通用的（契約另外由 pactPool 抽，各職業共用）
 function blessingInClass(id) {
     const s = BLESSINGS[id].school;
+    if (BLESSINGS[id].needsSummon && !classCanSummon()) return false;
     return s === ARMY_SCHOOL || classDef().schools.includes(s);
 }
+// 這個職業有沒有「花錢召喚」的卡（全是修練卡的武僧沒有）
+function classCanSummon() { return classDef().cards.some(t => !UNIT_TYPES[t].upgradeOnly); }
 function draftPool(legendary, exclude = []) {
     return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && !BLESSINGS[id].legendary === !legendary
         && !BLESSINGS[id].pact && blessingInClass(id) && !gameState.banished.includes(id) && !exclude.includes(id));
 }
 function pactPool(exclude = []) {
-    return Object.keys(BLESSINGS).filter(id => BLESSINGS[id].pact && bl(id) < BLESSINGS[id].max && !gameState.banished.includes(id) && !exclude.includes(id));
+    return Object.keys(BLESSINGS).filter(id => BLESSINGS[id].pact && bl(id) < BLESSINGS[id].max && !gameState.banished.includes(id) && !exclude.includes(id)
+        && !(BLESSINGS[id].needsSummon && !classCanSummon()));
 }
 function rollDraftOptions(boss) {
     const count = draftOptionCount();

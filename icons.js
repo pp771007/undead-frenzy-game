@@ -754,7 +754,7 @@ const ICON_BODIES = {
     refund: `<path d="M40 12 L56 28 L40 58 L24 28 Z" fill="#b388ff"/><path d="M24 28 L56 28" stroke-width="2.5"/>` +
         duoStroke('M28 10 C16 10 8 18 8 30', '#8fd3ff', 5) + `<path d="M1 26 L8 40 L15 26 Z" fill="#8fd3ff"/>`,
     // ---- 永久強化（跟祝福長得像的那幾個各自一張）----
-    // 亡者之力（全軍傷害）：骨白色的拳頭
+    // 全軍之力（全軍傷害）：骨白色的拳頭
     might: `<rect x="16" y="22" width="34" height="26" rx="8" fill="#f1ead6"/><path d="M24 22 L24 32 M32 22 L32 32 M40 22 L40 32" stroke-width="3"/>
         <path d="M18 36 C8 36 8 24 18 24" fill="#f1ead6"/><rect x="22" y="48" width="22" height="12" fill="#7e57c2"/>
         <path d="M10 10 L16 16 M32 3 L32 12 M54 10 L48 16" stroke="#ffd54f" stroke-width="3.5"/>`,
@@ -815,7 +815,7 @@ const ICON_BODIES = {
         <path d="M46 37 L46 51 M39 44 L53 44" stroke="#fff" stroke-width="4.5"/>${shine(18, 22, 4.5, 3)}`,
     novaPower: `<path d="${starPath(32, 32, 28, 13, 10)}" fill="#c06bf5"/><circle cx="32" cy="32" r="9" fill="#f6dcff"/>
         <path d="M50 40 L50 58 M41 49 L59 49" stroke-width="9"/><path d="M50 40 L50 58 M41 49 L59 49" stroke="#ffd54f" stroke-width="4.5"/>`,
-    // 祝福「亡者契約」（召喚費用降低）：紫色召喚陣上掛一個金色價格牌、牌上一個減號。
+    // 祝福「精打細算」（召喚費用降低）：紫色召喚陣上掛一個金色價格牌、牌上一個減號。
     // 跟「契約」流派標籤（pact，羊皮紙）分開：同名時後面那張會蓋掉前面，兩個概念一直顯示同一張圖
     summonDiscount: `<ellipse cx="28" cy="44" rx="22" ry="11" fill="#4a2c6e"/><ellipse cx="28" cy="44" rx="15" ry="6.5" fill="none" stroke="#b388ff" stroke-width="3"/>
         <path d="M28 38 L28 50 M20 44 L36 44" stroke="#b388ff" stroke-width="2.5"/>
