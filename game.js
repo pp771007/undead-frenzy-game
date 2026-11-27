@@ -157,6 +157,16 @@ const uiElements = {
     bgm: $id('bgm'),
 };
 
+// 地上的預警（首領的紅圈、紅線、扇形，屍蟲鑽出的圈）要亮多久：看到預警到開始走的反應時間，加上最慢的主角走出範圍要的時間。
+// 不要憑手感調秒數：手感會越調越短（重踏紅圈半徑 85、前搖 1.0 秒時，德魯伊站在圈中心反應完只剩 0.5 秒、只走得了 44，被玩家反映太快），
+// 照這條算的話範圍改大，前搖自動跟著變長。速度用沒有任何加成的最慢主角，移速強化與祝福都只是餘裕
+const TELEGRAPH_REACT = 0.5;
+let slowestHeroSpeed = 0;
+function telegraph(escape) {
+    if (!slowestHeroSpeed) slowestHeroSpeed = Math.min(...Object.values(CLASSES).map(c => c.hero.moveSpeed));
+    return TELEGRAPH_REACT + escape / slowestHeroSpeed;
+}
+
 const CONFIG = {
     player: {
         // 走速要比大部分雜兵快（血狼 50、赤鷲 95、石像鬼 100），走位才甩得開；直撲法師的蝙蝠（115）刻意比法師快
@@ -255,6 +265,7 @@ const CONFIG = {
         minWave: 9, waveInterval: 4,
     },
     // 首領的招式（見 BossMonster 的出招節奏）：一次只出一招，每招「前搖預警 → 出招 → 收招」。
+    // 有預警圈的招，前搖（或飛行時間）用 telegraph() 照範圍算，見 TELEGRAPH_REACT
     // cd 冷卻秒數、windup 前搖、dmg 打召喚物（× 首領攻擊）、hp 打主角（× 主角最大生命，再乘 BOSS_TIER_HIT）、recover 收招後站著不動幾秒；
     // reach／minRange 是主角（或首領當下的目標）要在多遠內／外才出這招；phase2: true 的招第二階段起才會出；phase2Speed 是最終階段出招加快的倍率
     boss: {
@@ -267,13 +278,13 @@ const CONFIG = {
         moveGap: 1.6, phase2Speed: 1.3,
         moves: {
             // 重踏：跳起來，腳下紅圈填滿時砸下，震波往外擴散
-            slam: { cd: 5, reach: 150, windup: 1.0, radius: 85, dmg: 1.0, hp: 0.18, recover: 1.0 },
+            slam: { cd: 5, reach: 150, get windup() { return telegraph(this.radius); }, radius: 85, dmg: 1.0, hp: 0.18, recover: 1.0 },
             // 地裂：朝主角一路竄出骨刺，一根接一根（往旁邊閃）
-            fissure: { cd: 7, reach: 320, windup: 0.7, count: 7, step: 40, radius: 30, stagger: 0.09, dmg: 1.0, hp: 0.15, recover: 0.6 },
+            fissure: { cd: 7, reach: 320, get windup() { return telegraph(this.radius); }, count: 7, step: 40, radius: 30, stagger: 0.09, dmg: 1.0, hp: 0.15, recover: 0.6 },
             // 擲骨：主角站遠時連丟三塊骨頭，每塊瞄準丟出那一刻主角站的位置（一直走就閃得掉）
-            throw: { cd: 7, minRange: 200, reach: 600, count: 3, every: 0.35, flight: 0.9, radius: 44, dmg: 1.2, hp: 0.14, recover: 0.5 },
+            throw: { cd: 7, minRange: 200, reach: 600, count: 3, every: 0.35, get flight() { return telegraph(this.radius); }, radius: 44, dmg: 1.2, hp: 0.14, recover: 0.5 },
             // 震地連踏：連踩三下，每下都往十字竄骨刺（一下正十字一下斜十字）
-            quake: { cd: 12, phase2: true, reach: 260, stomps: 3, windup: 0.8, every: 0.75, radius: 85, lineCount: 5, step: 40, lineRadius: 28, stagger: 0.07, dmg: 0.8, hp: 0.14, recover: 1.5 },
+            quake: { cd: 12, phase2: true, reach: 260, stomps: 3, get windup() { return telegraph(this.radius); }, every: 0.75, radius: 85, lineCount: 5, step: 40, lineRadius: 28, stagger: 0.07, dmg: 0.8, hp: 0.14, recover: 1.5 },
         },
     },
     plagueBoss: {
@@ -292,7 +303,7 @@ const CONFIG = {
             // 膿包爆裂：先畫出彈道，鼓起來後噴一整圈毒彈（飛過大軍、只打主角），從空隙鑽過去；半血後錯開半格再噴一圈
             burst: { cd: 8, windup: 1.0, count: 12, speed: 120, range: 360, hp: 0.06, again: 0.45, recover: 0.9 },
             // 膿爆：身邊一大圈紅圈，炸開後四周留下一圈毒池
-            erupt: { cd: 11, phase2: true, windup: 1.2, radius: 110, dmg: 1.5, hp: 0.15, pools: 6, recover: 1.3 },
+            erupt: { cd: 11, phase2: true, get windup() { return telegraph(this.radius); }, radius: 110, dmg: 1.5, hp: 0.15, pools: 6, recover: 1.3 },
         },
     },
     hunterBoss: {
@@ -305,7 +316,7 @@ const CONFIG = {
         moves: {
             // 疾影衝刺：紅線預警，沿線衝過去；半血後衝完立刻轉向主角再衝，一輪三次（後兩次預警短）
             // 主角扣血比其他首領輕：獵手一輪招最密（連衝＋兩排飛刀＋影十字），照一般首領的比例算，第 30 波幾乎每個職業都掉到兩成血以下
-            dash: { cd: 4.5, reach: 300, windup: 0.8, chainWindup: 0.55, chain: 3, length: 260, width: 28, travel: 0.15, dmg: 1.5, hp: 0.12, recover: 0.7 },
+            dash: { cd: 4.5, reach: 300, get windup() { return telegraph(this.width); }, get chainWindup() { return telegraph(this.width); }, chain: 3, length: 260, width: 28, travel: 0.15, dmg: 1.5, hp: 0.12, recover: 0.7 },
             // 影刃：先畫出扇形彈道，再甩一排飛刀（只打主角）；半血後連甩兩排
             knives: { cd: 5, minRange: 120, reach: 420, windup: 0.55, count: 5, spread: 0.6, speed: 230, range: 420, hp: 0.05, again: 0.4, recover: 0.3 },
             // 影十字：遁入陰影，主角腳下交錯三道紅線，斬下後現身在交會處
@@ -321,9 +332,10 @@ const CONFIG = {
         moveGap: 1.6, phase2Speed: 1.3,
         moves: {
             // 吐息：朝主角畫一塊扇形預警，蓄力後整塊噴下去（大軍擠在前面會被燒一大片，主角要閃出扇形）；半血後連噴三口、左右掃
-            breath: { cd: 6, reach: 280, windup: 1.0, range: 240, angle: Math.PI / 3.5, dmg: 2.5, hp: 0.17, sweep: 0.9, sweepEvery: 0.4, recover: 0.8 },
+            // 扇形往側邊閃：最遠要走到扇形邊緣的那段（射程 × sin 半角）
+            breath: { cd: 6, reach: 280, get windup() { return telegraph(this.range * Math.sin(this.angle / 2)); }, range: 240, angle: Math.PI / 3.5, dmg: 2.5, hp: 0.17, sweep: 0.9, sweepEvery: 0.4, recover: 0.8 },
             // 飛撲：飛上天（打不到）、地上紅圈標出主角起飛時站的位置，砸下來
-            fly: { cd: 11, flight: 1.6, height: 120, radius: 100, dmg: 2, hp: 0.25, recover: 1.2 },
+            fly: { cd: 11, get flight() { return telegraph(this.radius); }, height: 120, radius: 100, dmg: 2, hp: 0.25, recover: 1.2 },
             // 骨火雨：仰天一吼，火球一顆接一顆砸在主角身邊（第一顆砸在主角腳下）
             meteors: { cd: 9, windup: 0.7, count: 6, countPhase2: 10, spread: 150, radius: 38, delay: 0.9, stagger: 0.22, fall: 0.5, dmg: 1.5, hp: 0.12, recover: 0.3 },
         },
@@ -431,7 +443,7 @@ const CONFIG = {
         soulDrop: 6, waveSpeedIncreaseFactor: 0.004,
         // 地底移動 burrowTime 秒（打不到）→ 地面預警 warnTime 秒 → 竄出傷害一圈 → 露在地面 surfaceTime 秒（這時才打得到）→ 再鑽下去
         minWave: 23, waveInterval: 6,
-        burrowTime: 3.5, warnTime: 0.9, eruptRadius: 55, eruptDamageMult: 2.5, eruptPlayerHpRatio: 0.25, surfaceTime: 3,
+        burrowTime: 3.5, get warnTime() { return telegraph(this.eruptRadius); }, eruptRadius: 55, eruptDamageMult: 2.5, eruptPlayerHpRatio: 0.25, surfaceTime: 3,
     },
     gravePriest: {
         type: 'GravePriest', name: '墓地祭司', baseHealth: 45, baseAttack: 0, radius: 12,
@@ -458,7 +470,7 @@ const CONFIG = {
             // 喚骨：舉杖，身邊爬出一圈敵方骷髏
             raise: { cd: 7, windup: 0.8, count: 5, radius: 45, recover: 0.3 },
             // 死亡新星：身邊大紅圈，填滿時炸開（身邊有主角或大軍才放）
-            nova: { cd: 7, reach: 220, windup: 1.3, radius: 120, dmg: 2, hp: 0.3, recover: 1.0 },
+            nova: { cd: 7, reach: 220, get windup() { return telegraph(this.radius); }, radius: 120, dmg: 2, hp: 0.3, recover: 1.0 },
             // 詛咒：往主角腳下丟幾團紫色詛咒地面（同毒池，飛行中地上有預警）
             curse: { cd: 9, windup: 0.5, count: 3, spread: 70, recover: 0.3 },
             // 死亡光束：從身上射出幾道紅線（其中一道對準主角），蓄力完一起發射；半血後變六道
