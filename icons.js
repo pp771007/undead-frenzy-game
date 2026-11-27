@@ -899,11 +899,6 @@ const ICON_BODIES = {
         <path d="M46 37 L46 51 M39 44 L53 44" stroke="#fff" stroke-width="4.5"/>${shine(18, 22, 4.5, 3)}`,
     novaPower: `<path d="${starPath(32, 32, 28, 13, 10)}" fill="#c06bf5"/><circle cx="32" cy="32" r="9" fill="#f6dcff"/>
         <path d="M50 40 L50 58 M41 49 L59 49" stroke-width="9"/><path d="M50 40 L50 58 M41 49 L59 49" stroke="#ffd54f" stroke-width="4.5"/>`,
-    // 祝福「精打細算」（召喚費用降低）：紫色召喚陣上掛一個金色價格牌、牌上一個減號。
-    summonDiscount: `<ellipse cx="28" cy="44" rx="22" ry="11" fill="#4a2c6e"/><ellipse cx="28" cy="44" rx="15" ry="6.5" fill="none" stroke="#b388ff" stroke-width="3"/>
-        <path d="M28 38 L28 50 M20 44 L36 44" stroke="#b388ff" stroke-width="2.5"/>
-        <path d="M34 8 L56 8 L60 12 L60 30 L44 30 L34 20 Z" fill="#ffd54f"/><circle cx="40" cy="19" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/>
-        <path d="M46 19 L56 19" stroke-width="4.5"/>${shine(50, 12, 4, 2)}`,
     lifesteal: `<path d="M32 6 C40 20 50 30 50 40 C50 50 42 57 32 57 C22 57 14 50 14 40 C14 30 24 20 32 6 Z" fill="#c62828"/>${shine(24, 38, 3, 6, 15)}
         <path d="M23 30 L27 43 L31 30 Z" fill="#f1ead6" stroke-width="2.5"/><path d="M33 30 L37 43 L41 30 Z" fill="#f1ead6" stroke-width="2.5"/>`,
     // 法師的靈魂彈：跟遊戲裡的彈同一個青色

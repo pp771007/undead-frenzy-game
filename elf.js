@@ -25,8 +25,8 @@ OPTIONAL_ART.hawk = 'hawk.png';
 OPTIONAL_ART.deer = 'deer.png';
 
 // 箭術、陷阱：只修練，等級是精靈自己的能力；夥伴：召喚
-CONFIG.archery = { type: 'Archery', upgradeBonus: 0.14, summonCost: 0, upgradeCostBase: 20, upgradeCostInc: 9 };
-CONFIG.traps = { type: 'Traps', upgradeBonus: 0.3, summonCost: 0, upgradeCostBase: 24, upgradeCostInc: 10 };
+CONFIG.archery = { type: 'Archery', upgradeBonus: 0.14 };
+CONFIG.traps = { type: 'Traps', upgradeBonus: 0.3 };
 const COMPANION_COMMON = {
     targetSearchRadius: 220, returnDistance: 50, avoidanceRadius: 14, avoidanceForce: 100, playerAvoidanceForce: 40,
     wanderRadius: 30, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
@@ -34,7 +34,7 @@ const COMPANION_COMMON = {
 // 上限只有 4 隻：每隻都要很強
 CONFIG.companion = { ...COMPANION_COMMON, type: 'Companion', imageName: 'spirit_fox', color: '#FFCC80', radius: 12, imgScaleMultiplier: 3.6,
     baseHealth: 160, baseAttack: 16, attackRange: 26, attackSpeed: 1.2, moveSpeed: 140, upgradeBonus: 0.27,
-    summonCost: 40, upgradeCostBase: 35, upgradeCostInc: 14 };
+};
 // 鷹：從高空俯衝，攻擊距離長、出手慢但很痛
 CONFIG.hawk = { ...CONFIG.companion, imageName: 'hawk', color: '#A1887F', radius: 11, imgScaleMultiplier: 3.8,
     baseHealth: 110, baseAttack: 34, attackRange: 70, attackSpeed: 0.6, moveSpeed: 170, flying: true };
@@ -113,8 +113,8 @@ const MOONBEAM_WIDTH = 40, MOONBEAM_LENGTH = 900, MOONBEAM_DAMAGE = 30;
 const ELF_ACHV = { backKills: 10000, movingWave: 10, rainKills: 100 };
 
 Object.assign(UNIT_TYPES, {
-    Archery: { cfg: () => CONFIG.archery, Cls: () => null, name: '箭術', img: iconDataUrl('longbow'), upgradeOnly: true, upgradeLabel: '修練' },
-    Traps: { cfg: () => CONFIG.traps, Cls: () => null, name: '陷阱', img: iconDataUrl('trapper'), upgradeOnly: true, upgradeLabel: '修練' },
+    Archery: { cfg: () => CONFIG.archery, Cls: () => null, name: '箭術', img: iconDataUrl('longbow'), upgradeOnly: true },
+    Traps: { cfg: () => CONFIG.traps, Cls: () => null, name: '陷阱', img: iconDataUrl('trapper'), upgradeOnly: true },
     Companion: {
         card: { cap: 1, capPer: 1, every: 8 },
         cfg: () => CONFIG.companion, Cls: () => Companion, name: '夥伴', img: 'spirit_fox.png',

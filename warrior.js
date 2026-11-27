@@ -61,19 +61,16 @@ const SOLDIER_COMMON = {
 CONFIG.shieldman = {
     ...SOLDIER_COMMON, type: 'Shieldman', rank: 0, imageName: 'soldier_shield', color: '#90A4AE',
     baseHealth: 90, baseAttack: 5, attackRange: 26, attackSpeed: 0.9,
-    summonCost: 12, upgradeCostBase: 30, upgradeCostInc: 12,
 };
 CONFIG.spearman = {
     ...SOLDIER_COMMON, type: 'Spearman', rank: 1, imageName: 'soldier_spear', color: '#B0BEC5',
     // 長槍越過盾牌刺：攻擊距離長；對大型怪（首領、體型大的、會飛的）傷害 ×bigMult
     baseHealth: 55, baseAttack: 11, attackRange: 46, attackSpeed: 0.8, bigMult: 2, bigRadius: 16,
-    summonCost: 14, upgradeCostBase: 30, upgradeCostInc: 12,
 };
 CONFIG.crossbowman = {
     ...SOLDIER_COMMON, type: 'Crossbowman', rank: 2, imageName: 'soldier_crossbow', color: '#A1887F',
     baseHealth: 35, baseAttack: 16, attackRange: 200, attackSpeed: 0.5,
     projectileColor: '#D7CCC8', boltStyle: 'crossbowBolt', projectileSpeed: 420, projectileRadius: 3,
-    summonCost: 16, upgradeCostBase: 35, upgradeCostInc: 14,
 };
 // 弩箭：短而粗的木桿、方錐鐵頭、軍團藍尾羽，永遠朝飛行方向（我方飛彈不用紅，見專案 CLAUDE.md）
 const LEGION_BLUE = '#1E88E5', CHARGE_ORANGE = '#FFAB40';
@@ -140,7 +137,7 @@ Object.assign(BLESSINGS, {
     rageLeech: { school: 'berserk', name: '嗜血', max: 3, per: 0.01, desc: b => `大劍每砍死一隻多回 ${pct(b.per)} 血` },
     legionCap: { school: 'legion', name: '擴編', max: 4, per: 4, desc: b => `人數上限 +${b.per}` },
     legionDrill: { school: 'legion', name: '操練', max: 2, per: 0.25, desc: b => `升老兵需要的擊殺 -${pct(b.per)}` },
-    legionPay: { school: 'legion', name: '軍餉', max: 3, per: 0.15, desc: b => `升級費用 -${pct(b.per)}` },
+    legionPay: { school: 'legion', name: '軍餉', max: 3, per: 0.15, desc: b => `兵種跟著你升級快 ${pct(b.per)}` },
     legionVet: { school: 'legion', name: '百戰之師', max: 3, per: 0.1, desc: b => `老兵每顆星多 +${pct(b.per)} 血量與攻擊` },
     // 傳說：改變打法
     valhalla: { school: 'legion', name: '英靈殿', legendary: true, max: 1, per: 1, desc: () => '陣亡的老兵下一波免費歸隊，星星照舊' },
@@ -157,7 +154,7 @@ Object.assign(BLESSINGS, {
     furyVolley: { school: DUO_SCHOOL, duo: ['crossbow', 'berserk'], name: '怒射', legendary: true, max: 1, per: 2, desc: b => `你狂怒時，弩手每次多射 ${b.per} 支` },
 });
 // 戰士專屬成就的門檻
-const WAR_ACHV = { veterans: 10, noLossWave: 20, javelinKills: 50, noRecruitWave: 10 };
+const WAR_ACHV = { veterans: 10, noLossWave: 20, javelinKills: 50, noRecruitWave: 15 };
 // 稀有祝福與傳說的細部數值（說明文字只講會影響選擇的那個數）
 const RES_TURTLE_TAKEN = 0.7;
 // 龜甲陣收攏：盾兵圍成一圈的半徑（人多就撐大一點）；三段射護衛：離戰士這麼近的怪弩手先射。
@@ -200,7 +197,7 @@ CLASSES.warrior = {
         troopCap: { icon: 'legionCap', name: '人數上限', max: 4, per: 1, costBase: 40, desc: m => `人數上限 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
         armor: { icon: 'ironBody', name: '受到的傷害', max: 5, per: 0.04, costBase: 30, desc: m => `你受到的傷害 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     },
-    upgradeCostMult: () => 1 - blessVal('legionPay'),
+    unitLevelMult: () => 1 + blessVal('legionPay'),
     // 每波開始：鷹旗重新可用；英靈殿讓上一波陣亡的老兵歸隊
     onWaveStart: () => {
         for (const s of gameState.summons) if (s instanceof Soldier) s.aquilaUsed = false;
@@ -269,7 +266,7 @@ CLASSES.warrior = {
             ['noLoss', '寸土不讓', `第 ${WAR_ACHV.noLossWave} 波以後，一整波沒有任何士兵陣亡`, 40, () => !!gameState.run.flags.warNoLoss],
             ['berserkBoss', '血怒弒王', '狂怒中打倒首領', 40, () => !!gameState.run.flags.warBerserkBoss],
             ['javelin', '投槍如雨', `一次標槍齊射打倒 ${WAR_ACHV.javelinKills} 隻`, 50, () => gameState.run.novaBest >= WAR_ACHV.javelinKills],
-            ['noRecruit', '原班人馬', `一個兵都不招募，撐過第 ${WAR_ACHV.noRecruitWave} 波`, 60, () => getSurvivedWaves() >= WAR_ACHV.noRecruitWave && gameState.run.recruits === 0],
+            ['noRecruit', '原班人馬', `召喚卡一張都不多學，撐過第 ${WAR_ACHV.noRecruitWave} 波`, 60, () => getSurvivedWaves() >= WAR_ACHV.noRecruitWave && CLASSES.warrior.cards.every(t => bl(unitCardId(t)) <= 1)],
         ],
     },
     heroSpeedMult: () => warState().berserkT > 0 ? WARRIOR.berserkSpeed : warState().exhaustT > 0 ? WARRIOR.exhaustSpeed : 1,

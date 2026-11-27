@@ -44,17 +44,14 @@ CONFIG.sacredOak = {
     ...BEAST_COMMON, type: 'SacredOak', imageName: 'sacred_oak', color: '#558B2F', radius: 15, imgScaleMultiplier: 4.2,
     // 樹人（稀有祝福「森林覺醒」）才會打：treantAttack 是那時的攻擊力
     baseHealth: 140, baseAttack: 0, treantAttack: 14, attackRange: 34, attackSpeed: 0.7, moveSpeed: 55, upgradeBonus: 0.3,
-    summonCost: 28, upgradeCostBase: 30, upgradeCostInc: 12,
 };
 CONFIG.wolf = {
     ...BEAST_COMMON, type: 'Wolf', imageName: 'druid_wolf', color: '#90A4AE', radius: 10, imgScaleMultiplier: 3.3,
     baseHealth: 40, baseAttack: 9, attackRange: 24, attackSpeed: 1.3, moveSpeed: 125, upgradeBonus: 0.3,
-    summonCost: 6, upgradeCostBase: 18, upgradeCostInc: 9,
 };
 CONFIG.bear = {
     ...BEAST_COMMON, type: 'Bear', imageName: 'druid_bear', color: '#795548', radius: 13, imgScaleMultiplier: 3.6,
     baseHealth: 140, baseAttack: 12, attackRange: 28, attackSpeed: 0.8, moveSpeed: 78, upgradeBonus: 0.35,
-    summonCost: 14, upgradeCostBase: 26, upgradeCostInc: 11,
 };
 
 Object.assign(CONFIG.evolution.names, {
@@ -156,12 +153,12 @@ const DRUID_ACHV = { oaks: 10, evergreenWaves: 8, kings: 5, loneOakWave: 15 };
 Object.assign(UNIT_TYPES, {
     SacredOak: {
         card: { cap: 2, capPer: 1, every: 10 },
-        cfg: () => CONFIG.sacredOak, Cls: () => SacredOak, name: '橡樹', img: 'sacred_oak.png', summonLabel: '種樹',
+        cfg: () => CONFIG.sacredOak, Cls: () => SacredOak, name: '橡樹', img: 'sacred_oak.png',
         // 種在德魯伊腳下（不是身後）：據點要種在自己選的位置
         summon: (level) => plantOak(level),
     },
-    Wolf: { card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', capLabel: '缺林地', cap: () => beastRoom('Wolf') },
-    Bear: { card: { cap: 1, capPer: 1, every: 8 }, cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', capLabel: '缺林地', cap: () => beastRoom('Bear') },
+    Wolf: { card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', cap: () => beastRoom('Wolf') },
+    Bear: { card: { cap: 1, capPer: 1, every: 8 }, cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', cap: () => beastRoom('Bear') },
 });
 
 CLASSES.druid = {

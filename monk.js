@@ -34,15 +34,15 @@ OPTIONAL_ART.arhat = 'arhat.png';
 OPTIONAL_ART.staff_monk = 'staff_monk.png';
 
 // 三張卡都只修練：拳（外功）、步（輕功）、氣（氣功）
-CONFIG.fist = { type: 'Fist', upgradeBonus: 0.15, summonCost: 0, upgradeCostBase: 18, upgradeCostInc: 8 };
-CONFIG.step = { type: 'Step', upgradeBonus: 0.04, summonCost: 0, upgradeCostBase: 20, upgradeCostInc: 9 };
-CONFIG.qi = { type: 'Qi', upgradeBonus: 0.2, summonCost: 0, upgradeCostBase: 22, upgradeCostInc: 10 };
+CONFIG.fist = { type: 'Fist', upgradeBonus: 0.15 };
+CONFIG.step = { type: 'Step', upgradeBonus: 0.04 };
+CONFIG.qi = { type: 'Qi', upgradeBonus: 0.2 };
 // 十三棍僧（傳說）：每波開頭來助陣、時間到離開
 CONFIG.staffMonk = {
     type: 'StaffMonk', imageName: 'staff_monk', color: '#FFB74D', radius: 11, imgScaleMultiplier: 3.6,
     baseHealth: 80, baseAttack: 10, attackRange: 30, attackSpeed: 1.2, moveSpeed: 120, upgradeBonus: 0.15,
     targetSearchRadius: 220, returnDistance: 50, avoidanceRadius: 13, avoidanceForce: 100, playerAvoidanceForce: 40,
-    wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4, summonCost: 0, upgradeCostBase: 0, upgradeCostInc: 0,
+    wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
 };
 const STAFF_MONKS = 13, STAFF_MONK_TIME = 15;
 // 金剛怒目：震波半徑 = 基礎 + 每下連擊多少（封頂），傷害 = 拳 × 斷掉當下的連擊加成 × share
@@ -120,9 +120,9 @@ const REED_EVERY = 14, REED_RADIUS = 16, REED_TICK = 0.5, REED_SHARE = 0.3;
 const MONK_ACHV = { combo: 500, cleanWave: 15, zen: 9, arhatKills: 100 };
 
 Object.assign(UNIT_TYPES, {
-    Fist: { cfg: () => CONFIG.fist, Cls: () => null, name: '拳', img: iconDataUrl('external'), upgradeOnly: true, upgradeLabel: '修練' },
-    Step: { cfg: () => CONFIG.step, Cls: () => null, name: '步', img: iconDataUrl('lightfoot'), upgradeOnly: true, upgradeLabel: '修練' },
-    Qi: { cfg: () => CONFIG.qi, Cls: () => null, name: '氣', img: iconDataUrl('qigong'), upgradeOnly: true, upgradeLabel: '修練' },
+    Fist: { cfg: () => CONFIG.fist, Cls: () => null, name: '拳', img: iconDataUrl('external'), upgradeOnly: true },
+    Step: { cfg: () => CONFIG.step, Cls: () => null, name: '步', img: iconDataUrl('lightfoot'), upgradeOnly: true },
+    Qi: { cfg: () => CONFIG.qi, Cls: () => null, name: '氣', img: iconDataUrl('qigong'), upgradeOnly: true },
     StaffMonk: { cfg: () => CONFIG.staffMonk, Cls: () => StaffMonk, name: '棍僧', img: 'staff_monk.png' },
 });
 

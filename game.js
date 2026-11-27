@@ -132,7 +132,7 @@ const uiElements = {
     installCloseBtn: $id('install-close-btn'),
     draftScreen: $id('draft-screen'),
     draftCards: $id('draft-cards'),
-    rerollBtn: $id('reroll-btn'), healBtn: $id('heal-btn'),
+    rerollBtn: $id('reroll-btn'), healBtn: $id('heal-btn'), draftTitle: $id('draft-title'),
     pauseMenu: $id('pause-menu'),
     pauseBlessings: $id('pause-blessings'),
     resumeGameBtn: $id('resume-game-btn'),
@@ -178,9 +178,6 @@ const CONFIG = {
         imageName: 'skeleton_warrior', imgScaleMultiplier: 2.8,
         attackRange: 25, attackSpeed: 1.0, moveSpeed: 80, color: '#FFFFFF',
         upgradeBonus: 0.10,
-        summonCost: 3,
-        upgradeCostBase: 10,
-        upgradeCostInc: 5,
         targetSearchRadius: 150, returnDistance: 50,
         avoidanceRadius: 18, avoidanceForce: 130,
         playerAvoidanceForce: 60,
@@ -194,9 +191,6 @@ const CONFIG = {
         attackRangeUpgrade: 3,
         attackSpeed: 0.8, moveSpeed: 60, color: '#A1887F',
         upgradeBonus: 0.10,
-        summonCost: 8,
-        upgradeCostBase: 15,
-        upgradeCostInc: 8,
         targetSearchRadius: 180, returnDistance: 30,
         avoidanceRadius: 16, avoidanceForce: 120,
         playerAvoidanceForce: 50,
@@ -221,9 +215,6 @@ const CONFIG = {
         slowAmountUpgrade: 0.025,
         slowDuration: 1.5, attackSpeed: 1.0, moveSpeed: 55, color: '#4DB6AC',
         upgradeBonus: 0.15,
-        summonCost: 10,
-        upgradeCostBase: 20,
-        upgradeCostInc: 10,
         targetSearchRadius: 200, returnDistance: 40,
         avoidanceRadius: 25,
         avoidanceForce: 160,
@@ -545,7 +536,7 @@ const CONFIG = {
         frenzyVignette: 'rgba(186, 104, 200, 0.7)',
     },
     draft: {
-        every: 3, optionCount: 3,
+        optionCount: 3,
     },
     // 兵種進化：等級到門檻就升一階（一顆星），外型變大換色、多一個能力
     evolution: {
@@ -627,8 +618,7 @@ const BLESSINGS = {
     boneBlastUp: { school: 'nova', name: '骨爆', max: 4, per: 0.4, desc: b => `屍爆傷害 +${pct(b.per)}` },
     soulHarvest: { school: 'soul', name: '靈魂收割', max: 4, per: 0.25, desc: b => `靈魂掉落 +${pct(b.per)}` },
     magnet: { school: 'soul', name: '靈魂牽引', max: 2, per: 0.6, desc: b => `拾取範圍 +${pct(b.per)}` },
-    // needsSummon：要有「花錢召喚」的卡才有用（武僧三張都是修練卡，抽到等於空卡），見 classCanSummon
-    pact: { school: 'soul', icon: 'summonDiscount', name: '精打細算', needsSummon: true, max: 2, per: 0.25, desc: b => `召喚費用 -${pct(b.per)}` },
+    // needsSummon：要有召喚卡的職業才有用（武僧三張都是修練，抽到等於空卡），見 classCanSummon
     // ---- 傳說：首領波的三選一固定佔一張、一般波次偶爾出現（LEGEND_CHANCE_NORMAL），每種一局只能拿一次；改變打法，不只是加數字 ----
     boneBurst: { school: 'skel', name: '骸骨爆裂', legendary: true, max: 1, per: 3, desc: () => '骷髏陣亡時炸傷周圍的怪' },
     giantBones: { school: 'skel', name: '巨骨', legendary: true, max: 1, per: 8, desc: b => `每 ${b.per} 隻骷髏出一隻巨人` },
@@ -718,7 +708,8 @@ function onHeroLevelUp() {
     if (gameState.pendingDraft && !gameState.draftOpen && !gameState.victoryOpen) openDraft();
 }
 function syncUnitLevels() {
-    const want = Math.floor((gameState.heroLevel - 1) * (classDef().unitLevelPerHero ?? UNIT_LEVEL_PER_HERO));
+    const c = classDef();
+    const want = Math.floor((gameState.heroLevel - 1) * (c.unitLevelPerHero ?? UNIT_LEVEL_PER_HERO) * (c.unitLevelMult ? c.unitLevelMult() : 1));
     while (gameState.autoUnitLevels < want) {
         for (const t of classDef().cards) levelUpUnit(t);
         gameState.autoUnitLevels++;
@@ -806,7 +797,7 @@ const META_UPGRADES = {
     mageHp: { icon: 'heart', name: '主角血量', group: 'power', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     ultMastery: { icon: 'ultMastery', name: '大招冷卻', group: 'power', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     soulAffinity: { icon: 'soulAffinity', name: '靈魂掉落', group: 'power', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    startSouls: { icon: 'soul', name: '開局靈魂', group: 'power', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+    startSouls: { icon: 'soul', name: '開局經驗', group: 'power', max: 5, per: 15, costBase: 25, desc: m => `開局經驗 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
     revive: { icon: 'revive', name: '倒下復活', group: 'tools', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
     freeReroll: { icon: 'reroll', name: '重抽次數', group: 'tools', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
     // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑。
@@ -989,8 +980,7 @@ function defaultStats() {
 function stats() { return meta.stats; }
 // 這一局的紀錄（挑戰類成就用）：開新局時歸零，存檔一起存
 function emptyRunStats() {
-    // recruits：自己按卡片召喚了幾次（開局就帶的兵、免費送的不算）
-    return { novas: 0, upgrades: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, recruits: 0, relics: {}, flags: {} };
+    return { novas: 0, picks: 0, hits: 0, minHp: 1, waveKills: 0, maxWaveKills: 0, thieves: 0, novaBest: 0, relics: {}, flags: {} };
 }
 function runUnitsUsed() { return Object.keys(gameState.totalSummons).filter(k => gameState.totalSummons[k] > 0); }
 function wonOnlyWith(type) { const u = runUnitsUsed(); return gameState.endless && u.length === 1 && u[0] === type; }
@@ -1030,8 +1020,8 @@ function buildAchievements() {
     add('challenge', 'onlySkel', '純骨之軍', '只召喚骷髏，通關', 80, () => wonOnlyWith('SkeletonWarrior'));
     add('challenge', 'onlyEye', '千目之主', '只召喚眼魔，通關', 80, () => wonOnlyWith('EyeMonster'));
     add('challenge', 'onlyWraith', '怨魂之王', '只召喚怨靈，通關', 120, () => wonOnlyWith('Wraith'));
-    add('challenge', 'noUpgrade', '人海戰術', '一次都不升級，撐過第 30 波', 80, () => getSurvivedWaves() >= 30 && gameState.run.upgrades === 0);
-    add('challenge', 'ascetic', '苦行者', '一張祝福都不拿，撐過第 30 波', 100, () => getSurvivedWaves() >= 30 && gameState.run.picks === 0);
+    add('challenge', 'noUpgrade', '人海戰術', '整局只學一種召喚卡，撐過第 30 波', 80, () => getSurvivedWaves() >= 30 && classCanSummon() && classDef().cards.filter(t => bl(unitCardId(t)) > 0).length === 1);
+    add('challenge', 'ascetic', '苦行者', '除了召喚卡，一張祝福都不拿，撐過第 30 波', 100, () => getSurvivedWaves() >= 30 && Object.keys(gameState.blessings).every(id => !BLESSINGS[id] || BLESSINGS[id].unitCard));
     add('challenge', 'flawless', '完美防禦', `撐過第 ${ACHV_FLAWLESS_WAVE} 波，一下都沒被打中`, 80, () => getSurvivedWaves() >= ACHV_FLAWLESS_WAVE && gameState.run.hits === 0);
     add('challenge', 'steady', '從容', `通關，血量從沒低於 ${pct(ACHV_STEADY)}`, 80, () => gameState.endless && gameState.run.minHp >= ACHV_STEADY);
     add('challenge', 'lastStand', '背水一戰', `血量低於 ${pct(ACHV_LAST_STAND)} 時撐完那一波`, 40, () => !!gameState.run.flags.lastStand);
@@ -1139,11 +1129,11 @@ function getNovaDamage() {
 }
 
 // ---------- 兵種與職業 ----------
-// 兵種：底部卡片召喚／升級的單位。Cls 用函式包起來：類別宣告在後面
+// 兵種：職業的三種兵（召喚卡自動補的單位，或跟著主角升級的修練技能）。Cls 用函式包起來：類別宣告在後面
 // 以下選填（職業檔裡用）：
-//   upgradeOnly：這張卡只有「修練」，等級是主角自己的能力（武僧的拳、精靈的箭術）；upgradeLabel／summonLabel：按鈕上的字
-//   cap()：這種兵自己的上限（德魯伊的野獸看林地）；capLabel：召不了時按鈕上的字（可以是函式）
-//   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（付完費之後呼叫，要自己把 count 加上去）
+//   upgradeOnly：修練類技能，沒有召喚卡，等級跟著主角走（武僧的拳、精靈的箭術）
+//   card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）；cap()：這種兵自己的上限（德魯伊的野獸看林地）
+//   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（要自己把 count 加上去）
 const UNIT_TYPES = {
     // card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）。骷髏是便宜的人海、眼魔中量、怨靈少而精
     SkeletonWarrior: { card: { cap: 6, capPer: 5, every: 1.5 }, cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
@@ -1159,7 +1149,7 @@ const UNIT_TYPES = {
 //   name／title／portrait／tagline：標題畫面選職業時顯示；unlock：解鎖它的成就 id（沒有就是一開始就能玩）
 //   troopCap()：三種兵加起來的人數上限
 //   startCards：開局就學會的召喚卡（沒寫就是第一張）；unitLevelPerHero：主角每升 1 級，兵種升幾級（沒寫照 UNIT_LEVEL_PER_HERO；
-//               修練類職業的戰力全在技能等級上，要比召喚類高）
+//               修練類職業的戰力全在技能等級上，要比召喚類高）；unitLevelMult()：再乘上的倍率（戰士的軍餉）
 //   update(dt)：每格在主角與召喚物之前跑一次；reset()：開新局、讀檔時清掉職業自己的狀態
 //   heroSpeedMult()／heroDamageTakenMult()：主角移速、受到的傷害倍率；onHeroHurt(lostFrac)：主角掉了幾成血
 //   drawHero(ctx, player)：畫在主角血條之後（怒氣條之類）
@@ -1186,6 +1176,8 @@ const CLASSES = {
         name: '亡靈法師', title: '亡靈法師', portrait: 'player.png', tagline: '召喚沒有上限的骷髏大軍',
         // 整支大軍被磨光之後法師自己打不動硬怪，對怪物血量最敏感
         monsterPressure: 0.7,
+        // 開局不送召喚卡：開打前先跳一次三選一，三張都是兵，第一種兵自己挑（見 resetGame、rollDraftOptions）
+        startCards: [],
         cards: ['SkeletonWarrior', 'Wraith', 'EyeMonster'], schools: ['skel', 'eye', 'wraith', 'mage', 'nova', 'soul'],
         hero: { imageName: 'player', baseHealth: CONFIG.player.baseHealth, moveSpeed: CONFIG.player.baseMoveSpeed },
         attack: (p, dt) => p.shootBolt(dt),
@@ -1238,7 +1230,7 @@ function setHeroImage(p, name) {
 // 每種兵在場上幾隻、幾級、下一級升級多少錢。所有兵種都有一格（祝福可能叫出不在卡片上的兵），新局歸零
 function emptyUnits() {
     const u = {};
-    for (const type in UNIT_TYPES) u[type] = { count: 0, level: 0, upgradeCost: UNIT_TYPES[type].cfg().upgradeCostBase };
+    for (const type in UNIT_TYPES) u[type] = { count: 0, level: 0 };
     return u;
 }
 
@@ -7336,6 +7328,8 @@ function draftPool(tier) {
 }
 function rollDraftOptions(boss) {
     const count = draftOptionCount();
+    // 一種兵都還沒學：這一次三選一全是召喚卡
+    if (noUnitLearned()) return weightedPick(draftPool('common').filter(id => BLESSINGS[id].unitCard), count);
     const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
     const legend = legendRoll ? weightedPick(draftPool('legend'), 1)[0] : null;
     const rare = Math.random() < RARE_CHANCE ? weightedPick(draftPool('rare'), 1)[0] : null;
@@ -7345,9 +7339,12 @@ function rollDraftOptions(boss) {
     return options;
 }
 
+function noUnitLearned() { return classCanSummon() && !classDef().cards.some(t => bl(unitCardId(t)) > 0); }
+// firstUnit：一種兵都還沒學，這一次全是召喚卡（標題改講「選第一種兵」、重抽沒意義不給按）
 function queueDraft(boss = false) {
+    const firstUnit = noUnitLearned();
     const options = rollDraftOptions(boss);
-    if (options.length > 0) gameState.pendingDraft = { options, boss };
+    if (options.length > 0) gameState.pendingDraft = { options, boss, firstUnit };
 }
 
 // 重抽是整局共用的次數（同吸血鬼倖存者）：開局 REROLLS_PER_RUN 次＋永久強化「重抽次數」，每打倒一隻首領再補 REROLLS_PER_BOSS 次。
@@ -7403,7 +7400,8 @@ function renderDraftCards() {
         box.appendChild(card);
     });
     uiElements.rerollBtn.innerHTML = `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">×${gameState.rerollsLeft}</span>`;
-    uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0;
+    uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0 || !!gameState.pendingDraft.firstUnit;
+    uiElements.draftTitle.textContent = gameState.pendingDraft.firstUnit ? '選第一種兵' : '選擇祝福';
     const missing = draftHealAmount();
     uiElements.healBtn.innerHTML = `${iconHtml('heart', 'icon btn-icon')}補滿血<span class="price">+${formatNumberK(missing)}</span>`;
     uiElements.healBtn.disabled = missing <= 0;
@@ -7437,7 +7435,7 @@ function openDraft() {
 }
 
 function rerollDraft() {
-    if (!gameState.pendingDraft || gameState.rerollsLeft <= 0) return;
+    if (!gameState.pendingDraft || gameState.rerollsLeft <= 0 || gameState.pendingDraft.firstUnit) return;
     gameState.rerollsLeft--;
     gameState.pendingDraft.options = rollDraftOptions(gameState.pendingDraft.boss);
     renderDraftCards();
@@ -7452,6 +7450,8 @@ function pickBlessing(id) {
     gameState.run.picks++;
     // 新學會的兵種：下一格就生第一隻，不用等一整個間隔
     if (BLESSINGS[id].unitCard && bl(id) === 1) gameState.summonTimers[BLESSINGS[id].unitCard] = Infinity;
+    // 有些祝福讓兵種跟著主角升得更快（戰士的軍餉）：拿到當下就補上該有的等級
+    syncUnitLevels();
     const picks = stats().picks[runClass()] || (stats().picks[runClass()] = {});
     picks[id] = (picks[id] || 0) + 1;
     if (BLESSINGS[id].legendary) stats().legends[id] = true;
@@ -7620,10 +7620,10 @@ function startNewRun() {
 
 // ---------- 職業玩法介紹 ----------
 // 標題的「玩法介紹」、暫停選單的「職業玩法」、第一次用某個職業開局時自動跳出來。
-// 只講「這個職業跟別人哪裡不一樣」：怎麼變強、錢怎麼用、要注意什麼；三張卡各一句、大招一句。重點字用 <b>
+// 只講「這個職業跟別人哪裡不一樣」：怎麼變強、要注意什麼；三張卡各一句、大招一句。重點字用 <b>
 const CLASS_GUIDES = {
     necro: {
-        rules: ['用靈魂召喚骷髏、怨靈、眼魔，<b>數量沒有上限</b>', '同一種兵越多，再召喚就越貴：<b>升級鈕發金光就升級</b>', '法師很脆，<b>躲在大軍後面、邊走邊打</b>'],
+        rules: ['召喚卡選一次，那種兵就<b>自己一直補</b>；多選幾張，隻數變多、補得更快', '撿靈魂升級，<b>大軍跟著你一起變強</b>', '法師很脆，<b>躲在大軍後面、邊走邊打</b>'],
         cards: ['近戰主力，便宜又耐打', '光環讓身邊的怪變慢，陣亡時爆炸', '遠程射擊，躲在後排輸出'],
     },
     warrior: {
@@ -7631,23 +7631,23 @@ const CLASS_GUIDES = {
         cards: ['站前排，嘲諷身邊的怪、擋下射向你的血彈', '越過盾牌刺擊，對首領、大型、會飛的怪加倍', '站後排遠程射擊，射程長但裝填慢'],
     },
     druid: {
-        rules: ['用靈魂<b>在腳下種橡樹</b>，橡樹聚成你的林地', '野獸數量上限看林地：<b>每棵橡樹養 3 隻</b>', '野獸守著最近的橡樹，離林地越遠越弱：<b>選好地方打這一仗</b>', '橡樹和野獸活得越久長得越大（最多 3 階）'],
-        cards: ['在腳下種一棵會長大的橡樹', '快又便宜，成群包圍', '慢但血厚，擋在最前面'],
+        rules: ['學了橡樹卡，林地裡就會<b>定時長出新的橡樹</b>', '野獸數量上限看林地：<b>每棵橡樹養 3 隻</b>', '野獸守著最近的橡樹，離林地越遠越弱：<b>選好地方打這一仗</b>', '橡樹和野獸活得越久長得越大（最多 3 階）'],
+        cards: ['林地裡定時長出一棵會長大的橡樹', '快，成群包圍', '慢但血厚，擋在最前面'],
     },
     vampire: {
-        rules: ['沒有靈魂：怪掉的是<b>血珠</b>，撿到先補血，多的存成血池', '召喚、升級花血池，不夠就<b>花自己的血</b>（最多花到剩四分之一）', '打倒的怪有機會<b>站起來變成眷屬</b>，保留原本的能力', '<b>白天會被曬傷</b>、眷屬變弱；<b>入夜</b>轉化變多、眷屬變強', '靈泉是聖水，<b>別站進去</b>'],
-        cards: ['按「轉化」把身邊最近的一隻怪變成手下', '吸血蝙蝠，吸到的血回給你', '只能修練：定時花一點自己的血炸開身邊，越殘越痛'],
+        rules: ['怪掉的是<b>血珠</b>：撿到就補血，也算經驗', '打倒的怪有機會<b>站起來變成眷屬</b>，保留原本的能力', '<b>白天會被曬傷</b>、眷屬變弱；<b>入夜</b>轉化變多、眷屬變強', '靈泉是聖水，<b>別站進去</b>'],
+        cards: ['定時把身邊最近的一隻怪變成手下', '吸血蝙蝠，吸到的血回給你', '跟著你升級：定時花一點自己的血炸開身邊，越殘越痛'],
     },
     elf: {
         rules: ['<b>移動中射速 +60%</b>，停下來就掉回去', '朝背後射的箭<b>傷害 ×2</b>：邊退邊回頭射', '射程全職業最遠，但很脆：<b>別讓怪圍住</b>'],
-        cards: ['只能修練：箭的傷害，進化後多射一支、穿透、爆擊', '只能修練：移動時在腳下放陷阱，爆炸、緩速、定身輪流', '靈狐、鷹輪流加入，最多 4 隻但很強'],
+        cards: ['跟著你升級：箭的傷害，進化後多射一支、穿透、爆擊', '跟著你升級：移動時在腳下放陷阱，爆炸、緩速、定身輪流', '靈狐、鷹輪流加入，最多 4 隻但很強'],
     },
     rogue: {
         rules: ['飛刀<b>一次射三隻</b>，在怪群裡邊閃邊清；血量低於兩成的怪被打中<b>直接處決</b>', '場上最有威脅的一隻怪是<b>目標</b>（金色準星），飛刀一定分一把給牠', '殺掉目標：拿<b>賞金</b>、身邊的怪嚇跑、你<b>隱身 2.5 秒</b>（變透明、腳下紫圈倒數），怪看不到你', '隱身換來<b>伏擊</b>（頭上金匕首）：下一把射向新目標的飛刀 <b>×4</b>', '血掉到三成半以下<b>自動遁形</b>脫身，20 秒一次'],
-        cards: ['只能修練：飛刀的傷害，進化後多一把、會彈射', '只能修練：命中上毒，毒會一層層疊上去', '召喚 20 秒後消失的分身'],
+        cards: ['跟著你升級：飛刀的傷害，進化後多一把、會彈射', '跟著你升級：命中上毒，毒會一層層疊上去', '定時召喚 20 秒後消失的分身'],
     },
     monk: {
-        rules: ['<b>沒有手下</b>：靈魂全拿來修練自己，每修練一次血量也會長', '自動瞬步出拳，每打中一下連擊 +1，越高越痛；<b>被打中連擊歸零</b>', '所有怪都衝著你來：<b>在怪群裡穿梭、別被碰到</b>', '身邊沒怪時站著不動會<b>入定</b>：回血、蓄氣，下一拳更痛'],
+        rules: ['<b>沒有手下</b>：拳、步、氣跟著你升級，血量也一起長', '自動瞬步出拳，每打中一下連擊 +1，越高越痛；<b>被打中連擊歸零</b>', '所有怪都衝著你來：<b>在怪群裡穿梭、別被碰到</b>', '身邊沒怪時站著不動會<b>入定</b>：回血、蓄氣，下一拳更痛'],
         cards: ['出拳傷害，進化後一拳兩下、擊退', '瞬步距離，進化後閃避、瞬步無敵', '每幾拳打出一道直線氣功波'],
     },
 };
@@ -8078,7 +8078,6 @@ function levelUpUnit(type) {
     const oldTier = getTier(unit.level);
     unit.level++;
     const newTier = getTier(unit.level);
-    unit.upgradeCost += UNIT_TYPES[type].cfg().upgradeCostInc;
     if (classDef().onUpgrade) classDef().onUpgrade(type);
     gameState.summons.forEach(s => {
         if (s.isAlive && s.config.type === type) {
@@ -8333,9 +8332,9 @@ function showGameOver(reason = 'died') {
 const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
 // 跟存檔分開放：遊戲結束會刪存檔，紀錄要留著
 const BEST_WAVE_KEY = 'undeadFrenzy_bestWave';
-const SAVE_VERSION = 18;
-// v16 是祝福系統之前的存檔，缺的欄位讀取時補預設值即可；v18 起兵種狀態收進 units、多了 classId
-const COMPATIBLE_SAVE_VERSIONS = [16, 17, 18];
+// v19 起是卡片化（靈魂變經驗、召喚卡自動補兵）：之前的存檔沒學過召喚卡、沒有經驗值，讀進來兵補不回來，只能從頭開
+const SAVE_VERSION = 19;
+const COMPATIBLE_SAVE_VERSIONS = [19];
 
 
 function saveGameState() {
@@ -8404,18 +8403,7 @@ function loadGameState() {
         if (classDef().reset) classDef().reset();
         gameState.pendingClassExtra = loadedState.classExtra ?? null;
         gameState.units = emptyUnits();
-        if (loadedState.units) {
-            for (const type in loadedState.units) if (gameState.units[type]) Object.assign(gameState.units[type], loadedState.units[type]);
-        } else {
-            // v17 之前的存檔：三種兵各有自己的欄位
-            const legacy = { SkeletonWarrior: ['skeletonWarrior', 'skeletonWarriorLevel', 'skeletonWarriorCount'], EyeMonster: ['eyeMonster', 'eyeMonsterLevel', 'eyeMonsterCount'], Wraith: ['wraith', 'wraithLevel', 'wraithCount'] };
-            for (const type in legacy) {
-                const [costKey, levelKey, countKey] = legacy[type], u = gameState.units[type];
-                u.level = loadedState[levelKey] ?? 0;
-                u.count = loadedState[countKey] ?? 0;
-                if (loadedState.currentCosts && loadedState.currentCosts[costKey] != null) u.upgradeCost = loadedState.currentCosts[costKey];
-            }
-        }
+        for (const type in loadedState.units) if (gameState.units[type]) Object.assign(gameState.units[type], loadedState.units[type]);
 
         gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
@@ -8438,11 +8426,6 @@ function loadGameState() {
         invalidateRunMods();
         // 已經過了最終波的舊存檔直接算進無盡模式，不會再跳一次通關
         gameState.endless = loadedState.endless ?? (gameState.currentWave >= CONFIG.wave.finalWave);
-        // 祝福系統之前的存檔：照已經打過的波數補發當初該拿到的祝福選擇
-        if (loadedState.saveVersion < 17 && gameState.currentWave >= CONFIG.draft.every) {
-            gameState.extraDrafts = Math.floor(gameState.currentWave / CONFIG.draft.every) - 1;
-            queueDraft();
-        }
 
         gameState.player = new Player(0, 0);
         snapCamera();
@@ -8538,7 +8521,9 @@ function resetGame() {
     if (classDef().onRunStart) classDef().onRunStart();
     stats().runs++;
     saveMeta();
-    if (metaLv('headStart') > 0) queueDraft();
+    // 開局一種兵都還沒學的職業（亡靈法師）：開打前先挑第一種兵（這一次三選一全是召喚卡，見 rollDraftOptions）
+    if (noUnitLearned()) queueDraft();
+    if (metaLv('headStart') > 0) { if (gameState.pendingDraft) gameState.extraDrafts++; else queueDraft(); }
     updateUI();
 }
 

@@ -32,14 +32,13 @@ const ROGUE = {
 OPTIONAL_ART.rogue = 'rogue.png';
 
 // 飛刀、毒：只修練；影：召喚會消失的分身
-CONFIG.knives = { type: 'Knives', upgradeBonus: 0.15, summonCost: 0, upgradeCostBase: 20, upgradeCostInc: 9 };
-CONFIG.venom = { type: 'Venom', upgradeBonus: 0.25, summonCost: 0, upgradeCostBase: 22, upgradeCostInc: 10 };
+CONFIG.knives = { type: 'Knives', upgradeBonus: 0.15 };
+CONFIG.venom = { type: 'Venom', upgradeBonus: 0.25 };
 CONFIG.shadowClone = {
     type: 'Shadow', imageName: 'rogue', color: '#4527A0', radius: 11, imgScaleMultiplier: 3.3,
     baseHealth: 60, baseAttack: 12, attackRange: 24, attackSpeed: 1.5, moveSpeed: 150, upgradeBonus: 0.3,
     targetSearchRadius: 200, returnDistance: 50, avoidanceRadius: 13, avoidanceForce: 100, playerAvoidanceForce: 40,
     wanderRadius: 20, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
-    summonCost: 8, upgradeCostBase: 26, upgradeCostInc: 11,
 };
 // 暗殺標記、爆擊、斬殺用金色：紅色是警示色，敵人頭上掛紅圈會看成「這隻很危險」而不是「這是你的目標」
 const ROGUE_MARK_COLOR = '#FFD740';
@@ -126,11 +125,11 @@ const ROGUE_ACHV = { targets: 100, waveTargets: 5, shadows: 6 };
 const TARGET_PRIORITY = { WitchDoctor: 1, GravePriest: 1 };
 
 Object.assign(UNIT_TYPES, {
-    Knives: { cfg: () => CONFIG.knives, Cls: () => null, name: '飛刀', img: iconDataUrl('critChance'), upgradeOnly: true, upgradeLabel: '修練' },
-    Venom: { cfg: () => CONFIG.venom, Cls: () => null, name: '毒', img: iconDataUrl('venomschool'), upgradeOnly: true, upgradeLabel: '修練' },
+    Knives: { cfg: () => CONFIG.knives, Cls: () => null, name: '飛刀', img: iconDataUrl('critChance'), upgradeOnly: true },
+    Venom: { cfg: () => CONFIG.venom, Cls: () => null, name: '毒', img: iconDataUrl('venomschool'), upgradeOnly: true },
     Shadow: {
         card: { cap: 1, capPer: 1, every: 6 },
-        cfg: () => CONFIG.shadowClone, Cls: () => ShadowClone, name: '影', img: 'rogue.png', summonLabel: '分身',
+        cfg: () => CONFIG.shadowClone, Cls: () => ShadowClone, name: '影', img: 'rogue.png',
         cap: () => SHADOW_CAP + Math.floor(gameState.units.Shadow.level / SHADOW_CAP_PER_LEVELS) + blessVal('shadowCap'),
     },
 });
