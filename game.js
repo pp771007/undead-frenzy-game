@@ -1353,7 +1353,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
     waveEvent: null, lastEventWave: 0,
-    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, curse: 0, endless: false, victoryOpen: false,
+    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -2277,7 +2277,7 @@ class Player extends GameObject {
             m.pos.y += dy / d * REVIVE_PUSH_DIST;
         }
         gameState.visualEffects.push(new NovaEffect({ x: this.pos.x, y: this.pos.y }, REVIVE_PUSH_RADIUS, REVIVE_EFFECT_COLORS));
-        gameState.banner = { text: META_UPGRADES.revive.name, sub: '倒下了，又站了起來', color: '#FFE082', life: CONFIG.wave.bannerDuration, icon: 'revive' };
+        showBanner({ text: META_UPGRADES.revive.name, sub: '倒下了，又站了起來', color: '#FFE082', life: CONFIG.wave.bannerDuration, icon: 'revive' });
         addShake(10);
         Sfx.play('victory');
         return true;
@@ -4437,7 +4437,7 @@ class BossMonster extends Monster {
         }
         spawnParticles(this.pos.x, this.pos.y, '#E1BEE7', 40, 200, 0.8, 4);
         const name = BOSS_PHASE_NAMES[this.phase - 1] || '';
-        gameState.banner = { text: name, sub: `${this.config.name}變強了`, color: this.phase >= 3 ? '#FF8A80' : '#E1BEE7', life: CONFIG.wave.bannerDuration * 0.9, icon: 'bossPhase' };
+        showBanner({ text: name, sub: `${this.config.name}變強了`, color: this.phase >= 3 ? '#FF8A80' : '#E1BEE7', life: CONFIG.wave.bannerDuration * 0.9, icon: 'bossPhase' });
         addShake(12);
         Sfx.play('boss');
     }
@@ -6386,6 +6386,14 @@ function placeRelic(kind, angle, pair) {
     return r;
 }
 
+// 橫幅同一時間只放一張。hold 的（開戰前的新威脅介紹）不能被蓋掉：期間來的橫幅排隊，等它收掉再依序出。
+// 排過隊才出來的橫幅被新的蓋掉時退回隊伍最前面，不會就這樣不見（例：剛好升級進化，又碰上開戰時的事件橫幅）
+function showBanner(b) {
+    const cur = gameState.banner;
+    if (cur && cur.hold) { gameState.bannerQueue.push({ ...b, queued: true }); return; }
+    if (cur && cur.queued && cur.life > 0) gameState.bannerQueue.unshift(cur);
+    gameState.banner = b;
+}
 // 新東西（遺跡、屍爆、毒、撿經驗…）只在玩家第一次碰到時用橫幅介紹一次；之後靠畫面上的圖示就認得。
 // 已經有別的橫幅時先不講，下次碰到再講（key 記在 meta.relicSeen，沿用舊名，玩過的人不會被重講一次）
 function introduceOnce(key, text, sub, color, icon) {
@@ -6937,11 +6945,12 @@ function prepareNextWave() {
     const ev = getWaveEvent();
     // 首領波：先講「清光小怪首領才會出來」（名字等首領落地的登場演出再報）。新威脅在開戰前的倒數就介紹過了（見 checkWaveEndCondition）
     if (gameState.pendingBoss) {
-        gameState.banner = { text: '首領波', sub: `清光小怪，${bossDisplayName(gameState.pendingBoss)}就會登場`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' };
+        showBanner({ text: '首領波', sub: `清光小怪，${bossDisplayName(gameState.pendingBoss)}就會登場`, color: '#E1BEE7', life: CONFIG.wave.bannerDuration, icon: 'boss' });
     } else if (ev) {
-        gameState.banner = { text: ev.name, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3, icon: ev.icon };
-    } else {
-        gameState.banner = { text: `第 ${waveNum} 波`, sub: '', color: '#FFFFFF', life: CONFIG.wave.bannerDuration };
+        showBanner({ text: ev.name, sub: `第 ${waveNum} 波 · ${ev.desc}`, color: ev.color, life: CONFIG.wave.bannerDuration * 1.3, icon: ev.icon });
+    } else if (!gameState.banner) {
+        // 只是報波數：正在播別的橫幅（排隊等著的進化）就不搶
+        showBanner({ text: `第 ${waveNum} 波`, sub: '', color: '#FFFFFF', life: CONFIG.wave.bannerDuration });
     }
     Sfx.play(isBossWave || ev ? 'boss' : 'wave');
 
@@ -6963,7 +6972,7 @@ function checkWaveEndCondition() {
         gameState.waveEvent = null;
         // 下一波有新威脅：在開戰前這段倒數介紹，開戰時橫幅剛好收掉。等開戰才講的話，怪已經衝過來了橫幅還擋在畫面中間
         const next = getNewcomer(gameState.currentWave + 1);
-        if (next) gameState.banner = { text: next.name, sub: `新威脅 · ${next.hint}`, color: next.color, life: CONFIG.wave.betweenTime, icon: next.icon, look: next.look };
+        if (next) showBanner({ text: next.name, sub: `新威脅 · ${next.hint}`, color: next.color, life: CONFIG.wave.betweenTime, icon: next.icon, look: next.look, hold: true });
         // 經驗不會自動收回：第一次打完一波、地上還留著經驗時講一次（新威脅的橫幅在的話，等之後的波再講）
         if (gameState.orbs.length >= ORB_HINT_MIN) introduceOnce('orbPickup', '撿經驗', '經驗留在地上，走過去才撿得到', '#80DEEA', currencyIcon());
         const p = gameState.player;
@@ -8270,7 +8279,7 @@ function updateTimers(deltaTime) {
         gameState.banner.life -= deltaTime;
         // 出場動畫照「出現了多久」算：橫幅長短不一，用 bannerDuration - life 推算的話長橫幅一開始會被放大好幾倍
         gameState.banner.age = (gameState.banner.age || 0) + deltaTime;
-        if (gameState.banner.life <= 0) gameState.banner = null;
+        if (gameState.banner.life <= 0) gameState.banner = gameState.bannerQueue.shift() || null;
     }
     if (gameState.betweenWaves && gameState.currentWave >= 0) {
         const before = Math.ceil(gameState.timeToNextWave);
@@ -8325,14 +8334,14 @@ function spawnUnit(type) {
 function announceEvolution(type, tier) {
     const E = CONFIG.evolution;
     const name = E.names[type][tier - 1];
-    gameState.banner = {
+    showBanner({
         // 寫出是哪一種兵進化：「伏虎拳」「芬里爾之子」這種名字單獨出現看不出是誰
         text: `${UNIT_TYPES[type].name} → ${name}`,
         stars: tier,
         sub: E.perks[type][tier - 1],
         color: E.tints[tier - 1],
         life: CONFIG.wave.bannerDuration,
-    };
+    });
     gameState.summons.forEach(s => {
         if (s.isAlive && s.config.type === type) spawnParticles(s.pos.x, s.pos.y, E.tints[tier - 1], 6, 90, 0.7, 3);
     });
@@ -8736,7 +8745,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
         waveEvent: null, lastEventWave: 0,
-        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, curse: 0, endless: false, victoryOpen: false,
+        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -8853,7 +8862,7 @@ function updateGame(deltaTime) {
     gameState.straggling = !gameState.betweenWaves && countRemainingMonsters() <= STRAGGLER_MAX;
     if (overtimeMult() > 1 && !gameState.overtimeShown) {
         gameState.overtimeShown = true;
-        gameState.banner = { text: OVERTIME_NAME, sub: '拖太久了，怪會越來越快、越來越痛', color: OVERTIME_COLOR, life: CONFIG.wave.bannerDuration * 1.3, icon: 'overtime' };
+        showBanner({ text: OVERTIME_NAME, sub: '拖太久了，怪會越來越快、越來越痛', color: OVERTIME_COLOR, life: CONFIG.wave.bannerDuration * 1.3, icon: 'overtime' });
         addShake(OVERTIME_SHAKE);
         Sfx.play('boss');
     }
