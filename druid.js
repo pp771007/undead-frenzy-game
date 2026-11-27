@@ -152,13 +152,13 @@ const DRUID_ACHV = { oaks: 10, evergreenWaves: 8, kings: 5, loneOakWave: 15 };
 
 Object.assign(UNIT_TYPES, {
     SacredOak: {
-        card: { cap: 2, capPer: 1, every: 10 },
+        school: 'grove', card: { cap: 2, capPer: 1, every: 10 },
         cfg: () => CONFIG.sacredOak, Cls: () => SacredOak, name: '橡樹', img: 'sacred_oak.png',
         // 種在德魯伊腳下（不是身後）：據點要種在自己選的位置
         summon: (level) => plantOak(level),
     },
-    Wolf: { card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', cap: () => beastRoom('Wolf') },
-    Bear: { card: { cap: 1, capPer: 1, every: 8 }, cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', cap: () => beastRoom('Bear') },
+    Wolf: { school: 'pack', card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', cap: () => beastRoom('Wolf') },
+    Bear: { school: 'bear', card: { cap: 1, capPer: 1, every: 8 }, cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', cap: () => beastRoom('Bear') },
 });
 
 CLASSES.druid = {

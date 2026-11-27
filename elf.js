@@ -116,7 +116,7 @@ Object.assign(UNIT_TYPES, {
     Archery: { cfg: () => CONFIG.archery, Cls: () => null, name: '箭術', img: iconDataUrl('longbow'), upgradeOnly: true },
     Traps: { cfg: () => CONFIG.traps, Cls: () => null, name: '陷阱', img: iconDataUrl('trapper'), upgradeOnly: true },
     Companion: {
-        card: { cap: 1, capPer: 1, every: 8 },
+        school: 'wildfriends', card: { cap: 1, capPer: 1, every: 8 },
         cfg: () => CONFIG.companion, Cls: () => Companion, name: '夥伴', img: 'spirit_fox.png',
         cap: () => ELF.companionCap + blessVal('compCap'),
     },

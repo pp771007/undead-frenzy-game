@@ -134,14 +134,14 @@ const VAMP_ACHV = { horde: 80, kinds: 8 };
 
 Object.assign(UNIT_TYPES, {
     Thrall: {
-        card: { cap: 3, capPer: 3, every: 3 },
+        school: 'kin', card: { cap: 3, capPer: 3, every: 3 },
         cfg: () => CONFIG.thrall, Cls: () => Thrall, name: '眷屬', img: iconDataUrl('kin'),
         cap: () => thrallCap(),
         // 按下去就把身邊最近的一隻怪當場轉化
         canSummon: () => !!convertTarget(),
         summon: (level) => { const m = convertTarget(); if (m) { m.isAlive = false; raiseThrall(m, level); } },
     },
-    BloodBat: { card: { cap: 4, capPer: 3, every: 3 }, cfg: () => CONFIG.bloodBat, Cls: () => BloodBat, name: '蝠群', img: 'blood_bat.png' },
+    BloodBat: { school: 'bats', card: { cap: 4, capPer: 3, every: 3 }, cfg: () => CONFIG.bloodBat, Cls: () => BloodBat, name: '蝠群', img: 'blood_bat.png' },
     BloodMagic: { cfg: () => CONFIG.bloodMagic, Cls: () => null, name: '血魔法', img: iconDataUrl('bloodmagic'), upgradeOnly: true },
 });
 

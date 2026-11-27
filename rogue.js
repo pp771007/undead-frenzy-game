@@ -128,7 +128,7 @@ Object.assign(UNIT_TYPES, {
     Knives: { cfg: () => CONFIG.knives, Cls: () => null, name: '飛刀', img: iconDataUrl('critChance'), upgradeOnly: true },
     Venom: { cfg: () => CONFIG.venom, Cls: () => null, name: '毒', img: iconDataUrl('venomschool'), upgradeOnly: true },
     Shadow: {
-        card: { cap: 1, capPer: 1, every: 6 },
+        school: 'shadowschool', card: { cap: 1, capPer: 1, every: 6 },
         cfg: () => CONFIG.shadowClone, Cls: () => ShadowClone, name: '影', img: 'rogue.png',
         cap: () => SHADOW_CAP + Math.floor(gameState.units.Shadow.level / SHADOW_CAP_PER_LEVELS) + blessVal('shadowCap'),
     },

@@ -174,9 +174,9 @@ const UNBREAKABLE_TEXT_EVERY = 0.6;
 
 Object.assign(UNIT_TYPES, {
     // 精兵少而貴：三種加起來還是受人數上限（troopCap）管
-    Shieldman: { card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
-    Spearman: { card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.spearman, Cls: () => Spearman, name: '長槍兵', img: 'soldier_spear.png' },
-    Crossbowman: { card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.crossbowman, Cls: () => Crossbowman, name: '弩手', img: 'soldier_crossbow.png' },
+    Shieldman: { school: 'shieldwall', card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
+    Spearman: { school: 'phalanx', card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.spearman, Cls: () => Spearman, name: '長槍兵', img: 'soldier_spear.png' },
+    Crossbowman: { school: 'crossbow', card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.crossbowman, Cls: () => Crossbowman, name: '弩手', img: 'soldier_crossbow.png' },
 });
 
 CLASSES.warrior = {

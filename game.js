@@ -1193,9 +1193,10 @@ function getNovaDamage() {
 //   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（要自己把 count 加上去）
 const UNIT_TYPES = {
     // card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）。骷髏是便宜的人海、眼魔中量、怨靈少而精
-    SkeletonWarrior: { card: { cap: 6, capPer: 5, every: 1.5 }, cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
-    Wraith: { card: { cap: 2, capPer: 2, every: 4 }, cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
-    EyeMonster: { card: { cap: 3, capPer: 3, every: 2.5 }, cfg: () => CONFIG.eyeMonster, Cls: () => EyeMonster, name: '眼魔', img: 'eye_monster.png' },
+    // school：這種兵的流派，召喚卡學到之前那條流派的祝福不會出現（見 unitSchoolLocked）
+    SkeletonWarrior: { school: 'skel', card: { cap: 6, capPer: 5, every: 1.5 }, cfg: () => CONFIG.skeletonWarrior, Cls: () => SkeletonWarrior, name: '骷髏', img: 'skeleton_warrior.png' },
+    Wraith: { school: 'wraith', card: { cap: 2, capPer: 2, every: 4 }, cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
+    EyeMonster: { school: 'eye', card: { cap: 3, capPer: 3, every: 2.5 }, cfg: () => CONFIG.eyeMonster, Cls: () => EyeMonster, name: '眼魔', img: 'eye_monster.png' },
 };
 // 職業：這一局的底部三張卡是哪三種兵、有哪幾個流派（祝福池跟著流派走）、主角的立繪與基本數值、普攻、大招。規劃見 docs/characters.md
 //   hero：imageName（images 的鍵）、baseHealth、moveSpeed
@@ -7553,11 +7554,18 @@ function blessingInClass(id) {
     const s = BLESSINGS[id].school;
     if (s === UNIT_SCHOOL) return classDef().cards.includes(BLESSINGS[id].unitCard);
     if (s === ULT_SCHOOL) return BLESSINGS[id].ultCard === runClass();
+    if (unitSchoolLocked(s)) return false;
     if (BLESSINGS[id].needsSummon && !classCanSummon()) return false;
     // needsUlt：只對大招有用的卡（化身時間…），拿到大招卡之前抽到等於空卡
     if ((BLESSINGS[id].needsUlt || s === classDef().ultSchool) && !hasUlt()) return false;
     if (s === DUO_SCHOOL) return BLESSINGS[id].duo.every(d => classDef().schools.includes(d) && res(d) >= 1);
     return s === ARMY_SCHOOL || classDef().schools.includes(s);
+}
+// 兵種流派（骷髏、巨熊…）：那種兵的召喚卡還沒學，整條流派（祝福、稀有、傳說）都不出，抽到等於空卡。
+// 雙流派傳說不用另外擋：它要兩邊的稀有祝福都拿到才出，稀有祝福已經被這裡擋住
+function unitSchoolLocked(s) {
+    const type = classDef().cards.find(t => UNIT_TYPES[t].school === s);
+    return !!type && bl(unitCardId(type)) === 0;
 }
 // 這個職業有沒有「花錢召喚」的卡（全是修練卡的武僧沒有）
 function classCanSummon() { return classDef().cards.some(t => !UNIT_TYPES[t].upgradeOnly); }
