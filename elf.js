@@ -53,7 +53,12 @@ const ARCHERY_TIER3_CRIT = 0.25;
 const TRAPS_TIER1_RADIUS = 1.3, TRAPS_TIER2_MAX = 3;
 const COMP_TIER1_RATE = 1.25, COMP_TIER2_TAKEN = 0.7;
 
-// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；3 張專屬傳說。圖示名稱 = 祝福 id（icons.js） ----------
+// 獵人之網：網住幾秒、網比陷阱的爆炸範圍大多少、首領被拖慢多少
+const NET_TIME = 2, NET_SCALE = 1.2, NET_BOSS_SLOW = 0.5;
+// 狐火：傷害是靈狐攻擊的幾成、飛多快、找多遠的怪、爆炸範圍、飛多久沒碰到就散掉；場上最多幾團
+const FOXFIRE_SHARE = 0.6, FOXFIRE_SPEED = 230, FOXFIRE_SEEK = 170, FOXFIRE_RADIUS = 32, FOXFIRE_LIFE = 1.4, FOXFIRE_MAX = 30;
+
+// ---------- 五個流派：各 4 張祝福，3 層與 6 層各一段共鳴；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
     parthian: { name: '回馬射', icon: 'parthian', color: '#80CBC4', res: [{ name: '騎射', desc: '停下來 2 秒內還保有移動中的射速' }, { name: '帕提亞之箭', desc: '回頭射的箭穿透所有怪' }] },
     longbow: { name: '長弓', icon: 'longbow', color: '#A5D6A7', res: [{ name: '強弓', desc: '每支箭多穿透一隻' }, { name: '鷹眼', desc: '射得越遠傷害越高（最多 ×3）' }] },
@@ -85,6 +90,10 @@ Object.assign(BLESSINGS, {
     windBow: { school: 'parthian', name: '風神之弓', legendary: true, max: 1, per: 1, desc: () => '移動中射出的箭會追蹤目標' },
     moonArrow: { school: 'longbow', name: '月光箭', legendary: true, max: 1, per: 20, desc: b => `每 ${b.per} 秒一道月光貫穿怪最多的那個方向` },
     noReturn: { school: 'elemental', name: '不歸之箭', legendary: true, max: 1, per: 3, desc: b => `箭打倒怪時，彈向下一隻（最多 ${b.per} 次）` },
+    // 獵人之網：陷阱從「炸一下」變成「定住一群」，邊退邊射時身後追來的那一串都被攔下
+    hunterNet: { school: 'trapper', name: '獵人之網', legendary: true, max: 1, per: NET_TIME, desc: b => `陷阱炸開時張開一張網，網住的怪 ${b.per} 秒動不了（首領只會變慢）` },
+    // 狐火：靈狐從「只打一隻」變成會往旁邊撒火，近戰夥伴也能清一群
+    foxfire: { school: 'wildfriends', name: '狐火', legendary: true, max: 1, per: FOXFIRE_SHARE, desc: () => '靈狐每咬一口就點起一團狐火，飛去炸附近的怪' },
 });
 const RES_HORSEBACK_KEEP = 2;
 const RES_FARSIGHT_MAX = 3, RES_FARSIGHT_PER = 100;
@@ -163,7 +172,7 @@ const GALE_TIME = 8, GALE_MULT = 1.5;
 // movingT：還算「在移動」的剩餘秒數；trapDist：離上一個陷阱走了多遠；elem：元素箭輪到哪一個
 function newElfState() {
     return { bowT: 0, movingT: 0, stillT: 0, waveStill: false, trapDist: 0, traps: [], trapKind: 0, elem: 0, rainT: 0, rainTick: 0, rainKills: 0,
-        moonT: 0, beams: [], stampedeT: RES_STAMPEDE_EVERY, deer: [], galeT: 0, lastX: null, lastY: null, mx: 1, my: 0 };
+        moonT: 0, beams: [], stampedeT: RES_STAMPEDE_EVERY, deer: [], galeT: 0, lastX: null, lastY: null, mx: 1, my: 0, nets: [], foxfires: [] };
 }
 function elfState() { return gameState.elf || (gameState.elf = newElfState()); }
 
@@ -217,6 +226,8 @@ function elfUpdate(dt) {
         if (e.stampedeT <= 0) { e.stampedeT = RES_STAMPEDE_EVERY; startStampede(p); }
     }
     updateStampede(dt);
+    for (let i = e.nets.length - 1; i >= 0; i--) { e.nets[i].life -= dt; if (e.nets[i].life <= 0) e.nets.splice(i, 1); }
+    if (e.foxfires.length) updateFoxfires(dt);
     // 夥伴回血
     if (bl('compHeal')) for (const s of gameState.summons) if (s.isAlive && s instanceof Companion) s.currentHealth = Math.min(s.maxHealth, s.currentHealth + s.maxHealth * blessVal('compHeal') * dt);
 }
@@ -416,6 +427,7 @@ function updateTraps(dt) {
             if (t.kind === 'root') m.applySlow(0.95, T.rootTime);
         });
         gameState.visualEffects.push(new TrapBurstEffect(t, r, t.kind));
+        if (bl('hunterNet')) castNet(t, r * NET_SCALE);
         // 獵場、三階：炸開後原地再補一個小的
         if ((res('trapper') >= 2 || tier >= 3) && t.scale >= 1) e.traps.push({ x: t.x, y: t.y, kind: TRAP_KINDS[e.trapKind++ % 3], scale: RES_HUNTGROUND_SCALE, life: T.life, lureT: 99 });
     }
@@ -518,6 +530,97 @@ class TrapBurstEffect extends TimedEffect {
         }
         ctx.restore();
     }
+}
+
+// ---------- 傳說「獵人之網」：陷阱炸開時撒出一張網 ----------
+function castNet(c, r) {
+    const rSq = r * r;
+    groundMonsterGrid.forEachInRadius(c, r, m => {
+        if (!m.isAlive || distanceSq(m.pos, c) > rSq) return;
+        m.applySlow(m instanceof BossMonster ? NET_BOSS_SLOW : 1, NET_TIME);
+    });
+    elfState().nets.push({ x: c.x, y: c.y, r, life: NET_TIME, spin: Math.random() * Math.PI });
+}
+// 網：菱形網眼的繩網（兩組斜繩，裁在一圈粗的邊繩裡）、邊繩上綁著鉛墜，先往外張開、最後淡掉。
+// 不要畫成「放射線＋同心圓」：那是蜘蛛網的樣子
+const NET_ROPE = '#D7CCC8', NET_RIM = '#A1887F', NET_WEIGHT = '#546E7A', NET_MESH = 14, NET_WEIGHTS = 8, NET_OPEN = 0.18, NET_FADE = 0.35, NET_FLAT = 0.8;
+function drawNet(ctx, n) {
+    const age = NET_TIME - n.life, open = Math.min(1, age / NET_OPEN), r = n.r * (0.35 + 0.65 * open), ry = r * NET_FLAT;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, n.life / NET_FADE);
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(n.x, n.y, r, ry, 0, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(n.x, n.y); ctx.rotate(n.spin);
+    for (const [col, lw] of [[SHAPE_OUTLINE, 3], [NET_ROPE, 1.4]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = lw;
+        ctx.beginPath();
+        for (let c = -r * 1.5; c <= r * 1.5; c += NET_MESH) {
+            ctx.moveTo(c - r * 1.5, -r * 1.5); ctx.lineTo(c + r * 1.5, r * 1.5);
+            ctx.moveTo(c + r * 1.5, -r * 1.5); ctx.lineTo(c - r * 1.5, r * 1.5);
+        }
+        ctx.stroke();
+    }
+    ctx.restore();
+    for (const [col, lw] of [[SHAPE_OUTLINE, 5], [NET_RIM, 2.4]]) {
+        ctx.strokeStyle = col; ctx.lineWidth = lw;
+        ctx.beginPath(); ctx.ellipse(n.x, n.y, r, ry, 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.fillStyle = NET_WEIGHT; ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.2;
+    for (let i = 0; i < NET_WEIGHTS; i++) {
+        const a = n.spin + i * Math.PI * 2 / NET_WEIGHTS;
+        ctx.beginPath(); ctx.arc(n.x + Math.cos(a) * r, n.y + Math.sin(a) * ry, 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// ---------- 傳說「狐火」：靈狐咬一口，點起一團追著怪飛的狐火 ----------
+function lightFoxfire(fox) {
+    const e = elfState();
+    if (e.foxfires.length >= FOXFIRE_MAX) return;
+    e.foxfires.push({ x: fox.pos.x, y: fox.pos.y - 10, vx: randomInRange(-40, 40), vy: -80, life: FOXFIRE_LIFE, dmg: fox.attack * FOXFIRE_SHARE, target: null, seed: Math.random() * 6 });
+}
+function updateFoxfires(dt) {
+    const e = elfState(), STEER = 6;
+    for (let i = e.foxfires.length - 1; i >= 0; i--) {
+        const f = e.foxfires[i];
+        f.life -= dt;
+        if (!f.target || !f.target.isAlive) { const m = monsterGrid.nearestShared(f, FOXFIRE_SEEK); f.target = m && m.isAlive ? m : null; }
+        if (f.target) {
+            const dx = f.target.pos.x - f.x, dy = f.target.pos.y - f.y, d = Math.hypot(dx, dy) || 1;
+            if (d <= f.target.radius + 6) {
+                const rSq = FOXFIRE_RADIUS * FOXFIRE_RADIUS;
+                monsterGrid.forEachInRadius(f, FOXFIRE_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, f) <= rSq) m.takeDamage(f.dmg); });
+                if (inView(f)) { spawnParticles(f.x, f.y, FOXFIRE_COLOR, 10, 90, 0.4, 3); spawnParticles(f.x, f.y, FOXFIRE_CORE, 5, 50, 0.3, 2); }
+                e.foxfires.splice(i, 1);
+                continue;
+            }
+            const k = Math.min(1, dt * STEER);
+            f.vx += (dx / d * FOXFIRE_SPEED - f.vx) * k; f.vy += (dy / d * FOXFIRE_SPEED - f.vy) * k;
+        } else f.vy -= 20 * dt;
+        f.x += f.vx * dt; f.y += f.vy * dt;
+        if (f.life <= 0) { if (inView(f)) spawnParticles(f.x, f.y, FOXFIRE_COLOR, 4, 30, 0.3, 2); e.foxfires.splice(i, 1); }
+    }
+}
+// 狐火：一團青藍色的鬼火，火舌朝飛行的反方向拖，一閃一閃（我方特效不用紅）
+const FOXFIRE_COLOR = '#26C6DA', FOXFIRE_CORE = '#E0F7FA';
+function drawFoxfire(ctx, f) {
+    const sp = Math.hypot(f.vx, f.vy) || 1, ux = f.vx / sp, uy = f.vy / sp, flick = 1 + 0.15 * Math.sin(worldTime * 25 + f.seed);
+    const tail = 17 * flick, w = 7 * flick;
+    ctx.save();
+    ctx.globalAlpha = 0.65;
+    ctx.drawImage(getGlowSprite(FOXFIRE_COLOR), f.x - 20, f.y - 20, 40, 40);
+    ctx.globalAlpha = Math.min(1, f.life / 0.2);
+    const flame = (s) => {
+        ctx.beginPath();
+        ctx.moveTo(f.x - ux * tail * s, f.y - uy * tail * s);
+        ctx.quadraticCurveTo(f.x - uy * w * s, f.y + ux * w * s, f.x + ux * w * 0.9 * s, f.y + uy * w * 0.9 * s);
+        ctx.quadraticCurveTo(f.x + uy * w * s, f.y - ux * w * s, f.x - ux * tail * s, f.y - uy * tail * s);
+        ctx.closePath();
+    };
+    flame(1); ctx.fillStyle = FOXFIRE_COLOR; ctx.fill(); ctx.strokeStyle = SHAPE_OUTLINE; ctx.lineWidth = 1.4; ctx.stroke();
+    flame(0.55); ctx.fillStyle = FOXFIRE_CORE; ctx.fill();
+    ctx.restore();
 }
 
 // ---------- 大招：箭雨 ----------
@@ -642,6 +745,8 @@ function drawElfWorld(ctx) {
         ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + b.ux * MOONBEAM_LENGTH, b.y + b.uy * MOONBEAM_LENGTH); ctx.stroke();
         ctx.restore();
     }
+    for (const n of e.nets) if (inView(n)) drawNet(ctx, n);
+    for (const f of e.foxfires) if (inView(f)) drawFoxfire(ctx, f);
     const deer = images.deer;
     if (deer) for (const d of e.deer) {
         if (!inView(d)) continue;
@@ -686,6 +791,7 @@ class Companion extends SummonUnit {
         for (let i = 0; i < hits && t.isAlive; i++) t.takeDamage(this.attack);
         this.healFromDamage(this.attack);
         if (this.kind === 'hawk') { spawnParticles(t.pos.x, t.pos.y, '#D7CCC8', 6, 70, 0.35, 2); }
+        else if (bl('foxfire')) lightFoxfire(this);
         const fx = getVisualEffectFromPool(SlashEffect);
         if (fx) { fx.init(this.pos, t.pos); gameState.visualEffects.push(fx); }
         const sync = elfMoving() ? 1 + blessVal('compSync') : 1;

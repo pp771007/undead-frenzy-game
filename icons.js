@@ -507,6 +507,29 @@ const ICON_BODIES = {
     noReturn: foe(26, 30, 0.42, '#78909c') + foe(52, 26, 0.38) + foe(44, 52, 0.38)
         + `<path d="M30 26 C38 16 46 18 48 22 M54 32 C56 40 52 46 48 48" stroke="#ffd54f" stroke-width="3" stroke-dasharray="4 3"/>` + arrow(2, 52, 24, 32, STEEL, '#a5d6a7', 0.85)
         + `<path d="${starPath(26, 30, 6, 2.2, 4)}" fill="#ffd54f" stroke-width="1.6"/>`,
+    // 獵人之網：一張繩網罩住小怪，邊緣綁著鉛墜釘在地上
+    hunterNet: `<ellipse cx="32" cy="56" rx="27" ry="5" fill="#5d4037"/>`
+        + `<g transform="translate(4 8) scale(0.88)"><path d="${GHOST_PATH}" fill="#b39ddb" stroke-width="3"/><path d="M21 23 L28 30 M28 23 L21 30 M36 23 L43 30 M43 23 L36 30" stroke-width="3"/></g>`
+        + `${(() => {
+            // 菱形網眼：兩組斜線，只取落在半橢圓網罩（底邊 y=55）裡的那一段
+            const inside = (x, y) => y <= 55 && ((x - 32) / 25) ** 2 + ((y - 55) / 44) ** 2 <= 1;
+            const segs = [];
+            for (const s of [1, -1]) for (let c = -66; c <= 66; c += 12) {
+                let a = null, b = null;
+                for (let t = 0; t <= 64; t += 0.5) { const x = 32 + s * (t - 32) + c, y = t; if (inside(x, y)) { if (!a) a = [x, y]; b = [x, y]; } }
+                if (a && b && Math.hypot(b[0] - a[0], b[1] - a[1]) > 3) segs.push(`M${a[0].toFixed(1)} ${a[1].toFixed(1)} L${b[0].toFixed(1)} ${b[1].toFixed(1)}`);
+            }
+            const d = segs.join(' '), rim = 'M7 55 C7 26 18 11 32 11 C46 11 57 26 57 55';
+            return `<path d="${d}" stroke-width="3.2"/><path d="${d}" stroke="#d7ccc8" stroke-width="1.5"/><path d="${rim}" stroke-width="4.5"/><path d="${rim}" stroke="#a1887f" stroke-width="2.2"/>`;
+        })()}
+        <circle cx="32" cy="11" r="3.5" fill="#a1887f" stroke-width="2"/>${[7, 19, 45, 57].map(x => `<circle cx="${x}" cy="55" r="3.4" fill="#546e7a" stroke-width="2"/>`).join('')}`,
+    // 狐火：靈狐的頭，身邊飄著兩團青藍色的狐火
+    foxfire: `<path d="M10 22 L14 4 L26 16 L38 16 L50 4 L54 22 C56 34 46 46 32 50 C18 46 8 34 10 22 Z" fill="#ffb74d"/>
+        <path d="M14 8 L16 16 L22 15 Z M50 8 L48 16 L42 15 Z" fill="#fff3e0" stroke="none"/>
+        <path d="M12 26 C18 36 26 40 32 48 C38 40 46 36 52 26 C46 30 40 32 32 32 C24 32 18 30 12 26 Z" fill="#fff8e1" stroke-width="2.5"/>
+        <path d="M20 22 C22 20 26 20 28 23 M36 23 C38 20 42 20 44 22" stroke-width="3"/><circle cx="32" cy="38" r="2.6" fill="#1b1424" stroke="none"/>`
+        + `${[[9, 50, 0.42], [55, 46, 0.36]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s}) translate(-32 -36)"><path d="M32 58 C17 58 11 46 15 35 C18 27 24 24 25 14 C34 20 37 26 37 32 C41 28 42 23 41 17 C51 26 54 38 50 47 C47 54 40 58 32 58 Z" fill="#26c6da" stroke-width="${(2.4 / s).toFixed(1)}"/>
+            <path d="M32 53 C25 53 22 47 25 41 C27 37 31 35 32 30 C37 35 40 40 39 46 C38 50 36 53 32 53 Z" fill="#e0f7fa" stroke="none"/></g>`).join('')}`,
     // ---- 刺客（rogue.js）----
     // 大招「斬首」：兩把交叉的彎刀
     behead: `${[[-1, '#cfd8dc'], [1, '#eceff1']].map(([s, c]) => `<g transform="translate(32 32) scale(${s} 1)"><path d="M-22 22 C-10 4 4 -10 22 -22 C10 -2 -2 10 -16 26 Z" fill="${c}"/><path d="M-16 26 L-24 18" stroke-width="5"/><path d="M-16 26 L-24 18" stroke="#5d4037" stroke-width="2.5"/></g>`).join('')}
