@@ -466,9 +466,9 @@ const CONFIG = {
     waveEvents: {
         startWave: 6, chance: 0.3,
         list: {
-            bloodMoon: { icon: 'bloodMoon', name: '血月', desc: '怪物 ×1.6、靈魂 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
+            bloodMoon: { icon: 'hordeNight', name: '百鬼夜行', desc: '怪物 ×1.6、靈魂 ×2', countMult: 1.6, soulMult: 2, overlay: 'rgba(183, 28, 28, 0.13)', color: '#EF9A9A' },
             eliteTide: { icon: 'evEliteTide', name: '精英潮', desc: '精英怪大量出現', eliteMult: 4, eliteMax: 0.6, color: '#FFD54F' },
-            frenzy: { icon: 'claws', name: '狂暴', desc: '怪物更快、靈魂 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
+            frenzy: { icon: 'claws', name: '躁動', desc: '怪物更快、靈魂 ×1.5', speedMult: 1.35, atkSpeedMult: 1.3, soulMult: 1.5, overlay: 'rgba(255, 111, 0, 0.08)', color: '#FFAB91' },
             plague: { icon: 'plague', name: '腐屍狂潮', desc: '腐屍 ×3', bloaterMult: 3, color: '#AED581' },
             treasure: { icon: 'sack', name: '金魂竊賊', desc: '打倒逃跑的竊賊拿大量靈魂', thieves: 3, color: '#FFE082' },
         },
@@ -735,18 +735,18 @@ const META_KEY = 'undeadFrenzy_meta';
 // 價格：第 n 級是 costBase × n，第一級一局就買得起
 // total(m, lv)：買了 lv 級時合計的效果，強化畫面寫「目前 …」
 const META_UPGRADES = {
-    might: { icon: 'might', name: '全軍之力', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    mageHp: { icon: 'heart', name: '主角體魄', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    ultMastery: { icon: 'ultMastery', name: '大招精通', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
-    soulAffinity: { icon: 'soulAffinity', name: '靈魂親和', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-    startSouls: { icon: 'soul', name: '靈魂儲備', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
-    revive: { icon: 'revive', name: '不死執念', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
-    freeReroll: { icon: 'reroll', name: '先知之眼', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
+    might: { icon: 'might', name: '全軍傷害', group: 'power', max: 8, per: 0.1, costBase: 40, desc: m => `全軍傷害 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    mageHp: { icon: 'heart', name: '主角血量', group: 'power', max: 6, per: 0.1, costBase: 30, desc: m => `主角血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    ultMastery: { icon: 'ultMastery', name: '大招冷卻', group: 'power', max: 5, per: 0.06, costBase: 40, desc: m => `大招冷卻 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
+    soulAffinity: { icon: 'soulAffinity', name: '靈魂掉落', group: 'power', max: 5, per: 0.08, costBase: 40, desc: m => `靈魂掉落 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+    startSouls: { icon: 'soul', name: '開局靈魂', group: 'power', max: 5, per: 15, costBase: 25, desc: m => `開局靈魂 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+    revive: { icon: 'revive', name: '倒下復活', group: 'tools', max: 1, per: 1, costBase: 500, desc: () => '每局倒下一次時復活，血量回一半' },
+    freeReroll: { icon: 'reroll', name: '重抽次數', group: 'tools', max: 3, per: 1, costBase: 80, desc: m => `每局重抽次數 +${m.per}`, total: (m, lv) => `+${lv}` },
     // 改變「怎麼選」的解鎖，不只是加數字：放逐讓一局更容易成型、多一張讓每次都有得挑。
     // 放逐在局外選好（強化畫面的職業分頁），戰鬥中的三選一就不用再多一顆按鈕、多想一件事
-    banish: { icon: 'banish', name: '斷念', max: 3, per: 1, costBase: 60, desc: m => `多放逐 ${m.per} 張祝福，每局都不出現（到職業分頁選）`, total: (m, lv) => `${lv} 張` },
-    extraChoice: { icon: 'extraChoice', name: '多一條路', max: 1, per: 1, costBase: 250, desc: () => '祝福多一張可選' },
-    headStart: { icon: 'draft', name: '開局祝福', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
+    banish: { icon: 'banish', name: '放逐格', group: 'tools', max: 3, per: 1, costBase: 60, desc: m => `多放逐 ${m.per} 張祝福，每局都不出現（到職業分頁選）`, total: (m, lv) => `${lv} 張` },
+    extraChoice: { icon: 'extraChoice', name: '多一張卡', group: 'tools', max: 1, per: 1, costBase: 250, desc: () => '祝福多一張可選' },
+    headStart: { icon: 'draft', name: '開局祝福', group: 'tools', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
 };
 // 強化表換過兩次，舊存檔買過、新表沒有的都照當時的價錢退還結晶：
 // v2 數值類改成百分比、加了傷害與復活（整張表重買）；v3「軍團體魄」移到各職業的專精（只退那一項）
@@ -793,7 +793,7 @@ function monsterRamp(wave, ramp) {
     const t = Math.min(1, Math.max(0, (wave - ramp.from) / (ramp.full - ramp.from)));
     return 1 + (ramp.mult - 1) * t * (classDef().monsterPressure || 1);
 }
-// 不死執念：復活時血量回幾成、身邊的怪推多遠、之後幾秒不會受傷
+// 倒下復活：復活時血量回幾成、身邊的怪推多遠、之後幾秒不會受傷
 const REVIVE_HP = 0.5;
 const REVIVE_PUSH_RADIUS = 160;
 const REVIVE_PUSH_DIST = 140;
@@ -826,7 +826,7 @@ function metaCost(id) { return META_UPGRADES[id].costBase * (metaLv(id) + 1); }
 // 而且換職業不用從頭存結晶。比通用強化便宜，練一個新職業的門檻低。
 // 各職業在 CLASSES[id].metaUpgrades 登記（格式同 META_UPGRADES），職業的程式用 classMeta(id) 讀「這一局職業」那一項的效果
 // 「召喚物血量」是同一個概念，有召喚物的職業共用這一份（名字、圖示都一樣）
-const META_SUMMON_HP = { icon: 'boneMarrow', name: '軍團體魄', max: 5, per: 0.1, costBase: 25, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` };
+const META_SUMMON_HP = { icon: 'boneMarrow', name: '召喚物血量', max: 5, per: 0.1, costBase: 25, desc: m => `召喚物血量 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` };
 // scope：'g' 是通用強化，其他是職業 id
 const META_GLOBAL = 'g';
 function upgradeDefs(scope) { return scope === META_GLOBAL ? META_UPGRADES : (CLASSES[scope].metaUpgrades || {}); }
@@ -1133,10 +1133,10 @@ const CLASSES = {
         ultimate: { name: '新星', icon: 'burst', hint: '新星：炸開身邊的怪、大軍狂暴', hintRadius: () => CONFIG.nova.radius, cooldown: () => getNovaCooldown(), use: () => useNova() },
         metaUpgrades: {
             summonHp: META_SUMMON_HP,
-            vanguard: { icon: 'boneVanguard', name: '骸骨先鋒', max: 3, per: 2, costBase: 40, desc: m => `開局多帶 ${m.per} 隻骷髏`, total: (m, lv) => `${m.per * lv} 隻` },
-            frenzyTime: { icon: 'frenzyTime', name: '狂潮餘韻', max: 4, per: 0.5, costBase: 30, desc: m => `新星的大軍狂暴 +${m.per} 秒`, total: (m, lv) => `+${m.per * lv} 秒` },
+            vanguard: { icon: 'boneVanguard', name: '開局骷髏', max: 3, per: 2, costBase: 40, desc: m => `開局多帶 ${m.per} 隻骷髏`, total: (m, lv) => `${m.per * lv} 隻` },
+            frenzyTime: { icon: 'frenzyTime', name: '大軍狂暴時間', max: 4, per: 0.5, costBase: 30, desc: m => `新星的大軍狂暴 +${m.per} 秒`, total: (m, lv) => `+${m.per * lv} 秒` },
         },
-        // 骸骨先鋒：開局就站在身邊的骷髏（算進大軍、跟召喚的一樣）
+        // 開局骷髏：開局就站在身邊的骷髏（算進大軍、跟召喚的一樣）
         onRunStart: () => {
             const p = gameState.player, n = classMeta('vanguard');
             for (let i = 0; i < n; i++) {
@@ -2174,7 +2174,7 @@ class Player extends GameObject {
         }
         updateUI();
     }
-    // 局外的「不死執念」：倒下時用掉一次，血回一半、把身邊的怪推開，幾秒內不會再受傷
+    // 局外的「倒下復活」：倒下時用掉一次，血回一半、把身邊的怪推開，幾秒內不會再受傷
     revive() {
         if (!(gameState.revivesLeft > 0)) return false;
         gameState.revivesLeft--;
@@ -4018,7 +4018,7 @@ class Monster extends GameObject {
 
     takeDamage(amount) {
         if (!this.isAlive) return;
-        // 打在怪身上的傷害都是我方造成的：局外的「全軍之力」在這裡統一加成，主角、召喚物、大招、反傷都算
+        // 打在怪身上的傷害都是我方造成的：局外的「全軍傷害」在這裡統一加成，主角、召喚物、大招、反傷都算
         this.currentHealth -= amount * (1 + metaVal('might'));
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
         this.hitFlash = CONFIG.visuals.hitFlashDuration;
@@ -7197,7 +7197,7 @@ function useUltimate() {
     const p = gameState.player;
     if (!p || !p.isAlive || gameState.ultCooldown > 0 || gameState.isPaused || gameState.gameOver || gameState.draftOpen) return false;
     if (!classDef().ultimate.use()) return false;
-    // 各職業的大招自己設冷卻；局外的「大招精通」在這裡統一打折，七個職業都吃得到
+    // 各職業的大招自己設冷卻；局外的「大招冷卻」在這裡統一打折，七個職業都吃得到
     gameState.ultCooldown *= ultCooldownMult();
     markUltTaught();
     return true;
@@ -7308,7 +7308,7 @@ function queueDraft(boss = false) {
     if (options.length > 0) gameState.pendingDraft = { options, boss };
 }
 
-// 重抽是整局共用的次數（同吸血鬼倖存者）：開局 REROLLS_PER_RUN 次＋永久強化「先知之眼」，每打倒一隻首領再補 REROLLS_PER_BOSS 次。
+// 重抽是整局共用的次數（同吸血鬼倖存者）：開局 REROLLS_PER_RUN 次＋永久強化「重抽次數」，每打倒一隻首領再補 REROLLS_PER_BOSS 次。
 // 不用靈魂買：原本每次 20、40、60 魂而且下一次抽卡又從 20 起算，後期一波收入上千，等於想刷幾次就刷幾次，選卡沒有重量
 const REROLLS_PER_RUN = 2;
 const REROLLS_PER_BOSS = 1;
@@ -7698,32 +7698,48 @@ function refundMeta() {
 
 // 強化畫面現在看哪一組：通用（打開時）或某個職業
 let metaClassTab = META_GLOBAL;
+// 名字講「是什麼」（全軍傷害），下面那行講「多少」：還沒買寫每級多少，買了寫「目前 → 下一級」，買滿寫目前的總量。
+// 只有一級的（復活、多一張卡…）沒有數字可比，照寫一句說明
 function metaRowHtml(scope, id, m) {
     const lv = upgradeLv(scope, id), maxed = lv >= m.max, cost = upgradeCost(scope, id);
     const pips = Array.from({ length: m.max }, (_, i) => `<span class="pip ${i < lv ? 'on' : ''}"></span>`).join('');
     const btn = maxed
         ? '<button class="btn btn-dark" disabled>已滿</button>'
         : `<button class="btn btn-gold" data-meta="${scope}:${id}" ${meta.crystals < cost ? 'disabled' : ''}><span class="price">${iconHtml('crystal')}${cost}</span></button>`;
-    return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${m.desc(m)}${lv > 0 && m.total && m.max > 1 ? ` · 目前 <b>${m.total(m, lv)}</b>` : ''}</div></div>${btn}</div>`;
+    const amount = m.max <= 1 || !m.total ? m.desc(m)
+        : lv === 0 ? `每級 ${m.total(m, 1)}`
+            : maxed ? `<b>${m.total(m, lv)}</b>`
+                : `<b>${m.total(m, lv)}</b><span class="meta-next">→ ${m.total(m, lv + 1)}</span>`;
+    return `<div class="meta-row">${iconHtml(m.icon)}<div class="meta-info"><div class="meta-name">${m.name}<span class="pips">${pips}</span></div><div class="meta-desc">${amount}</div></div>${btn}</div>`;
 }
+// 這一組現在買得起幾個（分頁上的紅色數字：一眼看到哪裡有東西可買）
+function affordableCount(scope) {
+    const defs = upgradeDefs(scope);
+    return Object.keys(defs).filter(id => upgradeLv(scope, id) < defs[id].max && meta.crystals >= upgradeCost(scope, id)).length;
+}
+const META_GROUPS = [['power', '變強'], ['tools', '選卡與保命']];
 function renderMeta() {
     uiElements.metaCrystals.innerHTML = `${iconHtml('crystal')}${meta.crystals}`;
     uiElements.metaEarn.innerHTML = `<span>${iconHtml('skull')}每撐過 1 波 +${CRYSTALS_PER_WAVE}</span><span>${iconHtml('boss')}首領 +${CRYSTALS_PER_BOSS}</span><span>${iconHtml('crown')}通關 +${VICTORY_CRYSTALS}</span>`;
     uiElements.metaRefundBtn.disabled = metaRefundTotal() <= 0;
     // 一排分頁：通用＋每個職業（頭像＋名字，沒解鎖的上鎖、點不了），只列選中那一組
-    const tabs = `<button class="achv-tab achv-subtab meta-tab-all${metaClassTab === META_GLOBAL ? ' on' : ''}" data-meta-cls="${META_GLOBAL}"><div>通用</div></button>` +
+    const badge = scope => { const n = affordableCount(scope); return n ? `<b class="meta-tab-count">${n}</b>` : ''; };
+    const tabs = `<button class="achv-tab achv-subtab meta-tab-all${metaClassTab === META_GLOBAL ? ' on' : ''}" data-meta-cls="${META_GLOBAL}"><div>通用</div>${badge(META_GLOBAL)}</button>` +
         Object.keys(CLASSES).map(cls => {
             const ok = classUnlocked(cls), C = CLASSES[cls];
-            return `<button class="achv-tab achv-subtab${cls === metaClassTab ? ' on' : ''}" data-meta-cls="${cls}" ${ok ? '' : 'disabled'}><img src="${C.portrait}" alt="">${ok ? '' : iconHtml('lock', 'icon tab-lock')}<div>${C.name}</div></button>`;
+            return `<button class="achv-tab achv-subtab${cls === metaClassTab ? ' on' : ''}" data-meta-cls="${cls}" ${ok ? '' : 'disabled'}><img src="${C.portrait}" alt="">${ok ? '' : iconHtml('lock', 'icon tab-lock')}<div>${C.name}</div>${ok ? badge(cls) : ''}</button>`;
         }).join('');
-    uiElements.metaList.innerHTML = `<div class="meta-class-tabs">${tabs}</div>` +
-        Object.entries(upgradeDefs(metaClassTab)).map(([id, m]) => metaRowHtml(metaClassTab, id, m)).join('') +
-        (metaClassTab === META_GLOBAL ? '' : metaBanHtml(metaClassTab));
+    const defs = Object.entries(upgradeDefs(metaClassTab));
+    // 通用分兩區：直接加數值的「變強」，跟改變怎麼選卡、會不會倒的「選卡與保命」；職業分頁只有一區，最後接放逐
+    const body = metaClassTab === META_GLOBAL
+        ? META_GROUPS.map(([g, title]) => `<div class="meta-group meta-group-${g}">${title}</div>` + defs.filter(([, m]) => m.group === g).map(([id, m]) => metaRowHtml(metaClassTab, id, m)).join('')).join('')
+        : defs.map(([id, m]) => metaRowHtml(metaClassTab, id, m)).join('') + metaBanHtml(metaClassTab);
+    uiElements.metaList.innerHTML = `<div class="meta-class-tabs">${tabs}</div>` + body;
     // 選中的分頁捲到看得見的地方（職業多，一排放不下）
     const bar = uiElements.metaList.querySelector('.meta-class-tabs'), on = bar.querySelector('.on');
     if (on) bar.scrollLeft = on.offsetLeft - bar.offsetLeft - (bar.clientWidth - on.offsetWidth) / 2;
 }
-// ---------- 放逐：局外先選好，這個職業每局都不會抽到那幾張（張數 = 通用的「斷念」等級） ----------
+// ---------- 放逐：局外先選好，這個職業每局都不會抽到那幾張（張數 = 通用的「放逐格」等級） ----------
 // 傳說不能放逐：每種一局只出一次、首領波固定一張，是要期待的東西，不是要排除的雜訊
 // 畫面：上面一排放逐格（已經放逐的卡，點一下取消；還沒買的格子上鎖）→ 流派分頁 → 一列列祝福（圖示、名字、效果、這個職業拿過幾次）。
 // 只有圖示和名字的話根本不知道該放逐哪張；「拿過幾次」讓人一眼找到自己從來不拿的那幾張
@@ -7743,10 +7759,10 @@ function banSchoolLabel(s) {
     return s === ARMY_SCHOOL ? `${iconHtml('summon', 'icon school-img')}<span>全軍</span>` : `${schoolBadgeHtml(s)}<span>${SCHOOLS[s].name}</span>`;
 }
 function blessPickCount(cls, id) { return ((stats().picks || {})[cls] || {})[id] || 0; }
-// 強化畫面職業分頁裡的入口：已經放逐的卡縮成小圖排在說明裡，沒買「斷念」時講怎麼拿到
+// 強化畫面職業分頁裡的入口：已經放逐的卡縮成小圖排在說明裡，沒買「放逐格」時講怎麼拿到
 function metaBanHtml(cls) {
     const n = banSlots(), list = bannedBlessings(cls);
-    if (n <= 0) return `<div class="meta-row ban-entry locked">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">在「通用」買「斷念」，就能讓不想要的祝福不再出現</div></div></div>`;
+    if (n <= 0) return `<div class="meta-row ban-entry locked">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">在「通用」買「放逐格」，就能讓不想要的祝福不再出現</div></div></div>`;
     const preview = list.length ? `<span class="ban-preview">${list.map(id => iconHtml(blessIcon(id))).join('')}</span>` : '還沒放逐任何祝福';
     return `<div class="meta-row ban-entry">${iconHtml('banish')}<div class="meta-info"><div class="meta-name">放逐</div><div class="meta-desc">${preview}</div></div>` +
         `<button class="btn btn-gold" data-ban-open>選擇<span class="price">${list.length}/${n}</span></button></div>`;
@@ -7778,7 +7794,7 @@ function renderBan() {
     for (let i = 0; i < max; i++) {
         if (i < list.length) slots += `<button class="ban-slot filled" data-unban="${list[i]}">${iconHtml(blessIcon(list[i]))}<span class="ban-slot-name">${BLESSINGS[list[i]].name}</span><span class="ban-x">✕</span></button>`;
         else if (i < n) slots += '<div class="ban-slot empty"><span class="ban-slot-name">空格</span></div>';
-        else slots += `<div class="ban-slot locked">${iconHtml('lock')}<span class="ban-slot-name">斷念 ${i + 1}</span></div>`;
+        else slots += `<div class="ban-slot locked">${iconHtml('lock')}<span class="ban-slot-name">買第 ${i + 1} 格</span></div>`;
     }
     uiElements.banSlots.innerHTML = `<div class="ban-slot-row">${slots}</div>` +
         `<div class="ban-slot-note${full ? ' full' : ''}">${full ? '放滿了：點上面的格子可以取消' : '點下面的祝福放進格子'}</div>`;

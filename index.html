@@ -2658,6 +2658,55 @@
             margin-top: 2px;
         }
 
+        .meta-desc b {
+            color: var(--bone);
+            font-size: 14px;
+        }
+
+        /* 「目前 → 下一級」的下一級：綠色，買下去會變成這樣 */
+        .meta-next {
+            margin-left: 6px;
+            color: #a5d6a7;
+            font-weight: 700;
+        }
+
+        /* 通用分頁的兩區標題：變強（金）、選卡與保命（藍），顏色跟各自那一區的意思走 */
+        .meta-group {
+            margin: 10px 0 2px 4px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        .meta-group-power {
+            color: var(--gold);
+        }
+
+        .meta-group-tools {
+            color: #90caf9;
+        }
+
+        /* 分頁上的紅色數字：這一組現在買得起幾個 */
+        .meta-tab-count {
+            position: absolute;
+            top: -6px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            border: 2px solid var(--ink);
+            background: #e53935;
+            color: #fff;
+            font-family: var(--font-ui);
+            font-size: 11px;
+            line-height: 14px;
+        }
+
+        .meta-tab-all {
+            position: relative;
+        }
+
         /* 通用＋各職業的分頁 */
         /* 「通用」沒有頭像，撐到跟職業分頁一樣高 */
         .meta-tab-all {
@@ -2670,7 +2719,8 @@
             display: flex;
             gap: 6px;
             overflow-x: auto;
-            padding-bottom: 4px;
+            /* 上面留位置給「買得起幾個」的紅色數字（橫捲的容器會把超出去的切掉） */
+            padding: 8px 4px 4px 0;
             scrollbar-width: none;
         }
 

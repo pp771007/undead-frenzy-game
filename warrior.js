@@ -192,8 +192,8 @@ CLASSES.warrior = {
     troopCap: () => warTroopCap(),
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
-        troopCap: { icon: 'legionCap', name: '編制擴充', max: 4, per: 1, costBase: 40, desc: m => `人數上限 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
-        armor: { icon: 'ironBody', name: '鐵甲', max: 5, per: 0.04, costBase: 30, desc: m => `你受到的傷害 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
+        troopCap: { icon: 'legionCap', name: '人數上限', max: 4, per: 1, costBase: 40, desc: m => `人數上限 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+        armor: { icon: 'ironBody', name: '受到的傷害', max: 5, per: 0.04, costBase: 30, desc: m => `你受到的傷害 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     },
     upgradeCostMult: () => 1 - blessVal('legionPay'),
     // 每波開始：鷹旗重新可用；英靈殿讓上一波陣亡的老兵歸隊

@@ -171,8 +171,8 @@ CLASSES.druid = {
     cards: ['SacredOak', 'Wolf', 'Bear'], schools: ['grove', 'pack', 'bear', 'wild', 'seasons', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
-        groveSize: { icon: 'groveSize', name: '茂林', max: 2, per: 1, costBase: 60, desc: m => `每棵橡樹多養 ${m.per} 隻野獸`, total: (m, lv) => `+${m.per * lv} 隻` },
-        bearTime: { icon: 'bearTime', name: '熊靈長存', max: 3, per: 1, costBase: 35, desc: m => `巨熊化身 +${m.per} 秒`, total: (m, lv) => `+${m.per * lv} 秒` },
+        groveSize: { icon: 'groveSize', name: '每棵樹的野獸', max: 2, per: 1, costBase: 60, desc: m => `每棵橡樹多養 ${m.per} 隻野獸`, total: (m, lv) => `+${m.per * lv} 隻` },
+        bearTime: { icon: 'bearTime', name: '巨熊化身時間', max: 3, per: 1, costBase: 35, desc: m => `巨熊化身 +${m.per} 秒`, total: (m, lv) => `+${m.per * lv} 秒` },
     },
     hero: { imageName: 'druid', baseHealth: DRUID.baseHealth, moveSpeed: DRUID.moveSpeed },
     attack: (p, dt) => druidAttack(p, dt),

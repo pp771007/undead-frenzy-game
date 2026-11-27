@@ -135,9 +135,9 @@ CLASSES.monk = {
     unlock: 'wave40', unlockOld: 'streak1000',
     cards: ['Fist', 'Step', 'Qi'], schools: ['external', 'hardstyle', 'lightfoot', 'internal', 'qigong', 'soul'],
     metaUpgrades: {
-        evade: { icon: 'evade', name: '金剛身法', max: 5, per: 0.02, costBase: 30, desc: m => `${pct(m.per)} 機率閃過攻擊`, total: (m, lv) => `${pct(m.per * lv)}` },
-        comboCap: { icon: 'comboCap', name: '連打修練', max: 5, per: 0.1, costBase: 30, desc: m => `連擊加成上限 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-        zenHeal: { icon: 'zenHeal', name: '吐納心法', max: 4, per: 0.15, costBase: 25, desc: m => `入定回血 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        evade: { icon: 'evade', name: '閃避率', max: 5, per: 0.02, costBase: 30, desc: m => `${pct(m.per)} 機率閃過攻擊`, total: (m, lv) => `${pct(m.per * lv)}` },
+        comboCap: { icon: 'comboCap', name: '連擊加成上限', max: 5, per: 0.1, costBase: 30, desc: m => `連擊加成上限 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        zenHeal: { icon: 'zenHeal', name: '入定回血', max: 4, per: 0.15, costBase: 25, desc: m => `入定回血 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     },
     hero: { imageName: 'monk', baseHealth: MONK.baseHealth, moveSpeed: MONK.moveSpeed },
     attack: (p, dt) => monkPunch(p, dt),

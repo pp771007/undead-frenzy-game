@@ -139,9 +139,9 @@ CLASSES.rogue = {
     unlock: 'elite500',
     cards: ['Knives', 'Venom', 'Shadow'], schools: ['assassination', 'venomschool', 'shadowschool', 'smoke', 'intel', 'soul'],
     metaUpgrades: {
-        longHide: { icon: 'longHide', name: '影之修練', max: 5, per: 0.4, costBase: 30, desc: m => `每次隱身 +${m.per} 秒`, total: (m, lv) => `+${(m.per * lv).toFixed(1)} 秒` },
-        ambushPower: { icon: 'ambushPower', name: '致命一擊', max: 5, per: 0.3, costBase: 30, desc: m => `伏擊多打 ${m.per} 倍`, total: (m, lv) => `+${(m.per * lv).toFixed(1)} 倍` },
-        executeUp: { icon: 'executeUp', name: '斷頭台', max: 5, per: 0.02, costBase: 35, desc: m => `處決門檻 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        longHide: { icon: 'longHide', name: '隱身時間', max: 5, per: 0.4, costBase: 30, desc: m => `每次隱身 +${m.per} 秒`, total: (m, lv) => `+${(m.per * lv).toFixed(1)} 秒` },
+        ambushPower: { icon: 'ambushPower', name: '伏擊傷害', max: 5, per: 0.3, costBase: 30, desc: m => `伏擊多打 ${m.per} 倍`, total: (m, lv) => `+${(m.per * lv).toFixed(1)} 倍` },
+        executeUp: { icon: 'executeUp', name: '處決門檻', max: 5, per: 0.02, costBase: 35, desc: m => `處決門檻 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
     },
     hero: { imageName: 'rogue', baseHealth: ROGUE.baseHealth, moveSpeed: ROGUE.moveSpeed },
     attack: (p, dt) => rogueKnives(p, dt),

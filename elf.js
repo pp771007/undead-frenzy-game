@@ -129,8 +129,8 @@ CLASSES.elf = {
     cards: ['Archery', 'Traps', 'Companion'], schools: ['parthian', 'longbow', 'elemental', 'trapper', 'wildfriends', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
-        stride: { icon: 'stride', name: '風之步伐', max: 5, per: 0.04, costBase: 30, desc: m => `你的移速 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-        trapCount: { icon: 'trapCount', name: '陷阱行囊', max: 3, per: 1, costBase: 40, desc: m => `同時可放的陷阱 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
+        stride: { icon: 'stride', name: '移速', max: 5, per: 0.04, costBase: 30, desc: m => `你的移速 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        trapCount: { icon: 'trapCount', name: '陷阱數量', max: 3, per: 1, costBase: 40, desc: m => `同時可放的陷阱 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
     },
     hero: { imageName: 'elf_archer', baseHealth: ELF.baseHealth, moveSpeed: ELF.moveSpeed },
     attack: (p, dt) => elfShoot(p, dt),

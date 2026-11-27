@@ -134,8 +134,9 @@ const ICON_BODIES = {
     star: `<path d="${starPath(32, 33, 27, 12, 5)}" fill="#ffd54f"/>${shine(26, 22, 4, 2.5)}`,
     crown: `<path d="M9 46 L13 17 L24 30 L32 11 L40 30 L51 17 L55 46 Z" fill="#ffd54f"/><rect x="9" y="45" width="46" height="9" rx="2" fill="#e0a82e"/>
         <circle cx="32" cy="49.5" r="3" fill="#e5484d" stroke-width="2.5"/><circle cx="20" cy="49.5" r="2.5" fill="#62dbe2" stroke-width="2.5"/><circle cx="44" cy="49.5" r="2.5" fill="#62dbe2" stroke-width="2.5"/>`,
-    bloodMoon: `<circle cx="32" cy="32" r="23" fill="#d84a4a"/><circle cx="24" cy="26" r="5" fill="#a83333" stroke-width="2.5"/><circle cx="38" cy="40" r="7" fill="#a83333" stroke-width="2.5"/><circle cx="41" cy="22" r="3" fill="#a83333" stroke-width="2.5"/>${shine(20, 18, 5, 2.5)}`,
-    // 狂暴：三道撕開的爪痕（兩頭尖、中間粗），帶速度線
+    // 百鬼夜行（怪物變多、靈魂加倍）：滴血的紅月
+    hordeNight: `<circle cx="32" cy="32" r="23" fill="#d84a4a"/><circle cx="24" cy="26" r="5" fill="#a83333" stroke-width="2.5"/><circle cx="38" cy="40" r="7" fill="#a83333" stroke-width="2.5"/><circle cx="41" cy="22" r="3" fill="#a83333" stroke-width="2.5"/>${shine(20, 18, 5, 2.5)}`,
+    // 躁動（怪物更快）：三道撕開的爪痕（兩頭尖、中間粗），帶速度線
     claws: `${[8, 25, 42].map(x => `<path d="M${x} 6 C${x + 13} 18 ${x + 13} 38 ${x - 1} 58 C${x + 5} 38 ${x + 5} 18 ${x} 6 Z" fill="#ff8a50" stroke-width="2.5"/><path d="M${x + 3} 16 C${x + 8} 26 ${x + 8} 36 ${x + 4} 46" stroke="#ffe0b2" stroke-width="1.6"/>`).join('')}
         <path d="M56 12 L62 8 M58 22 L63 20" stroke="#ffccbc" stroke-width="2.5"/>`,
     // 腐屍狂潮：三顆縫過線的殭屍頭
@@ -837,16 +838,16 @@ const ICON_BODIES = {
     refund: `<path d="M40 12 L56 28 L40 58 L24 28 Z" fill="#b388ff"/><path d="M24 28 L56 28" stroke-width="2.5"/>` +
         duoStroke('M28 10 C16 10 8 18 8 30', '#8fd3ff', 5) + `<path d="M1 26 L8 40 L15 26 Z" fill="#8fd3ff"/>`,
     // ---- 永久強化（跟祝福長得像的那幾個各自一張）----
-    // 全軍之力（全軍傷害）：骨白色的拳頭
+    // 全軍傷害：骨白色的拳頭
     might: `<rect x="16" y="22" width="34" height="26" rx="8" fill="#f1ead6"/><path d="M24 22 L24 32 M32 22 L32 32 M40 22 L40 32" stroke-width="3"/>
         <path d="M18 36 C8 36 8 24 18 24" fill="#f1ead6"/><rect x="22" y="48" width="22" height="12" fill="#7e57c2"/>
         <path d="M10 10 L16 16 M32 3 L32 12 M54 10 L48 16" stroke="#ffd54f" stroke-width="3.5"/>`,
-    // 大招精通（大招冷卻）：紫色爆光前的沙漏
+    // 大招冷卻：紫色爆光前的沙漏
     ultMastery: `<path d="${starPath(32, 32, 30, 21, 10)}" fill="#c06bf5"/>
         <path d="M20 10 L44 10 L44 14 C44 24 36 28 36 32 C36 36 44 40 44 50 L44 54 L20 54 L20 50 C20 40 28 36 28 32 C28 28 20 24 20 14 Z" fill="#f1ead6"/>
         <path d="M24 50 L40 50 L32 42 Z M26 16 L38 16 L32 24 Z" fill="#ffd54f" stroke="none"/>`,
-    // 軍團體魄（召喚物血量）：骨頭加一顆心
-    // 永久強化「骸骨先鋒」（開局就帶幾隻骷髏）：紫色圓盾前面排著三顆骷髏頭
+    // 永久強化「召喚物血量」：骨頭加一顆心
+    // 永久強化「開局骷髏」（開局就帶幾隻骷髏）：紫色圓盾前面排著三顆骷髏頭
     boneVanguard: `<circle cx="32" cy="28" r="22" fill="#5e35b1"/><circle cx="32" cy="28" r="15" fill="none" stroke="#ffd54f" stroke-width="3"/>
         ${[[18, 44], [46, 44], [32, 50]].map(([x, y]) => `<path d="M${x - 9} ${y - 2} C${x - 9} ${y - 12} ${x + 9} ${y - 12} ${x + 9} ${y - 2} C${x + 9} ${y + 3} ${x + 6} ${y + 5} ${x + 5} ${y + 5} L${x + 5} ${y + 10} L${x - 5} ${y + 10} L${x - 5} ${y + 5} C${x - 6} ${y + 5} ${x - 9} ${y + 3} ${x - 9} ${y - 2} Z" fill="#f1ead6" stroke-width="3"/><circle cx="${x - 3.5}" cy="${y - 1}" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="${x + 3.5}" cy="${y - 1}" r="2.6" fill="${ICON_OUTLINE}" stroke="none"/>`).join('')}
         ${shine(22, 14, 5, 3)}`,
@@ -858,10 +859,10 @@ const ICON_BODIES = {
         <path d="M32 9 L29 17 L34 21 L31 27" stroke-width="2.5"/>${shine(22, 15, 4, 2.5)}`,
     boneMarrow: `<path d="M12 44 C6 40 10 32 16 36 L40 12 C36 6 44 2 48 8 C54 6 58 14 52 18 L28 42 C32 48 24 52 20 46 C16 52 8 48 12 44 Z" fill="#f1ead6"/>
         <path d="M45 61 C32 53 28 45 32 38 C36 33 42 34 45 39 C48 34 54 33 58 38 C62 45 58 53 45 61 Z" fill="#e5484d"/>`,
-    // 靈魂親和（靈魂掉落）：滿出靈魂的豐饒角
+    // 靈魂掉落：滿出靈魂的豐饒角
     soulAffinity: `<path d="M4 10 C8 30 22 44 42 46 L46 30 C30 28 18 20 4 10 Z" fill="#d7965a"/><ellipse cx="44" cy="38" rx="5" ry="9" fill="#8d6e63" transform="rotate(15 44 38)"/>
         <circle cx="54" cy="48" r="6" fill="#62dbe2"/><circle cx="44" cy="56" r="4.5" fill="#62dbe2"/><circle cx="57" cy="34" r="4" fill="#62dbe2"/>${shine(52, 46, 2, 1.5)}`,
-    // 不死執念（倒下時復活一次；祝福「重生」是 rebirth）：金色生命十字
+    // 倒下復活（倒下時復活一次；祝福「重生」是 rebirth）：金色生命十字
     revive: `<ellipse cx="32" cy="17" rx="10" ry="12" stroke-width="11"/><ellipse cx="32" cy="17" rx="10" ry="12" stroke="#ffd54f" stroke-width="5"/>
         <path d="M12 33 L52 33 M32 30 L32 60" stroke-width="12"/><path d="M12 33 L52 33 M32 30 L32 60" stroke="#ffd54f" stroke-width="6"/>`,
     // 戰士遺跡「軍餉」：一枚金幣

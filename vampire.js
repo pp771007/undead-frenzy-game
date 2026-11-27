@@ -158,8 +158,8 @@ CLASSES.vampire = {
     cards: ['Thrall', 'BloodBat', 'BloodMagic'], schools: ['bloodmagic', 'kin', 'bats', 'werewolf', 'undying', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
-        kinRate: { icon: 'kinRate', name: '血之饋贈', max: 4, per: 0.02, costBase: 35, desc: m => `轉化機率 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
-        sunWard: { icon: 'sunWard', name: '夜之斗篷', max: 4, per: 0.12, costBase: 25, desc: m => `白天曬傷 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
+        kinRate: { icon: 'kinRate', name: '轉化機率', max: 4, per: 0.02, costBase: 35, desc: m => `轉化機率 +${pct(m.per)}`, total: (m, lv) => `+${pct(m.per * lv)}` },
+        sunWard: { icon: 'sunWard', name: '白天曬傷', max: 4, per: 0.12, costBase: 25, desc: m => `白天曬傷 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     },
     hero: { imageName: 'vampire', baseHealth: VAMPIRE.baseHealth, moveSpeed: VAMPIRE.moveSpeed },
     currency: { icon: 'blood', glow: [124, 77, 255] },
