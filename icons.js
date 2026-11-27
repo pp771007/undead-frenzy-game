@@ -594,6 +594,11 @@ const ICON_BODIES = {
     crystal: `<path d="M32 6 L50 24 L32 58 L14 24 Z" fill="#b388ff"/><path d="M14 24 L50 24 M32 6 L26 24 L32 58 M32 6 L38 24 L32 58" stroke-width="2.5"/>${shine(24, 18, 3, 6, 30)}`,
     battery: `<rect x="4" y="14" width="50" height="36" rx="6" fill="#f1ead6"/><rect x="54" y="24" width="7" height="16" rx="2" fill="#f1ead6"/>
         <rect x="10" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/><rect x="25" y="20" width="12" height="24" rx="2" fill="#7cb342" stroke-width="2.5"/>`,
+    // 減少晃動：手機畫面兩側的震動線
+    reduceShake: duoStroke('M10 23 C6 28 6 36 10 41 M54 23 C58 28 58 36 54 41', '#f1ead6', 3.5) + duoStroke('M4 27 C2.5 30 2.5 34 4 37 M60 27 C61.5 30 61.5 34 60 37', '#f1ead6', 2.5) +
+        `<rect x="17" y="8" width="30" height="48" rx="6" fill="#7e8bd6"/><rect x="21" y="14" width="22" height="32" rx="2" fill="#26324a" stroke-width="2.5"/>
+        <path d="M21 40 L27 33 L31 37 L36 30 L43 38 L43 46 L21 46 Z" fill="#4db6ac" stroke-width="2.5"/><circle cx="37" cy="21" r="3" fill="#fff3c4" stroke-width="2"/>
+        <circle cx="32" cy="51" r="1.8" fill="#1b1424" stroke="none"/>${shine(22, 11, 3, 1.5, 0)}`,
     fullscreen: duoStroke('M9 23 L9 9 L23 9 M41 9 L55 9 L55 23 M55 41 L55 55 L41 55 M23 55 L9 55 L9 41', '#f1ead6', 5),
     install: duoStroke('M10 40 L10 54 L54 54 L54 40', '#ffd54f', 5) + duoStroke('M32 8 L32 38 M20 27 L32 39 L44 27', '#f1ead6', 5),
     podium: `<rect x="23" y="22" width="18" height="34" fill="#ffd54f"/><rect x="6" y="34" width="17" height="22" fill="#cfd8dc"/><rect x="41" y="40" width="17" height="16" fill="#d7965a"/>

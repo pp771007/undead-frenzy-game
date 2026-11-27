@@ -200,7 +200,7 @@ function elfUpdate(dt) {
         e.rainFx = (e.rainFx || 0) + dt * RAIN_AMBIENT_PER_SEC;
         while (e.rainFx >= 1) {
             e.rainFx--;
-            if (gameState.visualEffects.length >= MAX_AMBIENT_EFFECTS) break;
+            if (gameState.visualEffects.length >= ambientEffectCap()) break;
             gameState.visualEffects.push(new FallingArrowEffect({ x: camera.x + Math.random() * view.w, y: camera.y + Math.random() * view.h }));
         }
         if (e.rainT <= 0) { gameState.run.novaBest = Math.max(gameState.run.novaBest, e.rainKills); }

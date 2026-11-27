@@ -122,6 +122,8 @@ const uiElements = {
     pauseSfxSlider: $id('pause-sfx-slider'),
     saverToggle: $id('saver-toggle'),
     pauseSaverToggle: $id('pause-saver-toggle'),
+    shakeToggle: $id('shake-toggle'),
+    pauseShakeToggle: $id('pause-shake-toggle'),
     fullscreenToggle: $id('fullscreen-toggle'),
     pauseFullscreenToggle: $id('pause-fullscreen-toggle'),
     installBtn: $id('install-btn'),
@@ -867,7 +869,7 @@ const REVIVE_SHIELD_SECONDS = 2.5;
 const CRYSTALS_PER_WAVE = 4;
 const CRYSTALS_PER_BOSS = 15;
 function defaultMeta() {
-    return { crystals: 0, upgrades: {}, classUpgrades: {}, metaTable: META_TABLE_VERSION, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false };
+    return { crystals: 0, upgrades: {}, classUpgrades: {}, metaTable: META_TABLE_VERSION, relicSeen: {}, achv: {}, stats: defaultStats(), bestClear: {}, leaderboard: [], lbName: '', tutorialDone: false, wins: 0, curseUnlocked: 0, curseSelected: 0, bgmVolume: CONFIG.audio.initialVolume, sfxVolume: CONFIG.audio.initialSfxVolume, powerSaver: false, reduceShake: false };
 }
 function loadMeta() {
     try {
@@ -1953,9 +1955,18 @@ function getSparkSprite(color) {
     sparkCache.set(color, c);
     return c;
 }
+// 省電模式：火花粒子與「每隻都會一直放」的特效上限減半。大軍時這兩樣最多，砍一半畫面照樣熱鬧
+const SAVER_FX_SHARE = 0.5;
+function particleCap() {
+    return meta.powerSaver ? CONFIG.visuals.maxParticles * SAVER_FX_SHARE : CONFIG.visuals.maxParticles;
+}
+function ambientEffectCap() {
+    return meta.powerSaver ? MAX_AMBIENT_EFFECTS * SAVER_FX_SHARE : MAX_AMBIENT_EFFECTS;
+}
 function spawnParticles(x, y, color, count, speed = 80, life = 0.5, size = 2.5) {
     const ps = gameState.particles;
-    for (let i = 0; i < count && ps.length < CONFIG.visuals.maxParticles; i++) {
+    const cap = particleCap();
+    for (let i = 0; i < count && ps.length < cap; i++) {
         const a = Math.random() * Math.PI * 2;
         const v = speed * (0.3 + Math.random() * 0.7);
         ps.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life, maxLife: life, color, size: size * (0.6 + Math.random() * 0.6) });
@@ -2004,7 +2015,10 @@ function drawIconLabel(iconName, text, x, y, size, color, align = 'center') {
     ctx.textAlign = 'left';
     drawOutlinedText(text, left + iconSize + gap, y, size, color);
 }
+// 「減少晃動」：容易看晃動畫面頭暈的人用；留一點震動，打到重擊時還感覺得到
+const REDUCED_SHAKE_MULT = 0.25;
 function addShake(amount) {
+    if (meta.reduceShake) amount *= REDUCED_SHAKE_MULT;
     gameState.shake = Math.min(14, Math.max(gameState.shake, amount));
 }
 
@@ -2489,7 +2503,7 @@ class SummonUnit extends GameObject {
             const p = getRandomSpawnPosNearPlayer(SUMMON_TELEPORT_SCATTER);
             this.pos.x = p.x; this.pos.y = p.y;
             this.target = null;
-            if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(p.x, p.y, '#7E57C2', 4, 50, 0.4);
+            if (gameState.particles.length < particleCap()) spawnParticles(p.x, p.y, '#7E57C2', 4, 50, 0.4);
         } else if (distToPlayerSq > SUMMON_CATCHUP_DIST * SUMMON_CATCHUP_DIST && !this.target) {
             currentMoveSpeed *= SUMMON_CATCHUP_MULT;
         }
@@ -2918,7 +2932,7 @@ function spawnOvertimeEmbers() {
     if (overtimeMult() <= 1) return;
     const ps = gameState.particles;
     for (const m of gameState.monsters) {
-        if (ps.length >= CONFIG.visuals.maxParticles) return;
+        if (ps.length >= particleCap()) return;
         if (!m.isAlive || Math.random() > OVERTIME_EMBER_CHANCE || !inView(m.pos)) continue;
         ps.push({
             x: m.pos.x + randomInRange(-m.radius, m.radius), y: m.pos.y - m.imageHeight * 0.2,
@@ -2988,7 +3002,7 @@ class Wraith extends SummonUnit {
         monsterGrid.forEachInRadius(this.pos, this.slowRadius, m => {
             if (m.isAlive && distanceSq(this.pos, m.pos) <= this.slowRadiusSq) m.takeDamage(dmg);
         });
-        if (gameState.visualEffects.length < MAX_AMBIENT_EFFECTS) {
+        if (gameState.visualEffects.length < ambientEffectCap()) {
             gameState.visualEffects.push(new NovaEffect(this.pos, this.slowRadius, PULSE_EFFECT_COLORS));
         }
         Sfx.play('pulse');
@@ -3116,7 +3130,7 @@ class Projectile {
             this.targetPos.x = this.target.pos.x; this.targetPos.y = this.target.pos.y;
         }
         this.trailT -= deltaTime;
-        if (this.trailT <= 0 && gameState.particles.length < CONFIG.visuals.maxParticles) {
+        if (this.trailT <= 0 && gameState.particles.length < particleCap()) {
             this.trailT = SOUL_BOLT_TRAIL_EVERY;
             spawnParticles(this.pos.x - this.direction.x * 6, this.pos.y - this.direction.y * 6, SOUL_BOLT_GLOW, 1, 15, 0.35, 3);
         }
@@ -3262,7 +3276,7 @@ function getSoulSkullSprite(flipped) {
 // 命中：一圈青色波紋＋往外噴的碎光
 function soulBoltBurst(pos) {
     spawnParticles(pos.x, pos.y, SOUL_BOLT_GLOW, SOUL_BURST_SPARKS, 110, 0.35, 2.5);
-    if (gameState.visualEffects.length < MAX_AMBIENT_EFFECTS) gameState.visualEffects.push(new NovaEffect(pos, SOUL_BURST_RADIUS, SOUL_HIT_COLORS));
+    if (gameState.visualEffects.length < ambientEffectCap()) gameState.visualEffects.push(new NovaEffect(pos, SOUL_BURST_RADIUS, SOUL_HIT_COLORS));
 }
 
 // ---------- 有形狀的飛行物（飛刀、弩箭、箭、血刃、種子）----------
@@ -4918,7 +4932,7 @@ class HunterBoss extends BossMonster {
                 const k = Math.min(1, (t - windup) / M.travel);
                 this.pos.x = from.x + dir.x * M.length * k;
                 this.pos.y = from.y + dir.y * M.length * k;
-                if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 3, 40, 0.35, 3);
+                if (gameState.particles.length < particleCap()) spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 3, 40, 0.35, 3);
             },
             done: () => {
                 const p = gameState.player;
@@ -5944,7 +5958,7 @@ class WitchDoctorMonster extends Monster {
             // 不互補的話，先殺巫醫一定殺得掉，也就是說明文字講的「先殺牠」
             if (m === this || m instanceof WitchDoctorMonster || !m.isAlive || m.currentHealth >= m.maxHealth || distanceSq(this.pos, m.pos) > rSq) return;
             m.currentHealth = Math.min(m.maxHealth, Math.round(m.currentHealth + m.maxHealth * c.healRatio));
-            if (gameState.particles.length < CONFIG.visuals.maxParticles) spawnParticles(m.pos.x, m.pos.y, '#AED581', 4, 40, 0.5, 3);
+            if (gameState.particles.length < particleCap()) spawnParticles(m.pos.x, m.pos.y, '#AED581', 4, 40, 0.5, 3);
         });
         this.healPulse = HEAL_PULSE_TIME;
         this.attackCooldown = 1.0 / this.attackSpeed;
@@ -10132,6 +10146,16 @@ function syncSettingControls() {
     uiElements.volumeSlider.value = uiElements.pauseVolumeSlider.value = meta.bgmVolume;
     uiElements.sfxSlider.value = uiElements.pauseSfxSlider.value = meta.sfxVolume;
     uiElements.saverToggle.checked = uiElements.pauseSaverToggle.checked = !!meta.powerSaver;
+    uiElements.shakeToggle.checked = uiElements.pauseShakeToggle.checked = !!meta.reduceShake;
+}
+function bindShakeToggles() {
+    [uiElements.shakeToggle, uiElements.pauseShakeToggle].forEach(t => {
+        t.addEventListener('change', e => {
+            meta.reduceShake = e.target.checked;
+            saveMeta();
+            syncSettingControls();
+        });
+    });
 }
 function bindSaverToggles() {
     [uiElements.saverToggle, uiElements.pauseSaverToggle].forEach(t => {
@@ -10333,6 +10357,7 @@ function init() {
     syncSettingControls();
     bindVolumeSliders();
     bindSaverToggles();
+    bindShakeToggles();
     bindFullscreenToggles();
     bindInstallButton();
 

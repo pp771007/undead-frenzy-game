@@ -351,7 +351,7 @@ function warriorUpdate(dt) {
     else if (w.exhaustT > 0) w.exhaustT = Math.max(0, w.exhaustT - dt);
     w.chargeT = Math.max(0, w.chargeT - dt);
     // 衝鋒中：全軍腳下揚起塵土
-    if (w.chargeT > 0 && gameState.particles.length < CONFIG.visuals.maxParticles) {
+    if (w.chargeT > 0 && gameState.particles.length < particleCap()) {
         for (const s of gameState.summons) if (s.isAlive && s instanceof Soldier && Math.random() < CHARGE_DUST_CHANCE) spawnParticles(s.pos.x - w.fx * 8, s.pos.y + 8 - w.fy * 8, CHARGE_DUST, 1, 30, 0.5, 4);
     }
     // 面向慢慢轉向移動方向（鐵律：快一倍）
