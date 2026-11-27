@@ -134,7 +134,7 @@ const uiElements = {
     installCloseBtn: $id('install-close-btn'),
     draftScreen: $id('draft-screen'),
     draftCards: $id('draft-cards'),
-    rerollBtn: $id('reroll-btn'), skipBtn: $id('skip-btn'), healBtn: $id('heal-btn'),
+    rerollBtn: $id('reroll-btn'), healBtn: $id('heal-btn'),
     pauseMenu: $id('pause-menu'),
     pauseResonance: $id('pause-resonance'),
     pauseBlessings: $id('pause-blessings'),
@@ -7342,21 +7342,12 @@ function resonancePipsHtml(school) {
 function schoolChipHtml(id) {
     const school = BLESSINGS[id].school;
     if (school === ARMY_SCHOOL) return `<span class="school-chip">${iconHtml('summon', 'icon school-img')}<span>全軍</span></span>`;
-    if (school === DUO_SCHOOL) return `<span class="school-chip duo-chip">${BLESSINGS[id].duo.map(schoolBadgeHtml).join('')}<span>雙流派</span></span>`;
+    // 兩個流派的頭像並排就講完了，不另外取名字：玩家只要看到「這張跟我在疊的兩條路有關」
+    if (school === DUO_SCHOOL) return `<span class="school-chip duo-chip">${BLESSINGS[id].duo.map(schoolBadgeHtml).join('')}</span>`;
     const S = SCHOOLS[school];
     // 這張選下去剛好湊滿一段：整個標籤亮起來
     const willResonate = RESONANCE_STEPS.includes(schoolPoints(school) + 1);
     return `<span class="school-chip${willResonate ? ' resonates' : ''}" style="--school:${S.color}">${schoolBadgeHtml(school)}<span>${willResonate ? '共鳴' : S.name}</span></span>`;
-}
-
-// 雙流派傳說只在玩家第一次看到時說明「為什麼出現」；同一次抽卡重畫（重抽、放逐）時照樣顯示
-function duoIntroNow() {
-    const d = gameState.pendingDraft;
-    if (d.duoIntro) return true;
-    if (meta.duoSeen) return false;
-    meta.duoSeen = true;
-    saveMeta();
-    return (d.duoIntro = true);
 }
 
 function blessingPips(id, highlightNext) {
@@ -7379,8 +7370,7 @@ function renderDraftCards() {
         card.className = `draft-card panel${b.legendary ? ' legendary' : ''}`;
         const banish = gameState.banishLeft > 0 ? `<button class="card-banish" data-banish="${id}">${iconHtml('banish', 'icon btn-icon')}放逐</button>` : '';
         const isNew = b.legendary && !stats().legends[id] ? '<span class="card-new">新</span>' : '';
-        const why = b.duo && duoIntroNow() ? `<span class="duo-why">${b.duo.map(s => SCHOOLS[s].name).join('、')}都到 ${RESONANCE_STEPS[0]} 層才出現</span>` : '';
-        card.innerHTML = `${isNew}${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${why}${b.desc(b)}</span>${banish}`;
+        card.innerHTML = `${isNew}${schoolChipHtml(id)}${iconHtml(blessIcon(id), 'icon card-icon')}<span class="draft-name">${b.name}</span><span class="pips">${blessingPips(id, true)}</span><span class="draft-desc">${b.desc(b)}</span>${banish}`;
         // 用 pointerup 不用 click：另一隻手指還按著搖桿時瀏覽器不會合成 click。
         // 不用 pointerdown，是因為祝福選了收不回來，按下去還能滑開反悔
         // 觸控的 pointerup 一定回到按下的那張卡（隱式捕捉），所以要自己看放開時手指還在不在卡上
@@ -7393,7 +7383,6 @@ function renderDraftCards() {
     });
     uiElements.rerollBtn.innerHTML = `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">×${gameState.rerollsLeft}</span>`;
     uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0;
-    uiElements.skipBtn.innerHTML = `跳過<span class="price">${iconHtml('soul')}+${formatNumberK(draftSkipSouls())}</span>`;
     const missing = draftHealAmount();
     uiElements.healBtn.innerHTML = `${iconHtml('heart', 'icon btn-icon')}補滿血<span class="price">+${formatNumberK(missing)}</span>`;
     uiElements.healBtn.disabled = missing <= 0;
@@ -7414,20 +7403,6 @@ function healDraft() {
     spawnFloatText(p.pos.x, p.pos.y - 26, `+${formatNumberK(heal)} HP`, '#81C784', 16, 1.4, 'heart');
     spawnParticles(p.pos.x, p.pos.y, '#81C784', 24, 110, 0.7, 3);
     Sfx.play('heal');
-    closeDraft();
-}
-
-// 跳過：三張都不合這一局的路線時，不拿祝福、換一筆靈魂（剛打完那一波掉落的 DRAFT_SKIP_SHARE 倍）
-const DRAFT_SKIP_SHARE = 0.5;
-const DRAFT_SKIP_MIN = 20;
-function draftSkipSouls() {
-    return Math.max(DRAFT_SKIP_MIN, Math.round(gameState.waveSouls * DRAFT_SKIP_SHARE));
-}
-function skipDraft() {
-    if (!gameState.pendingDraft) return;
-    const souls = draftSkipSouls();
-    gameState.souls += souls;
-    if (gameState.player) spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 26, `+${formatNumberK(souls)}`, '#80DEEA', 16, 1.4, 'soul');
     closeDraft();
 }
 
@@ -9963,7 +9938,6 @@ function init() {
     onTap(uiElements.gameoverTitleBtn, showTitle);
     onTap(uiElements.gameoverMetaBtn, () => openMeta('gameover'));
     onTap(uiElements.rerollBtn, rerollDraft);
-    onTap(uiElements.skipBtn, skipDraft);
     onTap(uiElements.healBtn, healDraft);
     onTap(uiElements.confirmNo, () => showScreen(uiElements.confirmDialog, false));
     onTap(uiElements.confirmYes, () => {
