@@ -730,16 +730,6 @@ const ICON_BODIES = {
         <path d="M32 12 C19 12 12 21 12 32 C12 40 16 45 21 47 L21 58 L43 58 L43 47 C48 45 52 40 52 32 C52 21 45 12 32 12 Z" fill="#b39ddb"/>
         <path d="M19 30 L29 34 L27 41 L19 39 Z" fill="#e040fb" stroke-width="3"/><path d="M45 30 L35 34 L37 41 L45 39 Z" fill="#e040fb" stroke-width="3"/>
         <path d="M32 42 L29 48 L35 48 Z" fill="${ICON_OUTLINE}" stroke="none"/><path d="M27 58 L27 53 M32 58 L32 53 M37 58 L37 53" stroke-width="2.5"/>`,
-    // 招魂墓碑：冒綠火的墓碑
-    tombstone: `<path d="M14 58 L14 24 C14 12 22 6 32 6 C42 6 50 12 50 24 L50 58 Z" fill="#90a4ae"/><path d="M8 58 L56 58" stroke-width="5"/>
-        <path d="M32 18 L32 42 M24 26 L40 26" stroke="#607d8b" stroke-width="4"/>
-        <path d="M52 30 C46 26 46 20 50 14 C50 20 56 22 56 28 C56 32 54 34 52 34 Z" fill="#69f0ae" stroke-width="2.5"/>${shine(22, 16, 3, 5, 20)}`,
-    // 招魂反轉（打倒招魂墓碑、墓碑換邊替你招狼）：天藍的墓碑頂著一團天藍魂火，兩側一對翻轉箭頭
-    tombClaim: `<path d="M18 60 L18 30 C18 20 24 15 32 15 C40 15 46 20 46 30 L46 60 Z" fill="#81d4fa"/><path d="M12 60 L52 60" stroke-width="5"/>
-        <path d="M32 30 L32 50 M25 37 L39 37" stroke="#e1f5fe" stroke-width="4"/>
-        <path d="M32 18 C25 14 24 8 28 2 C29 7 33 8 34 4 C39 9 39 15 32 18 Z" fill="#4fc3f7" stroke-width="2.5"/>
-        <path d="M10 40 C4 30 6 20 12 15" stroke-width="7"/><path d="M10 40 C4 30 6 20 12 15" stroke="#e1f5fe" stroke-width="3"/><path d="M12 15 L4 16 L10 22 Z" fill="#e1f5fe" stroke-width="2"/>
-        <path d="M54 24 C60 34 58 44 52 49" stroke-width="7"/><path d="M54 24 C60 34 58 44 52 49" stroke="#e1f5fe" stroke-width="3"/><path d="M52 49 L60 48 L54 42 Z" fill="#e1f5fe" stroke-width="2"/>${shine(25, 26, 3, 5, 20)}`,
     // 首領的護甲（打破才傷得到）：金色的圓盾，盾面一圈鉚釘
     bossArmor: `<circle cx="32" cy="32" r="26" fill="#ffd54f"/><circle cx="32" cy="32" r="17" fill="#ffb300" stroke-width="3"/>
         ${[0, 1, 2, 3, 4, 5, 6, 7].map(i => { const a = i * Math.PI / 4; return `<circle cx="${(32 + Math.cos(a) * 21.5).toFixed(1)}" cy="${(32 + Math.sin(a) * 21.5).toFixed(1)}" r="1.8" fill="${ICON_OUTLINE}" stroke="none"/>`; }).join('')}
@@ -809,9 +799,8 @@ const ICON_BODIES = {
     curseBrutal: `<path d="${starPath(32, 33, 27, 19, 9)}" fill="#558b2f"/><circle cx="32" cy="33" r="15" fill="#9ccc65"/>
         <path d="M22 27 L30 31 M42 27 L34 31" stroke-width="3.5"/><circle cx="26.5" cy="34" r="2.5" fill="${ICON_OUTLINE}" stroke="none"/><circle cx="37.5" cy="34" r="2.5" fill="${ICON_OUTLINE}" stroke="none"/>
         <path d="M26 42 L38 42" stroke-width="3"/>`,
-    // 暗殺令（刺客提早出現）：紅色標靶上插一把紫柄匕首
-    curseAssassin: `<circle cx="30" cy="34" r="22" stroke-width="10"/><circle cx="30" cy="34" r="22" stroke="#e53935" stroke-width="5"/><circle cx="30" cy="34" r="8" fill="#e53935"/>
-        <path d="M54 6 L60 12 L36 36 L30 30 Z" fill="#cfd8dc"/><path d="M28 32 L34 38" stroke-width="10"/><path d="M28 32 L34 38" stroke="#7e57c2" stroke-width="5"/>`,
+    // 蝠潮（蝙蝠群提早出現）：一大兩小三隻褐色蝙蝠撲下來，紅眼露牙（敵方的蝙蝠，跟吸血鬼的紫蝠分開）
+    curseBats: `${[[33, 38, 1.25], [14, 16, 0.7], [50, 13, 0.62]].map(([x, y, s]) => `<g transform="translate(${x} ${y}) scale(${s})"><path d="M0 -6 C-6 -16 -20 -16 -25 -6 C-19 -9 -15 -5 -14 0 C-10 -4 -6 -2 -4 4 L0 10 L4 4 C6 -2 10 -4 14 0 C15 -5 19 -9 25 -6 C20 -16 6 -16 0 -6 Z" fill="#6d4c41" stroke-width="${(3 / s).toFixed(1)}"/><path d="M-5 -8 L-7 -14 L-2 -9 M5 -8 L7 -14 L2 -9" fill="#6d4c41" stroke-width="${(2 / s).toFixed(1)}"/><circle cx="-3" cy="-3" r="1.8" fill="#ff1744" stroke="none"/><circle cx="3" cy="-3" r="1.8" fill="#ff1744" stroke="none"/><path d="M-2 3 L-1 6 L0 3 L1 6 L2 3" fill="#fff" stroke-width="0.8"/></g>`).join('')}`,
     // 疾行（怪物移速）：紅色飛靴
     curseSwift: `<path d="M22 8 L40 8 L40 34 C40 38 44 40 50 42 C58 44 59 55 52 57 L22 57 C19 57 18 55 18 53 L18 12 C18 10 20 8 22 8 Z" fill="#c62828"/>
         <rect x="15" y="6" width="28" height="9" rx="3" fill="#ffd54f"/><path d="M18 49 L57 49" stroke-width="3"/>

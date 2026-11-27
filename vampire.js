@@ -27,8 +27,7 @@ const VAMPIRE = {
 OPTIONAL_ART.vampire = 'vampire.png';
 OPTIONAL_ART.blood_bat = 'blood_bat.png';
 OPTIONAL_ART.blood_wolf = 'blood_wolf.png';
-// 吸血鬼的攻擊、特效用夜紫：紅色是警示色，留給敵人與危險（血瞳的血彈用 game.js 的 blood）
-// 自己一個 key，不要蓋掉 BOLT_STYLES.blood，不然所有角色的局裡血瞳的彈都變成吸血鬼的樣子
+// 吸血鬼的攻擊、特效用夜紫：紅色是警示色，留給敵人與危險
 BOLT_STYLES.nightblade = { glowIn: 'rgba(209, 196, 255, 0.9)', glowMid: 'rgba(124, 77, 255, 0.4)', glowOut: 'rgba(124, 77, 255, 0)', body: '#7C4DFF', core: '#EDE7F6' };
 const VAMP_ATTACK_COLOR = '#7C4DFF', VAMP_ATTACK_DARK = '#4527A0';
 
@@ -38,17 +37,15 @@ const THRALL_COMMON = {
     wanderRadius: 30, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
     upgradeBonus: 0.15, projectileSpeed: 300, projectileRadius: 4, projectileColor: VAMP_ATTACK_COLOR, boltStyle: 'nightblade',
 };
-// 生前的血量、攻擊乘上這個倍數（怪的基礎值是給「一大群」用的，眷屬一隻要頂一隻）；沒有攻擊力的怪（巫醫、血瞳）給 minAtk
+// 生前的血量、攻擊乘上這個倍數（怪的基礎值是給「一大群」用的，眷屬一隻要頂一隻）；沒有攻擊力的怪（巫醫、祭司）給 minAtk
 const THRALL_HP_MULT = 2.5, THRALL_ATK_MULT = 2, THRALL_MIN_HP = 20, THRALL_MIN_ATK = 5;
 const THRALL_RANGED_RANGE = 150;
 // 眷屬保留原本的能力：照怪的種類分幾種打法（沒列到的：射程夠遠就是遠程，其他近戰）
-const THRALL_ARCHE = { WitchDoctor: 'mender', GravePriest: 'mender', Bloater: 'bomber', CorpseWorm: 'burrower', Tombstone: 'beacon', Assassin: 'blinker', BloodEye: 'ranged', Spitter: 'ranged' };
-const THRALL_ARCHE_LABEL = { melee: '近戰', ranged: '射血彈', mender: '幫你補血', bomber: '死了會爆', burrower: '範圍重擊', beacon: '強化身邊眷屬', blinker: '瞬移刺殺' };
+const THRALL_ARCHE = { WitchDoctor: 'mender', GravePriest: 'mender', Bloater: 'bomber', CorpseWorm: 'burrower', Spitter: 'ranged' };
+const THRALL_ARCHE_LABEL = { melee: '近戰', ranged: '射血彈', mender: '幫你補血', bomber: '死了會爆', burrower: '範圍重擊' };
 const MENDER_HEAL = 0.08, MENDER_RADIUS = 130, MENDER_HERO_BELOW = 0.7;
 const BOMBER_RADIUS = 55, BOMBER_MULT = 3;
 const BURROWER_RADIUS = 40;
-const BEACON_RADIUS = 110, BEACON_MULT = 1.25;
-const BLINKER_EVERY = 4, BLINKER_RANGE = 200, BLINKER_MULT = 3;
 const THRALL_TINT = '#CE93D8', THRALL_TINT_STRENGTH = 0.45;
 
 CONFIG.thrall = { ...THRALL_COMMON, type: 'Thrall', radius: 11, color: '#CE93D8', imageName: 'basic_melee', imgScaleMultiplier: 3,
@@ -285,7 +282,7 @@ const HOLY_WATER_TICK = 0.5, HOLY_WATER_BURN = 0.06;
 
 // cycle：晝夜走到哪（0～dayTime+nightTime）；moonT：血月或棺木強制入夜的剩餘秒數；night：這一格是不是黑夜
 function newVampState() {
-    return { cycle: 0, moonT: 0, night: false, bladeT: 0, burstT: 0, biteT: 0, batFormT: 0, batFormCd: 0, holyT: 0, reborn: false, bonusHp: 0, beacons: [], stormT: 0, clawT: 0 };
+    return { cycle: 0, moonT: 0, night: false, bladeT: 0, burstT: 0, biteT: 0, batFormT: 0, batFormCd: 0, holyT: 0, reborn: false, bonusHp: 0, stormT: 0, clawT: 0 };
 }
 function vampState() { return gameState.vamp || (gameState.vamp = newVampState()); }
 function thrallCap() { return VAMPIRE.thrallCap + Math.floor(gameState.units.Thrall.level / VAMPIRE.capPerLevels) + blessVal('kinCap'); }
@@ -365,9 +362,6 @@ function vampUpdate(dt) {
         p.currentHealth = Math.max(p.maxHealth * VAMPIRE.sunFloor, p.currentHealth - p.maxHealth * VAMPIRE.sunBurn * Math.max(0, 1 - blessVal('sunWard') - classMeta('sunWard')) * dt);
     }
     if (v.night && bl('nightRegen')) healHero(p.maxHealth * blessVal('nightRegen') * dt);
-    // 強化身邊眷屬的「墓碑」：先列出來，眷屬出手時查
-    v.beacons.length = 0;
-    for (const s of gameState.summons) if (s.isAlive && s instanceof Thrall && s.config.arche === 'beacon') v.beacons.push(s);
     // 血魔法：定時花一點自己的血炸開身邊
     bloodBurst(p, dt);
     // 狼化「撕咬」
@@ -675,7 +669,7 @@ function thrallConfig(srcKey) {
         imageName: look.imageName, imgScaleMultiplier: look.scale, radius: src.radius, color: src.color || '#CE93D8',
         baseHealth: Math.max(THRALL_MIN_HP, src.baseHealth) * THRALL_HP_MULT, baseAttack: Math.max(THRALL_MIN_ATK, src.baseAttack) * THRALL_ATK_MULT,
         attackRange: ranged ? THRALL_RANGED_RANGE : Math.max(20, src.attackRange || 22), attackSpeed: src.attackSpeed || 1,
-        moveSpeed: arche === 'beacon' ? 0 : Math.max(50, src.moveSpeed || 60), flying: !!src.flying,
+        moveSpeed: Math.max(50, src.moveSpeed || 60), flying: !!src.flying,
     });
 }
 
@@ -683,7 +677,6 @@ function thrallConfig(srcKey) {
 class Thrall extends SummonUnit {
     constructor(x, y, level, p) {
         super(x, y, CONFIG.thrall, level, p);
-        this.blinkT = BLINKER_EVERY;
     }
     setSource(srcType, elite, boss) {
         this.config = thrallConfig(srcType);
@@ -718,9 +711,8 @@ class Thrall extends SummonUnit {
     attackTarget() {
         const t = this.target;
         if (!t || !t.isAlive) return;
-        const v = vampState(), a = this.config.arche;
-        let dmg = this.attack;
-        for (const b of v.beacons) if (b !== this && distanceSq(b.pos, this.pos) <= BEACON_RADIUS * BEACON_RADIUS) { dmg *= BEACON_MULT; break; }
+        const a = this.config.arche;
+        const dmg = this.attack;
         if (a === 'mender') {
             // 巫醫、祭司：先救人（最殘的眷屬，或血不到七成的你），沒人要救才出手
             const p = gameState.player;
@@ -732,18 +724,7 @@ class Thrall extends SummonUnit {
         } else if (a === 'ranged') {
             this.shoot(t, dmg);
         } else {
-            if (a === 'blinker') {
-                this.blinkT -= 1 / this.attackSpeed;
-                if (this.blinkT <= 0) {
-                    this.blinkT = BLINKER_EVERY;
-                    const far = monsterGrid.nearestShared({ x: this.pos.x + (t.pos.x - this.pos.x) * 2, y: this.pos.y + (t.pos.y - this.pos.y) * 2 }, BLINKER_RANGE) || t;
-                    spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 8, 60, 0.4, 2);
-                    this.pos.x = far.pos.x + 8; this.pos.y = far.pos.y;
-                    this.target = far;
-                    dmg *= BLINKER_MULT;
-                }
-            }
-            const hitT = this.target;
+            const hitT = t;
             hitT.takeDamage(dmg);
             hitT.lastHitByThrall = true;
             if (a === 'burrower') {

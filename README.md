@@ -70,11 +70,10 @@
 <table>
   <tr>
     <td align="center" width="33%"><img src="slime.png" width="72" alt="" /><br/><b>瘟膿史萊姆</b><br/><sub>打死會分裂</sub></td>
-    <td align="center" width="33%"><img src="assassin.png" width="72" alt="" /><br/><b>暗影刺客</b><br/><sub>隱身接近，腳下出現紅圈就快走開</sub></td>
     <td align="center" width="33%"><img src="witch_doctor.png" width="72" alt="" /><br/><b>腐骨巫醫</b><br/><sub>會幫怪物補血，先殺牠</sub></td>
+    <td align="center" width="33%"><img src="bat.png" width="72" alt="" /><br/><b>吸血蝙蝠群</b><br/><sub>繞過大軍直撲主角，靠遠程打下來</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="bat.png" width="72" alt="" /><br/><b>吸血蝙蝠群</b><br/><sub>直撲主角</sub></td>
     <td align="center"><img src="shield_guard.png" width="72" alt="" /><br/><b>骨盾衛兵</b><br/><sub>盾牌擋飛彈，要靠近戰打破</sub></td>
     <td align="center"><img src="corpse_worm.png" width="72" alt="" /><br/><b>屍蟲</b><br/><sub>從地底鑽出，紅圈出現就走開</sub></td>
   </tr>
@@ -83,19 +82,9 @@
     <td align="center"><img src="bloater.png" width="72" alt="" /><br/><b>腐屍</b><br/><sub>貼近後膨脹自爆，趁膨脹時打掉</sub></td>
     <td align="center"><img src="thief.png" width="72" alt="" /><br/><b>金魂竊賊</b><br/><sub>一直逃跑，追到能拿大量靈魂</sub></td>
   </tr>
-  <tr>
-    <td align="center"><img src="blood_eye.png" width="72" alt="" /><br/><b>血瞳</b><br/><sub>隔著人牆朝主角射血彈，走動就躲得掉</sub></td>
-    <td align="center"><img src="gargoyle.png" width="72" alt="" /><br/><b>腐翼石像鬼</b><br/><sub>會飛，近戰打不到，專撲遠程</sub></td>
-    <td align="center"><img src="soul_devourer.png" width="72" alt="" /><br/><b>吞魂者</b><br/><sub>搶吃地上的靈魂，越吃越大</sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="tombstone.png" width="72" alt="" /><br/><b>招魂墓碑</b><br/><sub>在遠處一直冒血狼，畫面邊緣標出方位。拆掉的瞬間牠的狼全部倒下噴靈魂，墓碑翻成你的，替你招狼 15 秒</sub></td>
-    <td></td>
-    <td></td>
-  </tr>
 </table>
 
-還有往你腳下丟毒池的瘟疫投手，以及第 21 波起帶詞綴的精英怪：綠光環繞的打死會分裂，腳下冒火的殘血會暴走。
+還有專撲遠程的腐翼石像鬼（會飛，近戰打不到）、往大軍丟毒池的瘟疫投手，以及第 21 波起帶詞綴的精英怪：綠光環繞的打死會分裂，腳下冒火的殘血會暴走。
 
 戰鬥畫面上，**紅色只代表危險**：敵人的攻擊、預警圈、低血量都是紅的，自己人的攻擊和特效一律不用紅，一眼就分得出要不要躲。
 

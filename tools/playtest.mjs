@@ -134,7 +134,7 @@ for (;;) {
                         if (m.mark && noticed(m.mark)) { const ex = p.pos.x - m.mark.x, ey = p.pos.y - m.mark.y, e = Math.hypot(ex, ey) || 1; if (e < 60) { hx += ex / e * 3; hy += ey / e * 3; } }
                         // 首領的招式全部走地面預警（gameState.bossMarks），在下面閃
                         if (m instanceof BossMonster) continue;
-                        if (m.windup > 0 && !(m instanceof BloodEyeMonster) && noticed(m)) { const R = (m.config.novaRadius || m.config.slamRadius || 80) + 20; if (d < R) { hx += dx / d * 3; hy += dy / d * 3; } }
+                        if (m.windup > 0 && noticed(m)) { const R = (m.config.novaRadius || m.config.slamRadius || 80) + 20; if (d < R) { hx += dx / d * 3; hy += dy / d * 3; } }
                     }
                     // 吸血鬼站進靈泉（聖水）會燙：當成地上的危險圈走出去
                     if (runClass() === 'vampire') for (const rl of gameState.relics) { if (rl.done || rl.kind !== 'spring') continue; const dx = p.pos.x - rl.x, dy = p.pos.y - rl.y, d = Math.hypot(dx, dy) || 1; if (d < RELIC_RADIUS + 12) { hx += dx / d * 3; hy += dy / d * 3; } }

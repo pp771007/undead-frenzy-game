@@ -352,21 +352,6 @@ const CONFIG = {
         // lifetime 秒後掉頭逃跑；逃 escapeTime 秒還沒跑出畫面就原地化成煙（不掉靈魂）
         lifetime: 20, escapeTime: 5, leashRadius: 260,
     },
-    assassin: {
-        type: 'Assassin', name: '暗影刺客', baseHealth: 40, baseAttack: 0, radius: 11,
-        imageName: 'fast_melee', art: 'assassin', imgScaleMultiplier: 3, artScale: 4.2, tint: '#5E35B1', tintStrength: 0.6,
-        // attackRange 只用來決定她在法師身邊多遠停下來等瞬移，她本身不普攻
-        attackRange: 90, attackSpeed: 1, moveSpeed: 68, color: '#5E35B1',
-        soulDrop: 6, waveSpeedIncreaseFactor: 0.006,
-        minWave: 11, waveInterval: 7,
-        // 潛行時召喚物看不到她（見 SpatialGrid.rebuild）；蓄力時也還隱身，刺完才現形 revealTime 秒，這段時間會被大軍圍毆，所以每隻都會出手一次。
-        // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
-        // 傷害是主角最大生命的固定比例、不隨波數變大。蓄力 1.1 秒：聽到預警音、看到紅圈後約 0.45 秒才開始走，剩 0.65 秒，最慢的德魯伊（88）也走得出半徑 34 的圈；
-        // 0.75 秒時站著不動的人反應正常也閃不掉（剩 0.3 秒只走得了 26～33）。戰士虛脫（移速減半）時還是閃不太掉，那是虛脫的代價
-        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 1.1, strikeRadius: 34, strikeHpRatio: 0.3,
-        // 平常半透明（潛行），蓄力到瞬移後這段時間現形
-        stealthAlpha: 0.5, revealTime: 2.2,
-    },
     spitter: {
         type: 'Spitter', name: '瘟疫投手', baseHealth: 30, baseAttack: 5, radius: 12,
         imageName: 'basic_melee', art: 'spitter', imgScaleMultiplier: 5, artScale: 3.2, tint: '#8E24AA', tintStrength: 0.5,
@@ -376,21 +361,8 @@ const CONFIG = {
         minWave: 17, waveInterval: 4,
         // 往目標丟一團毒：落點先出現預警圈，飛行 lobTime 秒後變成毒池，持續 puddleLife 秒，每 puddleTick 秒對圈內的召喚物與法師造成傷害。
         // 懲罰大軍擠成一團、法師站著不動。
-        // 對法師的傷害是最大生命的固定比例（同刺客）：照怪物攻擊算的話第 30 波站進去 1.5 秒就死，完全來不及反應
+        // 對法師的傷害是最大生命的固定比例：照怪物攻擊算的話第 30 波站進去 1.5 秒就死，完全來不及反應
         throwWindup: 0.45, lobTime: 1.0, puddleRadius: 40, puddleLife: 3, puddleTick: 0.5, puddleDamageMult: 0.4, puddlePlayerHpRatio: 0.06,
-    },
-    bloodEye: {
-        type: 'BloodEye', name: '血瞳', baseHealth: 22, baseAttack: 0, radius: 11,
-        // 專屬圖載不到時退回眼魔的圖染成血紅（跟敵方骷髏同一套「我方兵種染紅＝敵人」的做法）
-        imageName: 'eye_monster', art: 'blood_eye', imgScaleMultiplier: 3, artScale: 3.3, tint: '#D50000', tintStrength: 0.6,
-        // attackRange = 停在離法師多遠的地方射，attackSpeed = 每秒射幾發
-        attackRange: 190, attackSpeed: 0.4, moveSpeed: 48, color: '#D50000',
-        soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
-        minWave: 4, waveInterval: 3,
-        // 大軍圍在法師身邊，其他怪幾乎碰不到法師，走位前中期沒有意義。血瞳只盯法師：蓄力 windup 秒後朝法師「當下的位置」射一顆慢速血彈，
-        // 飛過大軍頭上、只打法師。有在走就躲得掉（飛 190 要 1.2 秒，法師走得了一百多），站著不動才會一直中。
-        // 傷害是法師最大生命的固定比例（同刺客、投手），不隨波數變大
-        windup: 0.55, boltSpeed: 160, boltRange: 380, boltRadius: 7, boltPlayerHpRatio: 0.08,
     },
     gargoyle: {
         type: 'Gargoyle', name: '腐翼石像鬼', baseHealth: 30, baseAttack: 7, radius: 12,
@@ -402,31 +374,6 @@ const CONFIG = {
         // 會飛：骷髏（近戰）打不到、橫掃也掃不到（見 groundMonsterGrid），只有眼魔、法師的靈魂彈、怨靈與新星傷得到。
         // 專撲眼魔：只出骷髏會被牠剋，跟「盾衛剋只出眼魔」互補，兵種搭配才有取捨
         flying: true, preySearchRadius: 320, hoverHeight: 16, hoverBob: 3, hoverBobSpeed: 5,
-    },
-    soulDevourer: {
-        type: 'SoulDevourer', name: '吞魂者', baseHealth: 60, baseAttack: 6, radius: 14,
-        imageName: 'basic_melee', art: 'soul_devourer', imgScaleMultiplier: 5, artScale: 3.2, tint: '#33691E', tintStrength: 0.6,
-        attackRange: 20, attackSpeed: 0.8, moveSpeed: 58, color: '#33691E',
-        soulDrop: 4, waveSpeedIncreaseFactor: 0.006,
-        minWave: 9, waveInterval: 5,
-        // 去吃地上還沒被吸走的靈魂：每吃 1 靈魂，血量 +出生血量的 hpPerSoul、體型 +growPerSoul（封頂 +maxGrow）；
-        // 打死原數吐回吃掉的。跟玩家搶錢：牠吃得越多越硬、越難打回來，要嘛走過去撿、要嘛放新星一口氣吸走。
-        // 不多吐：吐 1.5 倍時牠變成收入放大器（大軍腳下滿地靈魂都被牠吃、殺掉多拿五成），一局多出上萬靈魂
-        // 血量最多長到出生的 maxHpMult 倍（跟體型同時到頂：0.12 × 33 顆 ≈ +400%）：不封頂的話後期大軍腳下滿地靈魂，
-        // 一隻吃到一百多萬血、大軍打不死，波次永遠結束不了（自動遊玩死靈法師、精靈各卡過一次）。到頂之後照樣吃、照樣吐回來
-        orbSearchRadius: 260, hpPerSoul: 0.12, growPerSoul: 0.03, maxGrow: 1.0, maxHpMult: 5, refundMult: 1,
-    },
-    tombstone: {
-        type: 'Tombstone', name: '招魂墓碑', baseHealth: 260, baseAttack: 0, radius: 18,
-        // 專屬圖載不到時用畫的（見 TombstoneMonster.drawPlaceholder）；imageName 只是讓載入流程有圖可用
-        imageName: 'armored_melee', art: 'tombstone', imgScaleMultiplier: 4, artScale: 3.5,
-        attackRange: 0, attackSpeed: 1, moveSpeed: 0, color: '#607D8B',
-        // 牠叫出來的血狼不掉靈魂（見 noSouls）：不然墓碑是一台刷錢機，大軍膨脹到什麼都一出場就死
-        soulDrop: 15, soulPerWave: 1, waveSpeedIncreaseFactor: 0,
-        minWave: 19, waveInterval: 10,
-        // 出現在畫面外不會動，每 spawnInterval 秒冒 spawnCount 隻血狼（牠叫出來的最多同時 maxSpawned 隻），lifetime 秒後自己崩塌、不掉靈魂。
-        // 帶大軍去拆才拿得到那一大筆靈魂；不理牠就是多吃一陣子小怪。畫面邊緣一直有箭頭指著牠
-        spawnInterval: 3.5, spawnCount: 2, maxSpawned: 8, lifetime: 30,
     },
     slime: {
         type: 'Slime', name: '瘟膿史萊姆', baseHealth: 24, baseAttack: 4, radius: 13,
@@ -868,7 +815,7 @@ function migrateMetaTable(m) {
 // 攻擊與血量分開加：攻擊早點加（玩家第三到五分鐘就該第一次掉到半血，才有挑戰），血量晚點加、拉長
 // （血量一口氣加滿的話，加滿那幾波死亡率從 0 跳到四成，是斷崖；而且血量灌太多只會拖棚）。
 // 從第 1 波就加的話，沒有大軍的職業（武僧）傷害一路累積、第 10 波首領就倒
-// 血量 ×2.8 時後期常常卡住打不完（蝙蝠磨不死吞魂者、整支軍隊沒了打不動），所以血量少一點、攻擊多一點：危險但不拖棚
+// 血量 ×2.8 時後期常常卡住打不完（整支軍隊沒了打不動），所以血量少一點、攻擊多一點：危險但不拖棚
 // 加滿的波數決定新手倒在哪：加滿在第 20／30 波時，亂挑祝福、沒強化的機器人多半撐到第 30～40 波，
 // 比其他倖存者遊戲的新手（一局一半左右，約第 22～27 波）晚太多，失敗一局要花十幾分鐘，循環太慢
 // 加滿在第 15／25 波、攻擊 ×2.4 時又太早太硬（會挑祝福的機器人沒強化 0/7 通關、有人第 9 波就倒）；
@@ -956,13 +903,13 @@ const ACHV_CURSE_IDS = ['curse1', 'curse2', 'curse3', 'curseMid', 'curse5', 'cur
 const ACHV_CURSE_NAMES = ['初嚐詛咒', '雙重枷鎖', '三重苦難', '受詛者', '五毒俱全', '六道輪迴', '七宗罪', '萬咒之王'];
 const ACHV_BOSSES = [['ColossusBoss', 'boss'], ['PlagueBoss', 'plagueBoss'], ['HunterBoss', 'hunterBoss'], ['DragonBoss', 'dragonBoss'], ['LichBoss', 'lichBoss']];
 // 圖鑑：各種怪累計打倒幾隻。自動遊玩打完一整局（50 波）每種大約打倒：血狼 2600、赤鷲 740、血牙野豬 300、腐屍 400、史萊姆 3150、
-// 蝙蝠 1900、刺客 180、投手 200、血瞳 450、石像鬼 250、吞魂者 240、巫醫 180、盾衛 180、屍蟲 100、祭司 85、墓碑 38、竊賊 3。
+// 蝙蝠 1900、投手 200、石像鬼 250、巫醫 180、盾衛 180、屍蟲 100、祭司 85、竊賊 3。
 // 門檻約是三局的量：一局拿不完、玩幾局會陸續解開
 const ACHV_BESTIARY = [
     ['BasicMelee', 'basicMeleeMonster', 8000], ['FastMelee', 'fastMeleeMonster', 2000], ['ArmoredMelee', 'armoredMeleeMonster', 1000],
-    ['Bloater', 'bloaterMonster', 1200], ['Slime', 'slime', 10000], ['Bat', 'bat', 6000], ['Assassin', 'assassin', 500], ['Spitter', 'spitter', 600],
-    ['BloodEye', 'bloodEye', 1500], ['Gargoyle', 'gargoyle', 800], ['SoulDevourer', 'soulDevourer', 700], ['WitchDoctor', 'witchDoctor', 500],
-    ['ShieldGuard', 'shieldGuard', 500], ['CorpseWorm', 'corpseWorm', 300], ['GravePriest', 'gravePriest', 250], ['Tombstone', 'tombstone', 100], ['Thief', 'thief', 15],
+    ['Bloater', 'bloaterMonster', 1200], ['Slime', 'slime', 10000], ['Bat', 'bat', 6000], ['Spitter', 'spitter', 600],
+    ['Gargoyle', 'gargoyle', 800], ['WitchDoctor', 'witchDoctor', 500],
+    ['ShieldGuard', 'shieldGuard', 500], ['CorpseWorm', 'corpseWorm', 300], ['GravePriest', 'gravePriest', 250], ['Thief', 'thief', 15],
 ];
 // 召喚費用隨數量變貴（SUMMON_COST_STEP）之後，自動遊玩一局的大軍最多 150～480 隻
 const ACHV_ARMY = [[50, 'army50', '一支軍隊', 10], [150, 'army150', '浩浩蕩蕩', 30], [300, 'army300', '千軍萬馬', 50], [450, 'army450', '萬軍壓境', 80], [600, 'army600', '遮天蔽日', 150]];
@@ -1348,7 +1295,7 @@ let gameState = {
     totalSummons: emptySummonStats(),
     totalKills: emptyKillStats(),
     spawnQueue: [], spawnTimer: 0, banner: null,
-    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
+    blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
     waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -1434,7 +1381,6 @@ const OPTIONAL_ART = {
     boss_hunter: 'boss_hunter.png',
     bloater: 'bloater.png',
     thief: 'thief.png',
-    assassin: 'assassin.png',
     slime: 'slime.png',
     spitter: 'spitter.png',
     bat: 'bat.png',
@@ -1443,10 +1389,7 @@ const OPTIONAL_ART = {
     corpse_worm: 'corpse_worm.png',
     grave_priest: 'grave_priest.png',
     lich_king: 'lich_king.png',
-    blood_eye: 'blood_eye.png',
     gargoyle: 'gargoyle.png',
-    soul_devourer: 'soul_devourer.png',
-    tombstone: 'tombstone.png',
     boss_dragon: 'boss_dragon.png',
     relic_altar: 'relic_altar.png',
     relic_spring: 'relic_spring.png',
@@ -1924,7 +1867,6 @@ const SFX_DEFS = {
     upgradeCombo: { gap: 0.04, fn: (s, n) => { const f = UPGRADE_COMBO_BASE_HZ * comboPitch(n); s.tone(f, 0.1, { type: 'square', vol: 0.05 }); s.tone(f * 2, 0.14, { type: 'triangle', vol: 0.08 }); s.noise(0.025, { vol: 0.04, filterFreq: 6000 }); } },
     comboMilestone: { gap: 0.3, fn: s => { [1046, 1318, 1568, 2093].forEach((f, i) => s.tone(f, 0.18, { type: 'triangle', vol: 0.1, delay: i * 0.035 })); s.noise(0.15, { vol: 0.06, filterFreq: 8000 }); } },
     // 敵人射向法師：低沉下滑，跟法師自己高音上揚的靈魂彈分得開
-    bloodShot: { gap: 0.15, fn: s => s.tone(420, 0.18, { type: 'sawtooth', vol: 0.07, slideTo: 160 }) },
     // 鬼魂般的「咻」：一段往上滑的柔和音加一點氣音
     mageBolt: { gap: 0.1, fn: s => { s.tone(420, 0.16, { type: 'sine', vol: 0.05, slideTo: 900 }); s.noise(0.1, { vol: 0.03, filterFreq: 2200 }); } },
     click: { gap: 0.05, fn: s => s.tone(660, 0.05, { type: 'triangle', vol: 0.09, slideTo: 880 }) },
@@ -1935,7 +1877,6 @@ const SFX_DEFS = {
     bossIntro: { gap: 2, fn: s => { s.noise(0.5, { vol: 0.3, filterFreq: 300 }); s.noise(0.5, { vol: 0.3, filterFreq: 300, delay: 0.35 }); s.tone(196, 1.4, { type: 'sawtooth', vol: 0.12, slideTo: 98, delay: 0.1 }); } },
     armorBreak: { gap: 0.5, fn: s => { s.noise(0.35, { vol: 0.3, filterFreq: 6000 }); [1568, 1175, 880, 659].forEach((f, i) => s.tone(f, 0.16, { type: 'triangle', vol: 0.12, delay: i * 0.06 })); } },
     // 招魂反轉：一聲低沉的碎裂，接一串往上翻的亮音
-    tombClaim: { gap: 0.5, fn: s => { s.noise(0.4, { vol: 0.18, filterFreq: 700 }); [330, 494, 659, 988].forEach((f, i) => s.tone(f, 0.28, { type: 'triangle', vol: 0.12, delay: 0.08 + i * 0.07 })); } },
     // 上榜：一串往上爬的和弦；煙火每炸一顆一聲悶響
     lbCheer: { gap: 1, fn: s => { [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.3, { type: 'triangle', vol: 0.14, delay: i * 0.09 })); s.tone(1568, 0.6, { type: 'sine', vol: 0.08, delay: 0.5 }); } },
     victory: { gap: 1, fn: s => { [523, 659, 784, 1046, 1318].forEach((f, i) => s.tone(f, 0.35, { type: 'triangle', vol: 0.16, delay: i * 0.12 })); } },
@@ -1946,6 +1887,7 @@ const SFX_DEFS = {
     vanish: { gap: 0.3, fn: s => { s.noise(0.35, { vol: 0.16, filterFreq: 1200 }); s.tone(900, 0.3, { type: 'sine', vol: 0.07, slideTo: 220 }); } },
     ambush: { gap: 0.15, fn: s => { s.tone(2600, 0.08, { type: 'square', vol: 0.06, slideTo: 1800 }); s.noise(0.12, { vol: 0.18, filterFreq: 5000 }); } },
     mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
+    bossShot: { gap: 0.15, fn: s => s.tone(420, 0.18, { type: 'sawtooth', vol: 0.07, slideTo: 160 }) },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
     pulse: { gap: 0.15, fn: s => s.tone(300, 0.2, { vol: 0.08, slideTo: 120 }) },
@@ -2165,7 +2107,7 @@ const MELEE_HERO_HIT_RATIO = 0.2;
 // 契約、詛咒、每日變異的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
 // 上限固定時，後期怪物攻擊早就超過上限，+30% 乘上去還是被壓回 20%；主角血量少三成，上限（最大血量的 20%）也跟著小三成，
 // 一樣被咬 5 下才倒 —— 兩種代價後期都等於沒有。所以上限 × 怪物攻擊倍率 ÷ 主角血量倍率（例：戰狂契約 20% → 26%，約 4 下倒）。
-// 刺客、首領大招、血瞳、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
+// 首領大招、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
 // 疊太多時封頂在 HERO_HIT_CAP_MAX，不會一下就倒（玻璃之軀主角血量只剩四分之一，不封頂的話普攻一下 80%）
 const HERO_HIT_CAP_MAX = { melee: 0.35, any: 0.6 };
 // 招式瞄準主角時響預警音：pos/radius 給了就只在主角站在範圍裡時響（打大軍不吵）
@@ -2894,8 +2836,8 @@ class SummonUnit extends GameObject {
 }
 
 // 一波打超過 OVERTIME_START 秒，場上的怪開始狂暴：之後每 OVERTIME_STEP 秒移動與攻擊再多 OVERTIME_GAIN。
-// 沒有大軍的主角跑得比吞魂者快、自己又磨不死牠（第 39 波一隻要 20 秒）時，會被追著繞圈好幾分鐘，不會死也打不完；
-// 蝙蝠磨不死吞魂者時也一樣。狂暴讓這種局一定分出結果；正常一波 20～90 秒，碰不到
+// 沒有大軍的主角跑得比硬怪快、自己又磨不死牠時，會被追著繞圈好幾分鐘，不會死也打不完。
+// 狂暴讓這種局一定分出結果；正常一波 20～90 秒，碰不到
 const OVERTIME_START = 120;
 const OVERTIME_STEP = 10;
 const OVERTIME_GAIN = 0.1;
@@ -3509,7 +3451,6 @@ const BOLT_SPRITE_PX_PER_UNIT = 3;
 const BOLT_STYLES = {
     eye: { glowIn: 'rgba(255, 236, 140, 0.9)', glowMid: 'rgba(255, 196, 0, 0.38)', glowOut: 'rgba(255, 196, 0, 0)', body: '#FFC400', core: '#FFF8E1' },
     soul: { glowIn: 'rgba(214, 251, 251, 0.9)', glowMid: 'rgba(127, 240, 240, 0.38)', glowOut: 'rgba(127, 240, 240, 0)', body: '#7FF0F0', core: '#E8FFFF' },
-    blood: { glowIn: 'rgba(255, 138, 128, 0.95)', glowMid: 'rgba(213, 0, 0, 0.45)', glowOut: 'rgba(213, 0, 0, 0)', body: '#D50000', core: '#FFCDD2' },
     // 首領的彈幕：每隻一個顏色，看彈的顏色就知道是誰打的
     plague: { glowIn: 'rgba(204, 255, 144, 0.95)', glowMid: 'rgba(100, 221, 23, 0.45)', glowOut: 'rgba(100, 221, 23, 0)', body: '#64DD17', core: '#F1F8E9' },
     shadow: { glowIn: 'rgba(179, 157, 219, 0.95)', glowMid: 'rgba(98, 0, 234, 0.45)', glowOut: 'rgba(98, 0, 234, 0)', body: '#6200EA', core: '#EDE7F6' },
@@ -3725,7 +3666,7 @@ class SoulOrb {
         this.isAlive = true;
     }
     update(deltaTime, player) {
-        if (!this.isAlive) return;   // 被吞魂者吃掉的那一格還在陣列裡，不能再被撿
+        if (!this.isAlive) return;
         const c = CONFIG.orbs;
         this.age += deltaTime;
         if (this.z > 0 || this.vz > 0) {
@@ -3931,8 +3872,6 @@ class Monster extends GameObject {
     }
 
     soulValue() {
-        if (this.noSouls) return 0;
-        if (this.bounty) return this.bounty;
         return this.config.soulDrop * (this.isElite ? CONFIG.elite.soulMult : 1);
     }
 
@@ -5136,7 +5075,7 @@ class HunterBoss extends BossMonster {
     throwFan(angles, M) {
         fireBossBolts(this, angles, { speed: M.speed, range: M.range, hp: M.hp, style: 'shadow' });
         spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 10, 90, 0.3, 3);
-        Sfx.play('bloodShot');
+        Sfx.play('bossShot');
     }
     // 影十字：遁入陰影（半透明），主角腳下交錯三道紅線；斬下後現身在交會處
     actCross(p, M) {
@@ -5291,7 +5230,7 @@ class LichBoss extends BossMonster {
                 while (fired < M.waves && t >= M.windup + fired * M.every) {
                     fireBossBolts(this, bossBoltAngles(M.count, base + fired * M.turn), { speed: M.speed, range: M.range, hp: M.hp, style: 'lich' });
                     spawnParticles(this.pos.x, this.pos.y, LICH_GLOW, 10, 100, 0.35, 3);
-                    Sfx.play('bloodShot');
+                    Sfx.play('bossShot');
                     fired++;
                 }
             },
@@ -5465,90 +5404,6 @@ class ThiefMonster extends Monster {
     attackTarget() { }
 }
 
-class AssassinMonster extends Monster {
-    constructor(x, y, waveNumber, isElite) {
-        super(x, y, CONFIG.assassin, waveNumber, isElite);
-        this.blinkTimer = CONFIG.assassin.blinkCooldown * randomInRange(0.3, 0.8);
-        this.windup = 0;
-        this.mark = null;
-        this.revealed = 0;
-    }
-    get stealthed() { return this.revealed <= 0; }
-    findTarget(player) {
-        this.target = player.isAlive ? player : null;
-    }
-    update(deltaTime, player, summons) {
-        if (!this.isAlive) return;
-        const c = this.config;
-        if (this.revealed > 0) this.revealed -= deltaTime;
-        if (this.windup > 0) {
-            this.tickFlash(deltaTime);
-            this.windup -= deltaTime;
-            if (this.windup <= 0) this.strike(player);
-            return;
-        }
-        this.blinkTimer -= deltaTime;
-        if (this.blinkTimer <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.blinkRange * c.blinkRange) {
-            this.windup = c.blinkWindup;
-            this.mark = { x: player.pos.x, y: player.pos.y };
-            // 蓄力時還隱身：現形的話大軍會在她出手前圍上去打死她，標記等於沒出現過。刺下去之後才現形（見 strike）
-            warnHero();
-            return;
-        }
-        super.update(deltaTime, player, summons);
-    }
-    attackTarget() { }
-    strike(player) {
-        const c = this.config;
-        spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 12, 80, 0.4, 3);
-        this.pos.x = this.mark.x;
-        this.pos.y = this.mark.y;
-        spawnParticles(this.pos.x, this.pos.y, '#B39DDB', 16, 120, 0.4, 3);
-        Sfx.play('dash');
-        if (player.isAlive && distanceSq(player.pos, this.mark) <= c.strikeRadius * c.strikeRadius) {
-            this.updateFacingDirection(player.pos.x - this.pos.x);
-            const effect = getVisualEffectFromPool(SlashEffect);
-            if (effect) { effect.init(this.pos, player.pos); gameState.visualEffects.push(effect); }
-            player.takeDamage(player.maxHealth * c.strikeHpRatio * heroPenaltyScale(), this);
-        } else {
-            spawnFloatText(this.mark.x, this.mark.y - 20, '閃過', '#B3E5FC', 13);
-        }
-        this.mark = null;
-        this.blinkTimer = c.blinkCooldown;
-        this.revealed = c.revealTime;
-    }
-    // 標記另外畫在召喚物之上、法師之下：不然會被大軍蓋住，刺客本人在畫面外時也會漏畫
-    drawMark(ctx) {
-        {
-            const c = this.config;
-            const p = 1 - this.windup / c.blinkWindup;
-            const r = c.strikeRadius;
-            const { x, y } = this.mark;
-            ctx.save();
-            ctx.fillStyle = `rgba(229, 57, 53, ${(0.1 + 0.25 * p).toFixed(2)})`;
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 82, 82, 0.95)';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-            // 往內收的圈：收到判定圈時就是出手的瞬間
-            ctx.globalAlpha = 0.8;
-            ctx.beginPath(); ctx.arc(x, y, r * (2.2 - 1.2 * p), 0, Math.PI * 2); ctx.stroke();
-            ctx.globalAlpha = 1;
-            ctx.beginPath();
-            ctx.moveTo(x - r * 0.45, y); ctx.lineTo(x + r * 0.45, y);
-            ctx.moveTo(x, y - r * 0.45); ctx.lineTo(x, y + r * 0.45);
-            ctx.stroke();
-            ctx.restore();
-        }
-    }
-    draw(ctx) {
-        if (!this.isAlive) return;
-        if (this.stealthed) ctx.globalAlpha = this.config.stealthAlpha;
-        super.draw(ctx);
-        ctx.globalAlpha = 1;
-    }
-}
-
 class SpitterMonster extends Monster {
     constructor(x, y, waveNumber, isElite) {
         super(x, y, CONFIG.spitter, waveNumber, isElite);
@@ -5596,80 +5451,34 @@ class SpitterMonster extends Monster {
     }
 }
 
-const BLOOD_EYE_GLOW = '#FF1744';
-const BLOOD_EYE_GLOW_SCALE = 2.2;   // × 圖寬
-const BLOOD_BOLT_DRAW_SCALE = 1.6;  // 比我方飛彈大一號：要躲的東西一眼就要看到
-const BLOOD_BOLT_HIT_SPARKS = 16;
-class BloodEyeMonster extends Monster {
-    constructor(x, y, waveNumber, isElite) {
-        super(x, y, CONFIG.bloodEye, waveNumber, isElite);
-        this.windup = 0;
-        // 剛出場別馬上射，錯開同一批出生的
-        this.attackCooldown = randomInRange(0.5, 1.5) / this.attackSpeed;
-    }
-    findTarget(player) {
-        this.target = player.isAlive ? player : null;
-    }
-    update(deltaTime, player, summons) {
-        if (!this.isAlive) return;
-        if (this.windup > 0) {
-            this.tickFlash(deltaTime);
-            this.windup -= deltaTime;
-            const k = 1 - this.windup / this.config.windup;
-            this.drawScale = 1 + 0.2 * Math.sin(k * Math.PI);
-            if (this.windup <= 0) { this.drawScale = 1; this.fire(player); }
-            return;
-        }
-        super.update(deltaTime, player, summons);
-    }
-    attackTarget() {
-        this.windup = this.config.windup;
-        this.attackCooldown = 1.0 / this.attackSpeed;
-    }
-    fire(player) {
-        if (!player.isAlive) return;
-        const dir = normalizeVector({ x: player.pos.x - this.pos.x, y: player.pos.y - this.pos.y });
-        gameState.enemyBolts.push({ pos: { x: this.pos.x, y: this.pos.y }, dir, travel: 0, source: this });
-        spawnParticles(this.pos.x, this.pos.y, BLOOD_EYE_GLOW, 6, 60, 0.3, 2.5);
-        Sfx.play('bloodShot');
-    }
-    draw(ctx) {
-        if (this.isAlive && this.windup > 0) {
-            const k = 1 - this.windup / this.config.windup;
-            const g = this.imageWidth * BLOOD_EYE_GLOW_SCALE;
-            ctx.globalAlpha = 0.3 + 0.6 * k;
-            ctx.drawImage(getGlowSprite(BLOOD_EYE_GLOW), this.pos.x - g / 2, this.pos.y - g / 2, g, g);
-            ctx.globalAlpha = 1;
-        }
-        super.draw(ctx);
-    }
-}
+const ENEMY_BOLT_RADIUS = 7;
+const ENEMY_BOLT_HIT_SPARKS = 16;
+const ENEMY_BOLT_DRAW_SCALE = 1.6;  // 比我方飛彈大一號：要躲的東西一眼就要看到
 
-// 敵方飛彈：飛過大軍頭上、只打主角。血瞳的照 CONFIG.bloodEye；首領的彈幕自己帶速度、射程、傷害與顏色（見 fireBossBolts）
+// 首領的彈幕：飛過大軍頭上、只打主角，速度、射程、傷害與顏色由 fireBossBolts 帶進來
 function updateEnemyBolts(deltaTime) {
-    const c = CONFIG.bloodEye;
     const p = gameState.player;
     const cls = classDef();
     for (const b of gameState.enemyBolts) {
-        const step = (b.speed || c.boltSpeed) * deltaTime;
+        const step = b.speed * deltaTime;
         b.pos.x += b.dir.x * step;
         b.pos.y += b.dir.y * step;
         b.travel += step;
         if (cls.blockBolt && cls.blockBolt(b)) {
             b.travel = Infinity;
-            spawnParticles(b.pos.x, b.pos.y, '#CFD8DC', BLOOD_BOLT_HIT_SPARKS / 2, 90, 0.3, 3);
+            spawnParticles(b.pos.x, b.pos.y, '#CFD8DC', ENEMY_BOLT_HIT_SPARKS / 2, 90, 0.3, 3);
             continue;
         }
         if (p && p.isAlive) {
-            const hit = p.radius + c.boltRadius;
+            const hit = p.radius + ENEMY_BOLT_RADIUS;
             if (distanceSq(b.pos, p.pos) <= hit * hit) {
                 b.travel = Infinity;
-                spawnParticles(b.pos.x, b.pos.y, BOLT_STYLES[b.style || 'blood'].body, BLOOD_BOLT_HIT_SPARKS, 110, 0.35, 3);
-                p.takeDamage(p.maxHealth * (b.hpRatio || c.boltPlayerHpRatio) * heroPenaltyScale(), b.source);
+                spawnParticles(b.pos.x, b.pos.y, BOLT_STYLES[b.style].body, ENEMY_BOLT_HIT_SPARKS, 110, 0.35, 3);
+                p.takeDamage(p.maxHealth * b.hpRatio * heroPenaltyScale(), b.source);
             }
         }
     }
-    gameState.enemyBolts = gameState.enemyBolts.filter(b => b.travel < (b.range || c.boltRange));
+    gameState.enemyBolts = gameState.enemyBolts.filter(b => b.travel < b.range);
 }
 
 function drawEnemyBolts() {
@@ -5677,9 +5486,9 @@ function drawEnemyBolts() {
     for (const b of gameState.enemyBolts) {
         if (!inView(b.pos)) continue;
         const idx = ((Math.round(Math.atan2(b.dir.y, b.dir.x) / (Math.PI * 2) * BOLT_DIRECTIONS) % BOLT_DIRECTIONS) + BOLT_DIRECTIONS) % BOLT_DIRECTIONS;
-        const sp = getBoltDirSprite(b.style || 'blood', idx);
-        const w = sp.width / k * BLOOD_BOLT_DRAW_SCALE, h = sp.height / k * BLOOD_BOLT_DRAW_SCALE;
-        const tail = BOLT_TAIL_LEN / 2 * BLOOD_BOLT_DRAW_SCALE;
+        const sp = getBoltDirSprite(b.style, idx);
+        const w = sp.width / k * ENEMY_BOLT_DRAW_SCALE, h = sp.height / k * ENEMY_BOLT_DRAW_SCALE;
+        const tail = BOLT_TAIL_LEN / 2 * ENEMY_BOLT_DRAW_SCALE;
         ctx.drawImage(sp, b.pos.x - b.dir.x * tail - w / 2, b.pos.y - b.dir.y * tail - h / 2, w, h);
     }
 }
@@ -5715,332 +5524,6 @@ class GargoyleMonster extends Monster {
         ctx.save();
         ctx.translate(0, -lift);
         super.draw(ctx);
-        ctx.restore();
-    }
-}
-
-class SoulDevourerMonster extends Monster {
-    constructor(x, y, waveNumber, isElite) {
-        super(x, y, CONFIG.soulDevourer, waveNumber, isElite);
-        this.eaten = 0;
-        this.birthHealth = this.maxHealth;
-        this.baseRadius = this.radius;
-    }
-    // 附近地上有還沒被吸走的靈魂就去吃，沒有才找人打；靈魂也有 pos / isAlive，直接當目標用
-    findTarget(player, summons) {
-        const R = this.config.orbSearchRadius;
-        let best = null, bestSq = R * R;
-        for (let i = 0; i < gameState.orbs.length; i++) {
-            const o = gameState.orbs[i];
-            if (!o.isAlive || o.attracted || o.inedible) continue;
-            const d = distanceSq(this.pos, o.pos);
-            if (d < bestSq) { bestSq = d; best = o; }
-        }
-        if (best) this.target = best;
-        else super.findTarget(player, summons);
-    }
-    attackTarget() {
-        const o = this.target;
-        if (o instanceof SoulOrb) {
-            if (o.isAlive && !o.attracted) this.eat(o);
-            this.target = null;
-            return;
-        }
-        super.attackTarget();
-    }
-    eat(o) {
-        const c = this.config;
-        o.isAlive = false;
-        this.eaten += o.value;
-        const gain = Math.max(0, Math.min(Math.round(this.birthHealth * c.hpPerSoul * o.value), Math.round(this.birthHealth * c.maxHpMult) - this.maxHealth));
-        this.maxHealth += gain;
-        this.currentHealth += gain;
-        this.drawScale = 1 + Math.min(c.maxGrow, this.eaten * c.growPerSoul);
-        this.radius = this.baseRadius * this.drawScale;
-        spawnParticles(o.pos.x, o.pos.y, '#80DEEA', 6, 50, 0.35, 2.5);
-        Sfx.play('bloat');
-    }
-    // 吃掉的靈魂另外吐，不吃祝福／連殺加成，而且吐出來的別隻吞魂者不能吃：
-    // 實測放任的話「死了吐 1.5 倍 → 隔壁那隻吃掉 → 死了再吐 1.5 倍」一路滾，一局吐出三到九萬靈魂（其他怪全部加起來約五萬）
-    die() {
-        super.die();
-        const refund = Math.floor(this.eaten * this.config.refundMult);
-        if (refund <= 0) return;
-        const from = gameState.orbs.length;
-        dropSouls(this.pos.x, this.pos.y, refund);
-        for (let i = from; i < gameState.orbs.length; i++) gameState.orbs[i].inedible = true;
-    }
-}
-
-const TOMBSTONE_LIFE_RING = 'rgba(165, 214, 167, 0.85)';
-const TOMBSTONE_FIRE = '#69F0AE';
-class TombstoneMonster extends Monster {
-    constructor(x, y, waveNumber, isElite) {
-        super(x, y, CONFIG.tombstone, waveNumber, isElite);
-        this.life = this.config.lifetime;
-        this.spawnT = this.config.spawnInterval * 0.5;
-        this.spawned = [];
-        this.phase = Math.random() * Math.PI * 2;
-    }
-    soulValue() {
-        return (this.config.soulDrop + this.config.soulPerWave * this.waveNumber) * (this.isElite ? CONFIG.elite.soulMult : 1);
-    }
-    // 不會動、不攻擊：只冒怪、倒數
-    update(deltaTime) {
-        if (!this.isAlive) return;
-        const c = this.config;
-        this.tickFlash(deltaTime);
-        this.life -= deltaTime;
-        if (this.life <= 0) { this.crumble(); return; }
-        this.spawnT -= deltaTime;
-        if (this.spawnT > 0) return;
-        this.spawnT = c.spawnInterval;
-        this.spawned = this.spawned.filter(m => m.isAlive);
-        const n = Math.min(c.spawnCount, c.maxSpawned - this.spawned.length);
-        for (let i = 0; i < n; i++) {
-            const a = Math.random() * Math.PI * 2;
-            const m = new BasicMeleeMonster(this.pos.x + Math.cos(a) * 30, this.pos.y + Math.sin(a) * 30, this.waveNumber, false);
-            m.noSouls = true;
-            gameState.monsters.push(m);
-            this.spawned.push(m);
-            spawnParticles(m.pos.x, m.pos.y, TOMBSTONE_FIRE, 8, 60, 0.4, 2.5);
-        }
-        if (n > 0 && inView(this.pos)) Sfx.play('spawn');
-    }
-    // 被打倒：招魂反轉（牠招的狼全部被鎖鏈拖倒、化成靈魂，墓碑翻成你的、替你招狼）
-    die() {
-        const wolves = this.spawned.filter(m => m.isAlive);
-        super.die();
-        claimTomb(this, wolves);
-    }
-    // 時間到自己垮掉：不算擊殺、不掉靈魂
-    crumble() {
-        this.isAlive = false;
-        spawnParticles(this.pos.x, this.pos.y, '#90A4AE', 22, 90, 0.6, 3);
-        gameState.visualEffects.push(new DeathFadeEffect(this));
-    }
-    draw(ctx) {
-        if (!this.isAlive) return;
-        if (images.tombstone) super.draw(ctx);
-        else { this.drawPlaceholder(ctx); this.drawHealthBar(ctx); }
-        // 腳下一圈倒數：剩多少時間會自己垮掉
-        const k = Math.max(0, this.life / this.config.lifetime);
-        ctx.strokeStyle = TOMBSTONE_LIFE_RING;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.4, this.radius * 1.6, this.radius * 0.6, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
-        ctx.stroke();
-    }
-    drawPlaceholder(ctx) {
-        const w = this.radius * 2, h = this.radius * 2.6;
-        const x = this.pos.x - w / 2, y = this.pos.y - h * 0.6;
-        ctx.fillStyle = this.hitFlash > 0 ? '#ECEFF1' : '#546E7A';
-        ctx.strokeStyle = TEXT_OUTLINE;
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(x, y + h);
-        ctx.lineTo(x, y + w / 2);
-        ctx.arc(this.pos.x, y + w / 2, w / 2, Math.PI, 0);
-        ctx.lineTo(x + w, y + h);
-        ctx.closePath();
-        ctx.fill(); ctx.stroke();
-        ctx.fillStyle = TOMBSTONE_FIRE;
-        ctx.globalAlpha = 0.6 + 0.4 * Math.sin(worldTime * 6 + this.phase);
-        ctx.fillRect(this.pos.x - 2, y + h * 0.25, 4, h * 0.45);
-        ctx.fillRect(this.pos.x - w * 0.25, y + h * 0.38, w * 0.5, 4);
-        ctx.globalAlpha = 1;
-    }
-}
-
-// ---------- 招魂反轉：打倒招魂墓碑 → 牠招的狼全倒下噴靈魂，墓碑翻成你的、替你招狼 ----------
-// 拆墓碑原本只拿一點靈魂、不拆 30 秒後也會自己垮，沒人想專程過去。現在：
-//   1. 拆的那一刻，牠招出來還活著的狼被靈魂鎖鏈一條條拖倒，每隻噴 bountyShare × 墓碑的靈魂（越拖越多狼、越危險，拆的時候噴得越多）
-//   2. 墓碑翻成你的顏色，接下來 life 秒每 spawnInterval 秒替你招 spawnCount 隻狼（同時最多 maxAlive 隻），每隻活 wolfLife 秒
-// 我方的顏色用天藍：敵方墓碑是灰石綠火、牠的狼是紅的；戰鬥畫面上紅色只留給敵人（見 CLAUDE.md）
-const TOMB_CLAIM = { life: 15, spawnInterval: 2.5, spawnCount: 2, maxAlive: 8, wolfLife: 20, wolfHpMult: 4, wolfAtkMult: 2, bountyShare: 0.3, novaRadius: 130 };
-const TOMB_ALLY = '#4FC3F7';
-const TOMB_ALLY_LIGHT = '#E1F5FE';
-const TOMB_ALLY_TINT = 0.6;           // 狼與墓碑染天藍的強度：原圖是紅狼、灰石，要一眼看得出換邊了
-const TOMB_CLAIM_COLORS = { fill: '79, 195, 247', stroke: '225, 245, 254' };
-const TOMB_CHAIN_TIME = 0.55;         // 鎖鏈從墓碑射到每隻狼、狼化成靈魂的這一段多長
-const TOMB_CHAIN_STAGGER = 0.05;      // 每條鎖鏈之間錯開一點，看得出是一條一條拖過去的
-CONFIG.tombWolf = {
-    type: 'TombWolf', name: '招魂狼', baseHealth: CONFIG.basicMeleeMonster.baseHealth, baseAttack: CONFIG.basicMeleeMonster.baseAttack, radius: 11,
-    imageName: 'basic_melee', imgScaleMultiplier: 4.6, attackRange: 22, attackSpeed: 1.1, moveSpeed: 95, color: TOMB_ALLY, upgradeBonus: 0,
-    targetSearchRadius: 200, returnDistance: 60, avoidanceRadius: 14, avoidanceForce: 100, playerAvoidanceForce: 40,
-    wanderRadius: 30, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
-};
-
-function claimTomb(t, wolves) {
-    const p = gameState.player;
-    const bounty = Math.max(1, Math.round(t.soulValue() * TOMB_CLAIM.bountyShare));
-    wolves.forEach((w, i) => {
-        gameState.visualEffects.push(new TombChainEffect(t.pos, w.pos, i * TOMB_CHAIN_STAGGER));
-        w.noSouls = false;
-        w.bounty = bounty;
-        w.die();
-        spawnParticles(w.pos.x, w.pos.y, TOMB_ALLY, 12, 90, 0.6, 3);
-    });
-    if (!gameState.ownedTombs) gameState.ownedTombs = [];
-    gameState.ownedTombs.push({
-        x: t.pos.x, y: t.pos.y, life: TOMB_CLAIM.life, spawnT: 0.6, wolves: [], phase: Math.random() * Math.PI * 2,
-        image: t.image, w: t.imageWidth * (t.drawScale || 1), h: t.imageHeight * (t.drawScale || 1),
-    });
-    gameState.visualEffects.push(new NovaEffect(t.pos, TOMB_CLAIM.novaRadius, TOMB_CLAIM_COLORS));
-    spawnParticles(t.pos.x, t.pos.y, TOMB_ALLY, 36, 160, 0.8, 3.5);
-    spawnParticles(t.pos.x, t.pos.y, TOMB_ALLY_LIGHT, 14, 80, 0.6, 2.5);
-    // 第一次用橫幅講清楚規則；之後只在墓碑上飄字（同時出現會重複兩次「招魂反轉」）
-    const first = !(meta.relicSeen && meta.relicSeen.tombClaim);
-    introduceRelic('tombClaim', '招魂反轉', `墓碑歸你了，接下來 ${TOMB_CLAIM.life} 秒替你招狼`, TOMB_ALLY, 'tombClaim');
-    if (!(first && gameState.banner && gameState.banner.icon === 'tombClaim')) spawnFloatText(t.pos.x, t.pos.y - 46, '招魂反轉！', TOMB_ALLY, 20, 1.5, 'tombClaim');
-    if (wolves.length) spawnFloatText(t.pos.x, t.pos.y - 22, `${wolves.length} 隻化為靈魂`, TOMB_ALLY_LIGHT, 13, 1.4);
-    addShake(6);
-    Sfx.play('tombClaim');
-}
-
-// 佔領的墓碑：只在打的時候倒數、招狼（波與波之間停住）
-function updateOwnedTombs(deltaTime) {
-    const list = gameState.ownedTombs;
-    if (!list || !list.length || !gameState.player) return;
-    const C = TOMB_CLAIM;
-    for (const o of list) {
-        if (gameState.betweenWaves) continue;
-        o.life -= deltaTime;
-        if (Math.random() < deltaTime * 6) spawnParticles(o.x + randomInRange(-10, 10), o.y - o.h * 0.35, TOMB_ALLY, 1, 25, 0.7, 2.5);
-        if (o.life <= 0) {
-            spawnParticles(o.x, o.y, '#B0BEC5', 22, 90, 0.6, 3);
-            spawnParticles(o.x, o.y, TOMB_ALLY, 12, 70, 0.5, 2.5);
-            continue;
-        }
-        o.spawnT -= deltaTime;
-        if (o.spawnT > 0) continue;
-        o.spawnT = C.spawnInterval;
-        o.wolves = o.wolves.filter(w => w.isAlive);
-        const n = Math.min(C.spawnCount, C.maxAlive - o.wolves.length);
-        for (let i = 0; i < n; i++) {
-            const a = Math.random() * Math.PI * 2;
-            const w = new TombWolf(o.x + Math.cos(a) * 26, o.y + Math.sin(a) * 26, gameState.currentWave, gameState.player);
-            gameState.summons.push(w);
-            o.wolves.push(w);
-            spawnParticles(w.pos.x, w.pos.y, TOMB_ALLY, 10, 70, 0.45, 2.5);
-        }
-        if (n > 0 && inView(o)) Sfx.play('raise');
-    }
-    gameState.ownedTombs = list.filter(o => o.life > 0);
-}
-
-// 地上：天藍光暈、倒數圈、染成天藍的墓碑（畫在召喚物底下，狼從牠身邊跑出來）
-function drawOwnedTombs() {
-    const list = gameState.ownedTombs;
-    if (!list || !list.length) return;
-    const t = worldTime;
-    for (const o of list) {
-        if (!inView(o)) continue;
-        const pulse = 0.75 + 0.25 * Math.sin(t * 4 + o.phase);
-        const g = o.w * 2.6 * pulse;
-        ctx.globalAlpha = 0.55;
-        ctx.drawImage(getGlowSprite(TOMB_ALLY), o.x - g / 2, o.y - g / 2, g, g);
-        ctx.globalAlpha = 1;
-        const rx = Math.max(26, o.w * 0.55), ry = rx * 0.38, gy = o.y + o.h * 0.4;
-        ctx.lineWidth = 6;
-        ctx.strokeStyle = 'rgba(14, 10, 20, 0.7)';
-        ctx.beginPath(); ctx.ellipse(o.x, gy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
-        ctx.lineWidth = 3.5;
-        ctx.strokeStyle = TOMB_ALLY;
-        const k = Math.max(0, o.life / TOMB_CLAIM.life);
-        ctx.globalAlpha = o.life < 3 ? 0.45 + 0.55 * Math.abs(Math.sin(t * 6)) : 1;
-        ctx.beginPath(); ctx.ellipse(o.x, gy, rx, ry, 0, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k); ctx.stroke();
-        ctx.globalAlpha = 1;
-        if (o.image) ctx.drawImage(getSprite(o.image, o.w, o.h, TOMB_ALLY, 0.35), o.x - o.w / 2, o.y - o.h / 2, o.w, o.h);
-    }
-}
-
-// 我方的招魂狼：跟敵方的血狼同一張圖、染成天藍，腳下一圈天藍；不算進任何兵種、時間到自己散掉
-class TombWolf extends SummonUnit {
-    constructor(x, y, wave, p) {
-        super(x, y, CONFIG.tombWolf, 0, p);
-        this.wave = wave;
-        this.life = TOMB_CLAIM.wolfLife;
-        this.refreshStats();
-        this.currentHealth = this.maxHealth;
-    }
-    computeStats() {
-        super.computeStats();
-        const k = getWaveStatMultiplier(Math.max(1, this.wave || gameState.currentWave));
-        this.maxHealth = Math.round(CONFIG.tombWolf.baseHealth * TOMB_CLAIM.wolfHpMult * k * (1 + blessVal('boneArmor')) * (1 + classMeta('summonHp')));
-        this.attack = CONFIG.tombWolf.baseAttack * TOMB_CLAIM.wolfAtkMult * k * runMods().summonDmgMult;
-        this.tint = TOMB_ALLY; this.tintStrength = TOMB_ALLY_TINT; this.drawScale = 1;
-    }
-    update(deltaTime, ...rest) {
-        if (!this.isAlive) return;
-        if (!gameState.betweenWaves) {
-            this.life -= deltaTime;
-            if (this.life <= 0) { this.fade(); return; }
-        }
-        super.update(deltaTime, ...rest);
-    }
-    attackTarget() {
-        const t = this.target;
-        if (!t || !t.isAlive) return;
-        const dmg = Math.round(this.attack * (this.auraDamageMult || 1));
-        t.takeDamage(dmg);
-        this.healFromDamage(dmg);
-        const fx = getVisualEffectFromPool(SlashEffect);
-        if (fx) { fx.init(this.pos, t.pos); gameState.visualEffects.push(fx); }
-        this.attackCooldown = 1 / this.attackSpeed;
-    }
-    // 時間到：化成一縷天藍散掉（不算陣亡、祭司也拉不起來）
-    fade() {
-        this.isAlive = false;
-        spawnParticles(this.pos.x, this.pos.y, TOMB_ALLY, 8, 50, 0.5, 2.5);
-    }
-    die() {
-        this.isAlive = false;
-        onSummonDeath(this);
-        spawnParticles(this.pos.x, this.pos.y, TOMB_ALLY, 10, 70, 0.45);
-    }
-    drawHealthBar(ctx) {
-        ctx.strokeStyle = 'rgba(79, 195, 247, 0.8)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + this.imageHeight * 0.38, this.radius * 1.1, this.radius * 0.4, 0, 0, Math.PI * 2); ctx.stroke();
-        super.drawHealthBar(ctx);
-    }
-}
-
-// 鎖鏈：從墓碑射向牠招的每一隻狼，一節一節的天藍光，打到的那一刻狼那邊炸一圈
-class TombChainEffect extends TimedEffect {
-    constructor(from, to, delay) {
-        super(from, TOMB_CHAIN_TIME + delay);
-        this.to = { ...to };
-        this.delay = delay;
-        this.seed = Math.random() * 10;
-    }
-    draw(ctx) {
-        const age = this.duration - this.life - this.delay;
-        if (age < 0) return;
-        const k = Math.min(1, age / (TOMB_CHAIN_TIME * 0.35));          // 射出去的進度
-        const fade = 1 - Math.max(0, (age - TOMB_CHAIN_TIME * 0.35) / (TOMB_CHAIN_TIME * 0.65));
-        const x0 = this.pos.x, y0 = this.pos.y - 10, x1 = x0 + (this.to.x - x0) * k, y1 = y0 + (this.to.y - y0) * k;
-        const nx = -(y1 - y0), ny = x1 - x0, len = Math.hypot(nx, ny) || 1;
-        const SEG = 7;
-        ctx.save();
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        for (const [w, col, a] of [[9, TOMB_ALLY, 0.35], [3.5, TOMB_ALLY, 0.9], [1.5, TOMB_ALLY_LIGHT, 1]]) {
-            ctx.globalAlpha = a * fade;
-            ctx.strokeStyle = col; ctx.lineWidth = w;
-            ctx.beginPath();
-            for (let i = 0; i <= SEG; i++) {
-                const f = i / SEG, wob = (i === 0 || i === SEG) ? 0 : Math.sin(f * 9 + this.seed + worldTime * 20) * 5;
-                const x = x0 + (x1 - x0) * f + nx / len * wob, y = y0 + (y1 - y0) * f + ny / len * wob;
-                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-            }
-            ctx.stroke();
-        }
-        if (k >= 1) {
-            const r = 6 + 22 * (1 - fade);
-            ctx.globalAlpha = fade;
-            ctx.strokeStyle = TOMB_ALLY_LIGHT; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(this.to.x, this.to.y, r, 0, Math.PI * 2); ctx.stroke();
-        }
         ctx.restore();
     }
 }
@@ -6976,8 +6459,6 @@ function activeBuffs() {
     if (gameState.frenzyTimer > 0) list.push({ icon: 'armyFrenzy', t: gameState.frenzyTimer, color: FRENZY_CHIP_COLOR });
     if (gameState.wardTimer > 0) list.push({ icon: 'altarWard', t: gameState.wardTimer, color: ALTAR_EFFECTS.ward.color });
     if (gameState.altarSlowTimer > 0) list.push({ icon: 'altarSlow', t: gameState.altarSlowTimer, color: ALTAR_EFFECTS.slow.color });
-    const owned = gameState.ownedTombs;
-    if (owned && owned.length) list.push({ icon: 'tombClaim', t: Math.max(...owned.map(o => o.life)), color: TOMB_ALLY });
     const cls = classDef();
     if (cls.buffs) list.push(...cls.buffs());
     return list;
@@ -7011,7 +6492,7 @@ function drawBuffChips() {
 
 const CURSES = [
     { icon: 'curseBrutal', name: '兇暴', desc: '怪物血量 +25%', hpMult: 1.25 },
-    { icon: 'curseAssassin', name: '暗殺令', desc: '刺客提早出現、數量加倍', assassinEarly: true },
+    { icon: 'curseBats', name: '蝠潮', desc: '蝙蝠群提早出現、數量加倍', batsEarly: true },
     { icon: 'curseSwift', name: '疾行', desc: '怪物移速 +15%', speedMult: 1.15 },
     { icon: 'curseBarren', name: '貧瘠', desc: '靈魂掉落 -20%', soulMult: 0.8 },
     { icon: 'curseElite', name: '精英橫行', desc: '精英怪機率 ×2', eliteMult: 2 },
@@ -7020,7 +6501,7 @@ const CURSES = [
     { icon: 'curseBloodDebt', name: '血債', desc: '怪物攻擊 +30%', atkMult: 1.3 },
 ];
 const CURSE_CRYSTAL_STEP = 0.3;
-const ASSASSIN_EARLY_WAVE = 6;
+const BATS_EARLY_WAVE = 4;
 const VICTORY_CRYSTALS = 100;
 // ---------- 每日變異：每天一條特殊規則，當天第一場結算的結晶 ×DAILY_CRYSTAL_MULT ----------
 // 照本地日期輪流，連續兩天不會重複；只有規則沒有排行榜，所以照樣吃永久強化，但不疊詛咒
@@ -7069,13 +6550,13 @@ function runMods() {
 }
 function invalidateRunMods() { gameState.runModsCache = null; }
 function computeRunMods() {
-    const m = { assassinEarly: false };
+    const m = { batsEarly: false };
     for (const k in RUN_MOD_LABELS) m[k] = 1;
     const apply = (src) => { for (const k in RUN_MOD_LABELS) if (src[k]) m[k] *= src[k]; };
     const lv = gameState.curse || 0;
     for (let i = 0; i < lv && i < CURSES.length; i++) {
         apply(CURSES[i]);
-        if (CURSES[i].assassinEarly) m.assassinEarly = true;
+        if (CURSES[i].batsEarly) m.batsEarly = true;
     }
     for (const id in gameState.blessings) if (BLESSINGS[id] && BLESSINGS[id].pact && gameState.blessings[id] > 0) apply(BLESSINGS[id].mods);
     const d = dailyDef();
@@ -7137,13 +6618,12 @@ function buildWaveQueue(wave) {
     const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
     add(BasicMeleeMonster, Math.round((W.basicBase + wave * W.basicPerWave) * factor));
     [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster],
-    [CONFIG.assassin, AssassinMonster], [CONFIG.spitter, SpitterMonster], [CONFIG.bloodEye, BloodEyeMonster],
-    [CONFIG.gargoyle, GargoyleMonster], [CONFIG.soulDevourer, SoulDevourerMonster], [CONFIG.tombstone, TombstoneMonster], [CONFIG.slime, SlimeMonster], [CONFIG.bat, BatMonster],
+    [CONFIG.spitter, SpitterMonster], [CONFIG.gargoyle, GargoyleMonster], [CONFIG.slime, SlimeMonster], [CONFIG.bat, BatMonster],
     [CONFIG.witchDoctor, WitchDoctorMonster], [CONFIG.shieldGuard, ShieldGuardMonster], [CONFIG.corpseWorm, CorpseWormMonster],
     [CONFIG.gravePriest, GravePriestMonster]]
         .forEach(([cfg, Cls]) => {
-            const early = Cls === AssassinMonster && cm.assassinEarly;
-            const minWave = early ? ASSASSIN_EARLY_WAVE : cfg.minWave;
+            const early = Cls === BatMonster && cm.batsEarly;
+            const minWave = early ? BATS_EARLY_WAVE : cfg.minWave;
             if (wave < minWave) return;
             const typeMult = (Cls === BloaterMonster && ev && ev.bloaterMult ? ev.bloaterMult : 1) * (early ? 2 : 1) * (cfg.flockSize || 1);
             add(Cls, Math.max(1, Math.round((1 + Math.floor((wave - minWave) / cfg.waveInterval)) * factor * typeMult)));
@@ -7155,9 +6635,8 @@ function buildWaveQueue(wave) {
     }
     let eliteChance = getEliteChance(wave) * cm.eliteMult;
     if (ev && ev.eliteMult) eliteChance = Math.min(ev.eliteMax, Math.max(CONFIG.elite.chanceBase, eliteChance) * ev.eliteMult);
-    // 墓碑不當精英：分裂詞綴會裂成三座墓碑
     // 首領不在佇列裡：小怪清光後才登場（見 updateBossEntrance）
-    return classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Cls !== TombstoneMonster && Math.random() < eliteChance }));
+    return classes.map(Cls => ({ Cls, elite: Cls !== ThiefMonster && Math.random() < eliteChance }));
 }
 function bossClassOf(wave) {
     if (isFinalWave(wave)) return LichBoss;
@@ -7190,17 +6669,13 @@ function updateSpawner(deltaTime) {
 
 // 新威脅第一次出現的那一波，橫幅改成介紹它：一句「看到什麼就做什麼」
 function getNewcomer(wave) {
-    const assassinWave = runMods().assassinEarly ? ASSASSIN_EARLY_WAVE : CONFIG.assassin.minWave;
+    const batWave = runMods().batsEarly ? BATS_EARLY_WAVE : CONFIG.bat.minWave;
     // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
     const list = [
-        { wave: assassinWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', color: '#EF9A9A' },
-        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝你射血彈，走動就躲得掉', color: '#FF8A80' },
-        { wave: CONFIG.soulDevourer.minWave, cfg: CONFIG.soulDevourer, hint: '會吃地上的靈魂變大，快去撿走', color: '#80DEEA' },
         { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，近戰打不到，要靠遠程', color: '#B0BEC5' },
-        { wave: CONFIG.tombstone.minWave, cfg: CONFIG.tombstone, hint: '一直冒血狼，拆掉牠就換你招狼', color: '#A5D6A7' },
         { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', color: '#E6EE9C' },
         { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', color: '#AED581' },
-        { wave: CONFIG.bat.minWave, cfg: CONFIG.bat, hint: '直撲你而來，邊走邊放大招', color: '#BCAAA4' },
+        { wave: batWave, cfg: CONFIG.bat, hint: '繞過大軍直撲你，靠遠程打下來', color: '#BCAAA4' },
         { wave: CONFIG.shieldGuard.minWave, cfg: CONFIG.shieldGuard, hint: '盾牌擋飛彈，要靠近戰打破', color: '#B0BEC5' },
         { wave: CONFIG.spitter.minWave, cfg: CONFIG.spitter, hint: '別站進綠色毒池', color: POISON_LIGHT },
         { wave: CONFIG.eliteAffix.startWave, name: '精英詞綴', hint: '綠光環繞的會分裂、冒火的會暴走', icon: 'eliteAffix', color: '#FFD54F' },
@@ -9410,7 +8885,7 @@ function resetGameInternalState() {
         totalSummons: emptySummonStats(),
         totalKills: emptyKillStats(),
         spawnQueue: [], spawnTimer: 0, banner: null,
-        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, ownedTombs: [], wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
+        blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0,
         waveEvent: null, lastEventWave: 0, streak: 0, streakTimer: 0, bestStreak: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, screenFlash: 0, curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], banishLeft: 0, rerollsLeft: 0,
@@ -9549,7 +9024,6 @@ function updateGame(deltaTime) {
     updateWorldFx(deltaTime);
     updateBossEntrance(deltaTime);
     updateRelics(deltaTime);
-    updateOwnedTombs(deltaTime);
     updateEnemyBolts(deltaTime);
     for (let i = 0; i < gameState.projectiles.length; i++) {
         if (gameState.projectiles[i].isAlive) gameState.projectiles[i].update(deltaTime);
@@ -9839,13 +9313,12 @@ function roundRect(x, y, w, h, r) {
     ctx.closePath();
 }
 
-// 畫面邊緣的方位標記：竊賊、首領、招魂墓碑、遺跡跑出畫面（或被狀態列、召喚面板蓋住）時一定標；畫面上一隻怪都看不到時，再標最近那隻怪
+// 畫面邊緣的方位標記：竊賊、首領、遺跡跑出畫面（或被狀態列、召喚面板蓋住）時一定標；畫面上一隻怪都看不到時，再標最近那隻怪
 // （不然一直走都遇不到，只能亂猜方向）
 const POINTER_EDGE_PAD = 30;
 const POINTER_TOP_EXTRA = 70;
 const POINTER_THIEF_COLOR = '#FFD54F';
 const POINTER_BOSS_COLOR = '#CE93D8';
-const POINTER_TOMB_COLOR = '#A5D6A7';
 const POINTER_NEAREST_COLOR = '#EF9A9A';
 const POINTER_PORTRAIT_BOX = 26;
 function drawOffscreenPointers() {
@@ -9853,7 +9326,7 @@ function drawOffscreenPointers() {
     let bounds = null;
     let anyVisible = false, nearest = null, nearestD = Infinity;
     const p = gameState.player.pos;
-    // 「看得到」= 在上方狀態列與下方召喚面板之間：被面板蓋住的墓碑、祭壇也算畫面外，一樣要標方位
+    // 「看得到」= 在上方狀態列與下方召喚面板之間：被面板蓋住的竊賊、祭壇也算畫面外，一樣要標方位
     // （只看整個畫布的話，手機上很高的召喚面板底下那一片完全沒有提示）
     const hb = uiElements.hudBottom.getBoundingClientRect();
     const visTop = hudTop, visBottom = hb.height ? hb.top : view.cssH;
@@ -9871,11 +9344,10 @@ function drawOffscreenPointers() {
         const sx = (m.pos.x - camera.x) * view.unitPx, sy = (m.pos.y - camera.y) * view.unitPx;
         if (seen(sx, sy)) { anyVisible = true; continue; }
         const isThief = m instanceof ThiefMonster;
-        const isTomb = m instanceof TombstoneMonster;
-        if (isThief || isTomb || m instanceof BossMonster) {
+        if (isThief || m instanceof BossMonster) {
             bounds = bounds || pointerBounds();
-            const icon = getIconImage(isThief ? 'sack' : isTomb ? 'tombstone' : 'boss');
-            drawEdgePointer(sx, sy, isThief ? POINTER_THIEF_COLOR : isTomb ? POINTER_TOMB_COLOR : POINTER_BOSS_COLOR, bounds, icon, 24, 24);
+            const icon = getIconImage(isThief ? 'sack' : 'boss');
+            drawEdgePointer(sx, sy, isThief ? POINTER_THIEF_COLOR : POINTER_BOSS_COLOR, bounds, icon, 24, 24);
             continue;
         }
         const d = distanceSq(p, m.pos);
@@ -10074,7 +9546,6 @@ function drawGame() {
     drawHazards();
     drawBonePiles();
     drawRelicsGround();
-    drawOwnedTombs();
     const groundCls = classDef();
     if (groundCls.drawGround && gameState.player && appScreen !== 'title') groundCls.drawGround(ctx);
     for (let i = 0; i < gameState.orbs.length; i++) if (inView(gameState.orbs[i].pos)) gameState.orbs[i].draw(ctx);
