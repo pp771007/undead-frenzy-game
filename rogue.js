@@ -439,7 +439,7 @@ function addPoison(m, stacks) {
     m.poisonStacks = Math.min(poisonCap(), m.poisonStacks + stacks);
     m.poisonTime = POISON.time;
     if (bl('madVenom') && m.poisonStacks >= MAD_STACKS && !(m instanceof BossMonster) && !(m.turnT > 0) && !(m.madCd > worldTime)) goMad(m);
-    introduceRelic('venom', '飛刀帶毒', `每刀疊一層，最多 ${poisonCap()} 層`, '#AED581', 'venomschool');
+    introduceOnce('venom', '飛刀帶毒', `每刀疊一層，最多 ${poisonCap()} 層`, '#AED581', 'venomschool');
 }
 function tickPoison() {
     const r = rogueState();

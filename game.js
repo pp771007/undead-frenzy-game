@@ -1195,7 +1195,7 @@ const UNIT_TYPES = {
     Wraith: { school: 'wraith', card: { cap: 2, capPer: 2, every: 4 }, cfg: () => CONFIG.wraith, Cls: () => Wraith, name: '怨靈', img: 'wraith.png' },
     EyeMonster: { school: 'eye', card: { cap: 3, capPer: 3, every: 2.5 }, cfg: () => CONFIG.eyeMonster, Cls: () => EyeMonster, name: '眼魔', img: 'eye_monster.png' },
 };
-// 職業：這一局的底部三張卡是哪三種兵、有哪幾個流派（祝福池跟著流派走）、主角的立繪與基本數值、普攻、大招。規劃見 docs/characters.md
+// 職業：這一局的三張卡是哪三種兵（或修練）、有哪幾個流派（祝福池跟著流派走）、主角的立繪與基本數值、普攻、大招。規劃見 docs/characters.md
 //   hero：imageName（images 的鍵）、baseHealth、moveSpeed
 //   attack(player, dt)：主角每格的普攻
 //   ultimate：大招卡（抽到之後自動放，見 tryAutoUltimate）。use() 放出去回傳 true、自己設 gameState.ultCooldown；
@@ -3811,6 +3811,8 @@ function buildOrbSprites() {
 // 滿了之後新掉的經驗併進離掉落點最近、還沒被吸的那顆（球跟著變大），經驗一點都不會少。
 // 併進最近的、不併進最舊的：最舊的多半在主角早就離開的地方，經驗會越堆越遠、撿不回來
 const ORB_FIELD_CAP = 300;
+// 一波打完地上還有這麼多顆經驗球，才跳「撿經驗」的提示：剩一兩顆不值得打斷
+const ORB_HINT_MIN = 5;
 function mergeIntoNearestOrb(x, y, value) {
     let best = null, bestSq = Infinity;
     for (const o of gameState.orbs) {
@@ -6057,7 +6059,7 @@ function leaveBonePile(pos) {
     const piles = gameState.bonePiles;
     if (piles.length >= BONE_PILE.max) piles.shift();
     piles.push({ x: pos.x + randomInRange(-4, 4), y: pos.y + randomInRange(-4, 4), life: BONE_PILE.life + blessVal('boneHoard'), look: Math.floor(Math.random() * BONE_PILE_LOOKS) });
-    introduceRelic('corpseBlast', '屍爆', '新星會引爆附近陣亡留下的骸骨', '#D1C4E9', 'corpseBlast');
+    introduceOnce('corpseBlast', '屍爆', '新星會引爆附近陣亡留下的骸骨', '#D1C4E9', 'corpseBlast');
 }
 // 新星施放時呼叫：範圍內的骸骨排進引爆佇列，離主角越遠炸得越晚
 function detonateBonePiles(center) {
@@ -6379,8 +6381,9 @@ function placeRelic(kind, angle, pair) {
     return r;
 }
 
-// 每種只在玩家第一次看到時用橫幅介紹；之後靠畫面邊緣的箭頭和地上的圖示就認得
-function introduceRelic(key, text, sub, color, icon) {
+// 新東西（遺跡、屍爆、毒、撿經驗…）只在玩家第一次碰到時用橫幅介紹一次；之後靠畫面上的圖示就認得。
+// 已經有別的橫幅時先不講，下次碰到再講（key 記在 meta.relicSeen，沿用舊名，玩過的人不會被重講一次）
+function introduceOnce(key, text, sub, color, icon) {
     meta.relicSeen = meta.relicSeen || {};
     if (meta.relicSeen[key] || gameState.banner) return;
     gameState.banner = { text, sub, color, life: CONFIG.wave.bannerDuration * 1.5, icon };
@@ -6398,11 +6401,11 @@ function spawnRelic() {
     const first = placeRelic(kind, a, pair);
     if (fork) {
         placeRelic(pickRelicKind(kind), a + Math.PI + randomInRange(-RELIC_FORK_SPREAD, RELIC_FORK_SPREAD), pair);
-        introduceRelic('fork', '二選一', '走進一座，另一座就崩塌', '#FFE082', 'fork');
+        introduceOnce('fork', '二選一', '走進一座，另一座就崩塌', '#FFE082', 'fork');
     }
     const L = relicLook(first);
     // 戰鼓沿用舊的 key 'altar'：玩過的人不用再介紹一次
-    introduceRelic(first.effect && first.effect !== 'frenzy' ? `altar_${first.effect}` : kind, L.name, L.hint, L.color, L.icon);
+    introduceOnce(first.effect && first.effect !== 'frenzy' ? `altar_${first.effect}` : kind, L.name, L.hint, L.color, L.icon);
     Sfx.play('spawn');
 }
 
@@ -6956,6 +6959,8 @@ function checkWaveEndCondition() {
         gameState.betweenWaves = true;
         gameState.timeToNextWave = CONFIG.wave.betweenTime;
         gameState.waveEvent = null;
+        // 經驗不會自動收回：第一次打完一波、地上還留著經驗時講一次
+        if (gameState.orbs.length >= ORB_HINT_MIN) introduceOnce('orbPickup', '撿經驗', '經驗留在地上，走過去才撿得到', '#80DEEA', currencyIcon());
         const p = gameState.player;
         // 波與波之間誰都不回血：法師被咬掉的一路帶到下一波（回血靠靈泉、選祝福時的「補滿血」、不死之軀、吸魂之軀），
         // 召喚物的殘血也帶著走（靠嗜魂、升級時多出來的血），打得越吃力的局越要拿資源去補
@@ -7852,7 +7857,9 @@ function enterPlaying() {
 function startNewRun() {
     const id = selectedClass();
     const begin = () => {
-        if (id !== 'necro' && !(meta.classGuideSeen || {})[id]) {
+        // 已經玩過的人（新手教學走完了）不補跳亡靈法師的介紹
+        const seen = (meta.classGuideSeen || {})[id] || (id === DEFAULT_CLASS && meta.tutorialDone);
+        if (!seen) {
             meta.classGuideSeen = { ...(meta.classGuideSeen || {}), [id]: true };
             saveMeta();
             openClassGuide(id, () => { resetGame(); enterPlaying(); });
@@ -8152,15 +8159,18 @@ function stepCurse(d) {
     renderCurse();
 }
 
-// ---------- 新手提示（只在第一局）：先教移動，再教召喚，再教按住連發；開戰後第一次被怪貼近時教新星 ----------
+// ---------- 新手提示（只在第一局）：只教移動，走動一小段就收掉、第一波才開始倒數 ----------
+// 召喚是自動的、選卡畫面自己看得懂；撿經驗在第一波結束時用橫幅講（見 ORB_HINT_MIN）
 const TUTORIAL_MOVE_DIST = 60;
+// 搖桿示意畫在畫面這個高度：主角站在正中間，畫高一點提示字會壓在主角身上
+const TUTORIAL_HINT_Y = 0.76;
 let tutorial = null;
+function tutorialHolding() { return !!tutorial && gameState.currentWave === 0; }
 function startTutorialIfNeeded() {
     // 新手教學教的是亡靈法師（第一次玩一定是它，其他職業要解鎖）
     if (meta.tutorialDone || gameState.currentWave > 0 || !gameState.player || runClass() !== DEFAULT_CLASS) return;
     tutorial = { start: { ...gameState.player.pos } };
 }
-// 只教移動：召喚是自動的、選卡畫面自己看得懂，第一次升級跳出來時就會選
 function updateTutorial() {
     if (!tutorial || !gameState.player) return;
     if (distanceSq(gameState.player.pos, tutorial.start) > TUTORIAL_MOVE_DIST * TUTORIAL_MOVE_DIST) {
@@ -8177,7 +8187,7 @@ function drawTutorial() {
     ctx.textAlign = 'center';
     ctx.lineJoin = 'round';
     {
-        const cx = view.cssW / 2, cy = view.cssH * 0.6;
+        const cx = view.cssW / 2, cy = view.cssH * TUTORIAL_HINT_Y;
         ctx.globalAlpha = 0.85;
         ctx.strokeStyle = 'rgba(233, 196, 106, 0.8)';
         ctx.lineWidth = 3;
@@ -8192,7 +8202,7 @@ function drawTutorial() {
 
 function updateTimers(deltaTime) {
     // 新手提示還沒走完前，第一波不開始倒數
-    if (tutorial && gameState.currentWave === 0) return;
+    if (tutorialHolding()) return;
     updateSpawner(deltaTime);
     gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
     tryAutoUltimate();
@@ -8391,7 +8401,7 @@ function updateUI() {
     setStyleIfChanged(uiElements.xpFill, 'width', `${Math.floor(Math.min(1, gameState.xp / xpToNext(lv)) * 100)}%`);
 
     // 波次之間顯示「即將來的那一波」，不是剛打完的那一波
-    const holding = tutorial && gameState.currentWave === 0;
+    const holding = tutorialHolding();
     const secs = Math.ceil(gameState.timeToNextWave);
     if (gameState.betweenWaves) {
         setTextIfChanged(uiElements.waveInfo, waveLabel(gameState.currentWave + 1));
@@ -9147,8 +9157,10 @@ function drawEdgePointer(sx, sy, color, b, img, iw, ih) {
 
 // 開戰前最後幾秒在畫面中間跳大數字：只看角落的小字很容易錯過開戰
 const COUNTDOWN_SECONDS = 3;
+// 教移動的那段倒數是停住的：不畫大字，不然一個卡住不動的「3」看起來像當掉。
+// 有橫幅（撿經驗之類的介紹）時讓給橫幅：兩個疊在同一個位置誰都看不清，上方的波次牌照樣在倒數
 function drawCountdown() {
-    if (appScreen !== 'playing' || !gameState.betweenWaves || gameState.draftOpen) return;
+    if (appScreen !== 'playing' || !gameState.betweenWaves || gameState.draftOpen || tutorialHolding() || gameState.banner) return;
     const t = gameState.timeToNextWave;
     if (t <= 0 || t > COUNTDOWN_SECONDS) return;
     const n = Math.ceil(t);
