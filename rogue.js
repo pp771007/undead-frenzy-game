@@ -122,7 +122,7 @@ const SMOKE_RADIUS = 70, SMOKE_TIME = 4, SMOKE_SLOW = 0.5, SMOKE_HIT = 0.1;
 const DAGGER_EVERY = 1;
 const ROGUE_ACHV = { targets: 100, waveTargets: 5, shadows: 6 };
 // 目標優先：首領 > 精英 > 這幾種會幫別人的怪 > 血最多的
-const TARGET_PRIORITY = { WitchDoctor: 1, GravePriest: 1 };
+const TARGET_PRIORITY = { WitchDoctor: 1, GravePriest: 1, Assassin: 1 };
 
 Object.assign(UNIT_TYPES, {
     Knives: { cfg: () => CONFIG.knives, Cls: () => null, name: '飛刀', img: iconDataUrl('critChance'), upgradeOnly: true },

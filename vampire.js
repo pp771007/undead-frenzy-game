@@ -35,11 +35,11 @@ const THRALL_COMMON = {
     wanderRadius: 30, wanderSpeedFactor: 0.3, wanderIntervalMin: 2, wanderIntervalMax: 4,
     upgradeBonus: 0.15, projectileSpeed: 300, projectileRadius: 4, projectileColor: VAMP_ATTACK_COLOR, boltStyle: 'nightblade',
 };
-// 生前的血量、攻擊乘上這個倍數（怪的基礎值是給「一大群」用的，眷屬一隻要頂一隻）；沒有攻擊力的怪（巫醫、祭司）給 minAtk
+// 生前的血量、攻擊乘上這個倍數（怪的基礎值是給「一大群」用的，眷屬一隻要頂一隻）；沒有攻擊力的怪（巫醫、血瞳）給 minAtk
 const THRALL_HP_MULT = 2.5, THRALL_ATK_MULT = 2, THRALL_MIN_HP = 20, THRALL_MIN_ATK = 5;
 const THRALL_RANGED_RANGE = 150;
 // 眷屬保留原本的能力：照怪的種類分幾種打法（沒列到的：射程夠遠就是遠程，其他近戰）
-const THRALL_ARCHE = { WitchDoctor: 'mender', GravePriest: 'mender', Bloater: 'bomber', CorpseWorm: 'burrower', Spitter: 'ranged' };
+const THRALL_ARCHE = { WitchDoctor: 'mender', GravePriest: 'mender', Bloater: 'bomber', CorpseWorm: 'burrower', BloodEye: 'ranged', Spitter: 'ranged' };
 const THRALL_ARCHE_LABEL = { melee: '近戰', ranged: '射血彈', mender: '幫你補血', bomber: '死了會爆', burrower: '範圍重擊' };
 const MENDER_HEAL = 0.08, MENDER_RADIUS = 130, MENDER_HERO_BELOW = 0.7;
 const BOMBER_RADIUS = 55, BOMBER_MULT = 3;

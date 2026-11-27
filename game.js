@@ -338,6 +338,21 @@ const CONFIG = {
         // lifetime 秒後掉頭逃跑；逃 escapeTime 秒還沒跑出畫面就原地化成煙（不掉靈魂）
         lifetime: 20, escapeTime: 5, leashRadius: 260,
     },
+    assassin: {
+        type: 'Assassin', name: '暗影刺客', baseHealth: 40, baseAttack: 0, radius: 11,
+        imageName: 'fast_melee', art: 'assassin', imgScaleMultiplier: 3, artScale: 4.2, tint: '#5E35B1', tintStrength: 0.6,
+        // attackRange 只用來決定她在法師身邊多遠停下來等瞬移，她本身不普攻
+        attackRange: 90, attackSpeed: 1, moveSpeed: 68, color: '#5E35B1',
+        soulDrop: 6, waveSpeedIncreaseFactor: 0.006,
+        minWave: 11, waveInterval: 7,
+        // 潛行時召喚物看不到她（見 SpatialGrid.rebuild）；蓄力時也還隱身，刺完才現形 revealTime 秒，這段時間會被大軍圍毆，所以每隻都會出手一次。
+        // 不理召喚物、只找法師：靠近後在法師腳下標記，蓄力完瞬移過去刺一刀。
+        // 傷害是主角最大生命的固定比例、不隨波數變大。蓄力 1.1 秒：聽到預警音、看到紅圈後約 0.45 秒才開始走，剩 0.65 秒，最慢的德魯伊（88）也走得出半徑 34 的圈；
+        // 0.75 秒時站著不動的人反應正常也閃不掉（剩 0.3 秒只走得了 26～33）。戰士虛脫（移速減半）時還是閃不太掉，那是虛脫的代價
+        blinkRange: 200, blinkCooldown: 4.5, blinkWindup: 1.1, strikeRadius: 34, strikeHpRatio: 0.3,
+        // 平常半透明（潛行），蓄力到瞬移後這段時間現形
+        stealthAlpha: 0.5, revealTime: 2.2,
+    },
     spitter: {
         type: 'Spitter', name: '瘟疫投手', baseHealth: 30, baseAttack: 5, radius: 12,
         imageName: 'basic_melee', art: 'spitter', imgScaleMultiplier: 5, artScale: 3.2, tint: '#8E24AA', tintStrength: 0.5,
@@ -349,6 +364,19 @@ const CONFIG = {
         // 懲罰大軍擠成一團、法師站著不動。
         // 對法師的傷害是最大生命的固定比例：照怪物攻擊算的話第 30 波站進去 1.5 秒就死，完全來不及反應
         throwWindup: 0.45, lobTime: 1.0, puddleRadius: 40, puddleLife: 3, puddleTick: 0.5, puddleDamageMult: 0.4, puddlePlayerHpRatio: 0.06,
+    },
+    bloodEye: {
+        type: 'BloodEye', name: '血瞳', baseHealth: 22, baseAttack: 0, radius: 11,
+        // 專屬圖載不到時退回眼魔的圖染成血紅（跟敵方骷髏同一套「我方兵種染紅＝敵人」的做法）
+        imageName: 'eye_monster', art: 'blood_eye', imgScaleMultiplier: 3, artScale: 3.3, tint: '#D50000', tintStrength: 0.6,
+        // attackRange = 停在離法師多遠的地方射，attackSpeed = 每秒射幾發
+        attackRange: 190, attackSpeed: 0.4, moveSpeed: 48, color: '#D50000',
+        soulDrop: 3, waveSpeedIncreaseFactor: 0.006,
+        minWave: 4, waveInterval: 3,
+        // 大軍圍在法師身邊，其他怪幾乎碰不到法師，走位前中期沒有意義。血瞳只盯法師：蓄力 windup 秒後朝法師「當下的位置」射一顆慢速血彈，
+        // 飛過大軍頭上、只打法師。有在走就躲得掉（飛 190 要 1.2 秒，法師走得了一百多），站著不動才會一直中。
+        // 傷害是法師最大生命的固定比例（同刺客、投手），不隨波數變大
+        windup: 0.55, boltSpeed: 160, boltRange: 380, boltRadius: 7, boltPlayerHpRatio: 0.08,
     },
     gargoyle: {
         type: 'Gargoyle', name: '腐翼石像鬼', baseHealth: 30, baseAttack: 7, radius: 12,
@@ -925,8 +953,8 @@ const ACHV_BOSSES = [['ColossusBoss', 'boss'], ['PlagueBoss', 'plagueBoss'], ['H
 // 門檻約是三局的量：一局拿不完、玩幾局會陸續解開
 const ACHV_BESTIARY = [
     ['BasicMelee', 'basicMeleeMonster', 8000], ['FastMelee', 'fastMeleeMonster', 2000], ['ArmoredMelee', 'armoredMeleeMonster', 1000],
-    ['Bloater', 'bloaterMonster', 1200], ['Slime', 'slime', 10000], ['Bat', 'bat', 6000], ['Spitter', 'spitter', 600],
-    ['Gargoyle', 'gargoyle', 800], ['WitchDoctor', 'witchDoctor', 500],
+    ['Bloater', 'bloaterMonster', 1200], ['Slime', 'slime', 10000], ['Bat', 'bat', 6000], ['Assassin', 'assassin', 500], ['Spitter', 'spitter', 600],
+    ['BloodEye', 'bloodEye', 1500], ['Gargoyle', 'gargoyle', 800], ['WitchDoctor', 'witchDoctor', 500],
     ['ShieldGuard', 'shieldGuard', 500], ['CorpseWorm', 'corpseWorm', 300], ['GravePriest', 'gravePriest', 250], ['Thief', 'thief', 15],
 ];
 // 召喚費用隨數量變貴（SUMMON_COST_STEP）之後，自動遊玩一局的大軍最多 150～480 隻
@@ -1366,6 +1394,8 @@ const OPTIONAL_ART = {
     boss_hunter: 'boss_hunter.png',
     bloater: 'bloater.png',
     thief: 'thief.png',
+    assassin: 'assassin.png',
+    blood_eye: 'blood_eye.png',
     slime: 'slime.png',
     spitter: 'spitter.png',
     bat: 'bat.png',
@@ -1871,7 +1901,7 @@ const SFX_DEFS = {
     vanish: { gap: 0.3, fn: s => { s.noise(0.35, { vol: 0.16, filterFreq: 1200 }); s.tone(900, 0.3, { type: 'sine', vol: 0.07, slideTo: 220 }); } },
     ambush: { gap: 0.15, fn: s => { s.tone(2600, 0.08, { type: 'square', vol: 0.06, slideTo: 1800 }); s.noise(0.12, { vol: 0.18, filterFreq: 5000 }); } },
     mark: { gap: 0.2, fn: s => { s.tone(1500, 0.12, { type: 'triangle', vol: 0.1, slideTo: 2400 }); s.tone(1500, 0.12, { type: 'triangle', vol: 0.06, slideTo: 2400, delay: 0.1 }); } },
-    bossShot: { gap: 0.15, fn: s => s.tone(420, 0.18, { type: 'sawtooth', vol: 0.07, slideTo: 160 }) },
+    enemyShot: { gap: 0.15, fn: s => s.tone(420, 0.18, { type: 'sawtooth', vol: 0.07, slideTo: 160 }) },
     dash: { gap: 0.3, fn: s => { s.noise(0.25, { vol: 0.25, filterFreq: 3000 }); s.tone(600, 0.25, { type: 'sawtooth', vol: 0.1, slideTo: 150 }); } },
     evolve: { gap: 0.5, fn: s => { s.noise(0.5, { vol: 0.2, filterFreq: 2000 }); [392, 523, 659, 784, 1046].forEach((f, i) => s.tone(f, 0.22, { type: 'triangle', vol: 0.15, delay: i * 0.07 })); } },
     pulse: { gap: 0.15, fn: s => s.tone(300, 0.2, { vol: 0.08, slideTo: 120 }) },
@@ -2091,7 +2121,7 @@ const MELEE_HERO_HIT_RATIO = 0.2;
 // 詛咒的「怪物攻擊 +X%」「主角血量 -X%」也要作用在上面兩個上限上：
 // 上限固定時，後期怪物攻擊早就超過上限，+30% 乘上去還是被壓回 20%；主角血量少三成，上限（最大血量的 20%）也跟著小三成，
 // 一樣被咬 5 下才倒 —— 兩種代價後期都等於沒有。所以上限 × 怪物攻擊倍率 ÷ 主角血量倍率（例：血債 20% → 26%，約 4 下倒）。
-// 首領大招、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
+// 刺客、首領大招、血瞳、蝙蝠、屍蟲、毒池對主角是「最大生命的固定比例」，原本兩種懲罰都碰不到（主角主要就是被這些打死的），也乘同一個倍率（heroPenaltyScale）。
 // 疊太多時封頂在 HERO_HIT_CAP_MAX，不會一下就倒
 const HERO_HIT_CAP_MAX = { melee: 0.35, any: 0.6 };
 // 招式瞄準主角時響預警音：pos/radius 給了就只在主角站在範圍裡時響（打大軍不吵）
@@ -3436,6 +3466,8 @@ const BOLT_STYLES = {
     soul: { glowIn: 'rgba(214, 251, 251, 0.9)', glowMid: 'rgba(127, 240, 240, 0.38)', glowOut: 'rgba(127, 240, 240, 0)', body: '#7FF0F0', core: '#E8FFFF' },
     // 首領的彈幕：每隻一個顏色，看彈的顏色就知道是誰打的
     plague: { glowIn: 'rgba(204, 255, 144, 0.95)', glowMid: 'rgba(100, 221, 23, 0.45)', glowOut: 'rgba(100, 221, 23, 0)', body: '#64DD17', core: '#F1F8E9' },
+    // 血瞳的血彈（敵人的攻擊，照規矩用紅）
+    blood: { glowIn: 'rgba(255, 138, 128, 0.95)', glowMid: 'rgba(213, 0, 0, 0.45)', glowOut: 'rgba(213, 0, 0, 0)', body: '#D50000', core: '#FFCDD2' },
     shadow: { glowIn: 'rgba(179, 157, 219, 0.95)', glowMid: 'rgba(98, 0, 234, 0.45)', glowOut: 'rgba(98, 0, 234, 0)', body: '#6200EA', core: '#EDE7F6' },
     lich: { glowIn: 'rgba(234, 128, 252, 0.95)', glowMid: 'rgba(213, 0, 249, 0.45)', glowOut: 'rgba(213, 0, 249, 0)', body: '#D500F9', core: '#F3E5F5' },
 };
@@ -5057,7 +5089,7 @@ class HunterBoss extends BossMonster {
     throwFan(angles, M) {
         fireBossBolts(this, angles, { speed: M.speed, range: M.range, hp: M.hp, style: 'shadow' });
         spawnParticles(this.pos.x, this.pos.y, HUNTER_SHADOW, 10, 90, 0.3, 3);
-        Sfx.play('bossShot');
+        Sfx.play('enemyShot');
     }
     // 影十字：遁入陰影（半透明），主角腳下交錯三道紅線；斬下後現身在交會處
     actCross(p, M) {
@@ -5212,7 +5244,7 @@ class LichBoss extends BossMonster {
                 while (fired < M.waves && t >= M.windup + fired * M.every) {
                     fireBossBolts(this, bossBoltAngles(M.count, base + fired * M.turn), { speed: M.speed, range: M.range, hp: M.hp, style: 'lich' });
                     spawnParticles(this.pos.x, this.pos.y, LICH_GLOW, 10, 100, 0.35, 3);
-                    Sfx.play('bossShot');
+                    Sfx.play('enemyShot');
                     fired++;
                 }
             },
@@ -5386,6 +5418,90 @@ class ThiefMonster extends Monster {
     attackTarget() { }
 }
 
+class AssassinMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.assassin, waveNumber, isElite);
+        this.blinkTimer = CONFIG.assassin.blinkCooldown * randomInRange(0.3, 0.8);
+        this.windup = 0;
+        this.mark = null;
+        this.revealed = 0;
+    }
+    get stealthed() { return this.revealed <= 0; }
+    findTarget(player) {
+        this.target = player.isAlive ? player : null;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        const c = this.config;
+        if (this.revealed > 0) this.revealed -= deltaTime;
+        if (this.windup > 0) {
+            this.tickFlash(deltaTime);
+            this.windup -= deltaTime;
+            if (this.windup <= 0) this.strike(player);
+            return;
+        }
+        this.blinkTimer -= deltaTime;
+        if (this.blinkTimer <= 0 && player.isAlive && distanceSq(this.pos, player.pos) < c.blinkRange * c.blinkRange) {
+            this.windup = c.blinkWindup;
+            this.mark = { x: player.pos.x, y: player.pos.y };
+            // 蓄力時還隱身：現形的話大軍會在她出手前圍上去打死她，標記等於沒出現過。刺下去之後才現形（見 strike）
+            warnHero();
+            return;
+        }
+        super.update(deltaTime, player, summons);
+    }
+    attackTarget() { }
+    strike(player) {
+        const c = this.config;
+        spawnParticles(this.pos.x, this.pos.y, '#7E57C2', 12, 80, 0.4, 3);
+        this.pos.x = this.mark.x;
+        this.pos.y = this.mark.y;
+        spawnParticles(this.pos.x, this.pos.y, '#B39DDB', 16, 120, 0.4, 3);
+        Sfx.play('dash');
+        if (player.isAlive && distanceSq(player.pos, this.mark) <= c.strikeRadius * c.strikeRadius) {
+            this.updateFacingDirection(player.pos.x - this.pos.x);
+            const effect = getVisualEffectFromPool(SlashEffect);
+            if (effect) { effect.init(this.pos, player.pos); gameState.visualEffects.push(effect); }
+            player.takeDamage(player.maxHealth * c.strikeHpRatio * heroPenaltyScale(), this);
+        } else {
+            spawnFloatText(this.mark.x, this.mark.y - 20, '閃過', '#B3E5FC', 13);
+        }
+        this.mark = null;
+        this.blinkTimer = c.blinkCooldown;
+        this.revealed = c.revealTime;
+    }
+    // 標記另外畫在召喚物之上、法師之下：不然會被大軍蓋住，刺客本人在畫面外時也會漏畫
+    drawMark(ctx) {
+        {
+            const c = this.config;
+            const p = 1 - this.windup / c.blinkWindup;
+            const r = c.strikeRadius;
+            const { x, y } = this.mark;
+            ctx.save();
+            ctx.fillStyle = `rgba(229, 57, 53, ${(0.1 + 0.25 * p).toFixed(2)})`;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(255, 82, 82, 0.95)';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+            // 往內收的圈：收到判定圈時就是出手的瞬間
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath(); ctx.arc(x, y, r * (2.2 - 1.2 * p), 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = 1;
+            ctx.beginPath();
+            ctx.moveTo(x - r * 0.45, y); ctx.lineTo(x + r * 0.45, y);
+            ctx.moveTo(x, y - r * 0.45); ctx.lineTo(x, y + r * 0.45);
+            ctx.stroke();
+            ctx.restore();
+        }
+    }
+    draw(ctx) {
+        if (!this.isAlive) return;
+        if (this.stealthed) ctx.globalAlpha = this.config.stealthAlpha;
+        super.draw(ctx);
+        ctx.globalAlpha = 1;
+    }
+}
+
 class SpitterMonster extends Monster {
     constructor(x, y, waveNumber, isElite) {
         super(x, y, CONFIG.spitter, waveNumber, isElite);
@@ -5433,11 +5549,59 @@ class SpitterMonster extends Monster {
     }
 }
 
+const BLOOD_EYE_GLOW = '#FF1744';
+const BLOOD_EYE_GLOW_SCALE = 2.2;   // × 圖寬
+class BloodEyeMonster extends Monster {
+    constructor(x, y, waveNumber, isElite) {
+        super(x, y, CONFIG.bloodEye, waveNumber, isElite);
+        this.windup = 0;
+        // 剛出場別馬上射，錯開同一批出生的
+        this.attackCooldown = randomInRange(0.5, 1.5) / this.attackSpeed;
+    }
+    findTarget(player) {
+        this.target = player.isAlive ? player : null;
+    }
+    update(deltaTime, player, summons) {
+        if (!this.isAlive) return;
+        if (this.windup > 0) {
+            this.tickFlash(deltaTime);
+            this.windup -= deltaTime;
+            const k = 1 - this.windup / this.config.windup;
+            this.drawScale = 1 + 0.2 * Math.sin(k * Math.PI);
+            if (this.windup <= 0) { this.drawScale = 1; this.fire(player); }
+            return;
+        }
+        super.update(deltaTime, player, summons);
+    }
+    attackTarget() {
+        this.windup = this.config.windup;
+        this.attackCooldown = 1.0 / this.attackSpeed;
+    }
+    fire(player) {
+        if (!player.isAlive) return;
+        const dir = normalizeVector({ x: player.pos.x - this.pos.x, y: player.pos.y - this.pos.y });
+        const c = this.config;
+        gameState.enemyBolts.push({ pos: { x: this.pos.x, y: this.pos.y }, dir, travel: 0, source: this, speed: c.boltSpeed, range: c.boltRange, hpRatio: c.boltPlayerHpRatio, style: 'blood' });
+        spawnParticles(this.pos.x, this.pos.y, BLOOD_EYE_GLOW, 6, 60, 0.3, 2.5);
+        Sfx.play('enemyShot');
+    }
+    draw(ctx) {
+        if (this.isAlive && this.windup > 0) {
+            const k = 1 - this.windup / this.config.windup;
+            const g = this.imageWidth * BLOOD_EYE_GLOW_SCALE;
+            ctx.globalAlpha = 0.3 + 0.6 * k;
+            ctx.drawImage(getGlowSprite(BLOOD_EYE_GLOW), this.pos.x - g / 2, this.pos.y - g / 2, g, g);
+            ctx.globalAlpha = 1;
+        }
+        super.draw(ctx);
+    }
+}
+
 const ENEMY_BOLT_RADIUS = 7;
 const ENEMY_BOLT_HIT_SPARKS = 16;
 const ENEMY_BOLT_DRAW_SCALE = 1.6;  // 比我方飛彈大一號：要躲的東西一眼就要看到
 
-// 首領的彈幕：飛過大軍頭上、只打主角，速度、射程、傷害與顏色由 fireBossBolts 帶進來
+// 敵方飛彈（血瞳的血彈、首領的彈幕）：飛過大軍頭上、只打主角；速度、射程、傷害與顏色由射出的那一方帶進來
 function updateEnemyBolts(deltaTime) {
     const p = gameState.player;
     const cls = classDef();
@@ -6545,7 +6709,8 @@ function buildWaveQueue(wave) {
     const add = (Cls, n) => { for (let i = 0; i < n; i++) classes.push(Cls); };
     add(BasicMeleeMonster, Math.round((W.basicBase + wave * W.basicPerWave) * factor));
     [[CONFIG.fastMeleeMonster, FastMeleeMonster], [CONFIG.bloaterMonster, BloaterMonster], [CONFIG.armoredMeleeMonster, ArmoredMeleeMonster],
-    [CONFIG.spitter, SpitterMonster], [CONFIG.gargoyle, GargoyleMonster], [CONFIG.slime, SlimeMonster], [CONFIG.bat, BatMonster],
+    [CONFIG.assassin, AssassinMonster], [CONFIG.spitter, SpitterMonster], [CONFIG.bloodEye, BloodEyeMonster],
+    [CONFIG.gargoyle, GargoyleMonster], [CONFIG.slime, SlimeMonster], [CONFIG.bat, BatMonster],
     [CONFIG.witchDoctor, WitchDoctorMonster], [CONFIG.shieldGuard, ShieldGuardMonster], [CONFIG.corpseWorm, CorpseWormMonster],
     [CONFIG.gravePriest, GravePriestMonster]]
         .forEach(([cfg, Cls]) => {
@@ -6599,6 +6764,8 @@ function getNewcomer(wave) {
     const batWave = runMods().batsEarly ? BATS_EARLY_WAVE : CONFIG.bat.minWave;
     // cfg：那隻怪的設定，名字與橫幅上的立繪都從那裡拿；精英詞綴不是一種怪，自己給名字、只用圖示
     const list = [
+        { wave: CONFIG.assassin.minWave, cfg: CONFIG.assassin, hint: '腳下出現紅圈就快走開', color: '#EF9A9A' },
+        { wave: CONFIG.bloodEye.minWave, cfg: CONFIG.bloodEye, hint: '朝你射血彈，走動就躲得掉', color: '#FF8A80' },
         { wave: CONFIG.gargoyle.minWave, cfg: CONFIG.gargoyle, hint: '會飛，近戰打不到，要靠遠程', color: '#B0BEC5' },
         { wave: CONFIG.slime.minWave, cfg: CONFIG.slime, hint: '打死會分裂', color: '#E6EE9C' },
         { wave: CONFIG.witchDoctor.minWave, cfg: CONFIG.witchDoctor, hint: '會幫怪物補血，先殺牠', color: '#AED581' },
