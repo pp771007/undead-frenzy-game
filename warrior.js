@@ -177,8 +177,6 @@ CLASSES.warrior = {
     hero: { imageName: 'warrior', baseHealth: WARRIOR.baseHealth, moveSpeed: WARRIOR.moveSpeed },
     // 開局那支小隊（盾、槍、弩）陣亡了也要補得回來：三種兵的卡一開始都會
     startCards: ['Shieldman', 'Spearman', 'Crossbowman'],
-    // 寶棺的軍餉另外送全軍升級，跟著主角走的部分比別人慢一點
-    unitLevelPerHero: 0.35,
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
         armor: { icon: 'ironBody', name: '受到的傷害', max: 5, per: 0.04, costBase: 30, desc: m => `你受到的傷害 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
@@ -221,7 +219,7 @@ CLASSES.warrior = {
         if (bl('triumph')) for (const s of gameState.summons) if (s.isAlive && s instanceof Soldier) promoteSoldier(s);
     },
     onBossKill: () => { if (warState().berserkT > 0) gameState.run.flags.warBerserkBoss = true; },
-    // 戰場遺跡：戰鼓祭壇＝全軍衝鋒＋怒氣灌滿；封印寶棺開出軍餉，每個兵種免費升一級
+    // 戰場遺跡：戰鼓祭壇＝全軍衝鋒＋怒氣灌滿；封印寶棺跟其他職業一樣是轉盤
     onRelic: (r) => {
         const p = gameState.player, w = warState();
         if (r.kind === 'altar') {
@@ -232,14 +230,6 @@ CLASSES.warrior = {
             spawnFloatText(p.pos.x, p.pos.y - 34, '衝鋒！', '#FFAB40', 18, 1.1, 'rage');
             addShake(5);
             Sfx.play('nova');
-            return true;
-        }
-        if (r.kind === 'coffin') {
-            for (const type of CLASSES.warrior.cards) levelUpUnit(type);
-            spawnFloatText(r.x, r.y - 30, '軍餉：全軍升一級', '#FFE082', 16, 1.4, 'legionPay');
-            addShake(4);
-            Sfx.play('upgrade');
-            updateUI();
             return true;
         }
         return false;
