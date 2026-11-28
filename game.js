@@ -145,7 +145,6 @@ const uiElements = {
     ultChip: $id('ult-chip'),
     gameOverScreen: $id('game-over-screen'),
     finalWaveText: $id('final-wave-text'),
-    bestWaveText: $id('best-wave-text'),
     finalKills: $id('final-kills'),
     finalSummons: $id('final-summons'),
     finalReward: $id('final-reward'),
@@ -7978,9 +7977,6 @@ function peekSave() {
     } catch (e) { }
     return null;
 }
-function getBestWave() {
-    try { return parseInt(SaveStore.get(BEST_WAVE_KEY), 10) || 0; } catch (e) { return 0; }
-}
 
 function refreshTitle() {
     const save = peekSave();
@@ -7991,12 +7987,11 @@ function refreshTitle() {
     const curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
     uiElements.titleStartBtn.textContent = curse > 0 ? `開始遊戲 · 詛咒 ${curse}` : '開始遊戲';
     uiElements.titleCurseBtn.classList.toggle('hidden', !(meta.curseUnlocked > 0));
-    const best = getBestWave();
     const wins = meta.wins || 0;
     renderClassPicker();
     const fastest = bestClearOf(selectedClass());
-    uiElements.titleBest.innerHTML = (best > 0 ? `${iconHtml('record')}最佳 ${best} 波　` : '') +
-        (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
+    // 不放「最佳 N 波」：跟排行榜重複，而且不分職業，跟旁邊只算這個職業的「最快」講的不是同一件事
+    uiElements.titleBest.innerHTML = (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         (fastest ? `${iconHtml('clock')}最快 ${formatClock(fastest.time)}　` : '') +
         `<span class="crystal-count">${iconHtml('gold')}${meta.crystals}</span>`;
     uiElements.titleMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
@@ -8777,14 +8772,7 @@ function showGameOver(reason = 'died') {
     uiElements.gameoverTitle.classList.toggle('victory', title === 'victory');
     renderKiller(reason === 'died' ? gameState.killedBy : null);
     const survived = getSurvivedWaves();
-    const best = getBestWave();
-    const isRecord = survived > best;
-    if (isRecord) {
-        try { SaveStore.set(BEST_WAVE_KEY, String(survived)); } catch (e) { }
-    }
     uiElements.finalWaveText.textContent = survived;
-    uiElements.bestWaveText.innerHTML = isRecord ? `${iconHtml('record')}新紀錄` : `最佳 ${best} 波`;
-    uiElements.bestWaveText.classList.toggle('new-record', isRecord);
     const kills = Object.values(gameState.totalKills).reduce((a, b) => a + b, 0);
     const summons = Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0);
     uiElements.finalKills.textContent = formatNumberK(kills);
@@ -8812,7 +8800,6 @@ function showGameOver(reason = 'died') {
 
 const SAVE_KEY = 'necromancerGameState_v16_stats_audio';
 // 跟存檔分開放：遊戲結束會刪存檔，紀錄要留著
-const BEST_WAVE_KEY = 'undeadFrenzy_bestWave';
 // v19 起是卡片化（靈魂變經驗、召喚卡自動補兵）：之前的存檔沒學過召喚卡、沒有經驗值，讀進來兵補不回來，只能從頭開
 const SAVE_VERSION = 19;
 const COMPATIBLE_SAVE_VERSIONS = [19];
@@ -10247,7 +10234,7 @@ function init() {
 
 async function boot() {
     await SaveStore.ready;
-    await SaveStore.adopt([META_KEY, SAVE_KEY, BEST_WAVE_KEY]);
+    await SaveStore.adopt([META_KEY, SAVE_KEY]);
     Object.assign(meta, loadMeta());
     // 裝成 App 的才要求「不要自動清掉」：一般分頁要求的話 Firefox 會跳出詢問
     if (matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches && navigator.storage && navigator.storage.persist) {

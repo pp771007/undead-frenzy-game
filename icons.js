@@ -851,11 +851,6 @@ const ICON_BODIES = {
         <rect x="16" y="8" width="38" height="26" fill="#f1ead6"/>
         <path d="M16 8 h9.5 v6.5 h-9.5 Z M35 8 h9.5 v6.5 h-9.5 Z M25.5 14.5 h9.5 v6.5 h-9.5 Z M44.5 14.5 h9.5 v6.5 h-9.5 Z M16 21 h9.5 v6.5 h-9.5 Z M35 21 h9.5 v6.5 h-9.5 Z M25.5 27.5 h9.5 v6.5 h-9.5 Z M44.5 27.5 h9.5 v6.5 h-9.5 Z" fill="${ICON_OUTLINE}" stroke="none"/>
         <rect x="16" y="8" width="38" height="26" stroke-width="3"/>`,
-    // 最佳紀錄、新紀錄：月桂葉圍著往上的箭頭（成就是獎盃 trophy）
-    record: duoStroke('M20 56 C8 48 6 32 14 16', '#7cb342', 4) + duoStroke('M44 56 C56 48 58 32 50 16', '#7cb342', 4) +
-        `<ellipse cx="9" cy="40" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(-60 9 40)"/><ellipse cx="9" cy="26" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(-80 9 26)"/>
-        <ellipse cx="55" cy="40" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(60 55 40)"/><ellipse cx="55" cy="26" rx="6" ry="3.5" fill="#9ccc65" stroke-width="2.5" transform="rotate(80 55 26)"/>
-        <path d="M32 10 L44 24 L37 24 L37 50 L27 50 L27 24 L20 24 Z" fill="#ffd54f"/>`,
     // 永久強化「全部退還」：結晶加一個往回的箭頭
     refund: `<path d="M40 12 L56 28 L40 58 L24 28 Z" fill="#b388ff"/><path d="M24 28 L56 28" stroke-width="2.5"/>` +
         duoStroke('M28 10 C16 10 8 18 8 30', '#8fd3ff', 5) + `<path d="M1 26 L8 40 L15 26 Z" fill="#8fd3ff"/>`,
