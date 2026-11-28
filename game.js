@@ -128,6 +128,9 @@ const uiElements = {
     installOpenBtn: $id('install-open-btn'),
     installCloseBtn: $id('install-close-btn'),
     draftScreen: $id('draft-screen'),
+    coffinWheel: $id('coffin-wheel'),
+    wheelSvg: $id('wheel-svg'),
+    wheelResult: $id('wheel-result'),
     draftCards: $id('draft-cards'),
     rerollBtn: $id('reroll-btn'), healBtn: $id('heal-btn'), draftTitle: $id('draft-title'),
     pauseMenu: $id('pause-menu'),
@@ -1322,7 +1325,7 @@ let gameState = {
     waveEvent: null, lastEventWave: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], rerollsLeft: 0,
-    relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
+    relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false,
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
 };
 
@@ -3783,7 +3786,6 @@ function mergeIntoNearestOrb(x, y, value) {
 }
 function dropSouls(x, y, amount) {
     if (amount <= 0) return;
-    gameState.waveSouls += amount;
     stats().souls += amount;
     const n = Math.min(CONFIG.orbs.maxOrbsPerDrop, amount);
     const base = Math.floor(amount / n);
@@ -6266,8 +6268,7 @@ const RELIC_TYPES = {
     altar: { name: '戰鼓祭壇', hint: '站上去，大軍狂暴', icon: 'altar', art: 'relic_altar', artW: 62, color: '#E1BEE7', glow: '186, 104, 200', channel: 2, frenzy: 12, weight: 1 },
     // pool：一座泉總共回多少（× 法師血量上限），回完就乾
     spring: { name: '靈泉', hint: '站在裡面回血', icon: 'spring', art: 'relic_spring', artW: 72, color: '#A5D6A7', glow: '67, 160, 71', healPerSec: 0.15, pool: 0.6 },
-    // 靈魂 = 上一波全部掉落的 soulShare 倍：跟著當下的經濟成長，不用另外調每一波的數字
-    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'coffinRelic', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, soulShare: 0.5, soulMin: 20, weight: 1 },
+    coffin: { name: '封印寶棺', hint: '站上去打開', icon: 'coffinRelic', art: 'relic_coffin', artW: 80, color: '#FFE082', glow: '255, 179, 0', channel: 3, weight: 1 },
 };
 // 祭壇每座只有一種效果，冒出來時就決定：頭上的圖示就是那個效果、圈的顏色也跟著換，走過去之前就看得懂會拿到什麼。
 // 效果刻意少、各自一句話講得完（大軍變強／自己變硬／怪變慢／撿經驗），戰局中瞄一眼就認得
@@ -6283,12 +6284,17 @@ const ALTAR_EFFECTS = {
 const ALTAR_MAGNET_MIN_ORBS = 40;
 // 遲滯期間每隔這麼久把全場的怪（含新冒出來的）再緩一次
 const ALTAR_SLOW_REAPPLY = 0.5;
-// 寶棺開出什麼：開之前不知道（開箱的期待），開了用大字＋圖示講清楚
-const COFFIN_LOOT = [
-    { id: 'souls', weight: 2 },
-    { id: 'draft', weight: 1 },
-    { id: 'level', weight: 1, levels: 2 },
-];
+// 寶棺開出什麼：開棺時跳出轉盤，轉到哪一格拿哪個（開箱的期待）。
+// 每一格都是看得到的變化（選卡、升級）：兵種 +2 級那種只加數值的拿掉了，進化拿掉之後玩家感覺不到
+// 最差的「升級」也是一次三選一再加上兵種跟著升
+const COFFIN_PRIZES = {
+    legend: { label: '傳說', result: '傳說祝福', icon: 'draft', color: '#ffd54f', dark: '#9a6b0c' },
+    rare: { label: '稀有', result: '稀有祝福', icon: 'draft', color: '#64b5f6', dark: '#1d4d7e' },
+    double: { label: '×2', result: '祝福 ×2', icon: 'draft', color: '#f1ead6', dark: '#8d7b5a' },
+    level: { label: '升級', result: '升級！', icon: 'levelUp', color: '#9ccc65', dark: '#3d6b1c' },
+};
+// 盤面一圈的格子（順時針，第一格在正上方）：每格一樣大，所以盤面上看到的比例就是真的機率；同一種不相鄰
+const COFFIN_WHEEL = ['legend', 'level', 'rare', 'double', 'level', 'rare', 'double', 'level'];
 // 遺跡畫出來的樣子：祭壇疊上它那種效果的名字、圖示、顏色
 function relicLook(r) {
     const T = RELIC_TYPES[r.kind];
@@ -6427,43 +6433,150 @@ function finishRelic(r) {
         addShake(5);
         Sfx.play('nova');
     } else if (r.kind === 'coffin') {
-        openCoffin(r, T);
-        addShake(4);
+        openCoffin();
     } else {
         spawnFloatText(r.x, r.y - 30, '乾涸', '#A5D6A7', 13, 0.9);
     }
 }
 
-function pickCoffinLoot() {
-    const levelable = classDef().cards.filter(t => !UNIT_TYPES[t].upgradeOnly && gameState.units[t]);
-    const pool = COFFIN_LOOT.filter(l => l.id !== 'level' || levelable.length);
-    let roll = Math.random() * pool.reduce((a, l) => a + l.weight, 0);
-    for (const l of pool) { roll -= l.weight; if (roll < 0) return { loot: l, levelable }; }
-    return { loot: pool[0], levelable };
+// 抽格子：那個稀有度已經沒有卡可拿（傳說都拿過了）的格子不會停
+function coffinPrizeAvailable(id) {
+    return id === 'legend' || id === 'rare' ? draftPool(id).length > 0 : true;
 }
-function openCoffin(r, T) {
-    const { loot, levelable } = pickCoffinLoot();
-    if (loot.id === 'draft') {
-        // 波次結束時接在這一波的祝福後面（settleRelicsAtWaveEnd）
-        gameState.relicDrafts++;
-        spawnFloatText(r.x, r.y - 30, '祝福 +1', '#FFD54F', 20, 1.6, 'draft');
-        Sfx.play('upgrade');
-        return;
-    }
-    if (loot.id === 'level') {
-        const type = levelable[Math.floor(Math.random() * levelable.length)];
-        for (let i = 0; i < loot.levels; i++) levelUpUnit(type);
-        spawnFloatText(r.x, r.y - 30, `${UNIT_TYPES[type].name} +${loot.levels} 級`, '#C5E1A5', 18, 1.6, 'arrowUp');
-        Sfx.play('upgrade');
-        updateUI();
-        return;
-    }
-    const souls = Math.max(T.soulMin, Math.round(gameState.lastWaveSouls * T.soulShare));
-    dropSouls(r.x, r.y, souls);
-    // 寶棺自己噴的不算進「這一波掉了多少」，不然下一座寶棺會越滾越大
-    gameState.waveSouls -= souls;
-    spawnFloatText(r.x, r.y - 30, `+${formatNumberK(souls)}`, '#80DEEA', 18, 1.3, 'soul');
-    Sfx.play('pick');
+function pickCoffinSlot() {
+    const slots = COFFIN_WHEEL.map((id, i) => i).filter(i => coffinPrizeAvailable(COFFIN_WHEEL[i]));
+    return slots[Math.floor(Math.random() * slots.length)];
+}
+
+// ---------- 寶棺轉盤：戰場停住，轉盤轉幾圈停在抽到的那一格，亮一下再收掉、發獎 ----------
+const WHEEL_SPIN_TIME = 3.2;
+const WHEEL_SPINS = 5;
+// 停在格子裡的哪裡：格子中心左右這個比例內隨機，不會每次都停在正中間
+const WHEEL_LAND_JITTER = 0.35;
+// 停下來之後亮多久自動收掉（點一下可以馬上收）
+const WHEEL_HOLD = 1.6;
+// 指針被格線撥到時往回彈多少度、多快回正
+const WHEEL_KICK_DEG = 22, WHEEL_KICK_DECAY = 9;
+const WHEEL_R = 112, WHEEL_RIM = 12, WHEEL_BULBS = 16;
+let wheelAnim = null;
+
+function wheelSlotDeg() { return 360 / COFFIN_WHEEL.length; }
+// 一格扇形的路徑：以正上方為 0 度、順時針
+function wheelWedgePath(i, r) {
+    const d = wheelSlotDeg(), a0 = (i - 0.5) * d, a1 = (i + 0.5) * d;
+    const pt = a => { const rad = (a - 90) * Math.PI / 180; return `${(Math.cos(rad) * r).toFixed(2)} ${(Math.sin(rad) * r).toFixed(2)}`; };
+    return `M0 0 L${pt(a0)} A${r} ${r} 0 0 1 ${pt(a1)} Z`;
+}
+// 圖示的 SVG 字串塞進轉盤裡：外層 <svg> 補上位置與大小
+function wheelIcon(name, x, y, size) {
+    return (ICON_SVGS[name] || '').replace('<svg ', `<svg x="${x}" y="${y}" width="${size}" height="${size}" `);
+}
+function buildWheelSvg() {
+    const d = wheelSlotDeg(), R = WHEEL_R;
+    const defs = Object.entries(COFFIN_PRIZES).map(([id, P]) =>
+        `<radialGradient id="wg-${id}" cx="0" cy="0" r="${R}" gradientUnits="userSpaceOnUse"><stop offset="0.25" stop-color="${P.color}"/><stop offset="1" stop-color="${P.dark}"/></radialGradient>`).join('');
+    const wedges = COFFIN_WHEEL.map((id, i) => {
+        const P = COFFIN_PRIZES[id];
+        return `<path class="wheel-wedge" data-slot="${i}" d="${wheelWedgePath(i, R)}" fill="url(#wg-${id})"/>`
+            // 字放外圈（格子寬、放得下兩個字）、圖示放內圈
+            + `<g transform="rotate(${i * d})"><text class="wheel-label" x="0" y="${-R + 30}">${P.label}</text>`
+            + `${wheelIcon(P.icon, -16, -R + 40, 32)}</g>`;
+    }).join('');
+    const bulbs = Array.from({ length: WHEEL_BULBS }, (_, i) => {
+        const a = (i / WHEEL_BULBS) * Math.PI * 2, r = R + WHEEL_RIM / 2 + 1;
+        return `<circle class="wheel-bulb${i % 2 ? ' odd' : ''}" cx="${(Math.cos(a) * r).toFixed(2)}" cy="${(Math.sin(a) * r).toFixed(2)}" r="3.6"/>`;
+    }).join('');
+    const ring = R + WHEEL_RIM / 2 + 1;
+    return `<defs>${defs}<radialGradient id="wg-shade" cx="0" cy="0" r="${R}" gradientUnits="userSpaceOnUse"><stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.35"/></radialGradient></defs>`
+        + `<circle r="${R + WHEEL_RIM + 4}" fill="#000" opacity="0.45" transform="translate(0 6)"/>`
+        + `<g id="wheel-rotor">${wedges}<circle r="${R}" fill="url(#wg-shade)" pointer-events="none"/>`
+        + COFFIN_WHEEL.map((_, i) => `<path d="M0 0 L0 ${-R}" transform="rotate(${(i + 0.5) * d})" stroke="#1b1424" stroke-width="3"/>`).join('')
+        + `<path id="wheel-win" d="" fill="#fff" opacity="0"/></g>`
+        + `<circle r="${ring}" fill="none" stroke="#1b1424" stroke-width="${WHEEL_RIM + 5}"/>`
+        + `<circle r="${ring}" fill="none" stroke="#6d4c41" stroke-width="${WHEEL_RIM}"/>`
+        + `<circle r="${ring - WHEEL_RIM / 2 + 1}" fill="none" stroke="#a1887f" stroke-width="1.5"/>`
+        + bulbs
+        + `<circle r="27" fill="#3e2723" stroke="#1b1424" stroke-width="4"/><circle r="22" fill="#5d4037" stroke="#ffca28" stroke-width="2.5"/>`
+        + wheelIcon('coffinRelic', -17, -17, 34)
+        + `<g id="wheel-pointer"><path d="M0 ${-R + 8} L-13 ${-R - 20} Q0 ${-R - 30} 13 ${-R - 20} Z" fill="#ffca28" stroke="#1b1424" stroke-width="4" stroke-linejoin="round"/>`
+        + `<circle cx="0" cy="${-R - 19}" r="4.5" fill="#fff3c4" stroke="#1b1424" stroke-width="2.5"/></g>`;
+}
+
+function openCoffin() {
+    const slot = pickCoffinSlot();
+    const d = wheelSlotDeg();
+    const jitter = (Math.random() * 2 - 1) * WHEEL_LAND_JITTER * d;
+    // 轉盤順時針轉 θ 度時，正上方對著的是 -θ 那個角度：要停在第 slot 格，θ = 360 - slot × 每格度數
+    const target = WHEEL_SPINS * 360 + (360 - slot * d) + jitter;
+    const svg = uiElements.wheelSvg;
+    if (!svg.firstChild) svg.innerHTML = buildWheelSvg();
+    svg.querySelector('#wheel-win').setAttribute('opacity', '0');
+    uiElements.wheelResult.textContent = '';
+    uiElements.wheelResult.className = 'title-text';
+    uiElements.coffinWheel.classList.add('spinning');
+    uiElements.coffinWheel.classList.remove('landed');
+    gameState.wheelOpen = true;
+    showScreen(uiElements.coffinWheel, true);
+    Sfx.play('spawn');
+    wheelAnim = { slot, target, start: performance.now(), angle: 0, lastBoundary: 0, kick: 0, last: performance.now(), landedAt: 0 };
+    requestAnimationFrame(stepWheel);
+}
+function wheelEase(t) { return 1 - Math.pow(1 - t, 4); }
+function stepWheel(now) {
+    const w = wheelAnim;
+    if (!w) return;
+    const dt = Math.min(0.05, (now - w.last) / 1000);
+    w.last = now;
+    const t = Math.min(1, (now - w.start) / 1000 / WHEEL_SPIN_TIME);
+    w.angle = w.target * wheelEase(t);
+    // 每過一條格線：喀一聲、指針被撥一下
+    const boundary = Math.floor((w.angle + wheelSlotDeg() / 2) / wheelSlotDeg());
+    if (boundary !== w.lastBoundary) { w.lastBoundary = boundary; w.kick = 1; Sfx.play('click'); }
+    w.kick = Math.max(0, w.kick - dt * WHEEL_KICK_DECAY);
+    const svg = uiElements.wheelSvg;
+    svg.querySelector('#wheel-rotor').setAttribute('transform', `rotate(${w.angle.toFixed(2)})`);
+    svg.querySelector('#wheel-pointer').setAttribute('transform', `rotate(${(-w.kick * WHEEL_KICK_DEG).toFixed(1)} 0 ${-WHEEL_R - 19})`);
+    if (t >= 1 && !w.landedAt) landWheel(now);
+    if (w.landedAt && now - w.landedAt >= WHEEL_HOLD * 1000) { closeCoffinWheel(); return; }
+    requestAnimationFrame(stepWheel);
+}
+function landWheel(now) {
+    const w = wheelAnim, id = COFFIN_WHEEL[w.slot], P = COFFIN_PRIZES[id];
+    w.landedAt = now;
+    w.angle = w.target;
+    const win = uiElements.wheelSvg.querySelector('#wheel-win');
+    win.setAttribute('d', wheelWedgePath(w.slot, WHEEL_R));
+    win.setAttribute('opacity', '1');
+    uiElements.coffinWheel.classList.remove('spinning');
+    uiElements.coffinWheel.classList.add('landed');
+    uiElements.wheelResult.textContent = P.result;
+    uiElements.wheelResult.className = `title-text prize-${id}`;
+    Sfx.play(id === 'legend' ? 'comboMilestone' : 'upgrade');
+}
+// 點一下：還在轉就直接停到結果，停好了就收掉
+// 剛跳出來、剛停下來的這一下不理：走位時手指還在點，不要一碰就把轉盤跳過
+const WHEEL_TAP_GRACE = 0.5;
+function tapCoffinWheel() {
+    const w = wheelAnim, now = performance.now();
+    if (!w || now - (w.landedAt || w.start) < WHEEL_TAP_GRACE * 1000) return;
+    if (!w.landedAt) { w.start = now - WHEEL_SPIN_TIME * 1000; return; }
+    closeCoffinWheel();
+}
+function closeCoffinWheel() {
+    const w = wheelAnim;
+    if (!w) return;
+    wheelAnim = null;
+    gameState.wheelOpen = false;
+    showScreen(uiElements.coffinWheel, false);
+    grantCoffinPrize(COFFIN_WHEEL[w.slot]);
+    updateUI();
+}
+function grantCoffinPrize(id) {
+    // 升級：直接補滿這一級的經驗，升級本身就會跳三選一
+    if (id === 'level') { gainXp(Math.max(0, xpToNext(gameState.heroLevel) - gameState.xp)); return; }
+    grantDraft(id === 'double' ? null : id);
+    if (id === 'double') grantDraft(null);
+    if (gameState.pendingDraft && !gameState.draftOpen && !gameState.victoryOpen) openDraft();
 }
 
 // 遲滯祭壇：期間內每隔一下把全場的怪緩一次，後來才冒出來的也逃不掉
@@ -6896,8 +7009,6 @@ function prepareNextWave() {
     gameState.overtimeFrom = worldTime;
     gameState.pendingBoss = bossClassOf(waveNum);
     gameState.overtimeShown = false;
-    gameState.lastWaveSouls = gameState.waveSouls;
-    gameState.waveSouls = 0;
     scheduleRelic(waveNum);
     const isBossWave = waveNum % CONFIG.wave.bossEvery === 0;
     const ev = getWaveEvent();
@@ -7661,10 +7772,18 @@ function draftPool(tier) {
     return Object.keys(BLESSINGS).filter(id => bl(id) < BLESSINGS[id].max && blessingTier(id) === tier
         && blessingInClass(id) && !gameState.banished.includes(id));
 }
-function rollDraftOptions(boss) {
+// 寶棺轉到「傳說」「稀有」：整組都是那個稀有度，不夠湊滿時往下一階補
+const TIER_ORDER = ['legend', 'rare', 'common'];
+function tierDraftOptions(tier, count) {
+    const out = [];
+    for (const t of TIER_ORDER.slice(TIER_ORDER.indexOf(tier))) if (out.length < count) out.push(...weightedPick(draftPool(t), count - out.length));
+    return out;
+}
+function rollDraftOptions(boss, tier) {
     const count = draftOptionCount();
     // 一種兵都還沒學：這一次三選一全是召喚卡
     if (noUnitLearned()) return weightedPick(draftPool('common').filter(id => BLESSINGS[id].unitCard), count);
+    if (tier) return tierDraftOptions(tier, count);
     const legendRoll = boss || Math.random() < LEGEND_CHANCE_NORMAL;
     const legend = legendRoll ? weightedPick(draftPool('legend'), 1)[0] : null;
     const rare = Math.random() < RARE_CHANCE ? weightedPick(draftPool('rare'), 1)[0] : null;
@@ -7676,10 +7795,16 @@ function rollDraftOptions(boss) {
 
 function noUnitLearned() { return classCanSummon() && !classDef().cards.some(t => bl(unitCardId(t)) > 0); }
 // firstUnit：一種兵都還沒學，這一次全是召喚卡（標題改講「選第一種兵」、重抽沒意義不給按）
-function queueDraft(boss = false) {
+function queueDraft(boss = false, tier = null) {
     const firstUnit = noUnitLearned();
-    const options = rollDraftOptions(boss);
-    if (options.length > 0) gameState.pendingDraft = { options, boss, firstUnit };
+    const options = rollDraftOptions(boss, tier);
+    if (options.length > 0) gameState.pendingDraft = { options, boss, firstUnit, tier };
+}
+// 多給一次三選一：已經有一次在等就排隊（tier：整組都是那個稀有度）
+function grantDraft(tier) {
+    if (!gameState.pendingDraft) { queueDraft(false, tier); return; }
+    if (tier) gameState.tierDrafts.push(tier);
+    else gameState.extraDrafts++;
 }
 
 // 重抽是整局共用的次數（同吸血鬼倖存者）：開局 REROLLS_PER_RUN 次＋永久強化「重抽次數」，每打倒一隻首領再補 REROLLS_PER_BOSS 次。
@@ -7773,7 +7898,7 @@ function openDraft() {
 function rerollDraft() {
     if (!gameState.pendingDraft || gameState.rerollsLeft <= 0 || gameState.pendingDraft.firstUnit) return;
     gameState.rerollsLeft--;
-    gameState.pendingDraft.options = rollDraftOptions(gameState.pendingDraft.boss);
+    gameState.pendingDraft.options = rollDraftOptions(gameState.pendingDraft.boss, gameState.pendingDraft.tier);
     renderDraftCards();
     Sfx.play('draft');
     updateUI();
@@ -7808,10 +7933,12 @@ function closeDraft() {
     gameState.pendingDraft = null;
     gameState.draftOpen = false;
     showScreen(uiElements.draftScreen, false);
-    // 還有排隊的：首領波那一次（有傳說）先，升級累積的接著
+    // 還有排隊的：首領波那一次（有傳說）先，寶棺開出的整組稀有度再來，升級累積的接著
     if (gameState.extraBossDrafts > 0) {
         gameState.extraBossDrafts--;
         queueDraft(true);
+    } else if (gameState.tierDrafts.length > 0) {
+        queueDraft(false, gameState.tierDrafts.shift());
     } else if (gameState.extraDrafts > 0) {
         gameState.extraDrafts--;
         queueDraft();
@@ -7921,7 +8048,7 @@ function handleBackButton() {
     if (uiElements.lbDetail.style.display === 'flex') { showScreen(uiElements.lbDetail, false); return; }
     if (uiElements.lbScreen.style.display === 'flex') { closeLeaderboard(); return; }
     if (gameState.gameOver) { showTitle(); return; }
-    if (gameState.draftOpen || gameState.victoryOpen) return;
+    if (isWorldFrozen()) return;
     if (uiElements.confirmDialog.style.display === 'flex') { showScreen(uiElements.confirmDialog, false); return; }
     togglePause();
 }
@@ -8625,7 +8752,7 @@ function saveGameState() {
         classExtra: classDef().saveExtra ? classDef().saveExtra() : null,
         relics: gameState.relics.filter(r => !r.done),
         relicTimer: gameState.relicTimer,
-        waveSouls: gameState.waveSouls,
+        tierDrafts: gameState.tierDrafts,
         achvCrystals: gameState.achvCrystals,
         run: gameState.run,
         achvCount: gameState.achvCount,
@@ -8679,7 +8806,7 @@ function loadGameState() {
         gameState.pendingDraft = loadedState.pendingDraft ?? null;
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
         gameState.extraBossDrafts = loadedState.extraBossDrafts ?? 0;
-        gameState.waveSouls = loadedState.waveSouls ?? 0;
+        gameState.tierDrafts = loadedState.tierDrafts ?? [];
         gameState.relics = (loadedState.relics || []).map(r => ({ ...r, life: r.life ?? RELIC_LIFE, pair: r.pair || 0 }));
         gameState.relicTimer = loadedState.relicTimer ?? randomInRange(RELIC_FIRST_DELAY_MIN, RELIC_FIRST_DELAY_MAX);
         gameState.achvCrystals = loadedState.achvCrystals ?? 0;
@@ -8751,7 +8878,7 @@ function resetGameInternalState() {
         waveEvent: null, lastEventWave: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], rerollsLeft: 0,
-        relics: [], relicTimer: 0, relicDrafts: 0, waveSouls: 0, lastWaveSouls: 0,
+        relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false,
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
@@ -8802,7 +8929,7 @@ function updatePauseMenuStats() {
 }
 
 function togglePause() {
-    if (appScreen !== 'playing' || gameState.gameOver || gameState.draftOpen || gameState.victoryOpen) return;
+    if (appScreen !== 'playing' || gameState.gameOver || isWorldFrozen()) return;
     gameState.isPaused = !gameState.isPaused;
     if (gameState.isPaused) {
         syncSettingControls();
@@ -9579,9 +9706,9 @@ function setDynResScale(s) {
     resizeCanvas();
 }
 
-// 選祝福、凱旋畫面打開時戰場停住，背景要看得到，但只畫停住的那一格；暫停與結束則連畫都停
+// 選祝福、寶棺轉盤、凱旋畫面打開時戰場停住，背景要看得到，但只畫停住的那一格；暫停與結束則連畫都停
 function isWorldFrozen() {
-    return gameState.draftOpen || gameState.victoryOpen;
+    return gameState.draftOpen || gameState.wheelOpen || gameState.victoryOpen;
 }
 
 function startGameLoop() {
@@ -9743,7 +9870,7 @@ function bindFullscreenToggles() {
     // 全螢幕中按返回鍵 / Esc 會被瀏覽器拿去退出全螢幕，遊戲收不到 popstate / keydown；畫面一縮怪照打，所以退出時直接暫停
     document.addEventListener('fullscreenchange', () => {
         sync();
-        if (!document.fullscreenElement && appScreen === 'playing' && !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen && !gameState.victoryOpen) {
+        if (!document.fullscreenElement && appScreen === 'playing' && !gameState.isPaused && !gameState.gameOver && !isWorldFrozen()) {
             togglePause();
         }
     });
@@ -9831,7 +9958,7 @@ function registerServiceWorker() {
 
 function handleVisibilityChange() {
     // 切到別的 App / 回桌面：自動暫停，回來時停在暫停選單，不會一回來就被圍死
-    if (document.hidden && appScreen === 'playing' && !gameState.isPaused && !gameState.gameOver && !gameState.draftOpen) {
+    if (document.hidden && appScreen === 'playing' && !gameState.isPaused && !gameState.gameOver && !isWorldFrozen()) {
         togglePause();
         return;
     }
@@ -9986,6 +10113,8 @@ function init() {
     onTap(uiElements.gameoverMetaBtn, () => openMeta('gameover'));
     onTap(uiElements.rerollBtn, rerollDraft);
     onTap(uiElements.healBtn, healDraft);
+    // 用 pointerup：按下就收的話，同一下的放開會落在接著跳出來的祝福卡上，等於替玩家選了一張
+    uiElements.coffinWheel.addEventListener('pointerup', tapCoffinWheel);
     onTap(uiElements.confirmNo, () => showScreen(uiElements.confirmDialog, false));
     onTap(uiElements.confirmYes, () => {
         showScreen(uiElements.confirmDialog, false);
@@ -9998,6 +10127,10 @@ function init() {
     window.addEventListener('keydown', (e) => {
         // 在輸入框打字（排行榜留名字）時，按鍵不能變成移動、召喚、暫停
         if (e.target instanceof HTMLInputElement && e.target.type === 'text') return;
+        if (gameState.wheelOpen) {
+            if (e.code === 'Space' || e.code === 'Enter') tapCoffinWheel();
+            return;
+        }
         if (gameState.draftOpen) {
             const idx = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(e.code);
             if (idx >= 0 && gameState.pendingDraft && gameState.pendingDraft.options[idx]) pickBlessing(gameState.pendingDraft.options[idx]);

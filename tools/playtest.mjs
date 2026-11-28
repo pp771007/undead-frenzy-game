@@ -86,6 +86,8 @@ for (;;) {
         for (let i = 0; i < steps; i++) {
             if (gameState.gameOver) return { over: true };
             if (gameState.victoryOpen) { endRunFromVictory(); return { over: true, won: true }; }
+            // 寶棺轉盤：不等動畫，直接拿抽到的獎（接著跳出來的三選一下一圈照常挑）
+            if (gameState.wheelOpen) { closeCoffinWheel(); continue; }
             if (gameState.draftOpen && gameState.pendingDraft) {
                 const BOT_HEAL_BELOW = 0.5;
                 if (gameState.player.currentHealth < gameState.player.maxHealth * BOT_HEAL_BELOW) { healDraft(); continue; }

@@ -705,7 +705,11 @@ const ICON_BODIES = {
         duoStroke('M16 38 C20 48 30 53 40 49 C47 46 51 40 51 33', '#8fd3ff') + `<path d="M14 52 L15 36 L28 41 Z" fill="#8fd3ff"/>`,
     lock: `<path d="M20 28 L20 20 C20 12 25 8 32 8 C39 8 44 12 44 20 L44 28" stroke-width="10"/><path d="M20 28 L20 20 C20 12 25 8 32 8 C39 8 44 12 44 20 L44 28" stroke="#90a4ae" stroke-width="5"/>
         <rect x="13" y="27" width="38" height="29" rx="5" fill="#ffca28"/><circle cx="32" cy="39" r="4" fill="${ICON_OUTLINE}" stroke="none"/><path d="M32 41 L32 48" stroke-width="4"/>`,
-    arrowUp: `<path d="M32 7 L55 32 L42 32 L42 57 L22 57 L22 32 L9 32 Z" fill="#9ccc65"/>${shine(30, 18, 3, 5, 0)}`,
+    // 主角升級（寶棺轉盤）：金色徽章上兩道往上疊的綠色箭頭，旁邊一顆閃光
+    levelUp: `<circle cx="32" cy="35" r="25" fill="#ffca28"/><circle cx="32" cy="35" r="19" fill="#ffe082" stroke-width="2.5"/>
+        <path d="M18 34 L32 20 L46 34 L46 42 L32 28 L18 42 Z" fill="#7cb342" stroke-width="3"/>
+        <path d="M18 46 L32 32 L46 46 L46 54 L32 40 L18 54 Z" fill="#aed581" stroke-width="3"/>
+        ${shine(21, 22, 4, 7)}<path d="${starPath(53, 11, 8, 3, 4)}" fill="#fff3c4" stroke-width="2.5"/>`,
     summon: `<circle cx="32" cy="32" r="25" fill="#7e57c2"/><circle cx="32" cy="32" r="17" stroke="#d1c4e9" stroke-width="2.5"/><path d="M32 20 L32 44 M20 32 L44 32" stroke-width="10"/><path d="M32 20 L32 44 M20 32 L44 32" stroke="#f3e5f5" stroke-width="5"/>`,
     home: `<path d="M8 32 L32 10 L56 32 L49 32 L49 55 L15 55 L15 32 Z" fill="#f1ead6"/><rect x="27" y="38" width="10" height="17" fill="#8d6e63"/>`,
     // 怨氣沸騰（一波拖太久，game.js 的 OVERTIME_*）：深紅火焰裡的怒目骷髏
