@@ -42,8 +42,8 @@ CONFIG.shadowClone = {
 };
 // 暗殺標記、爆擊、斬殺用金色：紅色是警示色，敵人頭上掛紅圈會看成「這隻很危險」而不是「這是你的目標」
 const ROGUE_MARK_COLOR = '#FFD740';
-// 影子存在幾秒、上限（每 capPerLevels 級多一個）
-const SHADOW_LIFE = 20, SHADOW_CAP = 3, SHADOW_CAP_PER_LEVELS = 10;
+// 影子存在幾秒（同時有幾個只看影子卡疊幾張）
+const SHADOW_LIFE = 20;
 // 毒：每層每秒傷害（跟著波數）、一層持續幾秒、最多幾層
 const POISON = { dps: 1.2, time: 3, maxStacks: 5, tick: 0.5 };
 
@@ -81,7 +81,6 @@ Object.assign(BLESSINGS, {
     poisonPower: { school: 'venomschool', name: '烈毒', max: 5, per: 0.35, desc: b => `毒傷 +${pct(b.per)}` },
     poisonSpread: { school: 'venomschool', name: '傳染', max: 2, per: 1, desc: b => `毒死的怪把毒傳給身邊 ${b.per} 隻` },
     poisonSlow: { school: 'venomschool', name: '麻痺', max: 3, per: 0.15, desc: b => `中毒的怪緩速 ${pct(b.per)}` },
-    shadowCap: { school: 'shadowschool', name: '分身術', max: 3, per: 1, desc: b => `影子上限 +${b.per}` },
     shadowTime: { school: 'shadowschool', name: '長影', max: 3, per: 4, desc: b => `影子多存在 ${b.per} 秒` },
     shadowPower: { school: 'shadowschool', name: '影刃', max: 5, per: 0.3, desc: b => `影子傷害 +${pct(b.per)}` },
     shadowStrike: { school: 'shadowschool', name: '影殺', max: 2, per: 1, desc: b => `影子的第一擊多打 ${b.per * 2} 倍` },
@@ -125,7 +124,6 @@ Object.assign(UNIT_TYPES, {
     Shadow: {
         school: 'shadowschool', card: { cap: 1, capPer: 1, every: 6 },
         cfg: () => CONFIG.shadowClone, Cls: () => ShadowClone, name: '影', img: 'rogue.png',
-        cap: () => SHADOW_CAP + Math.floor(gameState.units.Shadow.level / SHADOW_CAP_PER_LEVELS) + blessVal('shadowCap'),
     },
 });
 

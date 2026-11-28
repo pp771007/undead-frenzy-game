@@ -13,8 +13,6 @@ const ELF = {
     backDot: -0.3, backMult: 2,
     // 陷阱：移動中每走 trapEvery 單位在腳下放一個，最多同時 trapMax 個；爆炸、緩速、定身三種輪流
     trap: { every: 110, max: 5, radius: 40, trigger: 22, damage: 12, slow: 0.6, slowTime: 2, rootTime: 1.4, life: 20 },
-    // 夥伴上限（靈狐、鷹輪流）
-    companionCap: 4,
     // 大招「箭雨」：duration 秒內每 tick 秒對畫面上 perTick 隻怪降下一箭
     rain: { cooldown: 26, duration: 5, tick: 0.2, perTick: 8, damage: 10 },
 };
@@ -76,7 +74,6 @@ Object.assign(BLESSINGS, {
     trapPower: { school: 'trapper', name: '火藥', max: 5, per: 0.35, desc: b => `陷阱傷害 +${pct(b.per)}` },
     trapRate: { school: 'trapper', name: '邊走邊放', max: 3, per: 0.2, desc: b => `放陷阱的間隔 -${pct(b.per)}` },
     trapLure: { school: 'trapper', name: '誘餌', max: 1, per: 1, desc: () => '陷阱會把身邊的怪引過來' },
-    compCap: { school: 'wildfriends', name: '呼朋引伴', max: 2, per: 1, desc: b => `夥伴上限 +${b.per}` },
     compPower: { school: 'wildfriends', name: '野性', max: 5, per: 0.3, desc: b => `夥伴的血量與攻擊 +${pct(b.per)}` },
     compSync: { school: 'wildfriends', name: '同步', max: 3, per: 0.2, desc: b => `你移動時，夥伴攻速 +${pct(b.per)}` },
     compHeal: { school: 'wildfriends', name: '舔傷', max: 3, per: 0.01, desc: b => `夥伴每秒回 ${pct(b.per)} 血` },
@@ -112,7 +109,6 @@ Object.assign(UNIT_TYPES, {
     Companion: {
         school: 'wildfriends', card: { cap: 1, capPer: 1, every: 8 },
         cfg: () => CONFIG.companion, Cls: () => Companion, name: '夥伴', img: 'spirit_fox.png',
-        cap: () => ELF.companionCap + blessVal('compCap'),
     },
 });
 

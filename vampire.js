@@ -16,8 +16,8 @@ const VAMPIRE = {
     dayTime: 20, nightTime: 20,
     // 白天每秒曬掉最大血量的 sunBurn（不會曬到 sunFloor 以下）、眷屬傷害 ×dayMult；黑夜眷屬 ×nightMult
     sunBurn: 0.005, sunFloor: 0.4, dayMult: 0.8, nightMult: 1.25,
-    // 轉化：打倒的怪站起來的機率（入夜 ×nightConvert），眷屬上限
-    convertChance: 0.08, nightConvert: 1.5, thrallCap: 15, capPerLevels: 4, convertRange: 170,
+    // 轉化：打倒的怪站起來的機率（入夜 ×nightConvert）；眷屬上限看眷屬卡（UNIT_TYPES.Thrall.card）
+    convertChance: 0.08, nightConvert: 1.5, convertRange: 170,
     // 大招「血月降臨」：立刻入夜 duration 秒，全軍狂暴、飛刃吸血 ×leechMult
     bloodMoon: { cooldown: 26, duration: 10, leechMult: 3 },
 };
@@ -82,7 +82,6 @@ Object.assign(BLESSINGS, {
     bmRate: { school: 'bloodmagic', name: '脈動', max: 3, per: 0.15, desc: b => `血爆間隔 -${pct(b.per)}` },
     bmLeech: { school: 'bloodmagic', name: '回流', max: 3, per: 0.06, desc: b => `血爆傷害的 ${pct(b.per)} 回到你身上` },
     kinRate: { school: 'kin', name: '初擁', max: 3, per: 0.04, desc: b => `轉化機率 +${pct(b.per)}` },
-    kinCap: { school: 'kin', name: '血之家族', max: 3, per: 6, desc: b => `眷屬上限 +${b.per}` },
     kinPower: { school: 'kin', name: '血統', max: 5, per: 0.3, desc: b => `眷屬血量與攻擊 +${pct(b.per)}` },
     kinLeech: { school: 'kin', name: '共飲', max: 3, per: 0.12, desc: b => `眷屬打出的傷害 ${pct(b.per)} 補回自己` },
     batPair: { school: 'bats', name: '成雙', max: 2, per: 1, desc: b => `每次補蝙蝠多來 ${b.per} 隻` },
@@ -126,9 +125,9 @@ const VAMP_ACHV = { horde: 80, kinds: 8 };
 
 Object.assign(UNIT_TYPES, {
     Thrall: {
-        school: 'kin', card: { cap: 3, capPer: 3, every: 3 },
+        // 上限就是卡上寫的數字：主動轉化（這張卡）和打倒的怪站起來（onMonsterKill）共用同一個上限
+        school: 'kin', card: { cap: 15, capPer: 3, every: 3 },
         cfg: () => CONFIG.thrall, Cls: () => Thrall, name: '眷屬', img: iconDataUrl('kin'),
-        cap: () => thrallCap(),
         // 按下去就把身邊最近的一隻怪當場轉化
         canSummon: () => !!convertTarget(),
         summon: (level) => { const m = convertTarget(); if (m) { m.isAlive = false; raiseThrall(m, level); } },
@@ -275,7 +274,7 @@ function newVampState() {
     return { cycle: 0, moonT: 0, night: false, bladeT: 0, burstT: 0, biteT: 0, batFormT: 0, batFormCd: 0, holyT: 0, reborn: false, bonusHp: 0, stormT: 0, clawT: 0 };
 }
 function vampState() { return gameState.vamp || (gameState.vamp = newVampState()); }
-function thrallCap() { return VAMPIRE.thrallCap + Math.floor(gameState.units.Thrall.level / VAMPIRE.capPerLevels) + blessVal('kinCap'); }
+function thrallCap() { return summonCap('Thrall', bl(unitCardId('Thrall'))); }
 function convertChance() {
     const t = gameState.units.Thrall;
     return (VAMPIRE.convertChance + blessVal('kinRate') + classMeta('kinRate')) * (vampState().night ? VAMPIRE.nightConvert : 1);

@@ -367,8 +367,6 @@ const ICON_BODIES = {
     // 眷屬
     kinRate: `<path d="M16 62 L16 40 C16 28 24 22 32 22 C40 22 48 28 48 40 L48 62" fill="#ce93d8"/><path d="M20 26 L26 8 L32 22 L38 8 L44 26" fill="#e1bee7"/>
         <circle cx="26" cy="36" r="3" fill="#5e35b1" stroke="none"/><circle cx="38" cy="36" r="3" fill="#5e35b1" stroke="none"/>${duoStroke('M50 18 L50 6 M44 12 L56 12', '#ffd54f', 3)}`,
-    kinCap: `${[[12, 0.7], [32, 0.9], [52, 0.7]].map(([x, s]) => `<g transform="translate(${x} 40) scale(${s})"><path d="M-10 22 L-10 0 C-10 -8 -5 -12 0 -12 C5 -12 10 -8 10 0 L10 22 Z" fill="#ce93d8"/><circle cx="-3" cy="-2" r="1.8" fill="#5e35b1" stroke="none"/><circle cx="3" cy="-2" r="1.8" fill="#5e35b1" stroke="none"/></g>`).join('')}
-        <path d="M14 12 L22 4 L32 12 L42 4 L50 12 L46 20 L18 20 Z" fill="#ffd54f"/>`,
     kinPower: `<path d="M14 60 L14 34 C14 22 22 16 32 16 C42 16 50 22 50 34 L50 60" fill="#ab47bc"/><path d="M20 44 L44 44 M32 30 L32 58" stroke="#e1bee7" stroke-width="3"/>
         <circle cx="25" cy="28" r="3" fill="#ffcdd2" stroke="none"/><circle cx="39" cy="28" r="3" fill="#ffcdd2" stroke="none"/>${duoStroke('M8 22 L8 8 M3 13 L8 8 L13 13', '#ffd54f', 2.5)}${duoStroke('M56 22 L56 8 M51 13 L56 8 L61 13', '#ffd54f', 2.5)}`,
     kinLeech: `<path d="M8 50 L24 18 L40 50 Z" fill="#ce93d8"/><path d="M32 18 C38 28 44 34 44 42 C44 50 38 54 32 54 C26 54 20 50 20 42 C20 34 26 28 32 18 Z" fill="#7e57c2"/>
@@ -475,10 +473,6 @@ const ICON_BODIES = {
     trapLure: `<ellipse cx="32" cy="50" rx="18" ry="6" fill="#78909c"/><path d="M22 44 C22 32 42 32 42 44" fill="#e57373"/><path d="M26 40 L38 40" stroke="#ffcdd2" stroke-width="2.5"/>
         <path d="M34 34 C36 28 40 26 44 28" stroke="#eceff1" stroke-width="3"/>${[[6, 24], [58, 24]].map(([x, y]) => duoStroke(`M${x} ${y} L${x < 32 ? x + 12 : x - 12} ${y + 10} M${x < 32 ? x + 12 : x - 12} ${y + 10} l${x < 32 ? -7 : 7} 0 M${x < 32 ? x + 12 : x - 12} ${y + 10} l0 -7`, '#ffd54f', 2.5)).join('')}`,
     // 森林之友
-    // 狐狸與鷹，加一隻
-    compCap: `<path d="M8 56 L8 40 L4 26 L14 34 L24 34 L34 26 L30 40 L30 56 C24 60 14 60 8 56 Z" fill="#ffcc80"/><circle cx="14" cy="44" r="2" fill="#1b1424" stroke="none"/><circle cx="24" cy="44" r="2" fill="#1b1424" stroke="none"/>
-        <path d="M36 20 C40 10 52 8 60 14 C54 14 50 18 50 24 L44 30 Z" fill="#a1887f"/><path d="M36 20 C30 16 24 16 22 20 C28 20 32 22 36 26 Z" fill="#8d6e63"/><circle cx="52" cy="16" r="1.8" fill="#1b1424" stroke="none"/>
-        ${duoStroke('M48 42 L48 58 M40 50 L56 50', '#ffd54f', 3)}`,
     compPower: `<ellipse cx="30" cy="38" rx="20" ry="14" fill="#ffcc80"/><path d="M16 30 L12 12 L26 26 M44 28 L48 10 L36 24" fill="#ffcc80"/><circle cx="24" cy="36" r="2.5" fill="#1b1424" stroke="none"/><circle cx="36" cy="36" r="2.5" fill="#1b1424" stroke="none"/>
         <path d="M26 44 L30 46 L34 44" stroke-width="2"/>${duoStroke('M54 50 L54 36 M49 41 L54 36 L59 41', '#ffd54f', 2.5)}`,
     compSync: `<circle cx="22" cy="34" r="14" fill="#a5d6a7"/><circle cx="42" cy="34" r="14" fill="#ffcc80" opacity="0.9"/><path d="M14 54 C24 60 40 60 50 54" stroke="#80cbc4" stroke-width="3"/>
@@ -555,7 +549,6 @@ const ICON_BODIES = {
     poisonSlow: `<ellipse cx="32" cy="36" rx="18" ry="14" fill="#aed581"/><path d="M24 34 L28 34 M36 34 L40 34" stroke-width="2.5"/><path d="M26 42 C30 40 34 44 38 42" stroke-width="2.5"/>
         ${[[12, 18], [52, 18], [32, 10]].map(([x, y]) => `<path d="M${x - 5} ${y} L${x + 5} ${y} M${x} ${y - 5} L${x} ${y + 5}" stroke="#4fc3f7" stroke-width="2.5"/>`).join('')}`,
     // 影
-    shadowCap: `${[[16, 0.75, 0.55], [48, 0.75, 0.55], [32, 1, 1]].map(([x, s, o]) => `<g transform="translate(${x} 36) scale(${s})" opacity="${o}"><circle cx="0" cy="-14" r="9" fill="#5e35b1"/><path d="M-12 22 L-12 0 C-12 -6 12 -6 12 0 L12 22 Z" fill="#5e35b1"/><path d="M-4 -15 L-1 -13 M4 -15 L1 -13" stroke="#ffd740" stroke-width="2"/></g>`).join('')}`,
     shadowTime: `<circle cx="24" cy="24" r="9" fill="#5e35b1"/><path d="M12 58 L12 38 C12 32 36 32 36 38 L36 58 Z" fill="#5e35b1"/>
         <circle cx="46" cy="44" r="14" fill="#fff3e0"/><path d="M46 36 L46 44 L52 48" stroke-width="3"/>`,
     shadowPower: `<circle cx="26" cy="18" r="9" fill="#4527a0"/><path d="M14 58 L14 34 C14 28 38 28 38 34 L38 58 Z" fill="#4527a0"/><path d="M40 40 L56 14" stroke-width="5"/><path d="M40 40 L56 14" stroke="#b39ddb" stroke-width="2.5"/>
