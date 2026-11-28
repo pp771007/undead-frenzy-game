@@ -262,8 +262,6 @@ const ICON_BODIES = {
     oakGrowth: `<path d="M6 54 C16 48 48 48 58 54 L58 60 L6 60 Z" fill="#5d4037"/><path d="M32 52 L32 30" stroke-width="5"/><path d="M32 52 L32 30" stroke="#7cb342" stroke-width="2.5"/>
         <path d="M32 36 C22 36 14 28 14 18 C24 18 32 26 32 36 Z M32 30 C42 30 50 22 50 12 C40 12 32 20 32 30 Z" fill="#9ccc65"/>${[[12, 44], [50, 42], [22, 56]].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="2.5" fill="#ffd54f" stroke="none"/>`).join('')}
         ${duoStroke('M52 32 L52 22 M47 27 L52 22 L57 27', '#ffd54f', 2.5)}`,
-    groveSize: `${[[14, 28], [32, 22], [50, 28]].map(([x, y]) => `<rect x="${x - 3}" y="${y + 8}" width="6" height="14" fill="#6d4c41" stroke-width="2.5"/><circle cx="${x}" cy="${y}" r="10" fill="#689f38" stroke-width="3"/>`).join('')}
-        <ellipse cx="32" cy="52" rx="26" ry="7" fill="#33691e"/>${duoStroke('M32 46 L32 58 M26 52 L38 52', '#ffd54f', 3)}`,
     oakHeal: `<path d="M4 20 C14 4 50 4 60 20 C50 18 14 18 4 20 Z" fill="#558b2f"/><path d="M32 18 L32 60" stroke-width="5"/><path d="M32 18 L32 60" stroke="#6d4c41" stroke-width="2.5"/>
         ${[[16, 38], [48, 34], [24, 52], [44, 52]].map(([x, y]) => `<path d="M${x} ${y - 5} L${x} ${y + 5} M${x - 5} ${y} L${x + 5} ${y}" stroke="#81c784" stroke-width="3"/>`).join('')}`,
     // 狼群

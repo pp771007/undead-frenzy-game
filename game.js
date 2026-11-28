@@ -836,19 +836,24 @@ const META_UPGRADES = {
 };
 // 強化表換過兩次，舊存檔買過、新表沒有的都照當時的價錢退還結晶：
 // v2 數值類改成百分比、加了傷害與復活（整張表重買）；v3「軍團體魄」移到各職業的專精（只退那一項）；
-// v4 拿掉戰士專精的「人數上限」（兵數只看兵卡）
-const META_TABLE_VERSION = 4;
+// v4、v5 拿掉職業專精裡加召喚上限的那幾項（數量只看召喚卡，見 REMOVED_CLASS_UPGRADES）
+const META_TABLE_VERSION = 5;
 const META_V1_COST_BASE = { startSouls: 30, mageHp: 30, novaMastery: 40, boneMarrow: 50, soulAffinity: 50, freeReroll: 80, banish: 60, extraChoice: 250, headStart: 150 };
 const META_V2_BONE_MARROW_COST = 35;
-const META_V3_TROOP_CAP_COST = 40;
+// 拿掉的職業專精：從哪一版起沒有、當時的 costBase
+const REMOVED_CLASS_UPGRADES = [
+    { since: 4, cls: 'warrior', id: 'troopCap', costBase: 40 },
+    { since: 5, cls: 'druid', id: 'groveSize', costBase: 60 },
+];
 function migrateMetaTable(m) {
     let v = m.metaTable || 1, crystals = m.crystals || 0, upgrades = { ...(m.upgrades || {}) };
     const classUpgrades = { ...(m.classUpgrades || {}) };
-    if (v < 4 && classUpgrades.warrior && classUpgrades.warrior.troopCap) {
-        const lv = classUpgrades.warrior.troopCap;
-        crystals += META_V3_TROOP_CAP_COST * lv * (lv + 1) / 2;
-        classUpgrades.warrior = { ...classUpgrades.warrior };
-        delete classUpgrades.warrior.troopCap;
+    for (const r of REMOVED_CLASS_UPGRADES) {
+        const lv = v < r.since && classUpgrades[r.cls] ? classUpgrades[r.cls][r.id] || 0 : 0;
+        if (!lv) continue;
+        crystals += r.costBase * lv * (lv + 1) / 2;
+        classUpgrades[r.cls] = { ...classUpgrades[r.cls] };
+        delete classUpgrades[r.cls][r.id];
     }
     if (v < 2) {
         for (const [id, lv] of Object.entries(upgrades)) crystals += (META_V1_COST_BASE[id] || 0) * lv * (lv + 1) / 2;
@@ -1171,8 +1176,8 @@ function getNovaDamage() {
 // 兵種：職業的三種兵（召喚卡自動補的單位，或跟著主角升級的修練技能）。Cls 用函式包起來：類別宣告在後面
 // 以下選填（職業檔裡用）：
 //   upgradeOnly：修練類技能，沒有召喚卡，等級跟著主角走（武僧的拳、精靈的箭術）
-//   card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）；capMod(n)：把召喚卡給的上限再改一下（戰士的三百壯士減半）
-//   cap()：這種兵另外受地形或機制限制的上限（德魯伊的野獸看林地）。不要拿它疊一個「卡片沒寫、玩家看不到」的上限
+//   card：召喚卡的數字（見 SUMMON_CARD_DEFAULT），卡上寫的上限就是全部，不另外疊卡片沒寫、玩家看不到的上限；
+//   capMod(n)：把召喚卡給的上限再改一下（戰士的三百壯士減半），改了卡上的數字會跟著變
 //   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（要自己把 count 加上去）
 const UNIT_TYPES = {
     // card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）。骷髏是便宜的人海、眼魔中量、怨靈少而精
@@ -1247,10 +1252,10 @@ function classDef() { return CLASSES[runClass()]; }
 function classUnlocked(id) { const c = CLASSES[id]; return !!c && (!c.unlock || !!meta.achv[c.unlock] || !!(c.unlockOld && meta.achv[c.unlockOld])); }
 // 標題畫面選的職業（沒解鎖或不存在就退回亡靈法師）
 function selectedClass() { return classUnlocked(meta.classSel) ? meta.classSel : DEFAULT_CLASS; }
-// 這種兵現在召不了：機制上的上限滿了（德魯伊的林地），或是職業說現在不行
+// 這種兵現在召不了：職業說現在不行（吸血鬼身邊沒有能轉化的怪）
 function summonBlocked(type) {
     const U = UNIT_TYPES[type];
-    return (!!U.cap && gameState.units[type].count >= U.cap()) || (!!U.canSummon && !U.canSummon());
+    return !!U.canSummon && !U.canSummon();
 }
 // 換主角的立繪（德魯伊化身巨熊）：寬度照原本，高度照新圖比例
 // 錢包的圖示（底部卡片的價格、上方的數字旁邊）
@@ -8169,7 +8174,7 @@ const CLASS_GUIDES = {
         cards: ['站前排，嘲諷身邊的怪、擋下射向你的血彈', '越過盾牌刺擊，對首領、大型、會飛的怪加倍', '站後排遠程射擊，射程長但裝填慢'],
     },
     druid: {
-        rules: ['學了橡樹卡，林地裡就會<b>定時長出新的橡樹</b>', '野獸數量上限看林地：<b>每棵橡樹養 3 隻</b>', '野獸守著最近的橡樹，離林地越遠越弱：<b>選好地方打這一仗</b>', '橡樹和野獸活得越久長得越大（最多 3 階）'],
+        rules: ['學了橡樹卡，林地裡就會<b>定時長出新的橡樹</b>', '野獸守著最近的橡樹，離林地越遠越弱：<b>選好地方打這一仗</b>', '橡樹和野獸活得越久長得越大（最多 3 階）'],
         cards: ['林地裡定時長出一棵會長大的橡樹', '快，成群包圍', '慢但血厚，擋在最前面'],
     },
     vampire: {

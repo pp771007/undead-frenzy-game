@@ -13,8 +13,6 @@ const DRUID = {
     seed: { interval: 1.1, range: 190, radius: 32, damage: 5, root: 0.85, rootTime: 1.0, flight: 0.45 },
     // 橡樹與野獸每活 growEvery 秒長大一階（最多 3 階），每階血量、攻擊 +stageBonus
     growEvery: 20, maxStage: 3, stageBonus: 0.3,
-    // 每棵橡樹養幾隻野獸
-    beastsPerOak: 3,
     // 野獸守的是「家」：德魯伊身邊 homeRadius 內正在挨打的那棵橡樹，沒有就是最近的那棵（都沒有就跟著德魯伊）。
     // 跟著德魯伊跑的話，怪去啃留在後面的橡樹時沒有野獸會回去救；只守最近那棵的話，林地另一頭的樹被圍著啃、那一波遲遲打不完
     homeRadius: 300, attackedTime: 2,
@@ -94,7 +92,6 @@ Object.assign(SCHOOLS, {
 Object.assign(BLESSINGS, {
     oakHp: { school: 'grove', name: '古木', max: 5, per: 0.3, desc: b => `橡樹血量 +${pct(b.per)}` },
     oakGrowth: { school: 'grove', name: '沃土', max: 3, per: 0.25, desc: b => `橡樹與野獸長大速度 +${pct(b.per)}` },
-    groveSize: { school: 'grove', name: '林地', max: 3, per: 1, desc: b => `每棵橡樹多養 ${b.per} 隻野獸` },
     oakHeal: { school: 'grove', name: '樹蔭', max: 3, per: 0.01, desc: b => `橡樹身邊的野獸每秒回 ${pct(b.per)} 血` },
     wolfFang: { school: 'pack', name: '利齒', max: 5, per: 0.3, desc: b => `狼的傷害 +${pct(b.per)}` },
     packHunt: { school: 'pack', name: '群獵', max: 3, per: 0.06, desc: b => `身邊每多一隻狼，狼的傷害 +${pct(b.per)}` },
@@ -148,8 +145,8 @@ Object.assign(UNIT_TYPES, {
         // 種在德魯伊腳下（不是身後）：據點要種在自己選的位置
         summon: (level) => plantOak(level),
     },
-    Wolf: { school: 'pack', card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png', cap: () => beastRoom('Wolf') },
-    Bear: { school: 'bear', card: { cap: 1, capPer: 1, every: 8 }, cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png', cap: () => beastRoom('Bear') },
+    Wolf: { school: 'pack', card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png' },
+    Bear: { school: 'bear', card: { cap: 1, capPer: 1, every: 8 }, cfg: () => CONFIG.bear, Cls: () => Bear, name: '熊', img: 'druid_bear.png' },
 });
 
 CLASSES.druid = {
@@ -162,7 +159,6 @@ CLASSES.druid = {
     cards: ['SacredOak', 'Wolf', 'Bear'], schools: ['grove', 'pack', 'bear', 'wild', 'seasons', 'soul'],
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
-        groveSize: { icon: 'groveSize', name: '每棵樹的野獸', max: 2, per: 1, costBase: 60, desc: m => `每棵橡樹多養 ${m.per} 隻野獸`, total: (m, lv) => `+${m.per * lv} 隻` },
         bearTime: { icon: 'bearTime', name: '巨熊化身時間', max: 3, per: 1, costBase: 35, desc: m => `巨熊化身 +${m.per} 秒`, total: (m, lv) => `+${m.per * lv} 秒` },
     },
     hero: { imageName: 'druid', baseHealth: DRUID.baseHealth, moveSpeed: DRUID.moveSpeed },
@@ -276,12 +272,6 @@ function inHenge() {
 }
 
 function oaks() { return gameState.summons.filter(s => s.isAlive && s instanceof SacredOak); }
-// 林地容量扣掉另一種野獸占掉的，就是這一種還能養幾隻（cap 是「這一種的上限」）
-function beastRoom(type) {
-    const cap = oaks().length * (DRUID.beastsPerOak + blessVal('groveSize') + classMeta('groveSize'));
-    const other = type === 'Wolf' ? gameState.units.Bear.count : gameState.units.Wolf.count;
-    return Math.max(0, cap - other);
-}
 // free：開局送的那棵（不算「自己種的」）
 function plantOak(level, free = false) {
     const p = gameState.player, d = druidState();
