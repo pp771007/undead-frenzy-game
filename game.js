@@ -8154,8 +8154,10 @@ function pickClass(id) {
     meta.classSel = id;
     saveMeta();
     Sfx.play('click');
-    // 標題背景也是一局：換成新職業的樣子
+    // 標題背景也是一局：換成新職業的樣子。鏡頭留在原地繼續飄，不然開新局會把它拉回原點、整片地面跳一下
+    const camX = camera.x, camY = camera.y;
     setupNewRun();
+    camera.x = camX; camera.y = camY;
     refreshTitle();
 }
 
