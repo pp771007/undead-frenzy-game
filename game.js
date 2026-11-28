@@ -99,10 +99,9 @@ const uiElements = {
     titleScreen: $id('title-screen'),
     titleContinueBtn: $id('title-continue-btn'),
     titleStartBtn: $id('title-start-btn'),
-    titleHero: $id('title-hero'), classPicker: $id('class-picker'), classInfo: $id('class-info'),
-    titleMetaBtn: $id('title-meta-btn'),
+    titleHero: $id('title-hero'), classPicker: $id('class-picker'), className: $id('class-name'), classInfo: $id('class-info'),
+    titleMetaBtn: $id('title-meta-btn'), titleCrystals: $id('title-crystals'), titleCurseLabel: $id('title-curse-label'),
     titleSettingsBtn: $id('title-settings-btn'),
-    titleBest: $id('title-best'),
     metaScreen: $id('meta-screen'),
     metaList: $id('meta-list'),
     metaCrystals: $id('meta-crystals'),
@@ -7991,18 +7990,12 @@ function refreshTitle() {
     uiElements.titleStartBtn.classList.toggle('btn-gold', !save);
     uiElements.titleStartBtn.classList.toggle('btn-green', !!save);
     const curse = Math.min(meta.curseSelected || 0, meta.curseUnlocked || 0);
-    uiElements.titleStartBtn.textContent = curse > 0 ? `開始遊戲 · 詛咒 ${curse}` : '開始遊戲';
+    // 選了幾級詛咒寫在開始遊戲旁邊的詛咒鈕上，按開始之前一眼看得到
+    uiElements.titleCurseLabel.textContent = curse > 0 ? `詛咒 ${curse}` : '詛咒';
     uiElements.titleCurseBtn.classList.toggle('hidden', !(meta.curseUnlocked > 0));
-    const wins = meta.wins || 0;
     renderClassPicker();
-    const fastest = bestClearOf(selectedClass());
-    // 這個職業的排行榜上，自己最好的那筆排第幾（沒上榜就不顯示）。
-    // 不放「最佳 N 波」：跟排行榜重複，而且不分職業，跟旁邊只算這個職業的「最快」講的不是同一件事
-    const rank = lbBoard(selectedClass()).findIndex(e => !e.rival) + 1;
-    uiElements.titleBest.innerHTML = (rank > 0 ? `${iconHtml('podium')}排行 #${rank}　` : '') +
-        (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
-        (fastest ? `${iconHtml('clock')}最快 ${formatClock(fastest.time)}　` : '') +
-        `<span class="crystal-count">${iconHtml('gold')}${meta.crystals}</span>`;
+    // 首頁不放名次、通關次數、最快紀錄：各職業的成績在排行榜裡看
+    uiElements.titleCrystals.innerHTML = `${iconHtml('gold')}${meta.crystals}`;
     uiElements.titleMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
 }
 
@@ -8138,13 +8131,20 @@ function renderClassPicker() {
         const ok = classUnlocked(id);
         return `<button class="class-pick${id === sel ? ' on' : ''}${ok ? '' : ' locked'}" data-class="${id}" aria-label="${CLASSES[id].name}"><img src="${CLASSES[id].portrait}" alt="">${ok ? '' : iconHtml('lock')}</button>`;
     }).join('');
-    uiElements.classInfo.innerHTML = `<b>${CLASSES[sel].title}</b> · ${CLASSES[sel].tagline}`;
+    showClassInfo(sel);
+}
+// 職業名＋一句話；還沒解鎖的換成鎖＋解鎖條件，玩法介紹鈕藏起來（那顆開的是目前選的職業，不是這個）
+function showClassInfo(id) {
+    const ok = classUnlocked(id);
+    const a = ok ? null : achievements().find(x => x.id === CLASSES[id].unlock);
+    uiElements.className.innerHTML = `${ok ? '' : iconHtml('lock')}${CLASSES[id].title}`;
+    uiElements.classInfo.textContent = ok ? CLASSES[id].tagline : `解鎖：${a ? a.desc : ''}`;
+    uiElements.classGuideBtn.classList.toggle('hidden', !ok);
 }
 function pickClass(id) {
     if (!CLASSES[id]) return;
     if (!classUnlocked(id)) {
-        const a = achievements().find(x => x.id === CLASSES[id].unlock);
-        uiElements.classInfo.innerHTML = `${iconHtml('lock')}<b>${CLASSES[id].title}</b> · 解鎖：${a ? a.desc : ''}`;
+        showClassInfo(id);
         Sfx.play('deny');
         return;
     }

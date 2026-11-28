@@ -1026,7 +1026,6 @@
         /* ---------- 職業玩法介紹 ---------- */
         .class-guide-btn {
             min-height: 30px;
-            margin: 6px auto 0;
             padding: 2px 12px 2px 8px;
             font-size: 13px;
             border-width: 2px;
@@ -1329,10 +1328,33 @@
             text-shadow: var(--text-outline);
         }
 
+        /* 主角站的台子：固定高度，各職業的圖比例不同也不會把下面整排推上推下（整頁是上下置中的，台子一變高全部都跟著跳）。
+           圖靠底對齊，每個職業的腳都踩在同一條線、同一圈影子上 */
+        .title-stage {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 10px auto 0;
+            flex-shrink: 0;
+        }
+
+        .title-stage::before {
+            content: '';
+            position: absolute;
+            left: 22%;
+            right: 22%;
+            bottom: -4px;
+            height: 14px;
+            border-radius: 50%;
+            background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), transparent 70%);
+        }
+
         .title-hero {
-            width: 120px;
-            height: auto;
-            margin: 14px auto 0;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            object-position: center bottom;
             display: block;
             filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 20px rgba(192, 107, 245, 0.45));
             animation: float 3s ease-in-out infinite;
@@ -1340,16 +1362,19 @@
 
         /* 選職業：一排小頭像，選中的金框；還沒解鎖的暗下來、壓一個鎖 */
         #class-picker {
+            width: 100%;
+            max-width: 384px;
             display: flex;
             justify-content: center;
-            gap: 8px;
-            margin-top: 6px;
+            gap: 6px;
+            margin-top: 12px;
         }
 
         /* 七個頭像排起來要 384 寬，窄手機放不下時一起縮，不要超出畫面 */
         .class-pick {
             position: relative;
-            flex: 0 1 48px;
+            flex: 1 1 0;
+            max-width: 48px;
             min-width: 0;
             aspect-ratio: 1;
             padding: 2px;
@@ -1380,22 +1405,40 @@
             inset: 11px;
         }
 
+        /* 職業名＋玩法介紹一行、一句話介紹一行，兩行都固定高度：點到還沒解鎖的職業時換成解鎖條件，版面不動 */
+        .class-head {
+            height: 32px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        #class-name {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 20px;
+            color: var(--gold);
+            text-shadow: var(--text-outline);
+            white-space: nowrap;
+        }
+
+        #class-name .icon {
+            width: 18px;
+            height: 18px;
+        }
+
         #class-info {
-            min-height: 20px;
+            height: 20px;
+            line-height: 20px;
             margin-top: 4px;
             font-size: 13px;
             color: var(--bone-dim);
-        }
-
-        #class-info b {
-            color: var(--bone);
-            font-family: var(--font-display);
-        }
-
-        #class-info .icon {
-            width: 14px;
-            height: 14px;
-            vertical-align: -2px;
+            white-space: nowrap;
         }
 
         .title-menu {
@@ -1403,48 +1446,78 @@
             max-width: 300px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 22px;
+            gap: 13px;
+            margin-top: 14px;
         }
 
-        .title-menu .btn {
+        .title-menu > .btn {
             width: 100%;
         }
 
-        /* 一排三顆，多的換到下一排 */
-        .title-row {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
+        /* 開始遊戲左邊是詛咒：開局前最後要決定的就是這兩件事 */
+        .title-start-row {
+            display: flex;
             gap: 10px;
         }
 
-        .title-row .btn {
-            font-size: 15px;
+        .title-start-row #title-start-btn {
+            flex: 1;
+        }
+
+        .title-start-row .title-tile {
+            flex: 0 0 64px;
+        }
+
+        /* 其他入口一排四顆，圖示在上、字在下 */
+        .title-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .title-tile {
+            flex-direction: column;
+            gap: 2px;
+            min-height: 62px;
+            padding: 6px 2px 9px;
+            font-size: 14px;
+            line-height: 1.1;
+            white-space: nowrap;
+        }
+
+        .title-tile .btn-icon {
+            width: 26px;
+            height: 26px;
+        }
+
+        /* 強化格右上角掛著手上的結晶數：結晶就是拿來在這裡花的 */
+        .tile-badge {
+            position: absolute;
+            top: -11px;
+            right: -6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 2px;
+            padding: 1px 6px 1px 3px;
+            border: 2px solid var(--ink);
+            border-radius: 10px;
+            background: #1a1420;
+            font-size: 12px;
+            color: #ffe082;
+            text-shadow: none;
+        }
+
+        .tile-badge .icon {
+            width: 14px;
+            height: 14px;
         }
 
         /* 並排的按鈕在窄螢幕上，一般按鈕的左右內距會把「圖示＋字」擠成兩行 */
-        .title-row .btn,
         .btn-row .btn {
             flex: 1;
             padding-left: 8px;
             padding-right: 8px;
             white-space: nowrap;
-        }
-
-        .best-line {
-            margin-top: 16px;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-family: var(--font-display);
-            font-weight: 700;
-            color: var(--bone-dim);
-            font-size: 14px;
-        }
-
-        .best-line .icon {
-            width: 20px;
-            height: 20px;
         }
 
         .crystal-count {
@@ -2740,22 +2813,26 @@
     <div id="title-screen" class="overlay-screen">
         <h1 class="logo">亡靈狂潮</h1>
         <div class="logo-sub">UNDEAD FRENZY</div>
-        <img class="title-hero" id="title-hero" src="player.png" alt="">
+        <div class="title-stage"><img class="title-hero" id="title-hero" src="player.png" alt=""></div>
         <div id="class-picker"></div>
+        <div class="class-head">
+            <span id="class-name"></span>
+            <button id="class-guide-btn" class="btn btn-dark class-guide-btn"><span class="btn-icon" data-icon="classGuide"></span>玩法介紹</button>
+        </div>
         <div id="class-info"></div>
-        <button id="class-guide-btn" class="btn btn-dark class-guide-btn"><span class="btn-icon" data-icon="classGuide"></span>玩法介紹</button>
         <div class="title-menu">
             <button id="title-continue-btn" class="btn btn-gold btn-big hidden"></button>
-            <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
+            <div class="title-start-row">
+                <button id="title-curse-btn" class="btn btn-red title-tile hidden"><span class="btn-icon" data-icon="curse"></span><span id="title-curse-label">詛咒</span></button>
+                <button id="title-start-btn" class="btn btn-green btn-big">開始遊戲</button>
+            </div>
             <div class="title-row">
-                <button id="title-meta-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gold"></span>強化</button>
-                <button id="title-achv-btn" class="btn btn-dark"><span class="btn-icon" data-icon="trophy"></span>成就</button>
-                <button id="title-lb-btn" class="btn btn-dark"><span class="btn-icon" data-icon="podium"></span>排行</button>
-                <button id="title-curse-btn" class="btn btn-red hidden"><span class="btn-icon" data-icon="curse"></span>詛咒</button>
-                <button id="title-settings-btn" class="btn btn-dark"><span class="btn-icon" data-icon="gear"></span>設定</button>
+                <button id="title-meta-btn" class="btn btn-dark title-tile"><span class="btn-icon" data-icon="gold"></span>強化<span class="tile-badge" id="title-crystals"></span></button>
+                <button id="title-achv-btn" class="btn btn-dark title-tile"><span class="btn-icon" data-icon="trophy"></span>成就</button>
+                <button id="title-lb-btn" class="btn btn-dark title-tile"><span class="btn-icon" data-icon="podium"></span>排行</button>
+                <button id="title-settings-btn" class="btn btn-dark title-tile"><span class="btn-icon" data-icon="gear"></span>設定</button>
             </div>
         </div>
-        <div class="best-line" id="title-best"></div>
     </div>
 
     <!-- 永久強化 -->
