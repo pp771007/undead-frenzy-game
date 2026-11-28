@@ -7996,8 +7996,11 @@ function refreshTitle() {
     const wins = meta.wins || 0;
     renderClassPicker();
     const fastest = bestClearOf(selectedClass());
+    // 這個職業的排行榜上，自己最好的那筆排第幾（沒上榜就不顯示）。
     // 不放「最佳 N 波」：跟排行榜重複，而且不分職業，跟旁邊只算這個職業的「最快」講的不是同一件事
-    uiElements.titleBest.innerHTML = (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
+    const rank = lbBoard(selectedClass()).findIndex(e => !e.rival) + 1;
+    uiElements.titleBest.innerHTML = (rank > 0 ? `${iconHtml('podium')}排行 #${rank}　` : '') +
+        (wins > 0 ? `${iconHtml('crown')}通關 ${wins}　` : '') +
         (fastest ? `${iconHtml('clock')}最快 ${formatClock(fastest.time)}　` : '') +
         `<span class="crystal-count">${iconHtml('gold')}${meta.crystals}</span>`;
     uiElements.titleMetaBtn.classList.toggle('can-upgrade', canBuyAnyMeta());
