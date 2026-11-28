@@ -267,4 +267,7 @@ console.log('KILLS', JSON.stringify(out.kills));
 console.log('RESONANCE', JSON.stringify(out.resonance), JSON.stringify(out.blessings));
 console.log('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tlost\tevent');
 for (const w of out.waves) console.log([w.wave, w.dur, w.minHp.toFixed(2), w.dmg.toFixed(2), w.peak, w.summons, w.lost.toFixed(2), w.ev || ''].join('\t'));
+// 遊戲自己記的對局紀錄（玩家在設定畫面複製出來的就是這一份）：拿來跟真人的局逐欄對照
+console.log('RUNLOG');
+console.log(await page.evaluate(() => formatRunLog(gameState.gameOver ? loadRunLogs().slice(-1)[0] : finishRunLog('quit'))));
 await browser.close();

@@ -705,6 +705,11 @@ const ICON_BODIES = {
         duoStroke('M16 38 C20 48 30 53 40 49 C47 46 51 40 51 33', '#8fd3ff') + `<path d="M14 52 L15 36 L28 41 Z" fill="#8fd3ff"/>`,
     lock: `<path d="M20 28 L20 20 C20 12 25 8 32 8 C39 8 44 12 44 20 L44 28" stroke-width="10"/><path d="M20 28 L20 20 C20 12 25 8 32 8 C39 8 44 12 44 20 L44 28" stroke="#90a4ae" stroke-width="5"/>
         <rect x="13" y="27" width="38" height="29" rx="5" fill="#ffca28"/><circle cx="32" cy="39" r="4" fill="${ICON_OUTLINE}" stroke="none"/><path d="M32 41 L32 48" stroke-width="4"/>`,
+    // 對局紀錄（設定畫面）：木夾板夾著一張紙，紙上一條血量起伏的心跳線、底下兩行字
+    runLog: `<rect x="12" y="10" width="40" height="50" rx="5" fill="#8d6e63"/><rect x="17" y="17" width="30" height="38" rx="2" fill="#f1ead6" stroke-width="3"/>
+        <path d="M20 32 L26 32 L29 24 L33 41 L36 28 L39 32 L44 32" stroke="#e57373" stroke-width="3.5"/>
+        <path d="M21 45 L43 45 M21 50 L35 50" stroke="#a1887f" stroke-width="2.5"/>
+        <rect x="24" y="5" width="16" height="10" rx="3" fill="#ffca28" stroke-width="3"/>${shine(18, 22, 2, 5, 0)}`,
     // 主角升級（寶棺轉盤）：金色徽章上兩道往上疊的綠色箭頭，旁邊一顆閃光
     levelUp: `<circle cx="32" cy="35" r="25" fill="#ffca28"/><circle cx="32" cy="35" r="19" fill="#ffe082" stroke-width="2.5"/>
         <path d="M18 34 L32 20 L46 34 L46 42 L32 28 L18 42 Z" fill="#7cb342" stroke-width="3"/>

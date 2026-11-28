@@ -111,6 +111,7 @@ const uiElements = {
     metaEarn: $id('meta-earn'),
     settingsScreen: $id('settings-screen'),
     settingsCloseBtn: $id('settings-close-btn'),
+    runlogBtn: $id('runlog-btn'),
     volumeSlider: $id('volume-slider'),
     sfxSlider: $id('sfx-slider'),
     pauseVolumeSlider: $id('pause-volume-slider'),
@@ -1325,7 +1326,7 @@ let gameState = {
     waveEvent: null, lastEventWave: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], rerollsLeft: 0,
-    relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false,
+    relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false, runLog: emptyRunLog(),
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
 };
 
@@ -2219,6 +2220,7 @@ class Player extends GameObject {
         this.currentHealth -= lost;
         if (cls.onHeroHurt && lost > 0) cls.onHeroHurt(lost / this.maxHealth);
         this.currentHealth = Math.max(0, Math.round(this.currentHealth));
+        if (lost > 0) recordHeroHit(lost / this.maxHealth, source, this.currentHealth / this.maxHealth);
         const run = gameState.run;
         run.hits++;
         run.flags.waveHit = true;
@@ -8645,6 +8647,113 @@ function endRunFromPause() {
     });
 }
 
+// ---------- 對局紀錄：每一波最低剩幾成血、挨了多少、被誰打、最後怎麼死 ----------
+// 欄位跟自動試玩（tools/playtest.mjs）的報表一樣，自動試玩也印這一份：拿真人的局去校正機器人。
+// 機器人打得比人粗糙，不校正就拿它調難度，會把「機器人覺得難」當成「夠難了」。
+// 只存在這台裝置，設定畫面的「複製對局紀錄」把最近幾局整份複製成文字
+const RUNLOG_KEY = 'undead-frenzy-runlog';
+const RUNLOG_KEEP = 20;
+// 死的時候看最後這幾秒被誰打：一隻怪一下很痛，還是好幾隻同時打中
+const RUNLOG_BURST_SECONDS = 3;
+function emptyRunLog() { return { t: 0, waves: [], cur: null, hurt: {}, hits: [] }; }
+// 打主角的是誰：首領照最近出的那一招分開記（Boss:dash…），看是哪一招在磨主角
+function runLogSource(source) {
+    const type = source && source.config && source.config.type;
+    if (!type) return 'other';
+    return type === 'Boss' ? `Boss:${source.lastMove || 'melee'}` : type;
+}
+// hpLeft：挨完這一下剩幾成血。在這裡就記進最低血量：致命那一下之後遊戲停了，每格的 updateRunLog 不會再跑
+function recordHeroHit(frac, source, hpLeft) {
+    const L = gameState.runLog, k = runLogSource(source);
+    L.hurt[k] = (L.hurt[k] || 0) + frac;
+    if (L.cur && !L.cur.dur) { L.cur.dmg += frac; L.cur.minHp = Math.min(L.cur.minHp, hpLeft); }
+    L.hits.push([L.t, k, frac]);
+    while (L.hits.length && L.hits[0][0] < L.t - RUNLOG_BURST_SECONDS) L.hits.shift();
+}
+function totalSummoned() { return Object.values(gameState.totalSummons).reduce((a, b) => a + b, 0); }
+// lost：這一波陣亡的召喚物佔開戰時大軍的比例。主角躲在大軍後面時幾乎不掉血，壓力落在大軍身上
+function closeRunLogWave() {
+    const c = gameState.runLog.cur;
+    c.dur = Math.max(0.1, gameState.runLog.t - c.start);
+    c.summons = gameState.summons.length;
+    c.lost = Math.max(0, c.army0 + totalSummoned() - c.summoned0 - c.summons) / Math.max(1, c.army0);
+    gameState.runLog.waves.push(c);
+}
+function updateRunLog(dt) {
+    const L = gameState.runLog, p = gameState.player;
+    if (!p) return;
+    L.t += dt;
+    const fighting = !gameState.betweenWaves;
+    if (fighting && (!L.cur || L.cur.wave !== gameState.currentWave)) {
+        L.cur = { wave: gameState.currentWave, start: L.t, minHp: 1, dmg: 0, peak: 0, ev: gameState.waveEvent || '', army0: gameState.summons.length, summoned0: totalSummoned() };
+    }
+    if (!L.cur || L.cur.dur) return;
+    if (fighting) {
+        L.cur.minHp = Math.min(L.cur.minHp, p.currentHealth / p.maxHealth);
+        L.cur.peak = Math.max(L.cur.peak, gameState.monsters.length);
+    } else closeRunLogWave();
+}
+function loadRunLogs() {
+    try { return JSON.parse(SaveStore.get(RUNLOG_KEY)) || []; } catch (e) { return []; }
+}
+function metaLevelsSpent() {
+    return metaScopes().reduce((sum, s) => sum + Object.values(upgradeLevels(s)).reduce((a, b) => a + b, 0), 0);
+}
+function finishRunLog(reason) {
+    const L = gameState.runLog;
+    if (L.cur && !L.cur.dur) closeRunLogWave();
+    const burst = {};
+    if (reason === 'died') for (const [, k, f] of L.hits) { const a = burst[k] || (burst[k] = { f: 0, n: 0 }); a.f += f; a.n++; }
+    const round2 = v => Math.round(v * 100) / 100;
+    const rec = {
+        date: Date.now(), cls: runClass(), curse: gameState.curse, meta: metaLevelsSpent(),
+        wave: getSurvivedWaves(), won: reason === 'victory' || !!gameState.endless, reason,
+        time: Math.round(L.t), killedBy: reason === 'died' ? runLogSource(gameState.killedBy) : null,
+        level: gameState.heroLevel, blessings: Object.values(gameState.blessings).reduce((a, b) => a + b, 0),
+        hurt: Object.fromEntries(Object.entries(L.hurt).map(([k, v]) => [k, round2(v)])),
+        burst: Object.fromEntries(Object.entries(burst).map(([k, a]) => [k, { f: round2(a.f), n: a.n }])),
+        waves: L.waves.map(w => [w.wave, Math.round(w.dur), round2(w.minHp), round2(w.dmg), w.peak, w.summons, round2(w.lost), w.ev]),
+    };
+    const all = loadRunLogs();
+    all.push(rec);
+    try { SaveStore.set(RUNLOG_KEY, JSON.stringify(all.slice(-RUNLOG_KEEP))); } catch (e) { }
+    return rec;
+}
+function formatRunLog(r) {
+    const d = new Date(r.date), pad = n => String(n).padStart(2, '0');
+    const when = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const lines = [
+        `RUN ${when} class=${r.cls} curse=${r.curse} meta=${r.meta} wave=${r.wave} won=${r.won} end=${r.reason} t=${(r.time / 60).toFixed(1)}min killedBy=${r.killedBy} level=${r.level} blessings=${r.blessings}`,
+        `HURT ${JSON.stringify(r.hurt)}`,
+    ];
+    if (r.reason === 'died') lines.push(`BURST ${JSON.stringify(r.burst)}`);
+    lines.push('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tlost\tevent');
+    for (const w of r.waves) lines.push(w.join('\t'));
+    return lines.join('\n');
+}
+function formatRunLogs(runs) { return runs.map(formatRunLog).join('\n\n'); }
+// 複製：手機上剪貼簿 API 不能用時（非 https、舊瀏覽器）退回選取文字再複製
+const RUNLOG_COPIED_MS = 1500;
+async function copyRunLogs() {
+    const text = formatRunLogs(loadRunLogs());
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try { ok = document.execCommand('copy'); } catch (e2) { }
+        ta.remove();
+    }
+    renderRunLogBtn(ok ? '已複製' : '複製失敗');
+    setTimeout(() => renderRunLogBtn(), RUNLOG_COPIED_MS);
+}
+function renderRunLogBtn(done) {
+    const n = loadRunLogs().length, btn = uiElements.runlogBtn;
+    btn.innerHTML = `${iconHtml('runLog', 'icon btn-icon')}${done || '複製對局紀錄'}${done ? '' : `<span class="price">×${n}</span>`}`;
+    btn.disabled = n === 0;
+}
+
 const GAMEOVER_TITLES = { died: '陣亡', quit: '本局結束', victory: '凱旋' };
 // 陣亡畫面上的兇手：頭像跟場上長得一樣（同一套 monsterLook，要染色的就染），精英怪名字前加「精英」
 const KILLER_PORTRAIT_PX = 96;
@@ -8692,6 +8801,7 @@ function showGameOver(reason = 'died') {
     renderBlessingList(uiElements.finalBlessings);
     uiElements.hud.classList.add('hidden');
     showScreen(uiElements.gameOverScreen, true);
+    finishRunLog(reason === 'died' && gameState.endless ? 'victory' : reason);
     SaveStore.remove(SAVE_KEY);
     pauseMusic();
     const target = lbNextTargetHtml(ranked ? ranked.entry : lbRunNow());
@@ -8733,6 +8843,7 @@ function saveGameState() {
         relics: gameState.relics.filter(r => !r.done),
         relicTimer: gameState.relicTimer,
         tierDrafts: gameState.tierDrafts,
+        runLog: gameState.runLog,
         achvCrystals: gameState.achvCrystals,
         run: gameState.run,
         achvCount: gameState.achvCount,
@@ -8787,6 +8898,7 @@ function loadGameState() {
         gameState.extraDrafts = loadedState.extraDrafts ?? 0;
         gameState.extraBossDrafts = loadedState.extraBossDrafts ?? 0;
         gameState.tierDrafts = loadedState.tierDrafts ?? [];
+        gameState.runLog = loadedState.runLog ?? emptyRunLog();
         gameState.relics = (loadedState.relics || []).map(r => ({ ...r, life: r.life ?? RELIC_LIFE, pair: r.pair || 0 }));
         gameState.relicTimer = loadedState.relicTimer ?? randomInRange(RELIC_FIRST_DELAY_MIN, RELIC_FIRST_DELAY_MAX);
         gameState.achvCrystals = loadedState.achvCrystals ?? 0;
@@ -8858,7 +8970,7 @@ function resetGameInternalState() {
         waveEvent: null, lastEventWave: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], rerollsLeft: 0,
-        relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false,
+        relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false, runLog: emptyRunLog(),
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
     };
     inputState = { isPointerDown: false, pointerStartPos: { x: 0, y: 0 }, pointerCurrentPos: { x: 0, y: 0 }, movementVector: { x: 0, y: 0 }, pointerId: null };
@@ -8978,6 +9090,7 @@ function updateGame(deltaTime) {
         Sfx.play('boss');
     }
     spawnOvertimeEmbers();
+    updateRunLog(deltaTime);
 
     const cls = classDef();
     if (cls.update && gameState.player) cls.update(deltaTime);
@@ -10038,7 +10151,8 @@ function init() {
     uiElements.classPicker.addEventListener('click', (e) => { const b = e.target.closest('[data-class]'); if (b) pickClass(b.dataset.class); });
     onTap(uiElements.titleContinueBtn, continueRun);
     onTap(uiElements.titleMetaBtn, () => openMeta('title'));
-    onTap(uiElements.titleSettingsBtn, () => { syncSettingControls(); showScreen(uiElements.settingsScreen, true); });
+    onTap(uiElements.titleSettingsBtn, () => { syncSettingControls(); renderRunLogBtn(); showScreen(uiElements.settingsScreen, true); });
+    onTap(uiElements.runlogBtn, copyRunLogs);
     onTap(uiElements.settingsCloseBtn, () => { saveMeta(); showScreen(uiElements.settingsScreen, false); });
     onTap(uiElements.metaCloseBtn, closeMeta);
     onTap(uiElements.metaRefundBtn, () => showConfirm('全部退還？', '金幣全數退回，可以重新分配', '退還', refundMeta));
