@@ -892,7 +892,7 @@ function loadMeta() {
     try {
         const saved = JSON.parse(SaveStore.get(META_KEY));
         const m = saved && migrateMetaTable(saved);
-        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, classUpgrades: { ...(m.classUpgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) }, leaderboard: m.leaderboard || seedLeaderboard(m.bestClear) };
+        if (m) return { ...defaultMeta(), ...m, upgrades: { ...(m.upgrades || {}) }, classUpgrades: { ...(m.classUpgrades || {}) }, stats: { ...defaultStats(), ...(m.stats || {}) }, leaderboard: m.leaderboard ? migrateLbNames(m.leaderboard) : seedLeaderboard(m.bestClear) };
     } catch (e) { }
     return defaultMeta();
 }
@@ -7138,7 +7138,13 @@ function endRunFromVictory() {
 const LB_SIZE = 10;
 // 撐過這幾波才上榜：開局就放棄的不用跳恭喜
 const LB_MIN_WAVE = 5;
-const LB_DEFAULT_NAME = '無名亡靈';
+// 沒留名字就上榜時的名字：跟著那一局的職業（德魯伊不會叫「無名亡靈」）
+function lbDefaultName(cls) { return `無名${CLASSES[cls].name}`; }
+// 以前不分職業都叫這個：讀存檔時換成該筆職業的預設名字
+const LB_LEGACY_DEFAULT_NAME = '無名亡靈';
+function migrateLbNames(board) {
+    return board.map(e => e.name === LB_LEGACY_DEFAULT_NAME && !e.rival && CLASSES[e.cls] ? { ...e, name: lbDefaultName(e.cls) } : e);
+}
 const LB_ALL = 'all';
 const LB_RESULT_NAMES = { died: '陣亡', quit: '中途結束' };
 // 對手：榜上先排好十個亡靈議會的人，從第 7 波排到 21 分半通關。只有自己的紀錄的話，
@@ -7190,7 +7196,7 @@ function lbPrune() {
 }
 // 排行榜功能出來之前的玩家：每個職業的最快通關紀錄先放上榜（只知道時間與詛咒）
 function seedLeaderboard(bestClear) {
-    return Object.entries(bestClear || {}).map(([cls, r], i) => ({ id: i + 1, name: LB_DEFAULT_NAME, cls, won: true, time: r.time, curse: r.curse || 0 }));
+    return Object.entries(bestClear || {}).map(([cls, r], i) => ({ id: i + 1, name: lbDefaultName(cls), cls, won: true, time: r.time, curse: r.curse || 0 }));
 }
 // 這一局上榜就回傳那一筆（passed：這一局第一次超越的對手），沒上榜回 null
 function lbSubmit(reason) {
@@ -7198,7 +7204,7 @@ function lbSubmit(reason) {
     const best = lbOwnBest();
     const k = reason === 'died' ? gameState.killedBy : null;
     const e = {
-        id: Date.now(), name: meta.lbName || LB_DEFAULT_NAME, cls: runClass(), date: Date.now(),
+        id: Date.now(), name: meta.lbName || lbDefaultName(runClass()), cls: runClass(), date: Date.now(),
         won: !!gameState.endless, time: gameState.runTime, wave: getSurvivedWaves(), curse: gameState.curse || 0,
         result: reason, killer: k ? `${k.isElite ? '精英' : ''}${k.config.name}` : '',
         kills: Object.values(gameState.totalKills).reduce((a, b) => a + b, 0),
@@ -7466,7 +7472,7 @@ function openLbCongrats({ entry: e, passed }) {
     uiElements.lbCongratsResult.innerHTML = lbResultHtml(e) +
         (top.length ? `<div class="lb-passed">${top.map(r => `<span>${lbClassImg(r.cls)}超越 ${r.name}</span>`).join('')}${passed.length > top.length ? `<span>等 ${passed.length} 人</span>` : ''}</div>` : '');
     uiElements.lbNameInput.value = meta.lbName || '';
-    uiElements.lbNameInput.placeholder = LB_DEFAULT_NAME;
+    uiElements.lbNameInput.placeholder = lbDefaultName(e.cls);
     showScreen(uiElements.lbCongrats, true);
     Fireworks.start(uiElements.lbCongrats, bursts);
     Sfx.play('lbCheer');
@@ -7479,7 +7485,7 @@ function closeLbCongrats() {
     lbPending = null;
     const typed = uiElements.lbNameInput.value.trim();
     if (typed) meta.lbName = typed;
-    e.name = typed || LB_DEFAULT_NAME;
+    e.name = typed || lbDefaultName(e.cls);
     saveMeta();
     uiElements.lbNameInput.blur();
     Fireworks.stop();
