@@ -64,7 +64,7 @@ await shot('2-playing');
 const longest = (n) => page.evaluate(([cls, n]) => Object.keys(BLESSINGS).filter(id => !BLESSINGS[id].legendary && CLASSES[cls].schools.includes(BLESSINGS[id].school))
     .sort((x, y) => BLESSINGS[y].desc(BLESSINGS[y]).length - BLESSINGS[x].desc(BLESSINGS[x]).length).slice(0, n), [CLASS, n]);
 // 第一張是召喚卡：看兵的立繪當圖示、「最多 N → M 隻」那行放不放得下
-const three = CLASS === 'necro' ? ['unit_SkeletonWarrior', 'eagleEye', 'frenzyTime'] : await longest(3);
+const three = CLASS === 'necro' ? ['unit_SkeletonWarrior', 'eyeBlast', 'novaFrenzy'] : await longest(3);
 const four = CLASS === 'necro' ? ['auraMight', 'giantBones', 'soulVolley', 'soulHarvest'] : await longest(4);
 await page.evaluate((opts) => { gameState.pendingDraft = { options: opts }; openDraft(); }, three);
 await shot('3-draft');
