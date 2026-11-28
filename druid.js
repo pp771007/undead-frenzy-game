@@ -142,7 +142,7 @@ Object.assign(UNIT_TYPES, {
     SacredOak: {
         school: 'grove', card: { cap: 2, capPer: 1, every: 10 },
         cfg: () => CONFIG.sacredOak, Cls: () => SacredOak, name: '橡樹', img: 'sacred_oak.png',
-        // 種在德魯伊腳下（不是身後）：據點要種在自己選的位置
+        // 長在林地裡（最老那棵旁邊，見 plantOak），玩家不選位置
         summon: (level) => plantOak(level),
     },
     Wolf: { school: 'pack', card: { cap: 3, capPer: 2, every: 4 }, cfg: () => CONFIG.wolf, Cls: () => Wolf, name: '狼', img: 'druid_wolf.png' },
@@ -150,7 +150,7 @@ Object.assign(UNIT_TYPES, {
 });
 
 CLASSES.druid = {
-    name: '德魯伊', title: '橡樹賢者', portrait: 'druid.png', tagline: '種下橡樹，在自己選的林地打這一仗',
+    name: '德魯伊', title: '橡樹賢者', portrait: 'druid.png', tagline: '種下橡樹林，守著林地打這一仗',
     // 同一套怪物加強下沒強化常常通關（見 game.js 的 monsterRamp）
     monsterPressure: 1.2,
     unlock: 'relics30',

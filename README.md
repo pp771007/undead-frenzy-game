@@ -48,7 +48,7 @@
   <tr>
     <td align="center" width="25%"><img src="player.png" width="88" alt="" /><br/><b>亡靈法師</b><br/><sub>召喚沒有上限的骷髏大軍<br/>大招：新星</sub></td>
     <td align="center" width="25%"><img src="warrior.png" width="88" alt="" /><br/><b>戰士</b> · 鐵血軍團長<br/><sub>少數精兵排成陣型，自己站最前線<br/>大招：標槍齊射<br/>🔓 撐過第 20 波</sub></td>
-    <td align="center" width="25%"><img src="druid.png" width="88" alt="" /><br/><b>德魯伊</b> · 橡樹賢者<br/><sub>種下橡樹，在自己選的林地打這一仗<br/>大招：巨熊化身<br/>🔓 累計啟動 30 座戰場遺跡</sub></td>
+    <td align="center" width="25%"><img src="druid.png" width="88" alt="" /><br/><b>德魯伊</b> · 橡樹賢者<br/><sub>種下橡樹林，守著林地打這一仗<br/>大招：巨熊化身<br/>🔓 累計啟動 30 座戰場遺跡</sub></td>
     <td align="center" width="25%"><img src="vampire.png" width="88" alt="" /><br/><b>吸血鬼</b> · 血月伯爵<br/><sub>吸血續命，打倒的怪站起來為你而戰<br/>大招：血月降臨<br/>🔓 撐過第 30 波</sub></td>
   </tr>
   <tr>
