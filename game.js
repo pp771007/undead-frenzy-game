@@ -6315,7 +6315,8 @@ const ALTAR_SLOW_REAPPLY = 0.5;
 const COFFIN_PRIZES = {
     legend: { label: '傳說', result: '傳說祝福', icon: 'draft', color: '#ffd54f', dark: '#9a6b0c' },
     rare: { label: '稀有', result: '稀有祝福', icon: 'draft', color: '#64b5f6', dark: '#1d4d7e' },
-    double: { label: '×2', result: '祝福 ×2', icon: 'draft', color: '#f1ead6', dark: '#8d7b5a' },
+    // 格子的字跟著格子轉：「×2」轉 45 度會看成「+2」，所以用字
+    double: { label: '兩次', result: '兩次祝福', icon: 'draft', color: '#f1ead6', dark: '#8d7b5a' },
     level: { label: '升級', result: '升級！', icon: 'levelUp', color: '#9ccc65', dark: '#3d6b1c' },
 };
 // 盤面一圈的格子（順時針，第一格在正上方）：每格一樣大，所以盤面上看到的比例就是真的機率；同一種不相鄰
