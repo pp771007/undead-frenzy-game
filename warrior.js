@@ -20,8 +20,6 @@ const WARRIOR = {
     turnRate: 2.2,
     // 從背後（相對陣型面向）打到士兵的傷害倍率
     flankMult: 2,
-    // 人數上限（之後由軍團紀律流派加）
-    troopCap: 16,
     startSquad: ['Shieldman', 'Shieldman', 'Spearman', 'Crossbowman'],
     // 陣型：每排幾人、排距、人距；盾兵、長槍排在戰士前方 frontDist 起，弩手、退下來休息的盾兵排在戰士後方 rearDist 起
     rowSize: 6, rowGap: 17, colGap: 19, frontDist: 40, rearDist: 22,
@@ -121,7 +119,6 @@ Object.assign(BLESSINGS, {
     rageLength: { school: 'berserk', name: '血怒', max: 3, per: 2, desc: b => `狂怒多 ${b.per} 秒` },
     rageCleave: { school: 'berserk', name: '旋風斬', max: 3, per: 0.2, desc: b => `大劍範圍 +${pct(b.per)}` },
     rageLeech: { school: 'berserk', name: '嗜血', max: 3, per: 0.01, desc: b => `大劍每砍死一隻多回 ${pct(b.per)} 血` },
-    legionCap: { school: 'legion', name: '擴編', max: 4, per: 4, desc: b => `人數上限 +${b.per}` },
     legionDrill: { school: 'legion', name: '操練', max: 2, per: 0.25, desc: b => `升老兵需要的擊殺 -${pct(b.per)}` },
     legionPay: { school: 'legion', name: '軍餉', max: 3, per: 0.15, desc: b => `兵種跟著你升級快 ${pct(b.per)}` },
     legionVet: { school: 'legion', name: '百戰之師', max: 3, per: 0.1, desc: b => `老兵每顆星多 +${pct(b.per)} 血量與攻擊` },
@@ -129,7 +126,7 @@ Object.assign(BLESSINGS, {
     valhalla: { school: 'legion', name: '英靈殿', legendary: true, max: 1, per: 1, desc: () => '陣亡的老兵下一波免費歸隊，星星照舊' },
     triumph: { school: 'legion', name: '凱旋', legendary: true, max: 1, per: 1, desc: () => '每撐過一波，所有士兵多一顆老兵星' },
     aquila: { school: 'shieldwall', name: '鷹旗', legendary: true, max: 1, per: 0.3, desc: b => `戰士身邊的士兵受致命傷時，每波撐住一次（留 ${pct(b.per)} 血）` },
-    spartans: { school: 'phalanx', name: '三百壯士', legendary: true, max: 1, per: 2.5, desc: b => `人數上限減半，每個士兵血量與攻擊 ×${b.per}` },
+    spartans: { school: 'phalanx', name: '三百壯士', legendary: true, max: 1, per: 2.5, desc: b => `每種兵的上限減半，每個士兵血量與攻擊 ×${b.per}` },
     // 蠍弩：弩陣替槍陣定住靶子——弩手先釘、長槍再捅，兩個兵種要一起養
     scorpio: { school: 'crossbow', name: '蠍弩', legendary: true, max: 1, per: 1, desc: b => `弩箭把怪釘在原地 ${b.per} 秒，被釘住的怪挨長槍傷害 ×${SCORPIO_SPEAR_MULT}` },
     ricochetBolt: { school: 'crossbow', name: '跳彈弩', legendary: true, max: 1, per: 2, desc: b => `弩箭命中後彈到附近 ${b.per} 隻怪` },
@@ -161,11 +158,13 @@ const AQUILA_RADIUS = 140;
 const SCORPIO_SPEAR_MULT = 2;
 const UNBREAKABLE_TEXT_EVERY = 0.6;
 
+// 傳說「三百壯士」：每種兵的上限減半（至少 1 個；還沒學的兵種照樣 0）
+const spartanCap = n => bl('spartans') && n > 0 ? Math.max(1, Math.floor(n / 2)) : n;
 Object.assign(UNIT_TYPES, {
-    // 精兵少而貴：三種加起來還是受人數上限（troopCap）管
-    Shieldman: { school: 'shieldwall', card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
-    Spearman: { school: 'phalanx', card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.spearman, Cls: () => Spearman, name: '長槍兵', img: 'soldier_spear.png' },
-    Crossbowman: { school: 'crossbow', card: { cap: 2, capPer: 2, every: 6 }, cfg: () => CONFIG.crossbowman, Cls: () => Crossbowman, name: '弩手', img: 'soldier_crossbow.png' },
+    // 精兵少而貴：一張卡只多 2 個人，有幾個人只看兵卡疊幾張
+    Shieldman: { school: 'shieldwall', card: { cap: 2, capPer: 2, every: 6 }, capMod: spartanCap, cfg: () => CONFIG.shieldman, Cls: () => Shieldman, name: '盾兵', img: 'soldier_shield.png' },
+    Spearman: { school: 'phalanx', card: { cap: 2, capPer: 2, every: 6 }, capMod: spartanCap, cfg: () => CONFIG.spearman, Cls: () => Spearman, name: '長槍兵', img: 'soldier_spear.png' },
+    Crossbowman: { school: 'crossbow', card: { cap: 2, capPer: 2, every: 6 }, capMod: spartanCap, cfg: () => CONFIG.crossbowman, Cls: () => Crossbowman, name: '弩手', img: 'soldier_crossbow.png' },
 });
 
 CLASSES.warrior = {
@@ -176,14 +175,12 @@ CLASSES.warrior = {
     unlock: 'wave20',
     cards: ['Shieldman', 'Spearman', 'Crossbowman'], schools: ['shieldwall', 'phalanx', 'crossbow', 'berserk', 'legion', 'soul'],
     hero: { imageName: 'warrior', baseHealth: WARRIOR.baseHealth, moveSpeed: WARRIOR.moveSpeed },
-    troopCap: () => warTroopCap(),
     // 開局那支小隊（盾、槍、弩）陣亡了也要補得回來：三種兵的卡一開始都會
     startCards: ['Shieldman', 'Spearman', 'Crossbowman'],
     // 寶棺的軍餉另外送全軍升級，跟著主角走的部分比別人慢一點
     unitLevelPerHero: 0.35,
     metaUpgrades: {
         summonHp: META_SUMMON_HP,
-        troopCap: { icon: 'legionCap', name: '人數上限', max: 4, per: 1, costBase: 40, desc: m => `人數上限 +${m.per}`, total: (m, lv) => `+${m.per * lv}` },
         armor: { icon: 'ironBody', name: '受到的傷害', max: 5, per: 0.04, costBase: 30, desc: m => `你受到的傷害 -${pct(m.per)}`, total: (m, lv) => `-${pct(m.per * lv)}` },
     },
     unitLevelMult: () => 1 + blessVal('legionPay'),
@@ -192,8 +189,8 @@ CLASSES.warrior = {
         for (const s of gameState.summons) if (s instanceof Soldier) s.aquilaUsed = false;
         const w = warState(), p = gameState.player;
         w.waveLosses = 0;
-        while (w.fallen.length && troopCount() < warTroopCap()) {
-            const f = w.fallen.shift();
+        for (const f of w.fallen) {
+            if (gameState.units[f.type].count >= typeCap(f.type)) continue;
             const pos = p.getSummonPosition();
             const s = new (UNIT_TYPES[f.type].Cls())(pos.x, pos.y, gameState.units[f.type].level, p);
             s.kills = f.kills;
@@ -319,10 +316,10 @@ CLASSES.warrior = {
 function newWarState() { return { waveLosses: 0, rage: 0, berserkT: 0, exhaustT: 0, fx: 1, fy: 0, swingT: 0, chargeT: 0, tauntT: 0, drills: 0, fallen: [], still: false, lastStand: false, spearT: 0, rainT: 0 }; }
 function warState() { return gameState.war || (gameState.war = newWarState()); }
 function troopCount() { return classDef().cards.reduce((n, t) => n + gameState.units[t].count, 0); }
-function warTroopCap() {
-    const c = WARRIOR.troopCap + blessVal('legionCap') + classMeta('troopCap');
-    return bl('spartans') ? Math.floor(c / 2) : c;
-}
+// 這種兵現在最多幾個（兵卡疊幾張決定，見 summonCap）
+function typeCap(type) { return summonCap(type, bl(unitCardId(type))); }
+// 三種兵都補滿時有幾個人（最後一線算「剩幾成」用）
+function troopFull() { return classDef().cards.reduce((n, t) => n + typeCap(t), 0); }
 function vetFromKills(kills) {
     const k = 1 - blessVal('legionDrill');
     return WARRIOR.vetKills.filter(n => kills >= n * k).length;
@@ -434,7 +431,7 @@ function warriorUpdate(dt) {
         w.fx = Math.cos(cur + step); w.fy = Math.sin(cur + step);
     }
     // 最後一線：人數剩三分之一以下時全員視為百戰老兵（狀態變了才重算數值）
-    const last = res('legion') >= 2 && troopCount() > 0 && troopCount() <= warTroopCap() * RES_LASTSTAND_SHARE;
+    const last = res('legion') >= 2 && troopCount() > 0 && troopCount() <= troopFull() * RES_LASTSTAND_SHARE;
     if (last !== w.lastStand) {
         w.lastStand = last;
         for (const s of gameState.summons) if (s.isAlive && s instanceof Soldier) s.refreshStats();

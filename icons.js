@@ -190,8 +190,6 @@ const ICON_BODIES = {
         + `<path d="M40 34 C43 38 45 40 45 43 C45 46 43 48 40 48 C37 48 35 46 35 43 C35 40 37 38 40 34 Z" fill="#e5484d" stroke-width="2"/>`
         + `<g transform="translate(26 28) scale(0.58)"><path d="${HEART_PATH}" fill="#e5484d" stroke-width="5"/>${shine(21, 22, 5, 3.5)}</g>`,
     // 軍團紀律
-    legionCap: `${[[16, 36], [32, 30], [48, 36]].map(([x, y]) => `<path d="M${x - 10} ${y + 6} C${x - 10} ${y - 8} ${x + 10} ${y - 8} ${x + 10} ${y + 6} Z" fill="#90a4ae"/><path d="M${x} ${y - 6} L${x} ${y - 12}" stroke="#1565c0" stroke-width="4"/>`).join('')}
-        <path d="M4 50 L60 50" stroke-width="4"/>${duoStroke('M50 8 L50 22 M43 15 L57 15', '#81c784', 3.5)}`,
     // 操練：稻草人靶，胸口畫著靶心，旁邊一道劍痕
     legionDrill: placeAt(30, 62, -90, rodL(44, 5, WOOD)) + placeAt(8, 30, 0, rodL(44, 4.5, WOOD))
         + `<ellipse cx="30" cy="39" rx="11" ry="14" fill="#d7b98a"/><path d="M20 33 L40 33 M19 45 L41 45" stroke="#a1887f" stroke-width="2.2"/>

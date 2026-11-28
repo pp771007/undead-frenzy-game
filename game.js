@@ -740,7 +740,10 @@ const SUMMON_CARD_MAX = 8;
 const UNIT_CARD_WEIGHT = 2.5;
 function unitCardId(type) { return `unit_${type}`; }
 function summonCardDef(type) { return { ...SUMMON_CARD_DEFAULT, ...(UNIT_TYPES[type].card || {}) }; }
-function summonCap(type, n) { const d = summonCardDef(type); return d.cap + d.capPer * (n - 1); }
+function summonCap(type, n) {
+    const d = summonCardDef(type), c = d.cap + d.capPer * (n - 1), mod = UNIT_TYPES[type].capMod;
+    return mod ? mod(c) : c;
+}
 function summonEvery(type, n) { return summonCardDef(type).every * SUMMON_EVERY_STACK ** (n - 1); }
 const oneDecimal = x => Math.round(x * 10) / 10;
 function summonCardDesc(type) {
@@ -832,12 +835,21 @@ const META_UPGRADES = {
     headStart: { icon: 'draft', name: '開局祝福', group: 'tools', max: 1, per: 1, costBase: 150, desc: () => '開局先選一次祝福' },
 };
 // 強化表換過兩次，舊存檔買過、新表沒有的都照當時的價錢退還結晶：
-// v2 數值類改成百分比、加了傷害與復活（整張表重買）；v3「軍團體魄」移到各職業的專精（只退那一項）
-const META_TABLE_VERSION = 3;
+// v2 數值類改成百分比、加了傷害與復活（整張表重買）；v3「軍團體魄」移到各職業的專精（只退那一項）；
+// v4 拿掉戰士專精的「人數上限」（兵數只看兵卡）
+const META_TABLE_VERSION = 4;
 const META_V1_COST_BASE = { startSouls: 30, mageHp: 30, novaMastery: 40, boneMarrow: 50, soulAffinity: 50, freeReroll: 80, banish: 60, extraChoice: 250, headStart: 150 };
 const META_V2_BONE_MARROW_COST = 35;
+const META_V3_TROOP_CAP_COST = 40;
 function migrateMetaTable(m) {
     let v = m.metaTable || 1, crystals = m.crystals || 0, upgrades = { ...(m.upgrades || {}) };
+    const classUpgrades = { ...(m.classUpgrades || {}) };
+    if (v < 4 && classUpgrades.warrior && classUpgrades.warrior.troopCap) {
+        const lv = classUpgrades.warrior.troopCap;
+        crystals += META_V3_TROOP_CAP_COST * lv * (lv + 1) / 2;
+        classUpgrades.warrior = { ...classUpgrades.warrior };
+        delete classUpgrades.warrior.troopCap;
+    }
     if (v < 2) {
         for (const [id, lv] of Object.entries(upgrades)) crystals += (META_V1_COST_BASE[id] || 0) * lv * (lv + 1) / 2;
         upgrades = {};
@@ -848,7 +860,7 @@ function migrateMetaTable(m) {
         crystals += META_V2_BONE_MARROW_COST * lv * (lv + 1) / 2;
         delete upgrades.boneMarrow;
     }
-    return { ...m, crystals, upgrades, metaTable: META_TABLE_VERSION };
+    return { ...m, crystals, upgrades, classUpgrades, metaTable: META_TABLE_VERSION };
 }
 // 怪物的基本強度（見 META_UPGRADES 的說明）。量過的曲線（機器人、沒強化）：前 30 波幾乎沒有壓力、首領波不比旁邊的波難，
 // 難度全擠在 35 波以後（波數成長 expGrowth 是指數），所以前半局很空、後面一口氣斷崖。
@@ -1159,7 +1171,8 @@ function getNovaDamage() {
 // 兵種：職業的三種兵（召喚卡自動補的單位，或跟著主角升級的修練技能）。Cls 用函式包起來：類別宣告在後面
 // 以下選填（職業檔裡用）：
 //   upgradeOnly：修練類技能，沒有召喚卡，等級跟著主角走（武僧的拳、精靈的箭術）
-//   card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）；cap()：這種兵自己的上限（德魯伊的野獸看林地）
+//   card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）；capMod(n)：把召喚卡給的上限再改一下（戰士的三百壯士減半）
+//   cap()：這種兵另外受地形或機制限制的上限（德魯伊的野獸看林地）。不要拿它疊一個「卡片沒寫、玩家看不到」的上限
 //   canSummon()：現在能不能召（吸血鬼的轉化要身邊有怪）；summon(level)：自訂的召喚（要自己把 count 加上去）
 const UNIT_TYPES = {
     // card：召喚卡的數字（見 SUMMON_CARD_DEFAULT）。骷髏是便宜的人海、眼魔中量、怨靈少而精
@@ -1176,7 +1189,6 @@ const UNIT_TYPES = {
 //   ultSchool：選填，整個流派都繞著大招打轉（亡靈法師的新星），拿到大招卡之前這個流派的卡不會出現
 // 以下選填（其他職業在自己的檔案裡定義，例如 warrior.js）：
 //   name／title／portrait／tagline：標題畫面選職業時顯示；unlock：解鎖它的成就 id（沒有就是一開始就能玩）
-//   troopCap()：三種兵加起來的人數上限
 //   startCards：開局就學會的召喚卡（沒寫就是第一張）；unitLevelPerHero：主角每升 1 級，兵種升幾級（沒寫照 UNIT_LEVEL_PER_HERO；
 //               修練類職業的戰力全在技能等級上，要比召喚類高）；unitLevelMult()：再乘上的倍率（戰士的軍餉）
 //   update(dt)：每格在主角與召喚物之前跑一次；reset()：開新局、讀檔時清掉職業自己的狀態
@@ -1235,15 +1247,10 @@ function classDef() { return CLASSES[runClass()]; }
 function classUnlocked(id) { const c = CLASSES[id]; return !!c && (!c.unlock || !!meta.achv[c.unlock] || !!(c.unlockOld && meta.achv[c.unlockOld])); }
 // 標題畫面選的職業（沒解鎖或不存在就退回亡靈法師）
 function selectedClass() { return classUnlocked(meta.classSel) ? meta.classSel : DEFAULT_CLASS; }
-// 底部三種兵加起來到上限了沒（有上限的職業才有）
-function troopCapped() {
-    const c = classDef();
-    return !!c.troopCap && c.cards.reduce((n, t) => n + gameState.units[t].count, 0) >= c.troopCap();
-}
-// 這種兵現在召不了：總人數滿了、自己的上限滿了、或是職業說現在不行
+// 這種兵現在召不了：機制上的上限滿了（德魯伊的林地），或是職業說現在不行
 function summonBlocked(type) {
     const U = UNIT_TYPES[type];
-    return troopCapped() || (!!U.cap && gameState.units[type].count >= U.cap()) || (!!U.canSummon && !U.canSummon());
+    return (!!U.cap && gameState.units[type].count >= U.cap()) || (!!U.canSummon && !U.canSummon());
 }
 // 換主角的立繪（德魯伊化身巨熊）：寬度照原本，高度照新圖比例
 // 錢包的圖示（底部卡片的價格、上方的數字旁邊）
@@ -8158,7 +8165,7 @@ const CLASS_GUIDES = {
         cards: ['近戰主力，便宜又耐打', '光環讓身邊的怪變慢，陣亡時爆炸', '遠程射擊，躲在後排輸出'],
     },
     warrior: {
-        rules: ['士兵跟著你<b>排成陣型</b>，面向你移動的方向', '從背後、側面挨打傷害加倍：<b>把陣型轉過去對著怪</b>', '人數有上限，士兵越打越老練：<b>保住老兵比補新兵重要</b>', '受傷、砍怪會累積怒氣（腳下的橘條），<b>滿了自動發狂 8 秒</b>，之後虛脫 4 秒'],
+        rules: ['士兵跟著你<b>排成陣型</b>，面向你移動的方向', '從背後、側面挨打傷害加倍：<b>把陣型轉過去對著怪</b>', '士兵越打越老練：<b>保住老兵比補新兵重要</b>', '受傷、砍怪會累積怒氣（腳下的橘條），<b>滿了自動發狂 8 秒</b>，之後虛脫 4 秒'],
         cards: ['站前排，嘲諷身邊的怪、擋下射向你的血彈', '越過盾牌刺擊，對首領、大型、會飛的怪加倍', '站後排遠程射擊，射程長但裝填慢'],
     },
     druid: {
