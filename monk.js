@@ -378,8 +378,10 @@ function strikeMonk(t, dmg, hits) {
 // 虎嘯：連擊每滿一段大吼一聲，身邊的怪暈住（首領不會）
 function tigerRoar(p) {
     const rSq = TIGER_ROAR_RADIUS * TIGER_ROAR_RADIUS, stun = blessVal('tigerRoar');
+    // 第一道聲波推到牠那裡才定住
     monsterGrid.forEachInRadius(p.pos, TIGER_ROAR_RADIUS, m => {
-        if (m.isAlive && !(m instanceof BossMonster) && distanceSq(m.pos, p.pos) <= rSq) m.applySlow(1, stun);
+        const dSq = distanceSq(m.pos, p.pos);
+        if (m.isAlive && !(m instanceof BossMonster) && dSq <= rSq) afterDelay(ringReach(Math.sqrt(dSq), TIGER_ROAR_RADIUS, TIGER_ROAR_TIME), () => { if (m.isAlive) m.applySlow(1, stun); });
     });
     gameState.visualEffects.push(new TigerRoarEffect(p.pos, TIGER_ROAR_RADIUS));
     spawnFloatText(p.pos.x, p.pos.y - 34, '虎嘯', '#FFCC80', 15, 0.8, 'tigerRoar');
@@ -439,9 +441,9 @@ class DragonFistEffect extends TimedEffect {
     }
 }
 // 虎嘯：三道琥珀色的聲波弧從武僧往外一層一層推出去
-const TIGER_ROAR_COLOR = '#FFCC80';
+const TIGER_ROAR_COLOR = '#FFCC80', TIGER_ROAR_TIME = 0.5;
 class TigerRoarEffect extends TimedEffect {
-    constructor(pos, radius) { super({ x: pos.x, y: pos.y }, 0.5); this.radius = radius; }
+    constructor(pos, radius) { super({ x: pos.x, y: pos.y }, TIGER_ROAR_TIME); this.radius = radius; }
     draw(ctx) {
         const k = 1 - this.life / this.duration, { x, y } = this.pos;
         ctx.save();
@@ -459,12 +461,12 @@ class TigerRoarEffect extends TimedEffect {
     }
 }
 // 傳說「爆勁」：氣功波撞到盡頭炸成一朵青色的氣爆，一圈氣流往外噴
-const QI_BURST_COLOR = '#80DEEA', QI_BURST_RAYS = 10;
+const QI_BURST_COLOR = '#80DEEA', QI_BURST_RAYS = 10, QI_BURST_TIME = 0.4, QI_BURST_EASE = 2;
 class QiBurstEffect extends TimedEffect {
-    constructor(pos, radius) { super(pos, 0.4); this.radius = radius; this.spin = Math.random() * Math.PI; }
+    constructor(pos, radius) { super(pos, QI_BURST_TIME); this.radius = radius; this.spin = Math.random() * Math.PI; }
     draw(ctx) {
         const k = 1 - this.life / this.duration, { x, y } = this.pos, fade = 1 - k;
-        const r = this.radius * (1 - Math.pow(1 - k, 2));
+        const r = this.radius * (1 - Math.pow(1 - k, QI_BURST_EASE));
         ctx.save();
         ctx.globalAlpha = fade;
         ctx.drawImage(getGlowSprite(QI_BURST_COLOR), x - r, y - r, r * 2, r * 2);
@@ -545,7 +547,11 @@ function updateQiWaves(dt) {
         });
         if (!q.back && q.dist >= MONK.qiLength) {
             if (bl('qiBurst')) {
-                monsterGrid.forEachInRadius(q, QI_BURST_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, q) <= QI_BURST_RADIUS * QI_BURST_RADIUS) m.takeDamage(q.dmg * QI_BURST_SHARE); });
+                const burstDmg = q.dmg * QI_BURST_SHARE;
+                monsterGrid.forEachInRadius(q, QI_BURST_RADIUS, m => {
+                    const dSq = distanceSq(m.pos, q);
+                    if (m.isAlive && dSq <= QI_BURST_RADIUS * QI_BURST_RADIUS) afterDelay(ringReach(Math.sqrt(dSq), QI_BURST_RADIUS, QI_BURST_TIME, QI_BURST_EASE), () => { if (m.isAlive) m.takeDamage(burstDmg); });
+                });
                 gameState.visualEffects.push(new QiBurstEffect({ x: q.x, y: q.y }, QI_BURST_RADIUS));
             }
             if (bl('returningQi')) {
@@ -604,10 +610,16 @@ function vajraBlast(combo) {
     const p = gameState.player;
     const r = Math.min(VAJRA_RADIUS_MAX, VAJRA_RADIUS + combo * VAJRA_RADIUS_PER), rSq = r * r;
     const dmg = punchDamage() * comboMult() * VAJRA_SHARE;
+    const cx = p.pos.x, cy = p.pos.y;
+    // 震波環推到牠那裡才挨打、被震開
     monsterGrid.forEachInRadius(p.pos, r, m => {
-        if (!m.isAlive || distanceSq(m.pos, p.pos) > rSq) return;
-        m.takeDamage(dmg);
-        if (m.isAlive && !(m instanceof BossMonster)) { const d = normalizeVector({ x: m.pos.x - p.pos.x, y: m.pos.y - p.pos.y }); m.knockVel = { x: d.x * VAJRA_KNOCK, y: d.y * VAJRA_KNOCK }; }
+        const dSq = distanceSq(m.pos, p.pos);
+        if (!m.isAlive || dSq > rSq) return;
+        afterDelay(ringReach(Math.sqrt(dSq), r, VAJRA_BLAST_TIME, VAJRA_BLAST_EASE), () => {
+            if (!m.isAlive) return;
+            m.takeDamage(dmg);
+            if (m.isAlive && !(m instanceof BossMonster)) { const d = normalizeVector({ x: m.pos.x - cx, y: m.pos.y - cy }); m.knockVel = { x: d.x * VAJRA_KNOCK, y: d.y * VAJRA_KNOCK }; }
+        });
     });
     gameState.visualEffects.push(new VajraBlastEffect(p.pos, r));
     spawnFloatText(p.pos.x, p.pos.y - 44, `金剛怒目 ${Math.floor(combo)}`, VAJRA_GOLD, 16, 1.0, 'vajraWrath');
@@ -617,14 +629,15 @@ function vajraBlast(combo) {
 }
 // 震波：琥珀金的粗環往外推，環上一圈金剛杵的尖刺朝外，地上留下放射狀的裂痕
 const VAJRA_GOLD = '#FFB300', VAJRA_LIGHT = '#FFF8E1', VAJRA_PRONGS = 12, VAJRA_CRACK = 'rgba(30, 20, 10, 0.5)';
+const VAJRA_BLAST_TIME = 0.55, VAJRA_BLAST_EASE = 2;
 class VajraBlastEffect extends TimedEffect {
     constructor(pos, radius) {
-        super({ x: pos.x, y: pos.y }, 0.55);
+        super({ x: pos.x, y: pos.y }, VAJRA_BLAST_TIME);
         this.radius = radius;
         this.cracks = Array.from({ length: 9 }, () => ({ a: Math.random() * Math.PI * 2, len: radius * (0.5 + Math.random() * 0.4), bend: (Math.random() - 0.5) * 0.4 }));
     }
     draw(ctx) {
-        const t = 1 - this.life / this.duration, ease = 1 - (1 - t) * (1 - t);
+        const t = 1 - this.life / this.duration, ease = 1 - Math.pow(1 - t, VAJRA_BLAST_EASE);
         const r = this.radius * ease, { x, y } = this.pos;
         ctx.save();
         ctx.globalAlpha = Math.min(1, this.life / 0.25);

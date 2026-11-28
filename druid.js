@@ -802,9 +802,16 @@ class BearSwipeEffect extends TimedEffect {
 }
 // 傳說「震地」：熊腳下一圈土黃色的震波往外推，地面裂出幾道縫，碎石往外噴
 const QUAKE_DUST = '#A1887F', QUAKE_LIGHT = '#D7CCC8', QUAKE_CRACKS = 7;
+// 震波環貼著地面畫成扁的（上下只有左右的 QUAKE_FLAT 倍）
+const QUAKE_TIME = 0.55, QUAKE_EASE = 2, QUAKE_FLAT = 0.6;
+// 扁環擴到這隻怪那裡要幾秒：上下方向的怪要等環長得更大才碰到
+function quakeReach(m, c, R) {
+    const dx = m.pos.x - c.x, dy = (m.pos.y - c.y) / QUAKE_FLAT;
+    return ringReach(Math.hypot(dx, dy), R, QUAKE_TIME, QUAKE_EASE);
+}
 class BearQuakeEffect extends TimedEffect {
     constructor(pos, radius) {
-        super({ x: pos.x, y: pos.y + 6 }, 0.55);
+        super({ x: pos.x, y: pos.y + 6 }, QUAKE_TIME);
         this.radius = radius;
         this.cracks = Array.from({ length: QUAKE_CRACKS }, (_, i) => ({ a: i / QUAKE_CRACKS * Math.PI * 2 + Math.random() * 0.4, len: 0.6 + Math.random() * 0.35, bend: (Math.random() - 0.5) * 0.5 }));
         spawnParticles(pos.x, pos.y + 6, QUAKE_DUST, 14, 120, 0.5, 3);
@@ -823,9 +830,9 @@ class BearQuakeEffect extends TimedEffect {
             ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 1.6; ctx.stroke();
         }
         // 震波：扁的土黃色環（貼著地面）
-        const r = R * (1 - Math.pow(1 - k, 2));
+        const r = R * (1 - Math.pow(1 - k, QUAKE_EASE));
         ctx.globalAlpha = 0.85 * fade;
-        ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.ellipse(x, y, r, r * QUAKE_FLAT, 0, 0, Math.PI * 2);
         ctx.strokeStyle = QUAKE_DUST; ctx.lineWidth = 10 * fade + 2; ctx.stroke();
         ctx.strokeStyle = QUAKE_LIGHT; ctx.lineWidth = 2.5; ctx.stroke();
         ctx.restore();
@@ -1134,14 +1141,18 @@ class Beast extends SummonUnit {
             this.slamT -= 1 / this.attackSpeed;
             if (this.slamT <= 0) {
                 this.slamT = BEAR_SLAM_EVERY;
-                const rSq = BEAR_SLAM_RADIUS * BEAR_SLAM_RADIUS;
+                const rSq = BEAR_SLAM_RADIUS * BEAR_SLAM_RADIUS, c = { x: this.pos.x, y: this.pos.y }, slamDmg = dmg * BEAR_SLAM_MULT;
+                // 震波環推到牠那裡才挨打、被震飛
                 monsterGrid.forEachInRadius(this.pos, BEAR_SLAM_RADIUS, m => {
-                    if (!m.isAlive || distanceSq(m.pos, this.pos) > rSq) return;
-                    m.takeDamage(dmg * BEAR_SLAM_MULT);
-                    if (!m.isAlive) return;
-                    const dir = normalizeVector({ x: m.pos.x - this.pos.x, y: m.pos.y - this.pos.y });
-                    const kb = BEAR_SLAM_KNOCK * (m instanceof BossMonster ? CONFIG.nova.bossKnockbackMult : 1);
-                    m.knockVel = { x: dir.x * kb, y: dir.y * kb };
+                    if (!m.isAlive || distanceSq(m.pos, c) > rSq) return;
+                    afterDelay(quakeReach(m, c, BEAR_SLAM_RADIUS), () => {
+                        if (!m.isAlive) return;
+                        m.takeDamage(slamDmg);
+                        if (!m.isAlive) return;
+                        const dir = normalizeVector({ x: m.pos.x - c.x, y: m.pos.y - c.y });
+                        const kb = BEAR_SLAM_KNOCK * (m instanceof BossMonster ? CONFIG.nova.bossKnockbackMult : 1);
+                        m.knockVel = { x: dir.x * kb, y: dir.y * kb };
+                    });
                 });
                 gameState.visualEffects.push(new BearQuakeEffect(this.pos, BEAR_SLAM_RADIUS));
                 addShake(3);

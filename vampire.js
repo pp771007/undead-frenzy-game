@@ -542,12 +542,17 @@ function bloodBurst(p, dt) {
     const missing = 1 - p.currentHealth / p.maxHealth;
     const dmg = BLOOD_BURST.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + lv * CONFIG.bloodMagic.upgradeBonus)
         * (1 + missing * BLOOD_BURST.missingBonus) * (1 + blessVal('bmPower')) * sacrificeMult();
-    let total = 0;
+    // 血環擴到牠那裡才挨打（吸血也跟著那一下回）
+    const leech = blessVal('bmLeech');
     monsterGrid.forEachInRadius(p.pos, radius, m => {
-        if (!m.isAlive || distanceSq(m.pos, p.pos) > rSq) return;
-        m.takeDamage(dmg); total += dmg;
+        const dSq = distanceSq(m.pos, p.pos);
+        if (!m.isAlive || dSq > rSq) return;
+        afterDelay(ringReach(Math.sqrt(dSq), radius, BLOOD_BURST_TIME, 1, BLOOD_BURST_RING_START), () => {
+            if (!m.isAlive) return;
+            m.takeDamage(dmg);
+            if (leech) healHero(dmg * leech);
+        });
     });
-    if (bl('bmLeech')) healHero(total * blessVal('bmLeech'));
     // 雙流派「血之紐帶」：範圍裡的眷屬回血，身上冒一圈紫色的血光
     if (bl('bloodBond')) summonGrid.forEachInRadius(p.pos, radius, s => {
         if (!s.isAlive || !(s instanceof Thrall) || distanceSq(s.pos, p.pos) > rSq) return;
@@ -580,17 +585,20 @@ class ThrallRiseEffect extends TimedEffect {
         ctx.restore();
     }
 }
+// 血環等速從半徑的 BLOOD_BURST_RING_START 倍擴到整圈
+const BLOOD_BURST_TIME = 0.35, BLOOD_BURST_RING_START = 0.4;
 class BloodBurstEffect extends TimedEffect {
-    constructor(pos, radius) { super(pos, 0.35); this.radius = radius; }
+    constructor(pos, radius) { super(pos, BLOOD_BURST_TIME); this.radius = radius; }
     draw(ctx) {
         const k = 1 - this.life / this.duration;
         ctx.save();
         ctx.globalAlpha = (1 - k) * 0.8;
         ctx.strokeStyle = VAMP_ATTACK_COLOR; ctx.lineWidth = 8 * (1 - k) + 2;
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * (0.4 + 0.6 * k), 0, Math.PI * 2); ctx.stroke();
+        const r = this.radius * (BLOOD_BURST_RING_START + (1 - BLOOD_BURST_RING_START) * k);
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI * 2); ctx.stroke();
         ctx.globalAlpha = (1 - k) * 0.25;
         ctx.fillStyle = VAMP_ATTACK_DARK;
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius * (0.4 + 0.6 * k), 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
     }
 }

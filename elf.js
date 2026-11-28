@@ -423,12 +423,18 @@ function updateTraps(dt) {
         e.traps.splice(i, 1);
         const r = T.radius * t.scale, rSq = r * r;
         const dmg = T.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Traps.level * CONFIG.traps.upgradeBonus) * (1 + blessVal('trapPower')) * t.scale;
+        // 圈擴到牠那裡才挨打、被減速定住
+        const kind = t.kind;
         monsterGrid.forEachInRadius(t, r, m => {
-            if (!m.isAlive || distanceSq(m.pos, t) > rSq) return;
-            m.takeDamage(t.kind === 'blast' ? dmg * 1.6 : dmg * 0.6);
-            if (!m.isAlive || m instanceof BossMonster) return;
-            if (t.kind === 'slow' || res('trapper') >= 1) m.applySlow(t.kind === 'slow' ? T.slow : RES_SNARE_SLOW, T.slowTime);
-            if (t.kind === 'root') m.applySlow(0.95, T.rootTime);
+            const dSq = distanceSq(m.pos, t);
+            if (!m.isAlive || dSq > rSq) return;
+            afterDelay(trapReach(kind, Math.sqrt(dSq), r), () => {
+                if (!m.isAlive) return;
+                m.takeDamage(kind === 'blast' ? dmg * 1.6 : dmg * 0.6);
+                if (!m.isAlive || m instanceof BossMonster) return;
+                if (kind === 'slow' || res('trapper') >= 1) m.applySlow(kind === 'slow' ? T.slow : RES_SNARE_SLOW, T.slowTime);
+                if (kind === 'root') m.applySlow(0.95, T.rootTime);
+            });
         });
         gameState.visualEffects.push(new TrapBurstEffect(t, r, t.kind));
         if (bl('hunterNet')) castNet(t, r * NET_SCALE);
@@ -498,9 +504,14 @@ function trapSprite(kind) {
     return (trapSprites[kind] = c);
 }
 // 觸發：爆炸是金橘火球＋碎片、冰霜是一圈冰晶往外炸、荊棘是藤蔓從地面竄出來纏住
+// 三種的圈都等速長大，半徑從 r × start 長到 r × end（荊棘長得最快，前四成時間就竄到底）
+const TRAP_BURST_TIME = 0.45;
+const TRAP_RING = { blast: { start: 0.3, end: 1.1 }, slow: { start: 0.5, end: 1 }, root: { start: 0, end: 2.5 } };
+function trapRingR(kind, r, k) { const g = TRAP_RING[kind]; return r * (g.start + (g.end - g.start) * k); }
+function trapReach(kind, d, r) { const g = TRAP_RING[kind]; return ringReach(d, r, TRAP_BURST_TIME, 1, g.start, g.end); }
 class TrapBurstEffect extends TimedEffect {
     constructor(pos, r, kind) {
-        super(pos, 0.45); this.r = r; this.kind = kind;
+        super(pos, TRAP_BURST_TIME); this.r = r; this.kind = kind;
         const col = TRAP_COLORS[kind];
         if (kind === 'blast') { spawnParticles(pos.x, pos.y, col, 18, 160, 0.5, 3); spawnParticles(pos.x, pos.y, '#90A4AE', 8, 110, 0.6, 3); addShake(3); }
         else if (kind === 'slow') spawnParticles(pos.x, pos.y, '#E1F5FE', 14, 120, 0.5, 3);
@@ -514,7 +525,7 @@ class TrapBurstEffect extends TimedEffect {
             ctx.globalAlpha = (1 - k) * 0.9;
             ctx.drawImage(getGlowSprite(col), x - g / 2, y - g / 2, g, g);
             ctx.strokeStyle = '#FFE082'; ctx.lineWidth = 6 * (1 - k) + 1;
-            ctx.beginPath(); ctx.arc(x, y, this.r * (0.3 + 0.8 * k), 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(x, y, trapRingR('blast', this.r, k), 0, Math.PI * 2); ctx.stroke();
         } else if (this.kind === 'slow') {
             ctx.globalAlpha = 1 - k;
             ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.fillStyle = '#E1F5FE';
@@ -524,10 +535,10 @@ class TrapBurstEffect extends TimedEffect {
                 ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * 6, cy + Math.sin(a) * 6); ctx.lineTo(cx + Math.cos(a + 1.7) * 3, cy + Math.sin(a + 1.7) * 3); ctx.lineTo(cx - Math.cos(a) * 4, cy - Math.sin(a) * 4); ctx.lineTo(cx + Math.cos(a - 1.7) * 3, cy + Math.sin(a - 1.7) * 3); ctx.closePath(); ctx.fill(); ctx.stroke();
             }
             ctx.globalAlpha = (1 - k) * 0.35; ctx.fillStyle = col;
-            ctx.beginPath(); ctx.arc(x, y, this.r * (0.5 + 0.5 * k), 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x, y, trapRingR('slow', this.r, k), 0, Math.PI * 2); ctx.fill();
         } else {
             // 藤蔓從中心往外竄、再縮回去（同德魯伊種子落地）
-            const grow = Math.min(1, k * 2.5);
+            const grow = Math.min(1, trapRingR('root', 1, k));
             ctx.globalAlpha = k < 0.7 ? 1 : (1 - k) / 0.3;
             ctx.strokeStyle = '#558B2F'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
             for (let i = 0; i < 7; i++) {

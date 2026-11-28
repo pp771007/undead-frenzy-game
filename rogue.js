@@ -587,12 +587,12 @@ class PlagueCloudEffect extends TimedEffect {
     }
 }
 // 傳說「影爆」：影子縮成一點再炸開，一圈紫黑色的影刃往外甩
-const SHADOW_BURST_BLADES = 8;
+const SHADOW_BURST_BLADES = 8, SHADOW_BURST_TIME = 0.45, SHADOW_BURST_EASE = 2;
 class ShadowBurstEffect extends TimedEffect {
-    constructor(pos, radius) { super({ x: pos.x, y: pos.y }, 0.45); this.radius = radius; this.spin = Math.random() * Math.PI; }
+    constructor(pos, radius) { super({ x: pos.x, y: pos.y }, SHADOW_BURST_TIME); this.radius = radius; this.spin = Math.random() * Math.PI; }
     draw(ctx) {
         const k = 1 - this.life / this.duration, { x, y } = this.pos, R = this.radius, fade = 1 - k;
-        const r = R * (1 - Math.pow(1 - k, 2));
+        const r = R * (1 - Math.pow(1 - k, SHADOW_BURST_EASE));
         ctx.save();
         ctx.globalAlpha = fade;
         ctx.drawImage(getGlowSprite('#7E57C2'), x - r, y - r, r * 2, r * 2);
@@ -808,7 +808,10 @@ class ShadowClone extends SummonUnit {
     fade() {
         if (bl('shadowBurst')) {
             const rSq = SHADOW_BURST_RADIUS * SHADOW_BURST_RADIUS, dmg = this.attack * ROGUE.ambushMult * SHADOW_BURST_SHARE;
-            monsterGrid.forEachInRadius(this.pos, SHADOW_BURST_RADIUS, m => { if (m.isAlive && distanceSq(m.pos, this.pos) <= rSq) m.takeDamage(dmg); });
+            monsterGrid.forEachInRadius(this.pos, SHADOW_BURST_RADIUS, m => {
+                const dSq = distanceSq(m.pos, this.pos);
+                if (m.isAlive && dSq <= rSq) afterDelay(ringReach(Math.sqrt(dSq), SHADOW_BURST_RADIUS, SHADOW_BURST_TIME, SHADOW_BURST_EASE), () => { if (m.isAlive) m.takeDamage(dmg); });
+            });
             gameState.visualEffects.push(new ShadowBurstEffect(this.pos, SHADOW_BURST_RADIUS));
         }
         this.die();

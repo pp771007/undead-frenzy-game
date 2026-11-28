@@ -2977,7 +2977,8 @@ class Wraith extends SummonUnit {
         if (!monsterGrid.anyWithin(this.pos, this.slowRadius)) return;
         const dmg = Math.round(this.explosionDamage() * WRAITH_PULSE_SHARE * RES_WRAITH_PULSE_MULT);
         monsterGrid.forEachInRadius(this.pos, this.slowRadius, m => {
-            if (m.isAlive && distanceSq(this.pos, m.pos) <= this.slowRadiusSq) m.takeDamage(dmg);
+            const dSq = distanceSq(this.pos, m.pos);
+            if (m.isAlive && dSq <= this.slowRadiusSq) afterDelay(novaRingReach(Math.sqrt(dSq), this.slowRadius), () => { if (m.isAlive) m.takeDamage(dmg); });
         });
         if (gameState.visualEffects.length < ambientEffectCap()) {
             gameState.visualEffects.push(new NovaEffect(this.pos, this.slowRadius, PULSE_EFFECT_COLORS));
@@ -2992,9 +2993,11 @@ class Wraith extends SummonUnit {
         const radius = this.slowRadius;
         const explosionRadiusSq = radius * radius;
 
+        // 爆炸圈等速擴開（ExplosionEffect），擴到牠那裡才挨打
         monsterGrid.forEachInRadius(this.pos, radius, monster => {
-            if (monster.isAlive && distanceSq(this.pos, monster.pos) <= explosionRadiusSq) {
-                monster.takeDamage(explosionDamage);
+            const dSq = distanceSq(this.pos, monster.pos);
+            if (monster.isAlive && dSq <= explosionRadiusSq) {
+                afterDelay(ringReach(Math.sqrt(dSq), radius, CONFIG.visuals.explosionEffectDuration), () => { if (monster.isAlive) monster.takeDamage(explosionDamage); });
             }
         });
 
@@ -3150,7 +3153,10 @@ function ghostfireBurst(pos, dmg) {
 function wailingNova(dmg) {
     for (const w of gameState.summons) {
         if (!w.isAlive || !(w instanceof Wraith)) continue;
-        monsterGrid.forEachInRadius(w.pos, w.slowRadius, m => { if (m.isAlive && distanceSq(m.pos, w.pos) <= w.slowRadiusSq) m.takeDamage(dmg); });
+        monsterGrid.forEachInRadius(w.pos, w.slowRadius, m => {
+            const dSq = distanceSq(m.pos, w.pos);
+            if (m.isAlive && dSq <= w.slowRadiusSq) afterDelay(novaRingReach(Math.sqrt(dSq), w.slowRadius), () => { if (m.isAlive) m.takeDamage(dmg); });
+        });
         if (inView(w.pos)) gameState.visualEffects.push(new NovaEffect(w.pos, w.slowRadius, PULSE_EFFECT_COLORS));
     }
 }
@@ -4663,6 +4669,7 @@ function drawLobbedBone(m, k) {
 // ---------- 世界上的特效（不會傷人，只是好看）：首領招式、職業大招共用 ----------
 // kind：ring 震波、spikes 骨刺、beam 光束殘影、cone 扇形火焰、slash 弧形刀光、leaves 落葉旋風、sprites 一群圖往外飛（蝙蝠之類）。
 // delay：幾秒後才出現（連斬一刀接一刀）
+const WORLD_FX_RING_EASE = 2;   // ring 從 r0 擴到 r1 是二次方減速
 function addWorldFx(f) {
     gameState.worldFx.push({ delay: 0, ...f, max: f.life });
 }
@@ -4732,7 +4739,7 @@ function drawWorldFx() {
             }
         }
         if (f.kind === 'ring') {
-            const r = f.r0 + (f.r1 - f.r0) * (1 - (1 - k) * (1 - k));
+            const r = f.r0 + (f.r1 - f.r0) * (1 - Math.pow(1 - k, WORLD_FX_RING_EASE));
             ctx.globalAlpha = 1 - k;
             ctx.strokeStyle = f.color;
             ctx.lineWidth = f.width * (1 - k) + 1;
@@ -5998,6 +6005,7 @@ const BONE_PILE = {
     chainDelay: 0.004,                // 每離主角 1 單位晚幾秒炸：從主角往外一圈一圈炸開
 };
 const BONE_PILE_GLOW = '#B39DDB', BONE_BLAST_LIGHT = '#EDE7F6', BONE_BLAST_SHARDS = 7;
+const BONE_BLAST_RING_R0 = 8, BONE_BLAST_RING_GROW = 1.2, BONE_BLAST_RING_LIFE = 0.35;
 function boneReach() { return novaRadius() * BONE_PILE.reachMult; }
 function leaveBonePile(pos) {
     const piles = gameState.bonePiles;
@@ -6030,12 +6038,17 @@ function updateBonePiles(deltaTime) {
 function explodeBonePile(e) {
     // 屍爆第 1 級是學會，之後每級加傷害
     const R = BONE_PILE.radius, rSq = R * R, dmg = getNovaDamage() * BONE_PILE.dmgMult * (1 + BLESSINGS.corpseBlast.per * Math.max(0, bl('corpseBlast') - 1));
+    // 圈擴到牠那裡才挨打（worldFx 的 ring：r0 → r1、二次方減速）
     monsterGrid.forEachInRadius(e, R, m => {
-        if (!m.isAlive || distanceSq(m.pos, e) > rSq) return;
-        if (m instanceof BossMonster) m.shredArmor(m.armorMax * BONE_PILE.armorShred);
-        m.takeDamage(dmg);
+        const dSq = distanceSq(m.pos, e);
+        if (!m.isAlive || dSq > rSq) return;
+        afterDelay(ringReach(Math.sqrt(dSq), R, BONE_BLAST_RING_LIFE, WORLD_FX_RING_EASE, BONE_BLAST_RING_R0 / R, BONE_BLAST_RING_GROW), () => {
+            if (!m.isAlive) return;
+            if (m instanceof BossMonster) m.shredArmor(m.armorMax * BONE_PILE.armorShred);
+            m.takeDamage(dmg);
+        });
     });
-    addWorldFx({ kind: 'ring', x: e.x, y: e.y, r0: 8, r1: R * 1.2, life: 0.35, color: BONE_PILE_GLOW, width: 6 });
+    addWorldFx({ kind: 'ring', x: e.x, y: e.y, r0: BONE_BLAST_RING_R0, r1: R * BONE_BLAST_RING_GROW, life: BONE_BLAST_RING_LIFE, color: BONE_PILE_GLOW, width: 6 });
     boneShards(e.x, e.y, BONE_BLAST_SHARDS, 170, 0.6);
     spawnParticles(e.x, e.y, BONE_BLAST_LIGHT, 8, 140, 0.45, 3);
     spawnParticles(e.x, e.y, BONE_PILE_GLOW, 6, 90, 0.4, 3);
@@ -7532,6 +7545,9 @@ const REVIVE_EFFECT_COLORS = { fill: '255, 213, 79', stroke: '255, 236, 179' };
 // 脈衝這類「每隻都會一直放」的特效：場上特效太多時就不再加，避免大軍時畫面與效能被淹沒
 const MAX_AMBIENT_EFFECTS = 120;
 
+const NOVA_EFFECT_EASE = 3;
+// 圈擴到距離 d 要幾秒（範圍傷害配這個圈時用）
+function novaRingReach(d, R) { return ringReach(d, R, CONFIG.nova.effectDuration, NOVA_EFFECT_EASE); }
 class NovaEffect extends TimedEffect {
     constructor(pos, radius, colors = NOVA_EFFECT_COLORS) {
         super(pos, CONFIG.nova.effectDuration);
@@ -7541,7 +7557,7 @@ class NovaEffect extends TimedEffect {
     draw(ctx) {
         if (!this.isAlive) return;
         const p = 1 - this.life / this.duration;
-        const r = this.radius * (1 - Math.pow(1 - p, 3));
+        const r = this.radius * (1 - Math.pow(1 - p, NOVA_EFFECT_EASE));
         ctx.save();
         ctx.fillStyle = `rgba(${this.colors.fill}, ${(0.25 * (1 - p)).toFixed(2)})`;
         ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, r, 0, Math.PI * 2); ctx.fill();
@@ -7554,7 +7570,7 @@ class NovaEffect extends TimedEffect {
 
 // 新星的爆炸：中心一閃、一圈光束往外射、粗的震波環推出去，後面跟一道淡的第二波，地上一片光跟著擴散。
 // 共用的 NovaEffect 只是一個圈（怨靈脈衝、復活這些小招也用它），大招要一眼看得出「這是大招」
-const NOVA_BLAST_TIME = 0.75, NOVA_BLAST_RAYS = 16;
+const NOVA_BLAST_TIME = 0.75, NOVA_BLAST_EASE = 3, NOVA_BLAST_RAYS = 16;
 const NOVA_BLAST_COLORS = { ground: '156, 39, 176', ring: '206, 147, 216', light: '243, 229, 245', core: '255, 255, 255' };
 class NovaBlastEffect extends TimedEffect {
     constructor(pos, radius, colors) {
@@ -7566,7 +7582,7 @@ class NovaBlastEffect extends TimedEffect {
     draw(ctx) {
         if (!this.isAlive) return;
         const t = 1 - this.life / this.duration, C = this.colors, { x, y } = this.pos, R = this.radius;
-        const r = R * (1 - Math.pow(1 - t, 3)), fade = 1 - t;
+        const r = R * (1 - Math.pow(1 - t, NOVA_BLAST_EASE)), fade = 1 - t;
         ctx.save();
         ctx.fillStyle = `rgba(${C.ground}, ${(0.32 * fade).toFixed(2)})`;
         ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
@@ -7679,18 +7695,23 @@ function novaBlast(share, main) {
     const radius = novaRadius(), rSq = radius * radius;
     const push = bl('novaPush'), stun = blessVal('novaPush');
     let novaKills = 0;
+    const cx = p.pos.x, cy = p.pos.y;
+    // 圈擴到牠那裡才挨打、被推開（見 ringReach）
     monsterGrid.forEachInRadius(p.pos, radius, m => {
-        if (!m.isAlive || distanceSq(m.pos, p.pos) > rSq) return;
-        if (push) {
-            const dir = normalizeVector({ x: m.pos.x - p.pos.x, y: m.pos.y - p.pos.y });
-            const kb = c.knockbackSpeed * (m instanceof BossMonster ? c.bossKnockbackMult : 1);
-            m.knockVel = { x: dir.x * kb, y: dir.y * kb };
-            if (!(m instanceof BossMonster)) m.applySlow(1, stun);
-        }
-        m.takeDamage(dmg);
-        if (!m.isAlive) novaKills++;
+        const dSq = distanceSq(m.pos, p.pos);
+        if (!m.isAlive || dSq > rSq) return;
+        afterDelay(ringReach(Math.sqrt(dSq), radius, NOVA_BLAST_TIME, NOVA_BLAST_EASE), () => {
+            if (!m.isAlive) return;
+            if (push) {
+                const dir = normalizeVector({ x: m.pos.x - cx, y: m.pos.y - cy });
+                const kb = c.knockbackSpeed * (m instanceof BossMonster ? c.bossKnockbackMult : 1);
+                m.knockVel = { x: dir.x * kb, y: dir.y * kb };
+                if (!(m instanceof BossMonster)) m.applySlow(1, stun);
+            }
+            m.takeDamage(dmg);
+            if (!m.isAlive) { novaKills++; gameState.run.novaBest = Math.max(gameState.run.novaBest, novaKills); }
+        });
     });
-    gameState.run.novaBest = Math.max(gameState.run.novaBest, novaKills);
     gameState.visualEffects.push(new NovaBlastEffect(p.pos, radius, NOVA_BLAST_COLORS));
     spawnParticles(p.pos.x, p.pos.y, '#CE93D8', main ? 36 : 18, 260, 0.5, 3);
     addShake(main ? 7 : 4);
@@ -7724,6 +7745,14 @@ function updateNovaPending(deltaTime) {
 // 晚一點才發生的事：傷害要等畫面上的東西真的打到（箭落地、標槍飛到、刀光出現）才扣。
 // 放招當下就扣的話，怪會在箭落下之前就死掉淡出，看起來像自己消失，箭再插到空地上
 function afterDelay(sec, fn) { gameState.delayedHits.push({ t: sec, fn }); }
+// 從中心往外擴的震波：圈的半徑 = R ×（start +（end − start）×（1 −（1 − k）^ease）），k 是特效 0→1 的進度。
+// 回傳圈擴到距離 d 要幾秒：範圍傷害排在那一刻扣，邊緣的怪才不會比圈先倒
+function ringReach(d, R, duration, ease = 1, start = 0, end = 1) {
+    const u = (Math.min(1, d / R) - start) / (end - start);
+    if (u <= 0) return 0;
+    if (u >= 1) return duration;
+    return duration * (1 - Math.pow(1 - u, 1 / ease));
+}
 function updateDelayedHits(deltaTime) {
     const list = gameState.delayedHits;
     for (let i = list.length - 1; i >= 0; i--) {
