@@ -214,9 +214,8 @@ function elfUpdate(dt) {
         while (e.rainFx >= 1) {
             e.rainFx--;
             if (gameState.visualEffects.length >= ambientEffectCap()) break;
-            gameState.visualEffects.push(new FallingArrowEffect({ x: camera.x + Math.random() * view.w, y: camera.y + Math.random() * view.h }));
+            gameState.visualEffects.push(new FallingShotEffect({ x: camera.x + Math.random() * view.w, y: camera.y + Math.random() * view.h }, 'rainArrow', RAIN_TRAIL));
         }
-        if (e.rainT <= 0) { gameState.run.novaBest = Math.max(gameState.run.novaBest, e.rainKills); }
     }
     // 月光箭
     if (bl('moonArrow') && !gameState.betweenWaves) {
@@ -372,7 +371,6 @@ class Arrow extends TimedEffect {
 }
 const ELEM_COLORS = { fire: '#FF7043', ice: '#81D4FA', thunder: '#FFF176', all: '#E1BEE7' };
 const ARROW_BACK_GLOW = '#80CBC4', ARROW_GLOW_SIZE = 26;
-const FALLING_ARROW_ANGLE = Math.PI * 0.42;   // 箭雨的箭朝右下方插
 // 箭：細長木桿、葉形箭頭、綠色羽毛；永遠朝飛行方向
 function drawArrowShape(g, shaft, feather) {
     g.lineWidth = 1.4; g.strokeStyle = SHAPE_OUTLINE;
@@ -681,45 +679,27 @@ function useArrowRain() {
     stats().novas++;
     return true;
 }
+// 每一箭落地才扣血（見 afterDelay）。已經有夠多箭在路上、落地就會死的怪不再挑，箭分給別隻
 function rainVolley() {
     const e = elfState();
-    const pool = gameState.monsters.filter(m => m.isAlive && !m.stealthed && inView(m.pos));
+    const pool = gameState.monsters.filter(m => m.isAlive && !m.stealthed && inView(m.pos) && m.currentHealth > (m.rainIncoming || 0));
     const dmg = ELF.rain.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + gameState.units.Archery.level * CONFIG.archery.upgradeBonus) * (1 + blessVal('bowPowerUp'));
     for (let i = 0; i < ELF.rain.perTick && pool.length; i++) {
         const m = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-        m.takeDamage(dmg);
-        if (!m.isAlive) e.rainKills++;
-        gameState.visualEffects.push(new FallingArrowEffect(m.pos));
+        m.rainIncoming = (m.rainIncoming || 0) + dmg;
+        gameState.visualEffects.push(new FallingShotEffect(m.pos, 'rainArrow', RAIN_TRAIL, m));
+        afterDelay(FALL_SHOT.fall, () => {
+            m.rainIncoming -= dmg;
+            if (!m.isAlive) return;
+            m.takeDamage(dmg);
+            if (inView(m.pos)) spawnParticles(m.pos.x, m.pos.y, RAIN_TRAIL, 4, 70, 0.3, 2.5);
+            if (!m.isAlive) { e.rainKills++; gameState.run.novaBest = Math.max(gameState.run.novaBest, e.rainKills); }
+        });
     }
 }
-// 箭雨的一支箭：地上的影子越來越大 → 從斜上方插下來（跟平射同一支箭）→ 揚起一點塵土、插在地上一會兒再淡掉
-const RAIN_FALL = 0.28, RAIN_STUCK = 0.55, RAIN_HEIGHT = 140, RAIN_DRIFT = 30, RAIN_AMBIENT_PER_SEC = 45;
-const RAIN_DUST = '#BCAAA4', RAIN_SHADOW = 'rgba(0, 0, 0, 0.3)';
-class FallingArrowEffect extends TimedEffect {
-    constructor(pos) { super(pos, RAIN_FALL + RAIN_STUCK); this.landed = false; }
-    update(dt) {
-        super.update(dt);
-        if (!this.landed && this.duration - this.life >= RAIN_FALL) {
-            this.landed = true;
-            if (inView(this.pos)) spawnParticles(this.pos.x, this.pos.y, RAIN_DUST, 3, 40, 0.35, 2.5);
-        }
-    }
-    draw(ctx) {
-        if (!inView(this.pos)) return;
-        const t = this.duration - this.life, k = Math.min(1, t / RAIN_FALL);
-        const dx = Math.cos(FALLING_ARROW_ANGLE), dy = Math.sin(FALLING_ARROW_ANGLE);
-        if (!this.landed) {
-            ctx.fillStyle = RAIN_SHADOW;
-            ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y, 2 + 5 * k, 1 + 2 * k, 0, 0, Math.PI * 2); ctx.fill();
-            drawShaped('arrow', this.pos.x - dx * 12 - (1 - k) * RAIN_DRIFT, this.pos.y - dy * 12 - (1 - k) * RAIN_HEIGHT, FALLING_ARROW_ANGLE, 0);
-            return;
-        }
-        // 插在地上：箭頭埋進土裡，只露出後半截
-        ctx.globalAlpha = Math.min(1, this.life / (RAIN_STUCK * 0.5));
-        drawShaped('arrow', this.pos.x - dx * 9, this.pos.y - dy * 9, FALLING_ARROW_ANGLE, 0);
-        ctx.globalAlpha = 1;
-    }
-}
+// 箭雨的箭：跟平射同一支箭，放大、木桿換淺色（暗色地面上才看得到一整片落下來），落下時拖淡青色殘影
+const RAIN_AMBIENT_PER_SEC = 45, RAIN_TRAIL = '#B2EBF2', RAIN_ARROW_SCALE = 1.45;
+SHAPE_SPRITES.rainArrow = { len: 28 * RAIN_ARROW_SCALE, wid: 8 * RAIN_ARROW_SCALE, spin: 0, draw: g => { g.scale(RAIN_ARROW_SCALE, RAIN_ARROW_SCALE); drawArrowShape(g, '#D7CCC8', '#66BB6A'); } };
 
 // ---------- 月光箭：貫穿怪最多的那個方向 ----------
 function moonBeam(p) {

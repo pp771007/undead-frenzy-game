@@ -628,17 +628,23 @@ function useBehead() {
     let kills = 0;
     victims.forEach((v, vi) => {
         const hits = v === main ? B.hits : 1;
-        for (let i = 0; i < hits && v.isAlive; i++) { v.lastHitWasOneShot = false; v.takeDamage(dmg * (r.targets.includes(v) && res('assassination') >= 1 ? RES_MARKED_TAKEN : 1)); knifeHit(v); }
-        if (!v.isAlive) kills++;
-        // 刀光：主目標連砍幾刀交錯成米字，其他的一人一刀、一個接一個
+        const hitDmg = dmg * (r.targets.includes(v) && res('assassination') >= 1 ? RES_MARKED_TAKEN : 1);
+        // 刀光：主目標連砍幾刀交錯成米字，其他的一人一刀、一個接一個。每一刀的刀光出現時才扣那一刀的血
         const base = Math.random() * Math.PI, R = Math.max(BEHEAD_SLASH_R, v.imageWidth * 0.5);
         for (let i = 0; i < hits; i++) {
-            addWorldFx({ kind: 'slash', x: v.pos.x, y: v.pos.y, a: base + i * Math.PI / hits * 1.6, arc: Math.PI * 0.9, r: R, width: BEHEAD_SLASH_W, life: 0.32, color: i % 2 ? BEHEAD_SLASH_ALT : BEHEAD_SLASH, delay: (vi + i) * BEHEAD_SLASH_GAP });
+            const delay = (vi + i) * BEHEAD_SLASH_GAP;
+            addWorldFx({ kind: 'slash', x: v.pos.x, y: v.pos.y, a: base + i * Math.PI / hits * 1.6, arc: Math.PI * 0.9, r: R, width: BEHEAD_SLASH_W, life: 0.32, color: i % 2 ? BEHEAD_SLASH_ALT : BEHEAD_SLASH, delay });
+            afterDelay(delay, () => {
+                if (!v.isAlive) return;
+                if (i === 0) spawnParticles(v.pos.x, v.pos.y, BEHEAD_SLASH, 10, 120, 0.4, 3);
+                v.lastHitWasOneShot = false;
+                v.takeDamage(hitDmg);
+                knifeHit(v);
+                if (!v.isAlive) { kills++; gameState.run.novaBest = Math.max(gameState.run.novaBest, kills); }
+            });
         }
-        spawnParticles(v.pos.x, v.pos.y, BEHEAD_SLASH, 10, 120, 0.4, 3);
     });
     enterHide(ROGUE.behead.hide);
-    gameState.run.novaBest = Math.max(gameState.run.novaBest, kills);
     spawnFloatText(p.pos.x, p.pos.y - 40, '斬首！', '#FFE57F', 18, 1.1, 'behead');
     addShake(6);
     Sfx.play('nova');

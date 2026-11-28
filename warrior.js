@@ -151,7 +151,7 @@ const RES_TURTLE_TAKEN = 0.7;
 // 光減傷不夠：狂戰挨的打比誰都多卻活最久，因為一直在回血（自動遊玩量的），所以這兩段也各給一種回血
 const TURTLE_RING_R = 28, TURTLE_RING_PER = 2, TURTLE_REGEN = 0.02, GUARD_SHOT_RADIUS = 80, GUARD_SHOT_HEAL = 0.01;
 const RES_IRONWALL_BLOCK = 2;
-const RES_SPEARWALL_EVERY = 2, RES_SPEARWALL_LENGTH = 70;
+const RES_SPEARWALL_EVERY = 2, RES_SPEARWALL_LENGTH = 70, RES_SPEARWALL_FLIGHT = 0.15;
 const RES_PHALANX_RATE = 1.5;
 const RES_THREE_SHOT_RATE = 1.4;
 const RES_ARROWRAIN_EVERY = 6, RES_ARROWRAIN_RADIUS = 70, RES_ARROWRAIN_RANGE = 280, RES_ARROWRAIN_SHARE = 0.6;
@@ -536,15 +536,18 @@ function useJavelin() {
     const dmg = J.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + troops * J.perTroop);
     const halfW = J.width / 2;
     let kills = 0;
+    // 標槍飛到牠那裡才扣血：越遠的越晚（標槍是等速飛出去的）
     for (const m of gameState.monsters) {
         if (!m.isAlive || m.stealthed) continue;
         const dx = m.pos.x - p.pos.x, dy = m.pos.y - p.pos.y;
         const along = dx * w.fx + dy * w.fy, side = Math.abs(dx * -w.fy + dy * w.fx);
         if (along < -20 || along > J.length || side > halfW) continue;
-        m.takeDamage(dmg);
-        if (!m.isAlive) kills++;
+        afterDelay(J.flight * Math.max(0, along) / J.length, () => {
+            if (!m.isAlive) return;
+            m.takeDamage(dmg);
+            if (!m.isAlive) { kills++; gameState.run.novaBest = Math.max(gameState.run.novaBest, kills); }
+        });
     }
-    gameState.run.novaBest = Math.max(gameState.run.novaBest, kills);
     // 每個士兵（和戰士自己）各丟一根：畫面上看得到一整排標槍飛出去
     const throwers = [p, ...gameState.summons.filter(s => s.isAlive && s instanceof Soldier)];
     const fx = new JavelinEffect(throwers.map(t => ({ x: t.pos.x, y: t.pos.y })), w.fx, w.fy, J.length, J.flight);
@@ -838,11 +841,12 @@ function spearWall(p, w) {
         const dx = m.pos.x - p.pos.x, dy = m.pos.y - p.pos.y;
         const along = dx * w.fx + dy * w.fy, side = Math.abs(dx * -w.fy + dy * w.fx);
         if (along < from || along > to || side > halfW) continue;
-        m.takeDamage(dmg);
+        // 長槍飛到牠那裡才扣血
+        afterDelay(RES_SPEARWALL_FLIGHT * (along - from) / (to - from), () => { if (m.isAlive) m.takeDamage(dmg); });
         any = true;
     }
     if (!any) return;
-    const fx = new JavelinEffect(spears.map(s => ({ x: s.pos.x, y: s.pos.y })), w.fx, w.fy, RES_SPEARWALL_LENGTH, 0.15);
+    const fx = new JavelinEffect(spears.map(s => ({ x: s.pos.x, y: s.pos.y })), w.fx, w.fy, RES_SPEARWALL_LENGTH, RES_SPEARWALL_FLIGHT);
     gameState.visualEffects.push(fx);
 }
 // 稀有祝福「箭雨」：射程內最密的一群怪被所有弩手齊射一輪
@@ -860,33 +864,27 @@ function arrowRain(p) {
     }
     const dmg = bows.reduce((a, s) => a + s.attack, 0) * RES_ARROWRAIN_SHARE;
     const c = { x: best.pos.x, y: best.pos.y };
-    for (const m of near) if (distanceSq(m.pos, c) <= rSq) m.takeDamage(dmg);
-    gameState.visualEffects.push(new ArrowRainEffect(c, RES_ARROWRAIN_RADIUS));
-}
-class ArrowRainEffect extends TimedEffect {
-    constructor(pos, radius) {
-        super(pos, 0.45);
-        this.radius = radius;
-        this.drops = Array.from({ length: 14 }, () => { const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * radius; return { x: Math.cos(a) * r, y: Math.sin(a) * r, d: Math.random() * 0.2 }; });
-    }
-    draw(ctx) {
-        const t = this.duration - this.life;
-        ctx.save();
-        ctx.lineCap = 'round';
-        ctx.globalAlpha = 0.25 * Math.min(1, this.life * 4);
-        ctx.fillStyle = '#8D6E63';
-        ctx.beginPath(); ctx.arc(this.pos.x, this.pos.y, this.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.globalAlpha = 1;
-        for (const d of this.drops) {
-            const k = Math.min(1, Math.max(0, (t - d.d) / 0.15));
-            if (k <= 0) continue;
-            const x = this.pos.x + d.x, y = this.pos.y + d.y - (1 - k) * 60;
-            ctx.strokeStyle = '#5D4037'; ctx.lineWidth = 2.5;
-            ctx.beginPath(); ctx.moveTo(x - 3, y - 14); ctx.lineTo(x, y); ctx.stroke();
-        }
-        ctx.restore();
+    // 一陣弩箭先後從天上插進那一圈：圈裡的怪各分到一支（箭跟著牠落、落地才扣血），多的箭落在圈裡的空地上
+    const inside = near.filter(m => distanceSq(m.pos, c) <= rSq);
+    const drops = Math.max(RES_ARROWRAIN_DROPS, inside.length);
+    for (let i = 0; i < drops; i++) {
+        const m = inside[i] || null, delay = Math.random() * RES_ARROWRAIN_STAGGER;
+        const a = Math.random() * Math.PI * 2, r = Math.sqrt(Math.random()) * RES_ARROWRAIN_RADIUS;
+        const pos = m ? m.pos : { x: c.x + Math.cos(a) * r, y: c.y + Math.sin(a) * r };
+        afterDelay(delay, () => {
+            if (m && !m.isAlive) return;
+            gameState.visualEffects.push(new FallingShotEffect(pos, 'rainBolt', LEGION_GOLD, m));
+            if (m) afterDelay(FALL_SHOT.fall, () => {
+                if (!m.isAlive) return;
+                m.takeDamage(dmg);
+                if (inView(m.pos)) spawnParticles(m.pos.x, m.pos.y, LEGION_GOLD, 4, 70, 0.3, 2.5);
+            });
+        });
     }
 }
+// 齊射的弩箭：弩手平射那支放大，從天上插下來時拖金色殘影（軍團藍金）
+const RES_ARROWRAIN_DROPS = 14, RES_ARROWRAIN_STAGGER = 0.15, RAIN_BOLT_SCALE = 1.5, LEGION_GOLD = '#FFE082';
+SHAPE_SPRITES.rainBolt = { len: 20 * RAIN_BOLT_SCALE, wid: 7 * RAIN_BOLT_SCALE, spin: 0, draw: g => { g.scale(RAIN_BOLT_SCALE, RAIN_BOLT_SCALE); SHAPE_SPRITES.crossbowBolt.draw(g); } };
 
 // ---------- 傳說「蠍弩」：弩箭把怪釘在地上 ----------
 // 首領吃 slowResist，只會被拖慢、不會完全定住；被釘住的標記照樣算（長槍照樣加倍）

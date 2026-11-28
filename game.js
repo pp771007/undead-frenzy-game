@@ -1322,7 +1322,7 @@ let gameState = {
     spawnQueue: [], spawnTimer: 0, banner: null,
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
     waveEvent: null, lastEventWave: 0,
-    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], curse: 0, endless: false, victoryOpen: false,
+    hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], delayedHits: [], curse: 0, endless: false, victoryOpen: false,
     resonance: {}, banished: [], rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false, runLog: emptyRunLog(),
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
@@ -7721,6 +7721,60 @@ function updateNovaPending(deltaTime) {
     }
 }
 
+// 晚一點才發生的事：傷害要等畫面上的東西真的打到（箭落地、標槍飛到、刀光出現）才扣。
+// 放招當下就扣的話，怪會在箭落下之前就死掉淡出，看起來像自己消失，箭再插到空地上
+function afterDelay(sec, fn) { gameState.delayedHits.push({ t: sec, fn }); }
+function updateDelayedHits(deltaTime) {
+    const list = gameState.delayedHits;
+    for (let i = list.length - 1; i >= 0; i--) {
+        list[i].t -= deltaTime;
+        if (list[i].t > 0) continue;
+        list.splice(i, 1)[0].fn();
+    }
+}
+
+// 從天上斜插下來的一支箭／弩箭：地上的影子越來越大 → 拖著殘影斜著落下 → 揚起塵土、插在地上一會兒再淡掉。
+// target：瞄準的怪，落下途中跟著牠走，落點就在牠身上（不是放箭那一刻牠站的地方）
+const FALL_SHOT = { fall: 0.28, stuck: 0.55, height: 140, drift: 30, trail: 46, dust: '#BCAAA4', shadow: 'rgba(0, 0, 0, 0.3)' };
+const FALL_SHOT_ANGLE = Math.atan2(FALL_SHOT.height, FALL_SHOT.drift);
+class FallingShotEffect extends TimedEffect {
+    constructor(pos, shape, trailColor, target = null) {
+        super(pos, FALL_SHOT.fall + FALL_SHOT.stuck);
+        this.shape = shape; this.trailColor = trailColor; this.target = target; this.landed = false;
+    }
+    update(dt) {
+        super.update(dt);
+        if (this.landed) return;
+        if (this.target && this.target.isAlive) { this.pos.x = this.target.pos.x; this.pos.y = this.target.pos.y; }
+        if (this.duration - this.life < FALL_SHOT.fall) return;
+        this.landed = true;
+        if (inView(this.pos)) spawnParticles(this.pos.x, this.pos.y, FALL_SHOT.dust, 3, 40, 0.35, 2.5);
+    }
+    draw(ctx) {
+        if (!inView(this.pos)) return;
+        const t = this.duration - this.life, k = Math.min(1, t / FALL_SHOT.fall);
+        const dx = Math.cos(FALL_SHOT_ANGLE), dy = Math.sin(FALL_SHOT_ANGLE), half = SHAPE_SPRITES[this.shape].len * 0.4;
+        if (!this.landed) {
+            ctx.fillStyle = FALL_SHOT.shadow;
+            ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y, 2 + 6 * k, 1 + 2.5 * k, 0, 0, Math.PI * 2); ctx.fill();
+            const x = this.pos.x - dx * half - (1 - k) * FALL_SHOT.drift, y = this.pos.y - dy * half - (1 - k) * FALL_SHOT.height;
+            // 殘影：沿著落下的路線往回拉一道漸淡的光
+            const g = ctx.createLinearGradient(x, y, x - dx * FALL_SHOT.trail, y - dy * FALL_SHOT.trail);
+            g.addColorStop(0, this.trailColor); g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.save();
+            ctx.globalAlpha = 0.55; ctx.strokeStyle = g; ctx.lineWidth = 3; ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - dx * FALL_SHOT.trail, y - dy * FALL_SHOT.trail); ctx.stroke();
+            ctx.restore();
+            drawShaped(this.shape, x, y, FALL_SHOT_ANGLE, 0);
+            return;
+        }
+        // 插在地上：頭埋進土裡，只露出後半截
+        ctx.globalAlpha = Math.min(1, this.life / (FALL_SHOT.stuck * 0.5));
+        drawShaped(this.shape, this.pos.x - dx * half * 0.7, this.pos.y - dy * half * 0.7, FALL_SHOT_ANGLE, 0);
+        ctx.globalAlpha = 1;
+    }
+}
+
 // 平常的三選一靠升級（gainXp）；打完首領波另外送一次，固定有一張傳說
 function queueDraftIfDue() {
     const w = gameState.currentWave;
@@ -8411,6 +8465,7 @@ function updateTimers(deltaTime) {
     if (!gameState.betweenWaves) gameState.ultCooldown = Math.max(0, gameState.ultCooldown - deltaTime);
     tryAutoUltimate();
     updateNovaPending(deltaTime);
+    updateDelayedHits(deltaTime);
     gameState.reviveShield = Math.max(0, (gameState.reviveShield || 0) - deltaTime);
     // 波與波之間沒有怪打，狂暴不扣時間：不會白白耗在空檔裡
     if (!gameState.betweenWaves) gameState.frenzyTimer = Math.max(0, gameState.frenzyTimer - deltaTime);
@@ -8969,7 +9024,7 @@ function resetGameInternalState() {
         spawnQueue: [], spawnTimer: 0, banner: null,
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
         waveEvent: null, lastEventWave: 0,
-        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], curse: 0, endless: false, victoryOpen: false,
+        hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], delayedHits: [], curse: 0, endless: false, victoryOpen: false,
         resonance: {}, banished: [], rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false, runLog: emptyRunLog(),
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
