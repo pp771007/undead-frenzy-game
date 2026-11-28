@@ -2061,6 +2061,31 @@
             line-height: 14px;
         }
 
+        /* 結算：只有祝福圖示那一區會捲，再戰一局／標題／強化／排行固定在最下面。
+           整個面板一起捲的話，捲上來的圖示會壓在金框上，按鈕也要捲到底才看得到 */
+        #game-over-content {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #game-over-content > * {
+            flex-shrink: 0;
+        }
+
+        /* 放不下時先縮祝福這一區（縮到沒有也行），按鈕永遠看得到 */
+        #game-over-content > #final-blessings {
+            flex-shrink: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding-top: 4px;
+        }
+
+        /* 直向排版會把每一塊拉滿寬，金幣那顆膠囊維持原本的寬度置中 */
+        #game-over-content > #final-reward {
+            align-self: center;
+        }
+
         /* 暫停選單：分「本局」「設定」兩頁，只有頁面內容會捲，繼續／標題／結束這局固定在最下面一按就到 */
         #pause-menu .overlay-content {
             display: flex;
