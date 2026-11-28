@@ -200,6 +200,7 @@ CLASSES.druid = {
     heroDamageTakenMult: () => druidState().bearT > 0 ? DRUID.bearForm.taken : 1,
     drawHero: (ctx, p) => drawDruidHud(ctx, p),
     drawWorld: (ctx) => drawDruidWorld(ctx),
+    drawGround: (ctx) => drawDruidGround(ctx),
     // 戰場遺跡：戰鼓祭壇讓所有橡樹與野獸長大一階（加上原本的全軍狂暴）；靈泉旁的橡樹直接長到第 3 階（見 druidUpdate）
     // 德魯伊守在林地裡，遺跡冒在林地範圍內，不用丟下野獸跑去拿
     relicDist: [150, 240],
@@ -483,7 +484,7 @@ class SeedEffect extends TimedEffect {
             m.takeDamage(this.dmg);
             if (m.isAlive && !(m instanceof BossMonster) && !m.isElite) { m.applySlow(S.root, rootTime); m.rootedUntil = worldTime + rootTime; }
         });
-        if (res('wild') >= 1) druidState().patches.push({ x: this.to.x, y: this.to.y, r: this.radius, life: RES_THORNPATCH_TIME, tick: 0, dmg: this.dmg * RES_THORNPATCH_SHARE });
+        if (res('wild') >= 1) druidState().patches.push({ x: this.to.x, y: this.to.y, r: this.radius, life: RES_THORNPATCH_TIME, tick: 0, dmg: this.dmg * RES_THORNPATCH_SHARE, spin: Math.random() * Math.PI * 2 });
         spawnParticles(this.to.x, this.to.y, '#9CCC65', 6, 50, 0.4, 2);
     }
     draw(ctx) {
@@ -568,23 +569,130 @@ function drawDruidHud(ctx, p) {
     const s = 14, x = p.pos.x + 22, y = p.pos.y + p.imageHeight * 0.5 - 4;
     ctx.drawImage(icon, x, y, s, s);
 }
+// 荊棘之地、荊棘之冠：一叢叢帶刺的藤從土裡竄出來。一叢先畫進小畫布，地上擺好幾叢（大小、左右翻不同）。
+// 畫在地面那一層：怪踩在荊棘上，不會被一片藤蓋住。
+// 藤是偏木頭的橄欖綠、尾巴捲成鉤，刺是大顆的米白色彎刺（同「荒野」流派圖示的荊棘冠），不然遠看像一叢草
+// 下面的座標畫在 30×28 的格子裡（根在 15, 25），畫布四周多留 BRAMBLE_PAD，刺尖才不會被切掉
+const BRAMBLE_PAD = 2, BRAMBLE_W = 30 + BRAMBLE_PAD * 2, BRAMBLE_H = 28 + BRAMBLE_PAD * 2, BRAMBLE_BASE_Y = 25 + BRAMBLE_PAD, BRAMBLE_RES = 3;
+const BRAMBLE_VINE = '#6b7d2c', BRAMBLE_VINE_DARK = '#4a5a1e', BRAMBLE_VINE_LIGHT = '#a9bb55', BRAMBLE_THORN = '#f1ead6', BRAMBLE_SOIL = '#3b2a20', BRAMBLE_CLOD = '#5d4037';
+// 每條藤是幾段貝茲曲線（根 → 尖）；thorns：[第幾段, 位置 0～1, 長在哪一側 ±1]；tipThorn：尖端再戳一根刺（不捲的那條）
+const BRAMBLE_VINES = [
+    { segs: [[[13, 25], [12, 18], [3, 19], [4, 11]], [[4, 11], [5, 4], [11, 3], [11, 8]]], thorns: [[0, 0.35, -1], [0, 0.72, -1], [1, 0.35, -1], [0, 0.55, 1]] },
+    { segs: [[[17, 25], [19, 18], [28, 18], [26, 10]], [[26, 10], [25, 4], [19, 4], [20, 9]]], thorns: [[0, 0.35, 1], [0, 0.72, 1], [1, 0.35, 1], [0, 0.55, -1]] },
+    { segs: [[[15, 25], [15, 18], [12, 13], [15, 8]], [[15, 8], [17, 5], [16, 3], [15, 2]]], thorns: [[0, 0.3, 1], [0, 0.6, -1], [0, 0.9, 1]], tipThorn: true },
+];
+let brambleSprite = null;
+function bezierAt(P, t) {
+    const u = 1 - t;
+    const x = u * u * u * P[0][0] + 3 * u * u * t * P[1][0] + 3 * u * t * t * P[2][0] + t * t * t * P[3][0];
+    const y = u * u * u * P[0][1] + 3 * u * u * t * P[1][1] + 3 * u * t * t * P[2][1] + t * t * t * P[3][1];
+    const dx = 3 * u * u * (P[1][0] - P[0][0]) + 6 * u * t * (P[2][0] - P[1][0]) + 3 * t * t * (P[3][0] - P[2][0]);
+    const dy = 3 * u * u * (P[1][1] - P[0][1]) + 6 * u * t * (P[2][1] - P[1][1]) + 3 * t * t * (P[3][1] - P[2][1]);
+    const len = Math.hypot(dx, dy) || 1;
+    return { x, y, tx: dx / len, ty: dy / len };
+}
+// 一根彎刺：底部貼在藤上（沿著藤的方向 ±half），尖端往外、往藤的尖端那邊勾
+function brambleThorn(g, x, y, tx, ty, nx, ny, len, half) {
+    const px = x + nx * len + tx * len * 0.55, py = y + ny * len + ty * len * 0.55;
+    g.beginPath();
+    g.moveTo(x - tx * half, y - ty * half);
+    g.quadraticCurveTo(x + nx * len * 0.6 - tx * half * 0.2, y + ny * len * 0.6 - ty * half * 0.2, px, py);
+    g.quadraticCurveTo(x + nx * len * 0.3 + tx * half, y + ny * len * 0.3 + ty * half, x + tx * half, y + ty * half);
+    g.closePath();
+    g.fillStyle = BRAMBLE_THORN; g.fill(); g.lineWidth = 1.1; g.stroke();
+}
+function getBrambleSprite() {
+    if (brambleSprite) return brambleSprite;
+    const c = document.createElement('canvas');
+    c.width = BRAMBLE_W * BRAMBLE_RES; c.height = BRAMBLE_H * BRAMBLE_RES;
+    const g = c.getContext('2d');
+    g.scale(BRAMBLE_RES, BRAMBLE_RES);
+    g.translate(BRAMBLE_PAD, BRAMBLE_PAD);
+    g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = ICON_OUTLINE;
+    // 被頂開的土：一塊深色土堆＋幾顆土塊
+    g.lineWidth = 1.2;
+    g.fillStyle = BRAMBLE_SOIL;
+    g.beginPath(); g.ellipse(15, 25, 9, 2.6, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.fillStyle = BRAMBLE_CLOD;
+    for (const [x, y] of [[8.5, 24.6], [21.5, 25], [12.5, 26.4]]) { g.beginPath(); g.ellipse(x, y, 1.7, 1.1, 0, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    for (const v of BRAMBLE_VINES) {
+        const trace = () => {
+            g.beginPath(); g.moveTo(v.segs[0][0][0], v.segs[0][0][1]);
+            for (const P of v.segs) g.bezierCurveTo(P[1][0], P[1][1], P[2][0], P[2][1], P[3][0], P[3][1]);
+        };
+        // 描邊 → 暗面 → 本色（往亮的那邊偏一點）→ 一道亮線：藤看起來是圓的
+        trace(); g.lineWidth = 4.8; g.strokeStyle = ICON_OUTLINE; g.stroke();
+        trace(); g.lineWidth = 3.2; g.strokeStyle = BRAMBLE_VINE_DARK; g.stroke();
+        g.save(); g.translate(-0.4, -0.2); trace(); g.lineWidth = 2.2; g.strokeStyle = BRAMBLE_VINE; g.stroke(); g.restore();
+        g.save(); g.translate(-0.8, -0.4); trace(); g.lineWidth = 0.7; g.strokeStyle = BRAMBLE_VINE_LIGHT; g.stroke(); g.restore();
+        g.strokeStyle = ICON_OUTLINE;
+        // 刺畫在藤上面：底部壓著藤的邊，看起來是從藤上長出來的
+        for (const [seg, t, side] of v.thorns) {
+            const q = bezierAt(v.segs[seg], t);
+            brambleThorn(g, q.x + -q.ty * side * 1.2, q.y + q.tx * side * 1.2, q.tx, q.ty, -q.ty * side, q.tx * side, 3.8, 1.6);
+        }
+        if (v.tipThorn) {
+            const e = bezierAt(v.segs[v.segs.length - 1], 1);
+            brambleThorn(g, e.x, e.y, -e.ty, e.tx, e.tx, e.ty, 3.2, 1.5);
+        }
+    }
+    brambleSprite = c;
+    return c;
+}
+function drawBramble(ctx, img, x, y, sx, sy) {
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(sx, sy);
+    ctx.drawImage(img, -BRAMBLE_W / 2, -BRAMBLE_BASE_Y, BRAMBLE_W, BRAMBLE_H);
+    ctx.restore();
+}
+// 荊棘之地每片擺幾叢：[離中心多遠（× 半徑）, 角度, 大小]，中間一叢大的、外圍一圈
+const THORN_CLUMPS = [[0, 0, 1.35], [0.72, 0, 1.05], [0.72, 1.26, 0.95], [0.72, 2.51, 1.1], [0.72, 3.77, 0.95], [0.72, 5.03, 1.05]];
+// 冒出來的時間、最後縮回土裡的時間；每刺一下（傷害那一格）藤往上竄多少
+const THORN_GROW_TIME = 0.18, THORN_SINK_TIME = 0.45, THORN_STAB = 0.14, THORN_STAB_TIME = 0.1;
+function drawThornPatches(ctx, patches) {
+    const img = getBrambleSprite();
+    for (const t of patches) {
+        if (!inView(t)) continue;
+        const age = RES_THORNPATCH_TIME - t.life;
+        const k = Math.min(1, age / THORN_GROW_TIME);
+        // 往上竄的時候衝過頭一點再落回來
+        const grow = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2);
+        const sink = Math.max(0, Math.min(1, t.life / THORN_SINK_TIME));
+        const stab = 1 + THORN_STAB * Math.max(0, Math.min(1, (t.tick - (RES_THORNPATCH_TICK - THORN_STAB_TIME)) / THORN_STAB_TIME));
+        ctx.save();
+        ctx.globalAlpha = 0.3 * sink;
+        ctx.fillStyle = ICON_OUTLINE;
+        ctx.beginPath(); ctx.ellipse(t.x, t.y, t.r, t.r * 0.55, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = Math.min(1, sink * 1.5);
+        const spin = t.spin || 0;
+        const clumps = THORN_CLUMPS.map(([dist, a, s], i) => ({ x: t.x + Math.cos(a + spin) * dist * t.r, y: t.y + Math.sin(a + spin) * dist * t.r * 0.55, s, flip: i % 2 ? -1 : 1 }));
+        clumps.sort((a, b) => a.y - b.y);
+        for (const c of clumps) drawBramble(ctx, img, c.x, c.y, c.s * c.flip, c.s * grow * sink * stab);
+        ctx.restore();
+    }
+}
+// 荊棘之冠：每棵橡樹腳下圍一圈小荊棘，輕輕晃
+const CROWN_CLUMPS = 10, CROWN_CLUMP_SCALE = 0.8;
+function drawThornCrowns(ctx) {
+    const img = getBrambleSprite();
+    for (const s of gameState.summons) {
+        if (!s.isAlive || !(s instanceof SacredOak) || !inView(s.pos)) continue;
+        const cy = s.pos.y + 10;
+        for (let i = 0; i < CROWN_CLUMPS; i++) {
+            const a = i / CROWN_CLUMPS * Math.PI * 2;
+            const sway = 1 + 0.07 * Math.sin(worldTime * 3 + i * 1.7);
+            drawBramble(ctx, img, s.pos.x + Math.cos(a) * RES_CROWN_RADIUS, cy + Math.sin(a) * RES_CROWN_RADIUS * 0.5, CROWN_CLUMP_SCALE * (i % 2 ? -1 : 1), CROWN_CLUMP_SCALE * sway);
+        }
+    }
+}
+function drawDruidGround(ctx) {
+    const d = druidState();
+    if (res('wild') >= 2) drawThornCrowns(ctx);
+    if (d.patches.length) drawThornPatches(ctx, d.patches);
+}
 function drawDruidWorld(ctx) {
     const d = druidState();
     drawGroveBears(ctx);
-    if (d.patches.length) {
-        ctx.save();
-        ctx.strokeStyle = '#689F38'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-        for (const t of d.patches) {
-            if (!inView(t)) continue;
-            ctx.globalAlpha = Math.min(0.7, t.life);
-            for (let i = 0; i < 7; i++) {
-                const a = i * 2.39, r = t.r * (0.3 + (i % 3) * 0.25);
-                const x = t.x + Math.cos(a) * r, y = t.y + Math.sin(a) * r * 0.6;
-                ctx.beginPath(); ctx.moveTo(x - 3, y + 2); ctx.lineTo(x, y - 6); ctx.lineTo(x + 3, y + 2); ctx.stroke();
-            }
-        }
-        ctx.restore();
-    }
     const mist = getIconImage('goldenSickle');
     for (const k of d.sickles) {
         if (!inView(k) || !mist) continue;
@@ -933,16 +1041,6 @@ class SacredOak extends SummonUnit {
         onSummonDeath(this);
         spawnParticles(this.pos.x, this.pos.y, '#8D6E63', 16, 80, 0.6, 3);
         updateUI();
-    }
-    drawHealthBar(ctx) {
-        super.drawHealthBar(ctx);
-        // 荊棘之冠：樹腳一圈刺
-        if (res('wild') < 2) return;
-        ctx.save();
-        ctx.strokeStyle = 'rgba(124, 179, 66, 0.55)'; ctx.lineWidth = 2;
-        ctx.setLineDash([3, 5]);
-        ctx.beginPath(); ctx.ellipse(this.pos.x, this.pos.y + 10, RES_CROWN_RADIUS, RES_CROWN_RADIUS * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
     }
 }
 function eldestOak() {
