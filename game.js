@@ -82,7 +82,7 @@ const uiElements = {
     titleAchvBtn: $id('title-achv-btn'), achvScreen: $id('achv-screen'), achvList: $id('achv-list'), achvCount: $id('achv-count'), achvTabs: $id('achv-tabs'), achvSubtabs: $id('achv-subtabs'),
     achvCloseBtn: $id('achv-close-btn'), achvToast: $id('achv-toast'),
     titleLbBtn: $id('title-lb-btn'), gameoverLbBtn: $id('gameover-lb-btn'), finalTarget: $id('final-target'),
-    lbScreen: $id('lb-screen'), lbTabs: $id('lb-tabs'), lbList: $id('lb-list'), lbCloseBtn: $id('lb-close-btn'),
+    lbScreen: $id('lb-screen'), lbWins: $id('lb-wins'), lbTabs: $id('lb-tabs'), lbList: $id('lb-list'), lbCloseBtn: $id('lb-close-btn'),
     lbDetail: $id('lb-detail'), lbDetailBody: $id('lb-detail-body'), lbDetailCloseBtn: $id('lb-detail-close-btn'),
     classGuide: $id('class-guide'), classGuideBtn: $id('class-guide-btn'), pauseGuideBtn: $id('pause-guide-btn'), cgOkBtn: $id('cg-ok-btn'),
     cgPortrait: $id('cg-portrait'), cgName: $id('cg-name'), cgTagline: $id('cg-tagline'), cgRules: $id('cg-rules'), cgCards: $id('cg-cards'), cgUlt: $id('cg-ult'),
@@ -7260,6 +7260,9 @@ function closeLeaderboard() {
 function renderLeaderboard() {
     const tabs = [LB_ALL, ...Object.keys(CLASSES)];
     if (!tabs.includes(lbTab)) lbTab = LB_ALL;
+    // 總共通關幾次（不分職業，榜上只留得下前幾名，數不出來）
+    const wins = meta.wins || 0;
+    uiElements.lbWins.innerHTML = wins > 0 ? `${iconHtml('crown')}通關 ${wins}` : '';
     uiElements.lbTabs.innerHTML = tabs.map(id => {
         const pic = id === LB_ALL ? iconHtml('podium') : lbClassImg(id);
         return `<button class="achv-tab achv-subtab${id === lbTab ? ' on' : ''}" data-lb-tab="${id}">${pic}<div>${id === LB_ALL ? '綜合' : CLASSES[id].name}</div></button>`;
