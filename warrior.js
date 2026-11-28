@@ -96,11 +96,11 @@ const BLOOD_RUSH_PER_KILL = 0.3;
 // ---------- 五個流派（規劃見 docs/characters.md）：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說 ----------
 // 圖示名稱 = 祝福 id（icons.js）
 Object.assign(SCHOOLS, {
-    shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', res: [{ name: '龜甲陣', desc: '站著不動時，盾兵圍成一圈，全軍受傷 -30%、你每秒回 2% 血' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },
-    phalanx: { name: '長槍方陣', img: 'soldier_spear.png', color: '#CFD8DC', res: [{ name: '槍林', desc: '每 2 秒陣型前方整排刺擊' }, { name: '馬其頓方陣', desc: '長槍兵攻速 ×1.5' }] },
-    crossbow: { name: '弩陣', img: 'soldier_crossbow.png', color: '#BCAAA4', res: [{ name: '三段射', desc: '弩手攻速 +40%、先射貼近你的怪，射倒時你回血' }, { name: '箭雨', desc: '每 6 秒弩手對最大一群怪齊射' }] },
-    berserk: { name: '狂戰', icon: 'rage', color: '#FFAB40', res: [{ name: '熊皮戰士', desc: '狂怒結束不會虛脫' }, { name: '戰神降臨', desc: '狂怒時全軍一起狂暴' }] },
-    legion: { name: '軍團紀律', icon: 'legion', color: '#FFE082', res: [{ name: '鐵律', desc: '陣型轉向快一倍' }, { name: '最後一線', desc: '人數剩三分之一時，倖存者全部視為百戰老兵' }] },
+    shieldwall: { name: '盾牆', img: 'soldier_shield.png', color: '#B0BEC5', rareFx: [{ name: '龜甲陣', desc: '站著不動時，盾兵圍成一圈，全軍受傷 -30%、你每秒回 2% 血' }, { name: '鐵壁', desc: '所有盾兵每 2 秒格擋一次攻擊' }] },
+    phalanx: { name: '長槍方陣', img: 'soldier_spear.png', color: '#CFD8DC', rareFx: [{ name: '槍林', desc: '每 2 秒陣型前方整排刺擊' }, { name: '馬其頓方陣', desc: '長槍兵攻速 ×1.5' }] },
+    crossbow: { name: '弩陣', img: 'soldier_crossbow.png', color: '#BCAAA4', rareFx: [{ name: '三段射', desc: '弩手攻速 +40%、先射貼近你的怪，射倒時你回血' }, { name: '箭雨', desc: '每 6 秒弩手對最大一群怪齊射' }] },
+    berserk: { name: '狂戰', icon: 'rage', color: '#FFAB40', rareFx: [{ name: '熊皮戰士', desc: '狂怒結束不會虛脫' }, { name: '戰神降臨', desc: '狂怒時全軍一起狂暴' }] },
+    legion: { name: '軍團紀律', icon: 'legion', color: '#FFE082', rareFx: [{ name: '鐵律', desc: '陣型轉向快一倍' }, { name: '最後一線', desc: '人數剩三分之一時，倖存者全部視為百戰老兵' }] },
 });
 Object.assign(BLESSINGS, {
     wallThick: { school: 'shieldwall', name: '厚盾', max: 5, per: 0.3, desc: b => `盾兵血量 +${pct(b.per)}` },
@@ -333,7 +333,7 @@ function promoteSoldier(s) {
     spawnFloatText(s.pos.x, s.pos.y - 22, WARRIOR.vetNames[s.vet - 1], '#FFD54F', 12, 1.0, 'star');
 }
 // 龜甲陣：戰士站著不動時全軍受傷打折
-function turtleTaken() { return res('shieldwall') >= 1 && (warState().still || bl('marchingTestudo')) ? RES_TURTLE_TAKEN : 1; }
+function turtleTaken() { return rareLv('shieldwall') >= 1 && (warState().still || bl('marchingTestudo')) ? RES_TURTLE_TAKEN : 1; }
 // 雙流派「盾怒」：盾兵擋下一下，一顆橘色怒火從盾飛回戰士身上
 function shieldFury(s) {
     if (!bl('shieldFury')) return;
@@ -344,7 +344,7 @@ function shieldFury(s) {
 const TESTUDO_SHIELD = '#1E88E5', TESTUDO_RIM = '#FFD54F';
 function drawTestudoRoof(ctx) {
     const w = warState();
-    if (!bl('marchingTestudo') || res('shieldwall') < 1 || w.still) return;
+    if (!bl('marchingTestudo') || rareLv('shieldwall') < 1 || w.still) return;
     // 羅馬長方盾（scutum）從斜上方看：上下兩邊往外彎、中間一道盾脊和一顆金盾心，舉在頭頂、往陣型面向傾一點
     const tilt = Math.atan2(w.fy, w.fx) * 0.15;
     ctx.save();
@@ -405,11 +405,11 @@ function warriorUpdate(dt) {
     if (w.berserkT > 0) {
         w.berserkT -= dt;
         // 戰神降臨：狂怒時全軍一起狂暴
-        if (res('berserk') >= 2) gameState.frenzyTimer = Math.max(gameState.frenzyTimer, w.berserkT);
+        if (rareLv('berserk') >= 2) gameState.frenzyTimer = Math.max(gameState.frenzyTimer, w.berserkT);
         if (w.berserkT <= 0) {
             w.berserkT = 0;
             // 熊皮戰士：不會虛脫
-            if (res('berserk') < 1) { w.exhaustT = WARRIOR.exhaustTime; spawnFloatText(p.pos.x, p.pos.y - 40, '虛脫', '#B0BEC5', 15, 1.2); }
+            if (rareLv('berserk') < 1) { w.exhaustT = WARRIOR.exhaustTime; spawnFloatText(p.pos.x, p.pos.y - 40, '虛脫', '#B0BEC5', 15, 1.2); }
         }
     }
     else if (w.exhaustT > 0) w.exhaustT = Math.max(0, w.exhaustT - dt);
@@ -426,19 +426,19 @@ function warriorUpdate(dt) {
         let d = want - cur;
         while (d > Math.PI) d -= Math.PI * 2;
         while (d < -Math.PI) d += Math.PI * 2;
-        const turn = WARRIOR.turnRate * (res('legion') >= 1 ? RES_IRONLAW_TURN : 1);
+        const turn = WARRIOR.turnRate * (rareLv('legion') >= 1 ? RES_IRONLAW_TURN : 1);
         const step = Math.sign(d) * Math.min(Math.abs(d), turn * dt);
         w.fx = Math.cos(cur + step); w.fy = Math.sin(cur + step);
     }
     // 最後一線：人數剩三分之一以下時全員視為百戰老兵（狀態變了才重算數值）
-    const last = res('legion') >= 2 && troopCount() > 0 && troopCount() <= troopFull() * RES_LASTSTAND_SHARE;
+    const last = rareLv('legion') >= 2 && troopCount() > 0 && troopCount() <= troopFull() * RES_LASTSTAND_SHARE;
     if (last !== w.lastStand) {
         w.lastStand = last;
         for (const s of gameState.summons) if (s.isAlive && s instanceof Soldier) s.refreshStats();
         if (last) spawnFloatText(p.pos.x, p.pos.y - 44, '最後一線', '#FFE082', 16, 1.4, 'legion');
     }
-    if (res('phalanx') >= 1) { w.spearT -= dt; if (w.spearT <= 0) { w.spearT = RES_SPEARWALL_EVERY; spearWall(p, w); } }
-    if (res('crossbow') >= 2) { w.rainT -= dt; if (w.rainT <= 0) { w.rainT = RES_ARROWRAIN_EVERY; arrowRain(p); } }
+    if (rareLv('phalanx') >= 1) { w.spearT -= dt; if (w.spearT <= 0) { w.spearT = RES_SPEARWALL_EVERY; spearWall(p, w); } }
+    if (rareLv('crossbow') >= 2) { w.rainT -= dt; if (w.rainT <= 0) { w.rainT = RES_ARROWRAIN_EVERY; arrowRain(p); } }
     // 二階以上的盾兵：每隔一下把身邊的怪的仇恨拉到自己身上
     w.tauntT -= dt;
     const taunt = w.tauntT <= 0;
@@ -454,12 +454,12 @@ function warriorUpdate(dt) {
         }
     }
     // 龜甲陣：站著不動時戰士回血（身上冒小小的綠色光點）
-    if (res('shieldwall') >= 1 && w.still && p.currentHealth < p.maxHealth) {
+    if (rareLv('shieldwall') >= 1 && w.still && p.currentHealth < p.maxHealth) {
         p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * TURTLE_REGEN * dt);
         if (Math.random() < dt * 6) spawnParticles(p.pos.x + randomInRange(-10, 10), p.pos.y, '#A5D6A7', 1, 25, 0.6, 3);
     }
     // 龜甲陣：站著不動時，前排的盾兵收攏成一圈圍住戰士（從面向那一側開始排）
-    if (res('shieldwall') >= 1 && w.still && groups[0].length) {
+    if (rareLv('shieldwall') >= 1 && w.still && groups[0].length) {
         const ring = groups[0].sort((a, b) => a.uid - b.uid), R = TURTLE_RING_R + ring.length * TURTLE_RING_PER, a0 = Math.atan2(w.fy, w.fx);
         ring.forEach((s, i) => { const a = a0 + i * Math.PI * 2 / ring.length; s.slot.x = p.pos.x + Math.cos(a) * R; s.slot.y = p.pos.y + Math.sin(a) * R; });
         groups[0] = [];
@@ -654,11 +654,11 @@ class Soldier extends SummonUnit {
         this.attack *= v * (type === 'Spearman' ? 1 + blessVal('spearPower') : type === 'Crossbowman' ? 1 + blessVal('bowPower') : 1);
         if (type === 'Spearman') {
             this.attackRange *= 1 + blessVal('spearLength');
-            if (res('phalanx') >= 2) this.attackSpeed *= RES_PHALANX_RATE;
+            if (rareLv('phalanx') >= 2) this.attackSpeed *= RES_PHALANX_RATE;
         }
         if (type === 'Crossbowman') {
             this.attackRange *= 1 + blessVal('bowRange');
-            this.attackSpeed *= (1 + blessVal('bowReload')) * (res('crossbow') >= 1 ? RES_THREE_SHOT_RATE : 1);
+            this.attackSpeed *= (1 + blessVal('bowReload')) * (rareLv('crossbow') >= 1 ? RES_THREE_SHOT_RATE : 1);
         }
         this.attackRangeSq = this.attackRange * this.attackRange;
     }
@@ -683,7 +683,7 @@ class Soldier extends SummonUnit {
             const from = ranged ? this.pos : this.slot;
             const r = ranged ? this.attackRange : WARRIOR.engageRadius + this.attackRange;
             // 三段射：弩手先射貼近戰士的怪（射程內才算）
-            const guard = ranged && res('crossbow') >= 1 ? monsterGrid.nearestShared(p.pos, GUARD_SHOT_RADIUS) : null;
+            const guard = ranged && rareLv('crossbow') >= 1 ? monsterGrid.nearestShared(p.pos, GUARD_SHOT_RADIUS) : null;
             const m = guard && guard.isAlive && !guard.stealthed && distanceSq(this.pos, guard.pos) <= this.attackRangeSq ? guard
                 : monsterGrid.nearestShared(from, gameState.straggling ? STRAGGLER_SEARCH_RADIUS : r);
             this.target = m && m.isAlive && !m.stealthed ? m : null;
@@ -764,7 +764,7 @@ class Soldier extends SummonUnit {
         if (m.isAlive) return;
         // 三段射：射倒貼近戰士的怪，戰士回血
         const p = gameState.player;
-        if (this.config.type === 'Crossbowman' && res('crossbow') >= 1 && p && distanceSq(m.pos, p.pos) <= GUARD_SHOT_RADIUS * GUARD_SHOT_RADIUS && p.currentHealth < p.maxHealth) {
+        if (this.config.type === 'Crossbowman' && rareLv('crossbow') >= 1 && p && distanceSq(m.pos, p.pos) <= GUARD_SHOT_RADIUS * GUARD_SHOT_RADIUS && p.currentHealth < p.maxHealth) {
             const heal = Math.max(1, Math.round(p.maxHealth * GUARD_SHOT_HEAL));
             p.currentHealth = Math.min(p.maxHealth, p.currentHealth + heal);
             spawnFloatText(p.pos.x, p.pos.y - 26, `+${formatNumberK(heal)}`, '#81C784', 12, 0.6);
@@ -780,7 +780,7 @@ class Soldier extends SummonUnit {
         if (!this.isAlive) return;
         const shield = this.config.type === 'Shieldman';
         // 格擋：稀有祝福「鐵壁」讓所有盾兵每 2 秒擋一次
-        const blockEvery = shield && res('shieldwall') >= 2 ? RES_IRONWALL_BLOCK : 0;
+        const blockEvery = shield && rareLv('shieldwall') >= 2 ? RES_IRONWALL_BLOCK : 0;
         if (blockEvery && this.blockT <= 0) {
             this.blockT = blockEvery;
             spawnParticles(this.pos.x, this.pos.y, '#ECEFF1', 6, 60, 0.3, 2);

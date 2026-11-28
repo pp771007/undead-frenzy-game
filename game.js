@@ -658,12 +658,12 @@ function blessIcon(id) { return BLESSINGS[id].icon || id; }
 // 專精一條路要有爆發點，不然 27 張各加一點數字，選哪張都差不多。爆發點做成「低機率出現的稀有卡」而不是「疊到幾層自動觸發」：
 // 不用另外學一套計數規則，而且稀有卡常常不是自己在走的流派 —— 拿了就想把靈魂多花在那個兵種上，跟配兵直接連在一起
 const SCHOOLS = {
-    skel: { name: '骷髏', img: 'skeleton_warrior.png', color: '#ECEFF1', res: [{ name: '骨潮', desc: '骷髏攻速 +25%' }, { name: '不滅骨軍', desc: '骷髏陣亡時 35% 當場重組' }] },
-    eye: { name: '眼魔', img: 'eye_monster.png', color: '#FFD54F', res: [{ name: '連環凝視', desc: '眼魔的彈多彈射 1 次' }, { name: '千眼', desc: '眼魔每次多射 1 發' }] },
-    wraith: { name: '怨靈', img: 'wraith.png', color: '#80CBC4', res: [{ name: '冥域', desc: '怨靈光環範圍 +30%' }, { name: '哀嚎', desc: '怨靈每 3 秒脈衝，傷害 ×2' }] },
-    mage: { name: '法師', img: 'player.png', color: '#80DEEA', res: [{ name: '魂彈連發', desc: '法師射速 +40%' }, { name: '魂彈分裂', desc: '魂彈命中時分裂出 2 顆小魂彈，射向附近的怪' }] },
-    nova: { name: '新星', icon: 'burst', color: '#CE93D8', res: [{ name: '魂引', desc: '新星把地上的經驗全部吸過來' }, { name: '餘震', desc: '新星放完 1 秒後，原地再炸一次（一半傷害）' }] },
-    soul: { name: '經驗', icon: 'soulSchool', color: '#B2EBF2', res: [{ name: '引力', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '經驗 +30%' }] },
+    skel: { name: '骷髏', img: 'skeleton_warrior.png', color: '#ECEFF1', rareFx: [{ name: '骨潮', desc: '骷髏攻速 +25%' }, { name: '不滅骨軍', desc: '骷髏陣亡時 35% 當場重組' }] },
+    eye: { name: '眼魔', img: 'eye_monster.png', color: '#FFD54F', rareFx: [{ name: '連環凝視', desc: '眼魔的彈多彈射 1 次' }, { name: '千眼', desc: '眼魔每次多射 1 發' }] },
+    wraith: { name: '怨靈', img: 'wraith.png', color: '#80CBC4', rareFx: [{ name: '冥域', desc: '怨靈光環範圍 +30%' }, { name: '哀嚎', desc: '怨靈每 3 秒脈衝，傷害 ×2' }] },
+    mage: { name: '法師', img: 'player.png', color: '#80DEEA', rareFx: [{ name: '魂彈連發', desc: '法師射速 +40%' }, { name: '魂彈分裂', desc: '魂彈命中時分裂出 2 顆小魂彈，射向附近的怪' }] },
+    nova: { name: '新星', icon: 'burst', color: '#CE93D8', rareFx: [{ name: '魂引', desc: '新星把地上的經驗全部吸過來' }, { name: '餘震', desc: '新星放完 1 秒後，原地再炸一次（一半傷害）' }] },
+    soul: { name: '經驗', icon: 'soulSchool', color: '#B2EBF2', rareFx: [{ name: '引力', desc: '拾取範圍 +60%' }, { name: '豐收', desc: '經驗 +30%' }] },
 };
 // 稀有祝福的實際數值（SCHOOLS 的說明文字跟著這裡寫）
 const RES_SKEL_ATK_SPEED = 0.25;
@@ -682,15 +682,15 @@ function schoolPoints(school) {
     for (const id in BLESSINGS) if (BLESSINGS[id].school === school) n += bl(id);
     return n;
 }
-// res(流派)：那個流派的稀有祝福效果開到第幾段。拿到稀有卡就兩段全開（效果程式裡寫的是 res(s) >= 1、>= 2）。
+// rareLv(流派)：那個流派的稀有祝福效果開到第幾段（SCHOOLS[流派].rareFx 的兩段）。拿到稀有卡就兩段全開（效果程式裡寫的是 rareLv(s) >= 1、>= 2）。
 // 熱路徑（每隻召喚物算數值、每發飛彈）直接查快取，祝福變動時才重算
 const RARE_TIERS = 2;
 function rareId(school) { return `rare_${school}`; }
-function res(school) { return gameState.resonance[school] || 0; }
-function refreshResonance() {
+function rareLv(school) { return gameState.rareTiers[school] || 0; }
+function refreshRareTiers() {
     const r = {};
     for (const s in SCHOOLS) r[s] = bl(rareId(s)) > 0 ? RARE_TIERS : 0;
-    gameState.resonance = r;
+    gameState.rareTiers = r;
 }
 // 各職業的流派都登記完才建得出來（init 一開始呼叫）。圖示借那個流派在成就裡的圖：畫的就是這個效果
 // ---------- 經驗與升級：撿到的靈魂就是經驗值，集滿升一級、跳一次三選一 ----------
@@ -792,7 +792,7 @@ function buildRareBlessings() {
         if (BLESSINGS[id]) continue;
         const S = SCHOOLS[s];
         ICON_SVGS[id] = ACHV_ICON_SVGS[`${cid}_res_${s}`] || ACHV_ICON_SVGS[`res_${s}`];
-        BLESSINGS[id] = { school: s, rare: true, name: S.res[RARE_TIERS - 1].name, max: 1, desc: () => S.res.map(r => r.desc).join('<br>') };
+        BLESSINGS[id] = { school: s, rare: true, name: S.rareFx[RARE_TIERS - 1].name, max: 1, desc: () => S.rareFx.map(r => r.desc).join('<br>') };
     }
 }
 // 傳說的細部數值（說明文字只講會影響選擇的那一個數）
@@ -948,7 +948,7 @@ function classMeta(id) {
 // 清單裡會用到稍後才宣告的 CURSES，所以第一次用到時才建（achievements()）
 const ACHV_CATEGORIES = [
     { id: 'journey', name: '征途' }, { id: 'endless', name: '無盡' }, { id: 'curse', name: '詛咒' }, { id: 'boss', name: '首領' },
-    { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'resonance', name: '稀有' }, { id: 'legend', name: '傳說' },
+    { id: 'bestiary', name: '圖鑑' }, { id: 'army', name: '大軍' }, { id: 'rare', name: '稀有' }, { id: 'legend', name: '傳說' },
     { id: 'relic', name: '遺跡' },
     { id: 'career', name: '生涯' }, { id: 'challenge', name: '挑戰' }, { id: 'class', name: '職業' }, { id: 'legacy', name: '傳承' },
 ];
@@ -1052,7 +1052,7 @@ function buildAchievements() {
         const name = `${UNIT_TYPES[type].name} Lv${lv}`;
         add('army', `evo_${type}_${t + 1}`, name, `${UNIT_TYPES[type].name}升到 Lv${lv}`, 15 + t * 20, () => gameState.units[type].level >= lv);
     });
-    for (const s of CLASSES.necro.schools) add('resonance', `res_${s}`, BLESSINGS[rareId(s)].name, `拿到稀有祝福「${BLESSINGS[rareId(s)].name}」`, 40, () => bl(rareId(s)) > 0);
+    for (const s of CLASSES.necro.schools) add('rare', `res_${s}`, BLESSINGS[rareId(s)].name, `拿到稀有祝福「${BLESSINGS[rareId(s)].name}」`, 40, () => bl(rareId(s)) > 0);
     for (const id of Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary && legendAchvIcon(b))) add('legend', `leg_${id}`, BLESSINGS[id].name, `拿到傳說祝福「${BLESSINGS[id].name}」`, 15, () => !!S().legends[id]);
     add('legend', 'legends', '傳說加身', `一局拿到 ${ACHV_LEGENDS} 張傳說祝福`, 40, () => countTaken(b => b.legendary) >= ACHV_LEGENDS);
     add('legend', 'legendAll', '萬古傳說', '每一張傳說祝福都拿過', 120, () => Object.keys(BLESSINGS).filter(b => BLESSINGS[b].legendary).every(b => S().legends[b]));
@@ -1162,7 +1162,7 @@ function renderAchievements() {
 }
 
 function getMagnetRadius() {
-    return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + metaVal('pickupRange') + (res('soul') >= 1 ? RES_MAGNET : 0));
+    return CONFIG.player.magnetRadius * (1 + blessVal('magnet') + metaVal('pickupRange') + (rareLv('soul') >= 1 ? RES_MAGNET : 0));
 }
 function novaRadius() { return CONFIG.nova.radius; }
 function getNovaCooldown() {
@@ -1335,7 +1335,7 @@ let gameState = {
     blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
     waveEvent: null, lastEventWave: 0,
     hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], delayedHits: [], curse: 0, endless: false, victoryOpen: false,
-    resonance: {}, banished: [], rerollsLeft: 0,
+    rareTiers: {}, banished: [], rerollsLeft: 0,
     relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false, runLog: emptyRunLog(),
     bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
 };
@@ -2184,13 +2184,13 @@ class Player extends GameObject {
         });
         if (!boltTargets.length) return;
         if (boltTargets.length > shots) boltTargets.sort((a, b) => a.d - b.d);
-        this.boltT = P.boltInterval / (res('mage') >= 1 ? RES_MAGE_RATE : 1);
+        this.boltT = P.boltInterval / (rareLv('mage') >= 1 ? RES_MAGE_RATE : 1);
         const dmg = P.boltDamage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * (1 + blessVal('soulBlade'));
         const tip = this.staffTip();
         const n = Math.min(shots, boltTargets.length);
         for (let i = 0; i < n; i++) {
             const pr = getProjectileFromPool();
-            pr.init(tip.x, tip.y, boltTargets[i].m, P.bolt, dmg, res('mage') >= 2 ? soulSplitOwner : null, 0, bl('soulfire') > 0);
+            pr.init(tip.x, tip.y, boltTargets[i].m, P.bolt, dmg, rareLv('mage') >= 2 ? soulSplitOwner : null, 0, bl('soulfire') > 0);
             // 多發時扇形散開、一發時隨機偏一點，再由追蹤彎回目標：看起來是「放出去的魂」而不是直線射擊
             const spread = n > 1 ? (i / (n - 1) - 0.5) * SOUL_BOLT_FAN * 2 : randomInRange(-SOUL_BOLT_WOBBLE, SOUL_BOLT_WOBBLE);
             const c = Math.cos(spread), s = Math.sin(spread), d = pr.direction;
@@ -2374,7 +2374,7 @@ class SummonUnit extends GameObject {
         if (type === 'SkeletonWarrior') attack *= 1 + blessVal('boneBlade');
         this.attack = attack;
         this.attackSpeed = this.config.attackSpeed * (type === 'EyeMonster' ? 1 + blessVal('frenzyEye') : 1)
-            * (type === 'SkeletonWarrior' && res('skel') >= 1 ? 1 + RES_SKEL_ATK_SPEED : 1);
+            * (type === 'SkeletonWarrior' && rareLv('skel') >= 1 ? 1 + RES_SKEL_ATK_SPEED : 1);
         this.moveSpeed = this.config.moveSpeed * (type === 'SkeletonWarrior' ? 1 + blessVal('swiftBones') : 1);
 
         if (this.config.type === 'EyeMonster') {
@@ -2386,7 +2386,7 @@ class SummonUnit extends GameObject {
 
         if (this.config.type === 'Wraith') {
             // 怨靈稀有祝福的光環範圍乘在封頂之後：拿到它才突破單隻光環的上限
-            this.slowRadius = Math.min(this.config.slowRadiusMax, this.config.slowRadiusBase + (this.level * this.config.slowRadiusUpgrade)) * (res('wraith') >= 1 ? RES_WRAITH_RADIUS : 1);
+            this.slowRadius = Math.min(this.config.slowRadiusMax, this.config.slowRadiusBase + (this.level * this.config.slowRadiusUpgrade)) * (rareLv('wraith') >= 1 ? RES_WRAITH_RADIUS : 1);
             this.slowAmount = this.config.slowAmountBase + (this.level * this.config.slowAmountUpgrade);
             this.slowAmount = Math.min(this.slowAmount, this.config.slowAmountMax);
             this.slowRadiusSq = this.slowRadius * this.slowRadius;
@@ -2748,7 +2748,7 @@ class SummonUnit extends GameObject {
 
         if (this.config.type === 'EyeMonster') {
             const targets = [this.target];
-            const extra = blessVal('splitGaze') + (res('eye') >= 2 ? 1 : 0);
+            const extra = blessVal('splitGaze') + (rareLv('eye') >= 2 ? 1 : 0);
             if (extra > 0) {
                 const others = [];
                 monsterGrid.forEachInRadius(this.pos, this.attackRange, m => {
@@ -2757,7 +2757,7 @@ class SummonUnit extends GameObject {
                 others.sort((a, b) => distanceSq(this.pos, a.pos) - distanceSq(this.pos, b.pos));
                 for (let i = 0; i < extra; i++) targets.push(others[i] || this.target);
             }
-            const bounces = (bl('ricochet') ? BLESSINGS.ricochet.per : 0) + (res('eye') >= 1 ? 1 : 0);
+            const bounces = (bl('ricochet') ? BLESSINGS.ricochet.per : 0) + (rareLv('eye') >= 1 ? 1 : 0);
             const blast = bl('eyeBlast') > 0;
             targets.forEach(t => {
                 const projectile = getProjectileFromPool();
@@ -2824,7 +2824,7 @@ class SummonUnit extends GameObject {
 
     die() {
         if (!this.isAlive) return;
-        const reviveChance = this.config.type === 'SkeletonWarrior' && res('skel') >= 2 ? RES_SKEL_REVIVE : 0;
+        const reviveChance = this.config.type === 'SkeletonWarrior' && rareLv('skel') >= 2 ? RES_SKEL_REVIVE : 0;
         if (reviveChance > 0 && !this.revived && Math.random() < reviveChance) {
             this.revived = true;
             this.currentHealth = Math.round(this.maxHealth * RES_SKEL_REVIVE_HP);
@@ -2982,7 +2982,7 @@ class Wraith extends SummonUnit {
     update(deltaTime, monsters, otherSummons, player) {
         super.update(deltaTime, monsters, otherSummons, player);
         // 稀有祝福「哀嚎」：怨靈定時脈衝
-        if (!this.isAlive || res('wraith') < 2) return;
+        if (!this.isAlive || rareLv('wraith') < 2) return;
         this.pulseTimer = (this.pulseTimer ?? Math.random() * WRAITH_PULSE_EVERY) - deltaTime;
         if (this.pulseTimer > 0) return;
         this.pulseTimer = WRAITH_PULSE_EVERY;
@@ -4121,7 +4121,7 @@ class Monster extends GameObject {
         const ev = getWaveEvent();
         const cls = classDef();
         if (cls.onMonsterKill) cls.onMonsterKill(this);
-        const souls = this.soulValue() * (cls.soulMult ? cls.soulMult(this) : 1) * (1 + blessVal('soulHarvest') + (res('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + waveSoulBonus()) * runMods().soulMult
+        const souls = this.soulValue() * (cls.soulMult ? cls.soulMult(this) : 1) * (1 + blessVal('soulHarvest') + (rareLv('soul') >= 2 ? RES_SOULS : 0)) * (1 + metaVal('soulAffinity')) * (ev && ev.soulMult ? ev.soulMult : 1) * (1 + waveSoulBonus()) * runMods().soulMult
             + gameState.soulCarry;
         const whole = Math.floor(souls);
         gameState.soulCarry = souls - whole;
@@ -7736,8 +7736,8 @@ function novaBlast(share, main) {
         const live = gameState.summons, step = Math.max(1, Math.floor(live.length / FRENZY_SPARK_SUMMONS));
         for (let i = 0; i < live.length; i += step) if (live[i].isAlive) spawnParticles(live[i].pos.x, live[i].pos.y, FRENZY_SPARK_COLOR, 3, 60, 0.5, 3);
     }
-    if (res('nova') >= 1) for (const o of gameState.orbs) o.attracted = true;
-    if (res('nova') >= 2) gameState.novaPending.push({ t: RES_AFTERSHOCK_DELAY, share: RES_AFTERSHOCK_SHARE, main: false });
+    if (rareLv('nova') >= 1) for (const o of gameState.orbs) o.attracted = true;
+    if (rareLv('nova') >= 2) gameState.novaPending.push({ t: RES_AFTERSHOCK_DELAY, share: RES_AFTERSHOCK_SHARE, main: false });
     if (bl('corpseBlast')) detonateBonePiles(p.pos);
     if (bl('wailingNova')) wailingNova(dmg * WAILING_NOVA_SHARE);
 }
@@ -7860,7 +7860,7 @@ function blessingInClass(id) {
     if (BLESSINGS[id].needsSummon && !classCanSummon()) return false;
     // needsUlt：只對大招有用的卡（化身時間…），拿到大招卡之前抽到等於空卡
     if ((BLESSINGS[id].needsUlt || s === classDef().ultSchool) && !hasUlt()) return false;
-    if (s === DUO_SCHOOL) return BLESSINGS[id].duo.every(d => classDef().schools.includes(d) && res(d) >= 1);
+    if (s === DUO_SCHOOL) return BLESSINGS[id].duo.every(d => classDef().schools.includes(d) && rareLv(d) >= 1);
     return s === ARMY_SCHOOL || classDef().schools.includes(s);
 }
 // 兵種流派（骷髏、巨熊…）：那種兵的召喚卡還沒學，整條流派（祝福、稀有、傳說）都不出，抽到等於空卡。
@@ -8000,7 +8000,7 @@ function pickBlessing(id) {
     const picks = stats().picks[runClass()] || (stats().picks[runClass()] = {});
     picks[id] = (picks[id] || 0) + 1;
     if (BLESSINGS[id].legendary) stats().legends[id] = true;
-    refreshResonance();
+    refreshRareTiers();
     if (id === 'vitality' && gameState.player) {
         gameState.player.maxHealth += BLESSINGS.vitality.per;
         gameState.player.currentHealth = gameState.player.maxHealth;
@@ -8987,7 +8987,7 @@ function loadGameState() {
         gameState.totalSummons = { ...emptySummonStats(), ...loadedState.totalSummons };
         gameState.totalKills = { ...emptyKillStats(), ...loadedState.totalKills };
         gameState.blessings = loadedState.blessings ?? {};
-        refreshResonance();
+        refreshRareTiers();
         gameState.banished = loadedState.banished ?? [];
         gameState.revivesLeft = loadedState.revivesLeft ?? metaVal('revive');
         gameState.rerollsLeft = loadedState.rerollsLeft ?? REROLLS_PER_RUN + metaVal('freeReroll');
@@ -9066,7 +9066,7 @@ function resetGameInternalState() {
         blessings: {}, pendingDraft: null, draftOpen: false, ultCooldown: 0, ultCooldownMax: 0, frenzyTimer: 0, bossIntro: null, wardTimer: 0, altarSlowTimer: 0, altarSlowTick: 0, extraDrafts: 0, extraBossDrafts: 0,
         waveEvent: null, lastEventWave: 0,
         hazards: [], enemyBolts: [], bossMarks: [], worldFx: [], bonePiles: [], boneBlasts: [], turned: [], pendingBoss: null, bossEntrance: null, overtimeFrom: 0, bossLandFade: 0, bannerQueue: [], novaPending: [], delayedHits: [], curse: 0, endless: false, victoryOpen: false,
-        resonance: {}, banished: [], rerollsLeft: 0,
+        rareTiers: {}, banished: [], rerollsLeft: 0,
         relics: [], relicTimer: 0, relicDrafts: 0, tierDrafts: [], wheelOpen: false, runLog: emptyRunLog(),
         bossKills: {}, achvCrystals: 0, achvCount: 0, run: emptyRunStats(), runTime: 0,
     };

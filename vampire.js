@@ -70,11 +70,11 @@ const MOONWOLF_RANGE = 62, MOONWOLF_ARC = Math.PI * 0.75, MOONWOLF_EVERY = 0.55,
 
 // ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    bloodmagic: { name: '血魔法', icon: 'bloodmagic', color: '#B388FF', res: [{ name: '血箭', desc: '血之飛刃每次多射一把' }, { name: '血祭', desc: '血量低於一半時，你的傷害加倍' }] },
-    kin: { name: '眷屬', icon: 'kin', color: '#CE93D8', res: [{ name: '饗宴', desc: '眷屬每打倒一隻怪，你回 1% 血' }, { name: '血親', desc: '精英怪也能轉化，而且保留精英的強度' }] },
-    bats: { name: '蝠群', img: 'blood_bat.png', color: '#9575CD', res: [{ name: '夜翼', desc: '入夜時蝙蝠攻速 +40%' }, { name: '夜幕', desc: '蝙蝠擋下射向你的飛彈' }] },
-    werewolf: { name: '狼化', icon: 'werewolf', color: '#B0BEC5', res: [{ name: '狼行', desc: '入夜時你移速 +25%、飛刃吸血 +10%' }, { name: '月下狼群', desc: '入夜時近戰眷屬傷害 ×1.5、移速 +30%' }] },
-    undying: { name: '不死', icon: 'coffin', color: '#9575CD', res: [{ name: '蝠化', desc: '一下被打掉 12% 以上的血時化成蝙蝠，1 秒無敵' }, { name: '永生', desc: '每局可以從棺木復活一次' }] },
+    bloodmagic: { name: '血魔法', icon: 'bloodmagic', color: '#B388FF', rareFx: [{ name: '血箭', desc: '血之飛刃每次多射一把' }, { name: '血祭', desc: '血量低於一半時，你的傷害加倍' }] },
+    kin: { name: '眷屬', icon: 'kin', color: '#CE93D8', rareFx: [{ name: '饗宴', desc: '眷屬每打倒一隻怪，你回 1% 血' }, { name: '血親', desc: '精英怪也能轉化，而且保留精英的強度' }] },
+    bats: { name: '蝠群', img: 'blood_bat.png', color: '#9575CD', rareFx: [{ name: '夜翼', desc: '入夜時蝙蝠攻速 +40%' }, { name: '夜幕', desc: '蝙蝠擋下射向你的飛彈' }] },
+    werewolf: { name: '狼化', icon: 'werewolf', color: '#B0BEC5', rareFx: [{ name: '狼行', desc: '入夜時你移速 +25%、飛刃吸血 +10%' }, { name: '月下狼群', desc: '入夜時近戰眷屬傷害 ×1.5、移速 +30%' }] },
+    undying: { name: '不死', icon: 'coffin', color: '#9575CD', rareFx: [{ name: '蝠化', desc: '一下被打掉 12% 以上的血時化成蝙蝠，1 秒無敵' }, { name: '永生', desc: '每局可以從棺木復活一次' }] },
 });
 Object.assign(BLESSINGS, {
     bmPower: { school: 'bloodmagic', name: '腥紅', max: 5, per: 0.3, desc: b => `血爆傷害 +${pct(b.per)}` },
@@ -160,9 +160,9 @@ CLASSES.vampire = {
     unitLevelPerHero: 0.5,
     onMonsterKill: (m) => {
         // 饗宴：眷屬或蝙蝠打倒的怪，你回一點血
-        if (m.lastHitByThrall && res('kin') >= 1) healHero(gameState.player.maxHealth * RES_FEAST_HEAL);
+        if (m.lastHitByThrall && rareLv('kin') >= 1) healHero(gameState.player.maxHealth * RES_FEAST_HEAL);
         if (m instanceof BossMonster) { if (bl('dracula')) raiseThrall(m, gameState.units.Thrall.level, true); return; }
-        if (gameState.units.Thrall.count >= thrallCap() || (m.isElite && res('kin') < 2)) return;
+        if (gameState.units.Thrall.count >= thrallCap() || (m.isElite && rareLv('kin') < 2)) return;
         // 雙流派「狼群初擁」：入夜時親手打倒的一定轉化
         if (bl('wolfEmbrace') && vampState().night && m.heroBlowAt === worldTime) {
             raiseThrall(m, gameState.units.Thrall.level);
@@ -179,7 +179,7 @@ CLASSES.vampire = {
         }
     },
     onBossKill: () => { if (!vampState().night) gameState.run.flags.vampDayBoss = true; },
-    heroSpeedMult: () => (1 + blessVal('vwSpeed')) * (vampState().night && res('werewolf') >= 1 ? RES_WOLFWALK_SPEED : 1) * (moonWolfActive() ? MOONWOLF_SPEED : 1),
+    heroSpeedMult: () => (1 + blessVal('vwSpeed')) * (vampState().night && rareLv('werewolf') >= 1 ? RES_WOLFWALK_SPEED : 1) * (moonWolfActive() ? MOONWOLF_SPEED : 1),
     heroDamageTakenMult: () => {
         const v = vampState();
         if (v.batFormT > 0) return 0;
@@ -188,7 +188,7 @@ CLASSES.vampire = {
     },
     onHeroHurt: (lostFrac) => {
         const v = vampState();
-        if (res('undying') >= 1 && lostFrac >= RES_BATFORM_HIT && v.batFormCd <= 0) {
+        if (rareLv('undying') >= 1 && lostFrac >= RES_BATFORM_HIT && v.batFormCd <= 0) {
             v.batFormT = RES_BATFORM_TIME; v.batFormCd = RES_BATFORM_CD;
             const p = gameState.player;
             spawnParticles(p.pos.x, p.pos.y, VAMP_ATTACK_COLOR, 24, 160, 0.6, 3);
@@ -198,7 +198,7 @@ CLASSES.vampire = {
     // 永生：每局一次，從棺木裡站起來
     preventDeath: () => {
         const v = vampState(), p = gameState.player;
-        if (res('undying') < 2 || v.reborn) return false;
+        if (rareLv('undying') < 2 || v.reborn) return false;
         v.reborn = true;
         gameState.run.flags.vampReborn = true;
         p.currentHealth = Math.round(p.maxHealth * RES_REBORN_HP);
@@ -208,7 +208,7 @@ CLASSES.vampire = {
         return true;
     },
     blockBolt: (b) => {
-        if (res('bats') < 2) return false;
+        if (rareLv('bats') < 2) return false;
         let blocker = null;
         const rSq = RES_NIGHTVEIL_RADIUS * RES_NIGHTVEIL_RADIUS;
         summonGrid.forEachInRadius(b.pos, RES_NIGHTVEIL_RADIUS, s => { if (!blocker && s.isAlive && s instanceof BloodBat && distanceSq(s.pos, b.pos) <= rSq) blocker = s; });
@@ -287,7 +287,7 @@ function nightMult() {
 // 血祭：半血以下你的傷害加倍
 function sacrificeMult() {
     const p = gameState.player;
-    return res('bloodmagic') >= 2 && p && p.currentHealth < p.maxHealth * 0.5 ? 2 : 1;
+    return rareLv('bloodmagic') >= 2 && p && p.currentHealth < p.maxHealth * 0.5 ? 2 : 1;
 }
 
 // ---------- 血的經濟 ----------
@@ -354,7 +354,7 @@ function vampUpdate(dt) {
 }
 function bladeLeech() {
     const v = vampState();
-    return (VAMPIRE.blade.leech + (v.night && res('werewolf') >= 1 ? RES_WOLFWALK_LEECH : 0)) * (v.moonT > 0 ? VAMPIRE.bloodMoon.leechMult : 1);
+    return (VAMPIRE.blade.leech + (v.night && rareLv('werewolf') >= 1 ? RES_WOLFWALK_LEECH : 0)) * (v.moonT > 0 ? VAMPIRE.bloodMoon.leechMult : 1);
 }
 
 // ---------- 普攻：血之飛刃 ----------
@@ -387,7 +387,7 @@ function vampAttack(p, dt) {
     if (!vampTargets.length) return;
     vampTargets.sort((a, b) => a.d - b.d);
     v.bladeT = B.interval;
-    const n = Math.min(vampTargets.length, 1 + (res('bloodmagic') >= 1 ? 1 : 0));
+    const n = Math.min(vampTargets.length, 1 + (rareLv('bloodmagic') >= 1 ? 1 : 0));
     const dmg = B.damage * getWaveStatMultiplier(Math.max(1, gameState.currentWave)) * sacrificeMult();
     for (let i = 0; i < n; i++) {
         const pr = getProjectileFromPool();
@@ -627,14 +627,14 @@ function convertTarget() {
     if (!p || gameState.units.Thrall.count >= thrallCap()) return null;
     let best = null, bd = VAMPIRE.convertRange * VAMPIRE.convertRange;
     for (const m of gameState.monsters) {
-        if (!m.isAlive || m instanceof BossMonster || m.stealthed || (m.isElite && res('kin') < 2)) continue;
+        if (!m.isAlive || m instanceof BossMonster || m.stealthed || (m.isElite && rareLv('kin') < 2)) continue;
         const d = distanceSq(m.pos, p.pos);
         if (d < bd) { bd = d; best = m; }
     }
     return best;
 }
 function raiseThrall(m, level, boss = false) {
-    const s = spawnThrall(m.pos.x, m.pos.y, configKeyOf(m.config), level, m.isElite && res('kin') >= 2, boss);
+    const s = spawnThrall(m.pos.x, m.pos.y, configKeyOf(m.config), level, m.isElite && rareLv('kin') >= 2, boss);
     spawnParticles(m.pos.x, m.pos.y, '#CE93D8', 14, 80, 0.6, 3);
     if (boss) spawnFloatText(m.pos.x, m.pos.y - 30, `${m.config.name}向你下跪`, '#E1BEE7', 16, 1.8, 'dracula');
     return s;
@@ -697,7 +697,7 @@ class Thrall extends SummonUnit {
         this.maxHealth = Math.round(this.maxHealth * (1 + blessVal('kinPower')) * (this.elite ? CONFIG.elite.hpMult : 1));
         this.attack *= (1 + blessVal('kinPower')) * (this.elite ? CONFIG.elite.atkMult : 1) * nightMult();
         this.attackSpeed *= 1 + blessVal('vwHowl');
-        const moon = vampState().night && res('werewolf') >= 2 && this.config.arche === 'melee';
+        const moon = vampState().night && rareLv('werewolf') >= 2 && this.config.arche === 'melee';
         if (moon) { this.attack *= RES_MOONPACK_DMG; this.moveSpeed *= RES_MOONPACK_SPEED; }
         // 眷屬染成淡紫，一眼分得出是自己人；精英、首領保留原本的大小
         // 狼伴不是怪變的、圖本來就是我方的紫色配色，不染（染了整隻變粉紫，細節被洗掉）
@@ -787,7 +787,7 @@ class BloodBat extends SummonUnit {
         this.attack *= (1 + blessVal('batFang')) * nightMult();
         const sp = 1 + blessVal('batSpeed');
         this.moveSpeed *= sp;
-        this.attackSpeed *= sp * (v.night && res('bats') >= 1 ? RES_NIGHTWING_RATE : 1);
+        this.attackSpeed *= sp * (v.night && rareLv('bats') >= 1 ? RES_NIGHTWING_RATE : 1);
     }
     attackTarget() {
         const t = this.target;

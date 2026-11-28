@@ -83,11 +83,11 @@ const GROVE_BEAR_TAKEN = 0.5, GROVE_BEAR_RADIUS = 90, THORN_WOLF_ROOT = 0.6, HUN
 
 // ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    grove: { name: '聖林', img: 'sacred_oak.png', color: '#AED581', res: [{ name: '根深', desc: '橡樹受到的傷害 -40%' }, { name: '森林覺醒', desc: '第 3 階的橡樹拔根成為樹人，會走過去打' }] },
-    pack: { name: '狼群', img: 'druid_wolf.png', color: '#B0BEC5', res: [{ name: '狼嚎', desc: '每 10 秒全體狼攻速 +40%，持續 4 秒' }, { name: '狼王', desc: '每 6 隻狼出一隻狼王，身邊的狼攻速 +25%' }] },
-    bear: { name: '巨熊', img: 'druid_bear.png', color: '#BCAAA4', res: [{ name: '熊皮', desc: '熊會嘲諷身邊的怪' }, { name: '熊靈', desc: '熊受到的傷害 -30%' }] },
-    wild: { name: '荒野', icon: 'thorns', color: '#9CCC65', res: [{ name: '荊棘之地', desc: '種子落地留下一片荊棘，持續刺傷' }, { name: '荊棘之冠', desc: '每棵橡樹周圍長出一圈荊棘' }] },
-    seasons: { name: '四大節', icon: 'wheel', color: '#FFCC80', res: [{ name: '節慶', desc: '當前節氣效果加倍' }, { name: '輪轉', desc: '四個節氣的效果同時生效' }] },
+    grove: { name: '聖林', img: 'sacred_oak.png', color: '#AED581', rareFx: [{ name: '根深', desc: '橡樹受到的傷害 -40%' }, { name: '森林覺醒', desc: '第 3 階的橡樹拔根成為樹人，會走過去打' }] },
+    pack: { name: '狼群', img: 'druid_wolf.png', color: '#B0BEC5', rareFx: [{ name: '狼嚎', desc: '每 10 秒全體狼攻速 +40%，持續 4 秒' }, { name: '狼王', desc: '每 6 隻狼出一隻狼王，身邊的狼攻速 +25%' }] },
+    bear: { name: '巨熊', img: 'druid_bear.png', color: '#BCAAA4', rareFx: [{ name: '熊皮', desc: '熊會嘲諷身邊的怪' }, { name: '熊靈', desc: '熊受到的傷害 -30%' }] },
+    wild: { name: '荒野', icon: 'thorns', color: '#9CCC65', rareFx: [{ name: '荊棘之地', desc: '種子落地留下一片荊棘，持續刺傷' }, { name: '荊棘之冠', desc: '每棵橡樹周圍長出一圈荊棘' }] },
+    seasons: { name: '四大節', icon: 'wheel', color: '#FFCC80', rareFx: [{ name: '節慶', desc: '當前節氣效果加倍' }, { name: '輪轉', desc: '四個節氣的效果同時生效' }] },
 });
 Object.assign(BLESSINGS, {
     oakHp: { school: 'grove', name: '古木', max: 5, per: 0.3, desc: b => `橡樹血量 +${pct(b.per)}` },
@@ -262,9 +262,9 @@ function druidState() { return gameState.druid || (gameState.druid = newDruidSta
 function festivalStrength(id) {
     const d = druidState();
     const i = FEST_INDEX[id];
-    const active = res('seasons') >= 2 || d.fest === i || (bl('festLinger') && d.prevFest === i);
+    const active = rareLv('seasons') >= 2 || d.fest === i || (bl('festLinger') && d.prevFest === i);
     if (!active) return 0;
-    return (1 + blessVal('festPower')) * (res('seasons') >= 1 ? 2 : 1) * (inHenge() ? HENGE_MULT : 1);
+    return (1 + blessVal('festPower')) * (rareLv('seasons') >= 1 ? 2 : 1) * (inHenge() ? HENGE_MULT : 1);
 }
 function inHenge() {
     const h = druidState().henge, p = gameState.player;
@@ -360,7 +360,7 @@ function druidUpdate(dt) {
     const imbolc = festivalStrength('imbolc');
     if (imbolc > 0 && p.currentHealth < p.maxHealth) p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * FEST_IMBOLC_HERO * imbolc * dt);
     // 狼嚎：定時全體狼加攻速
-    if (res('pack') >= 1) {
+    if (rareLv('pack') >= 1) {
         d.howlCd -= dt;
         if (d.howlCd <= 0) { d.howlCd = RES_HOWL_EVERY; d.howlT = RES_HOWL_TIME; spawnFloatText(p.pos.x, p.pos.y - 40, '狼嚎', '#B0BEC5', 13, 1, 'wolfSpeed'); }
     }
@@ -370,17 +370,17 @@ function druidUpdate(dt) {
     if (d.kingT <= 0) {
         d.kingT = 1;
         const wolves = gameState.summons.filter(s => s.isAlive && s instanceof Wolf).sort((a, b) => a.uid - b.uid);
-        const kings = res('pack') >= 2 ? Math.floor(wolves.length / RES_KING_EVERY) : 0;
+        const kings = rareLv('pack') >= 2 ? Math.floor(wolves.length / RES_KING_EVERY) : 0;
         wolves.forEach((w, i) => { const k = i < kings; if (w.king !== k) { w.king = k; w.refreshStats(); } });
         // 狼母：長到第 3 階的成狼各生一隻小狼（小狼自己不會再生）
         if (bl('wolfMother')) for (const w of wolves) if (w.stage >= DRUID.maxStage && !w.pup && !w.birthed) birthPup(w);
     }
     // 熊皮：熊嘲諷身邊的怪
     d.tauntT -= dt;
-    const taunt = res('bear') >= 1 && d.tauntT <= 0;
+    const taunt = rareLv('bear') >= 1 && d.tauntT <= 0;
     if (taunt) d.tauntT = RES_BEARHIDE_EVERY;
     d.crownT -= dt;
-    const crown = res('wild') >= 2 && d.crownT <= 0;
+    const crown = rareLv('wild') >= 2 && d.crownT <= 0;
     if (crown) d.crownT = RES_CROWN_EVERY;
     const crownDmg = crown ? seedDamage() * RES_CROWN_SHARE : 0;
     const springs = gameState.relics.filter(r => r.kind === 'spring' && !r.done);
@@ -474,7 +474,7 @@ class SeedEffect extends TimedEffect {
             m.takeDamage(this.dmg);
             if (m.isAlive && !(m instanceof BossMonster) && !m.isElite) { m.applySlow(S.root, rootTime); m.rootedUntil = worldTime + rootTime; }
         });
-        if (res('wild') >= 1) druidState().patches.push({ x: this.to.x, y: this.to.y, r: this.radius, life: RES_THORNPATCH_TIME, tick: 0, dmg: this.dmg * RES_THORNPATCH_SHARE, spin: Math.random() * Math.PI * 2 });
+        if (rareLv('wild') >= 1) druidState().patches.push({ x: this.to.x, y: this.to.y, r: this.radius, life: RES_THORNPATCH_TIME, tick: 0, dmg: this.dmg * RES_THORNPATCH_SHARE, spin: Math.random() * Math.PI * 2 });
         spawnParticles(this.to.x, this.to.y, '#9CCC65', 6, 50, 0.4, 2);
     }
     draw(ctx) {
@@ -677,7 +677,7 @@ function drawThornCrowns(ctx) {
 }
 function drawDruidGround(ctx) {
     const d = druidState();
-    if (res('wild') >= 2) drawThornCrowns(ctx);
+    if (rareLv('wild') >= 2) drawThornCrowns(ctx);
     if (d.patches.length) drawThornPatches(ctx, d.patches);
 }
 function drawDruidWorld(ctx) {
@@ -968,7 +968,7 @@ class SacredOak extends SummonUnit {
         this.refreshStats();
         if (up && gameState.player) spawnParticles(this.pos.x, this.pos.y - 10, '#C5E1A5', 14, 70, 0.6, 3);
     }
-    get treant() { return res('grove') >= 2 && this.stage >= DRUID.maxStage; }
+    get treant() { return rareLv('grove') >= 2 && this.stage >= DRUID.maxStage; }
     computeStats() {
         super.computeStats();
         const k = 1 + (this.stage || 0) * DRUID.stageBonus;
@@ -1016,7 +1016,7 @@ class SacredOak extends SummonUnit {
     }
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
-        const k = res('grove') >= 1 ? RES_ROOTS_TAKEN : 1;
+        const k = rareLv('grove') >= 1 ? RES_ROOTS_TAKEN : 1;
         this.attackedT = DRUID.attackedTime;
         // 世界樹：最老的那棵不會死，在德魯伊腳邊重新長成樹苗（原地不死的話，怪會圍著它啃到這一波永遠打不完）
         if (bl('yggdrasil') && this.currentHealth - amount * k <= 0 && this === eldestOak() && gameState.player) {
@@ -1123,7 +1123,7 @@ class Beast extends SummonUnit {
         let rate = 1;
         if (type === 'Wolf') {
             if (d.howlT > 0) rate *= RES_HOWL_RATE;
-            if (res('pack') >= 2 && !this.king && summonGrid.forEachInRadius(this.pos, RES_KING_RADIUS, s => s.isAlive && s.king)) rate *= RES_KING_RATE;
+            if (rareLv('pack') >= 2 && !this.king && summonGrid.forEachInRadius(this.pos, RES_KING_RADIUS, s => s.isAlive && s.king)) rate *= RES_KING_RATE;
         }
         this.attackCooldown = 1 / (this.attackSpeed * rate);
         // 傳說「震地」：熊定時震一下，把身邊的怪震飛（首領只推一點）
@@ -1152,7 +1152,7 @@ class Beast extends SummonUnit {
     takeDamage(amount, source = null) {
         if (!this.isAlive) return;
         const bear = this.config.type === 'Bear';
-        super.takeDamage(amount * (bear && res('bear') >= 2 ? RES_BEARSPIRIT_TAKEN : 1) * (bear && bearInGrove(this) ? GROVE_BEAR_TAKEN : 1));
+        super.takeDamage(amount * (bear && rareLv('bear') >= 2 ? RES_BEARSPIRIT_TAKEN : 1) * (bear && bearInGrove(this) ? GROVE_BEAR_TAKEN : 1));
     }
     die() {
         if (!this.isAlive) return;

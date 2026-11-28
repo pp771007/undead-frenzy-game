@@ -235,7 +235,7 @@ for (;;) {
 const out = await page.evaluate(() => ({
     waves: window.__bot.waves, t: window.__bot.t, wave: gameState.currentWave, stuck: window.__bot.stuck,
     killedBy: gameState.killedBy && gameState.killedBy.config && gameState.killedBy.config.type,
-    souls: window.__bot.src, resonance: gameState.resonance, blessings: gameState.blessings, relics: window.__bot.relics,
+    souls: window.__bot.src, rareTiers: gameState.rareTiers, blessings: gameState.blessings, relics: window.__bot.relics,
     achv: Object.keys(meta.achv), maxArmy: window.__bot.maxArmy, kills: meta.stats.kills,
     units: Object.fromEntries(Object.entries(gameState.units).filter(([, u]) => u.count || u.level).map(([t, u]) => [t, `${u.count}@L${u.level}`])),
     hero: Math.round(gameState.player.maxHealth),
@@ -264,7 +264,7 @@ console.log('RELICS', JSON.stringify(out.relics), 'blessings', Object.values(out
 console.log('ACHV', out.achv.length, out.achv.join(' '), 'maxArmy', out.maxArmy);
 // 每種怪一局打倒幾隻：圖鑑成就的門檻照這個定
 console.log('KILLS', JSON.stringify(out.kills));
-console.log('RESONANCE', JSON.stringify(out.resonance), JSON.stringify(out.blessings));
+console.log('RARE_TIERS', JSON.stringify(out.rareTiers), JSON.stringify(out.blessings));
 console.log('wave\tdur\tminHp\tdmg\tpeakMon\tsummons\tlost\tevent');
 for (const w of out.waves) console.log([w.wave, w.dur, w.minHp.toFixed(2), w.dmg.toFixed(2), w.peak, w.summons, w.lost.toFixed(2), w.ev || ''].join('\t'));
 // 遊戲自己記的對局紀錄（玩家在設定畫面複製出來的就是這一份）：拿來跟真人的局逐欄對照

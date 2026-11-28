@@ -66,11 +66,11 @@ const SWAP_HUNT = 230;
 
 // ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    assassination: { name: '暗殺', icon: 'assassination', color: '#FFE57F', res: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
-    venomschool: { name: '劇毒', icon: 'venomschool', color: '#AED581', res: [{ name: '腐蝕', desc: '中毒的怪受到的傷害 +20%' }, { name: '瘟疫之刃', desc: '毒傷也會爆擊' }] },
-    shadowschool: { name: '影', img: 'rogue.png', color: '#B39DDB', res: [{ name: '影襲', desc: '每次隱身都多一個影子' }, { name: '千面', desc: '處決時留下一個影子' }] },
-    smoke: { name: '煙霧', icon: 'smoke', color: '#B0BEC5', res: [{ name: '煙幕', desc: '隱身時放出一團煙，煙裡的怪緩速、看不到你' }, { name: '迷蹤', desc: '被打中時 30% 隱身 1.5 秒（8 秒一次）' }] },
-    intel: { name: '情報', icon: 'intel', color: '#FFE082', res: [{ name: '線人網', desc: '目標優先標精英' }, { name: '鷹巢', desc: '每波第一個目標倒下時，多一次祝福' }] },
+    assassination: { name: '暗殺', icon: 'assassination', color: '#FFE57F', rareFx: [{ name: '標記', desc: '目標受到的傷害 +30%' }, { name: '死亡宣告', desc: '同時多標一個目標' }] },
+    venomschool: { name: '劇毒', icon: 'venomschool', color: '#AED581', rareFx: [{ name: '腐蝕', desc: '中毒的怪受到的傷害 +20%' }, { name: '瘟疫之刃', desc: '毒傷也會爆擊' }] },
+    shadowschool: { name: '影', img: 'rogue.png', color: '#B39DDB', rareFx: [{ name: '影襲', desc: '每次隱身都多一個影子' }, { name: '千面', desc: '處決時留下一個影子' }] },
+    smoke: { name: '煙霧', icon: 'smoke', color: '#B0BEC5', rareFx: [{ name: '煙幕', desc: '隱身時放出一團煙，煙裡的怪緩速、看不到你' }, { name: '迷蹤', desc: '被打中時 30% 隱身 1.5 秒（8 秒一次）' }] },
+    intel: { name: '情報', icon: 'intel', color: '#FFE082', rareFx: [{ name: '線人網', desc: '目標優先標精英' }, { name: '鷹巢', desc: '每波第一個目標倒下時，多一次祝福' }] },
 });
 Object.assign(BLESSINGS, {
     critChance: { school: 'assassination', name: '要害', max: 3, per: 0.08, desc: b => `飛刀 ${pct(b.per)} 機率爆擊（×2）` },
@@ -162,7 +162,7 @@ CLASSES.rogue = {
             r.panicT = Math.max(4, ROGUE.panicCd - blessVal('quickHide'));
             enterHide(ROGUE.panicHide, '遁形');
         }
-        else if (res('smoke') >= 2 && r.vanishT <= 0 && Math.random() < RES_VANISH_CHANCE) { r.vanishT = RES_VANISH_CD; enterHide(RES_VANISH_TIME); }
+        else if (rareLv('smoke') >= 2 && r.vanishT <= 0 && Math.random() < RES_VANISH_CHANCE) { r.vanishT = RES_VANISH_CD; enterHide(RES_VANISH_TIME); }
         if (bl('smokeBomb') && lostFrac >= SMOKE_HIT) addSmoke(p.pos, SMOKE_TIME * bl('smokeBomb'));
     },
     soulMult: (m) => {
@@ -231,8 +231,8 @@ function enterHide(dur, label = '隱身') {
         lost++;
         spawnFloatText(m.pos.x, m.pos.y - (m.imageHeight || 30) * 0.5 - 6, '?', '#ECEFF1', 16, 1.0);
     });
-    if (res('smoke') >= 1) addSmoke(p.pos, SMOKE_TIME);
-    if (res('shadowschool') >= 1) spawnShadow(p.pos.x, p.pos.y, gameState.units.Shadow.level, true);
+    if (rareLv('smoke') >= 1) addSmoke(p.pos, SMOKE_TIME);
+    if (rareLv('shadowschool') >= 1) spawnShadow(p.pos.x, p.pos.y, gameState.units.Shadow.level, true);
 }
 
 // 一團煙；雙流派「煙中影」：煙裡站起一個影子
@@ -260,7 +260,7 @@ function rogueUpdate(dt) {
     }
     // 目標：死了或不見了就清掉，隔一下再標新的
     r.targets = r.targets.filter(t => t.isAlive);
-    const want = res('assassination') >= 2 ? 2 : 1;
+    const want = rareLv('assassination') >= 2 ? 2 : 1;
     if (!gameState.betweenWaves && r.targets.length < want) {
         r.markT -= dt;
         if (r.markT <= 0) markTarget();
@@ -288,7 +288,7 @@ function rogueUpdate(dt) {
 
 function markTarget() {
     const r = rogueState();
-    const eliteFirst = res('intel') >= 1;
+    const eliteFirst = rareLv('intel') >= 1;
     let best = null, bestScore = -1;
     // 眼線：只挑身邊的怪（身邊沒有才放寬到全場）
     const p = gameState.player, nearSq = bl('earlyMark') && p ? BLESSINGS.earlyMark.per ** 2 : 0;
@@ -316,7 +316,7 @@ function targetDown(m) {
     r.waveTargets++;
     if (m.markedFullHp && m.lastHitWasOneShot) gameState.run.flags.rogueOneShot = true;
     if (bl('spoils') && p) p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * blessVal('spoils'));
-    if (res('intel') >= 2 && r.firstTargetThisWave) { gameState.relicDrafts++; spawnFloatText(m.pos.x, m.pos.y - 52, '祝福 +1', '#FFD54F', 16, 1.6, 'draft'); }
+    if (rareLv('intel') >= 2 && r.firstTargetThisWave) { gameState.relicDrafts++; spawnFloatText(m.pos.x, m.pos.y - 52, '祝福 +1', '#FFD54F', 16, 1.6, 'draft'); }
     r.firstTargetThisWave = false;
     // 身邊的怪潰散逃跑（山中老人：其中幾隻倒戈成影子）
     let turned = 0;
@@ -389,8 +389,8 @@ function rogueKnives(p, dt) {
         }
         else if (Math.random() < blessVal('critChance')) { dmg *= 2 * (1 + blessVal('critDamage')); crit = true; }
         if (r.hideT > 0 && bl('fidai')) dmg *= FIDAI_KNIFE;
-        if (r.targets.includes(t) && res('assassination') >= 1) dmg *= RES_MARKED_TAKEN;
-        if (t.poisonStacks > 0 && res('venomschool') >= 1) dmg *= RES_CORRODE_TAKEN;
+        if (r.targets.includes(t) && rareLv('assassination') >= 1) dmg *= RES_MARKED_TAKEN;
+        if (t.poisonStacks > 0 && rareLv('venomschool') >= 1) dmg *= RES_CORRODE_TAKEN;
         t.lastHitWasOneShot = t.currentHealth >= t.maxHealth && dmg >= t.currentHealth;
         const pr = getProjectileFromPool();
         pr.init(p.pos.x, p.pos.y - 6, t, ROGUE_KNIFE, dmg, rogueKnifeOwner, bl('boomerangKnife') ? BLESSINGS.boomerangKnife.per : 0, false);
@@ -406,7 +406,7 @@ function knifeHit(m) {
         const x = m.pos.x, y = m.pos.y;
         m.takeDamage(m.currentHealth + 1);
         spawnFloatText(x, y - 20, '處決', '#FFE57F', 12, 0.8);
-        if (res('shadowschool') >= 2) spawnShadow(x, y, gameState.units.Shadow.level, true);
+        if (rareLv('shadowschool') >= 2) spawnShadow(x, y, gameState.units.Shadow.level, true);
     }
     // 每一刀都上毒，0 級就有（同飛刀：修練是讓它更強，不是解鎖）。0 級才有毒的話開局完全看不到毒，玩家不知道這張卡在做什麼
     if (m.isAlive) {
@@ -441,7 +441,7 @@ function tickPoison() {
         m.poisonTime -= POISON.tick;
         if (m.poisonTime <= 0) { m.poisonStacks = 0; continue; }
         let dmg = per * m.poisonStacks;
-        if (res('venomschool') >= 2 && Math.random() < blessVal('critChance')) dmg *= 2 * (1 + blessVal('critDamage'));
+        if (rareLv('venomschool') >= 2 && Math.random() < blessVal('critChance')) dmg *= 2 * (1 + blessVal('critDamage'));
         if (bl('poisonSlow')) m.applySlow(blessVal('poisonSlow'), POISON.tick * 2);
         m.takeDamage(dmg);
         if (!m.isAlive) { poisonDeath(m); m.poisonStacks = 0; continue; }
@@ -626,7 +626,7 @@ function useBehead() {
     let kills = 0;
     victims.forEach((v, vi) => {
         const hits = v === main ? B.hits : 1;
-        const hitDmg = dmg * (r.targets.includes(v) && res('assassination') >= 1 ? RES_MARKED_TAKEN : 1);
+        const hitDmg = dmg * (r.targets.includes(v) && rareLv('assassination') >= 1 ? RES_MARKED_TAKEN : 1);
         // 刀光：主目標連砍幾刀交錯成米字，其他的一人一刀、一個接一個。每一刀的刀光出現時才扣那一刀的血
         const base = Math.random() * Math.PI, R = Math.max(BEHEAD_SLASH_R, v.imageWidth * 0.5);
         for (let i = 0; i < hits; i++) {

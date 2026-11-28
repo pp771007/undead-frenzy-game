@@ -63,11 +63,11 @@ const TIGER_ROAR_EVERY = 25, TIGER_ROAR_RADIUS = 80;
 
 // ---------- 五個流派（七十二藝五類）：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    external: { name: '外功', icon: 'external', color: '#FFAB91', res: [{ name: '連環', desc: '出拳快 20%' }, { name: '千手', desc: '連擊 100 以上，每一拳都多打兩下' }] },
-    hardstyle: { name: '硬功', icon: 'hardstyle', color: '#BCAAA4', res: [{ name: '鐵布衫', desc: '一下不到 5% 血的攻擊不會打斷連擊' }, { name: '金鐘罩', desc: '每 8 秒擋下一次傷害，擋下時震退周圍' }] },
-    lightfoot: { name: '輕功', icon: 'lightfoot', color: '#B2EBF2', res: [{ name: '燕子三抄', desc: '閃過攻擊後，下一拳 ×3' }, { name: '踏雪無痕', desc: '瞬步留下殘影，殘影會再打一次' }] },
-    internal: { name: '內功', icon: 'internal', color: '#FFE082', res: [{ name: '小周天', desc: '打鬥中也每秒回 1% 血' }, { name: '易筋經', desc: '入定時連擊不再掉' }] },
-    qigong: { name: '氣功', icon: 'qigong', color: '#80DEEA', res: [{ name: '震勁', desc: '氣功波會擊退' }, { name: '隔山打牛', desc: '氣功波穿過的第一隻怪不受傷，後面的怪傷害加倍' }] },
+    external: { name: '外功', icon: 'external', color: '#FFAB91', rareFx: [{ name: '連環', desc: '出拳快 20%' }, { name: '千手', desc: '連擊 100 以上，每一拳都多打兩下' }] },
+    hardstyle: { name: '硬功', icon: 'hardstyle', color: '#BCAAA4', rareFx: [{ name: '鐵布衫', desc: '一下不到 5% 血的攻擊不會打斷連擊' }, { name: '金鐘罩', desc: '每 8 秒擋下一次傷害，擋下時震退周圍' }] },
+    lightfoot: { name: '輕功', icon: 'lightfoot', color: '#B2EBF2', rareFx: [{ name: '燕子三抄', desc: '閃過攻擊後，下一拳 ×3' }, { name: '踏雪無痕', desc: '瞬步留下殘影，殘影會再打一次' }] },
+    internal: { name: '內功', icon: 'internal', color: '#FFE082', rareFx: [{ name: '小周天', desc: '打鬥中也每秒回 1% 血' }, { name: '易筋經', desc: '入定時連擊不再掉' }] },
+    qigong: { name: '氣功', icon: 'qigong', color: '#80DEEA', rareFx: [{ name: '震勁', desc: '氣功波會擊退' }, { name: '隔山打牛', desc: '氣功波穿過的第一隻怪不受傷，後面的怪傷害加倍' }] },
 });
 Object.assign(BLESSINGS, {
     punchPower: { school: 'external', name: '鐵砂掌', max: 5, per: 0.3, desc: b => `拳的傷害 +${pct(b.per)}` },
@@ -167,7 +167,7 @@ CLASSES.monk = {
         const k = monkState(), p = gameState.player;
         if (k.arhatT > 0 || k.enlightenT > 0 || k.iframeT > 0) return 0;
         // 金鐘罩：定時擋下一次
-        if (res('hardstyle') >= 2 && k.bellT <= 0) {
+        if (rareLv('hardstyle') >= 2 && k.bellT <= 0) {
             k.bellT = RES_GOLDBELL_EVERY;
             monsterGrid.forEachInRadius(p.pos, RES_GOLDBELL_RADIUS, m => {
                 if (!m.isAlive || m instanceof BossMonster) return;
@@ -179,7 +179,7 @@ CLASSES.monk = {
             return 0;
         }
         if (Math.random() < MONK.dodge + blessVal('evade') + classMeta('evade')) {
-            if (res('lightfoot') >= 1) k.swallow = true;
+            if (rareLv('lightfoot') >= 1) k.swallow = true;
             spawnFloatText(p.pos.x, p.pos.y - 30, '閃', '#B2EBF2', 12, 0.5);
             return 0;
         }
@@ -192,7 +192,7 @@ CLASSES.monk = {
         const k = monkState();
         k.waveHit = true;
         k.zenT = 0; k.stillT = 0;
-        if (!(res('hardstyle') >= 1 && lostFrac < RES_IRONSHIRT_HIT) && Math.random() >= blessVal('steadfast')) {
+        if (!(rareLv('hardstyle') >= 1 && lostFrac < RES_IRONSHIRT_HIT) && Math.random() >= blessVal('steadfast')) {
             if (bl('vajraWrath') && k.combo >= VAJRA_MIN_COMBO) vajraBlast(k.combo);
             else if (k.combo >= 20) spawnFloatText(gameState.player.pos.x, gameState.player.pos.y - 40, '斷', '#90A4AE', 14, 0.7);
             k.combo = 0;
@@ -266,7 +266,7 @@ function monkUpdate(dt) {
             const boost = spring ? ZEN_SPRING_MULT : 1;
             p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * MONK.zenHeal * (1 + blessVal('zenHeal') + classMeta('zenHeal')) * boost * dt);
             k.charge = Math.min(MONK.zenCharge + blessVal('zenCharge'), k.charge + dt * boost);
-            if (res('internal') < 2) k.combo = Math.max(0, k.combo - MONK.zenDecay * dt);
+            if (rareLv('internal') < 2) k.combo = Math.max(0, k.combo - MONK.zenDecay * dt);
             // 達摩面壁：入定滿 9 秒頓悟
             if (bl('bodhidharma') && k.zenT >= BLESSINGS.bodhidharma.per && k.enlightenT <= 0 && !k.enlightened) {
                 k.enlightened = true;
@@ -279,7 +279,7 @@ function monkUpdate(dt) {
             }
         }
     }
-    if (res('internal') >= 1 && k.zenT <= 0) p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * RES_ZHOUTIAN_HEAL * dt);
+    if (rareLv('internal') >= 1 && k.zenT <= 0) p.currentHealth = Math.min(p.maxHealth, p.currentHealth + p.maxHealth * RES_ZHOUTIAN_HEAL * dt);
     // 十八羅漢陣
     if (k.arhatT > 0) {
         k.arhatT -= dt; k.arhatTick -= dt;
@@ -316,7 +316,7 @@ function leaveZen() {
 function monkPunch(p, dt) {
     const k = monkState();
     if (k.zenT > 0) return;
-    const rate = (res('external') >= 1 ? RES_CHAIN_RATE : 1) / (1 - blessVal('quickStep'));
+    const rate = (rareLv('external') >= 1 ? RES_CHAIN_RATE : 1) / (1 - blessVal('quickStep'));
     k.punchT -= dt * rate;
     if (k.punchT > 0) return;
     const blink = (MONK.punch.blink + gameState.units.Step.level * CONFIG.step.upgradeBonus * MONK.punch.blink) * (1 + blessVal('blinkRange'));
@@ -331,7 +331,7 @@ function monkPunch(p, dt) {
         p.pos.x += dx / d * stop; p.pos.y += dy / d * stop;
         p.facingDirection = dx >= 0 ? 1 : -1;
         if (bl('phantomStep')) { k.iframeT = PHANTOM_STEP_IFRAME; spawnParticles(p.pos.x, p.pos.y, '#E1F5FE', 8, 60, 0.35, 2.5); }
-        if (res('lightfoot') >= 2) k.ghosts.push({ x: from.x, y: from.y, life: 0.35, target: t });
+        if (rareLv('lightfoot') >= 2) k.ghosts.push({ x: from.x, y: from.y, life: 0.35, target: t });
         spawnParticles(from.x, from.y, '#B2EBF2', 5, 40, 0.3, 2);
         if (bl('shadowFist')) shadowFistPath(from, p.pos, t);
     }
@@ -348,7 +348,7 @@ function monkPunch(p, dt) {
         gameState.visualEffects.push(new DragonFistEffect(p.pos, t.pos));
         addShake(3);
     }
-    const hits = 1 + bl('flurry') + (res('external') >= 2 && k.combo >= RES_THOUSAND_COMBO ? RES_THOUSAND_HITS : 0);
+    const hits = 1 + bl('flurry') + (rareLv('external') >= 2 && k.combo >= RES_THOUSAND_COMBO ? RES_THOUSAND_HITS : 0);
     strikeMonk(t, dmg, hits);
     // 殘影：踏雪無痕
     for (const g of k.ghosts) if (g.target === t && !g.struck) { g.struck = true; strikeMonk(t, dmg * 0.5, 1); }
@@ -539,11 +539,11 @@ function updateQiWaves(dt) {
             q.hit.add(m);
             // 隔山打牛：第一隻不受傷，後面的加倍
             let dmg = q.dmg;
-            if (res('qigong') >= 2) { if (q.first) { q.first = false; return; } dmg *= 2; }
+            if (rareLv('qigong') >= 2) { if (q.first) { q.first = false; return; } dmg *= 2; }
             m.lastQiHit = true;
             m.takeDamage(dmg);
             if (m.isAlive) m.lastQiHit = false;
-            if (res('qigong') >= 1 && m.isAlive && !(m instanceof BossMonster)) m.knockVel = { x: q.ux * RES_QI_KNOCK, y: q.uy * RES_QI_KNOCK };
+            if (rareLv('qigong') >= 1 && m.isAlive && !(m instanceof BossMonster)) m.knockVel = { x: q.ux * RES_QI_KNOCK, y: q.uy * RES_QI_KNOCK };
         });
         if (!q.back && q.dist >= MONK.qiLength) {
             if (bl('qiBurst')) {

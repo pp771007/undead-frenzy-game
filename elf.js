@@ -51,11 +51,11 @@ const FOXFIRE_SHARE = 0.6, FOXFIRE_SPEED = 230, FOXFIRE_SEEK = 170, FOXFIRE_RADI
 
 // ---------- 五個流派：各 4 張祝福，加一張稀有祝福（game.js 從 res 產生）；每個流派一張傳說。圖示名稱 = 祝福 id（icons.js） ----------
 Object.assign(SCHOOLS, {
-    parthian: { name: '回馬射', icon: 'parthian', color: '#80CBC4', res: [{ name: '騎射', desc: '停下來 2 秒內還保有移動中的射速' }, { name: '帕提亞之箭', desc: '回頭射的箭穿透所有怪' }] },
-    longbow: { name: '長弓', icon: 'longbow', color: '#A5D6A7', res: [{ name: '強弓', desc: '每支箭多穿透一隻' }, { name: '鷹眼', desc: '射得越遠傷害越高（最多 ×3）' }] },
-    elemental: { name: '元素箭', icon: 'elemental', color: '#90CAF9', res: [{ name: '元素共振', desc: '燃燒、冰凍、雷擊的效果 ×1.5' }, { name: '三相', desc: '每支箭同時帶三種元素' }] },
-    trapper: { name: '陷阱', icon: 'trapper', color: '#FFCC80', res: [{ name: '絆索', desc: '所有陷阱炸開時都會緩速' }, { name: '獵場', desc: '陷阱炸開後在原地留下一個小陷阱' }] },
-    wildfriends: { name: '森林之友', img: 'spirit_fox.png', color: '#FFE082', res: [{ name: '靈狐之舞', desc: '夥伴每擊多打一次' }, { name: '萬獸之主', desc: '每 15 秒一群鹿從畫面一端踏過另一端' }] },
+    parthian: { name: '回馬射', icon: 'parthian', color: '#80CBC4', rareFx: [{ name: '騎射', desc: '停下來 2 秒內還保有移動中的射速' }, { name: '帕提亞之箭', desc: '回頭射的箭穿透所有怪' }] },
+    longbow: { name: '長弓', icon: 'longbow', color: '#A5D6A7', rareFx: [{ name: '強弓', desc: '每支箭多穿透一隻' }, { name: '鷹眼', desc: '射得越遠傷害越高（最多 ×3）' }] },
+    elemental: { name: '元素箭', icon: 'elemental', color: '#90CAF9', rareFx: [{ name: '元素共振', desc: '燃燒、冰凍、雷擊的效果 ×1.5' }, { name: '三相', desc: '每支箭同時帶三種元素' }] },
+    trapper: { name: '陷阱', icon: 'trapper', color: '#FFCC80', rareFx: [{ name: '絆索', desc: '所有陷阱炸開時都會緩速' }, { name: '獵場', desc: '陷阱炸開後在原地留下一個小陷阱' }] },
+    wildfriends: { name: '森林之友', img: 'spirit_fox.png', color: '#FFE082', rareFx: [{ name: '靈狐之舞', desc: '夥伴每擊多打一次' }, { name: '萬獸之主', desc: '每 15 秒一群鹿從畫面一端踏過另一端' }] },
 });
 Object.assign(BLESSINGS, {
     backPower: { school: 'parthian', name: '回身一箭', max: 3, per: 0.4, desc: b => `回頭射的傷害再 +${pct(b.per)}` },
@@ -94,7 +94,7 @@ Object.assign(BLESSINGS, {
 });
 const RES_HORSEBACK_KEEP = 2;
 const RES_FARSIGHT_MAX = 3, RES_FARSIGHT_PER = 100;
-const RES_RESONANCE_MULT = 1.5;
+const RES_ELEMENTAL_MULT = 1.5;
 const RES_SNARE_SLOW = 0.5;
 const RES_HUNTGROUND_SCALE = 0.6;
 const RES_STAMPEDE_EVERY = 15, RES_STAMPEDE_WIDTH = 70, RES_STAMPEDE_SPEED = 420, RES_STAMPEDE_DAMAGE = 14;
@@ -183,7 +183,7 @@ function elfUpdate(dt) {
     if (moving) {
         const m = Math.hypot(mv.x, mv.y);
         e.mx = mv.x / m; e.my = mv.y / m;
-        e.movingT = ELF.bow.keepMoving + (res('parthian') >= 1 ? RES_HORSEBACK_KEEP : 0);
+        e.movingT = ELF.bow.keepMoving + (rareLv('parthian') >= 1 ? RES_HORSEBACK_KEEP : 0);
         e.stillT = 0;
     } else {
         e.movingT = Math.max(0, e.movingT - dt);
@@ -220,7 +220,7 @@ function elfUpdate(dt) {
     }
     for (let i = e.beams.length - 1; i >= 0; i--) { e.beams[i].life -= dt; if (e.beams[i].life <= 0) e.beams.splice(i, 1); }
     // 萬獸之主：鹿群
-    if (res('wildfriends') >= 2 && !gameState.betweenWaves) {
+    if (rareLv('wildfriends') >= 2 && !gameState.betweenWaves) {
         e.stampedeT -= dt;
         if (e.stampedeT <= 0) { e.stampedeT = RES_STAMPEDE_EVERY; startStampede(p); }
     }
@@ -262,7 +262,7 @@ function elfShoot(p, dt) {
 function nextElement() {
     const owned = ['fire', 'ice', 'thunder'].filter(k => bl(k + 'Arrow'));
     if (!owned.length) return null;
-    if (res('elemental') >= 2) return 'all';
+    if (rareLv('elemental') >= 2) return 'all';
     const e = elfState();
     e.elem = (e.elem + 1) % owned.length;
     return owned[e.elem];
@@ -273,7 +273,7 @@ function fireArrow(x, y, target, dmg, elem) {
     const dir = { x: dx / d, y: dy / d };
     // 朝身後射（跟移動方向相反）＝回馬射
     const back = elfMoving() && (dir.x * e.mx + dir.y * e.my) < ELF.backDot;
-    const pierce = (res('longbow') >= 1 ? 1 : 0) + (back && res('parthian') >= 2 ? 999 : 0);
+    const pierce = (rareLv('longbow') >= 1 ? 1 : 0) + (back && rareLv('parthian') >= 2 ? 999 : 0);
     gameState.visualEffects.push(new Arrow(x, y, dir, target, dmg * (back ? ELF.backMult + blessVal('backPower') : 1), pierce, back, elem, bl('windBow') && elfMoving(), bl('noReturn') ? BLESSINGS.noReturn.per : 0));
 }
 
@@ -312,13 +312,13 @@ class Arrow extends TimedEffect {
         // 鷹眼：射得越遠越痛；遠距：每遠 100 加一截
         const dist = Math.hypot(m.pos.x - this.from.x, m.pos.y - this.from.y);
         dmg *= 1 + blessVal('farShot') * dist / 100;
-        if (res('longbow') >= 2) dmg *= Math.min(RES_FARSIGHT_MAX, 1 + dist / RES_FARSIGHT_PER / 2);
+        if (rareLv('longbow') >= 2) dmg *= Math.min(RES_FARSIGHT_MAX, 1 + dist / RES_FARSIGHT_PER / 2);
         if (bl('heartShot') && Math.random() < HEART_SHOT_CHANCE) {
             dmg *= HEART_SHOT_MULT;
             spawnParticles(m.pos.x, m.pos.y, HEART_SHOT_COLOR, 8, 110, 0.3, 2.5);
         }
         if (m.hawkMarkUntil > worldTime) dmg *= HAWK_MARK_MULT;
-        const surge = (1 + blessVal('elemSurge')) * (res('elemental') >= 1 ? RES_RESONANCE_MULT : 1);
+        const surge = (1 + blessVal('elemSurge')) * (rareLv('elemental') >= 1 ? RES_ELEMENTAL_MULT : 1);
         const el = this.elem;
         if (el === 'fire' || el === 'all') dmg *= 1 + (FIRE_BASE + blessVal('fireArrow')) * surge;
         m.takeDamage(dmg);
@@ -428,7 +428,7 @@ function updateTraps(dt) {
                 if (!m.isAlive) return;
                 m.takeDamage(kind === 'blast' ? dmg * 1.6 : dmg * 0.6);
                 if (!m.isAlive || m instanceof BossMonster) return;
-                if (kind === 'slow' || res('trapper') >= 1) m.applySlow(kind === 'slow' ? T.slow : RES_SNARE_SLOW, T.slowTime);
+                if (kind === 'slow' || rareLv('trapper') >= 1) m.applySlow(kind === 'slow' ? T.slow : RES_SNARE_SLOW, T.slowTime);
                 if (kind === 'root') m.applySlow(0.95, T.rootTime);
             });
         });
@@ -441,7 +441,7 @@ function updateTraps(dt) {
             addWorldFx({ kind: 'beam', x: t.x, y: t.y, ...beamTo(t, o), w: 4, life: 0.25, color: TRAP_COLORS.blast });
         }
         // 獵場：炸開後原地再補一個小的
-        if (res('trapper') >= 2 && t.scale >= 1) e.traps.push({ x: t.x, y: t.y, kind: TRAP_KINDS[e.trapKind++ % 3], scale: RES_HUNTGROUND_SCALE, life: T.life, lureT: 99 });
+        if (rareLv('trapper') >= 2 && t.scale >= 1) e.traps.push({ x: t.x, y: t.y, kind: TRAP_KINDS[e.trapKind++ % 3], scale: RES_HUNTGROUND_SCALE, life: T.life, lureT: 99 });
     }
 }
 // 陷阱的顏色：爆炸金橘、冰霜淺藍、荊棘綠（我方的東西不用紅，見專案 CLAUDE.md）
@@ -820,7 +820,7 @@ class Companion extends SummonUnit {
     attackTarget() {
         const t = this.target;
         if (!t || !t.isAlive) return;
-        const hits = 1 + (res('wildfriends') >= 1 ? 1 : 0);
+        const hits = 1 + (rareLv('wildfriends') >= 1 ? 1 : 0);
         for (let i = 0; i < hits && t.isAlive; i++) t.takeDamage(this.attack);
         this.healFromDamage(this.attack);
         if (this.kind === 'hawk') {
