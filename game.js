@@ -132,7 +132,7 @@ const uiElements = {
     wheelSvg: $id('wheel-svg'),
     wheelResult: $id('wheel-result'),
     draftCards: $id('draft-cards'),
-    rerollBtn: $id('reroll-btn'), healBtn: $id('heal-btn'), draftTitle: $id('draft-title'),
+    rerollBtn: $id('reroll-btn'), draftTitle: $id('draft-title'),
     pauseMenu: $id('pause-menu'),
     pauseBlessings: $id('pause-blessings'),
     resumeGameBtn: $id('resume-game-btn'),
@@ -7045,7 +7045,8 @@ function checkWaveEndCondition() {
         // 經驗不會自動收回：第一次打完一波、地上還留著經驗時講一次（新威脅的橫幅在的話，等之後的波再講）
         if (gameState.orbs.length >= ORB_HINT_MIN) introduceOnce('orbPickup', '撿經驗', '經驗留在地上，走過去才撿得到', '#80DEEA', currencyIcon());
         const p = gameState.player;
-        // 波與波之間誰都不回血：法師被咬掉的一路帶到下一波（回血靠靈泉、選祝福時的「補滿血」、不死之軀、吸魂之軀），
+        // 波與波之間誰都不回血：法師被咬掉的一路帶到下一波（回血靠靈泉、不死之軀、吸魂之軀這類祝福），
+        // 選祝福時不給「補滿血」：每波都能補滿的話血量等於每波重置，壓力只剩單一波之內
         // 召喚物的殘血也帶著走（靠嗜魂、升級時多出來的血），打得越吃力的局越要拿資源去補
         const run = gameState.run;
         if (p && p.isAlive && p.currentHealth < p.maxHealth * ACHV_LAST_STAND) run.flags.lastStand = true;
@@ -7863,27 +7864,6 @@ function renderDraftCards() {
     uiElements.rerollBtn.innerHTML = `${iconHtml('reroll', 'icon btn-icon')}重抽<span class="price">×${gameState.rerollsLeft}</span>`;
     uiElements.rerollBtn.disabled = gameState.rerollsLeft <= 0 || !!gameState.pendingDraft.firstUnit;
     uiElements.draftTitle.textContent = gameState.pendingDraft.firstUnit ? '選第一種兵' : '選擇祝福';
-    const missing = draftHealAmount();
-    uiElements.healBtn.innerHTML = `${iconHtml('heart', 'icon btn-icon')}補滿血<span class="price">+${formatNumberK(missing)}</span>`;
-    uiElements.healBtn.disabled = missing <= 0;
-}
-
-// 補滿血：不拿祝福，換法師血量回滿。波與波之間不回血，所以每次選祝福都是「變強還是保命」
-// 血量可能是小數（吸血、每秒回血），照整數算：差不到 1 點就當滿血，按鈕上也不會印出一串小數
-function draftHealAmount() {
-    const p = gameState.player;
-    return p && p.isAlive ? Math.round(p.maxHealth - p.currentHealth) : 0;
-}
-function healDraft() {
-    if (!gameState.pendingDraft) return;
-    const p = gameState.player, heal = draftHealAmount();
-    if (heal <= 0) return;
-    p.currentHealth = p.maxHealth;
-    gameState.run.heals = (gameState.run.heals || 0) + 1;
-    spawnFloatText(p.pos.x, p.pos.y - 26, `+${formatNumberK(heal)} HP`, '#81C784', 16, 1.4, 'heart');
-    spawnParticles(p.pos.x, p.pos.y, '#81C784', 24, 110, 0.7, 3);
-    Sfx.play('heal');
-    closeDraft();
 }
 
 function openDraft() {
@@ -10112,7 +10092,6 @@ function init() {
     onTap(uiElements.gameoverTitleBtn, showTitle);
     onTap(uiElements.gameoverMetaBtn, () => openMeta('gameover'));
     onTap(uiElements.rerollBtn, rerollDraft);
-    onTap(uiElements.healBtn, healDraft);
     // 用 pointerup：按下就收的話，同一下的放開會落在接著跳出來的祝福卡上，等於替玩家選了一張
     uiElements.coffinWheel.addEventListener('pointerup', tapCoffinWheel);
     onTap(uiElements.confirmNo, () => showScreen(uiElements.confirmDialog, false));

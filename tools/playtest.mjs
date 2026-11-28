@@ -3,7 +3,7 @@
 //   human：像真人 —— 地上的預警圈、首領蓄力、血彈要 REACT 秒後才反應，每 DECIDE 秒重新決定往哪走，打得正熱就放新星；
 //          沒有要閃的東西時走去拿戰場遺跡（祭壇／靈泉／寶棺），再來才是撿靈魂
 //   still：站著不動，只有被包圍才放新星（量「不會走位的玩家」撐到哪）
-// 兩種都每 0.5 秒把錢花光（升級鈕發光就升級，否則隨機召喚），祝福挑自己在疊的流派、有傳說先拿傳說、血量低於 BOT_HEAL_BELOW 就選「補滿血」
+// 兩種都每 0.5 秒把錢花光（升級鈕發光就升級，否則隨機召喚），祝福挑自己在疊的流派、有傳說先拿傳說
 // —— 花錢比真人快，但選卡、走位、召喚搭配都比真人粗糙得多：機器人打得到的地方，會玩的人只會更遠。
 // 需要 playwright（npm i playwright）；遊戲要先用任何靜態伺服器跑起來，例如 python -m http.server 8765。
 // 直接讀寫遊戲的全域變數與函式（gameState、updateGame、trySummon…），遊戲裡改名的話這裡要跟著改。
@@ -89,8 +89,6 @@ for (;;) {
             // 寶棺轉盤：不等動畫，直接拿抽到的獎（接著跳出來的三選一下一圈照常挑）
             if (gameState.wheelOpen) { closeCoffinWheel(); continue; }
             if (gameState.draftOpen && gameState.pendingDraft) {
-                const BOT_HEAL_BELOW = 0.5;
-                if (gameState.player.currentHealth < gameState.player.maxHealth * BOT_HEAL_BELOW) { healDraft(); continue; }
                 // 像真人一樣挑：傳說先拿；稀有卡多加分（自己在疊的流派加更多）；否則挑自己已經在疊的流派，全軍通用的算中等。
                 // 完全亂挑的話同一個設定兩局可以差三十波（有一局剛好疊成、有一局全是雜牌），拿來比較職業強弱全是雜訊
                 // PICK=random：完全亂挑（像不懂搭配的新手）；PICK=first：永遠拿第一張。拿來量「選擇有沒有意義」
